@@ -1,0 +1,77 @@
+package com.monsterquest.app
+
+import com.monsterquest.core.Battle
+import com.monsterquest.core.BattleOutcome
+import com.monsterquest.core.Combatant
+import com.monsterquest.core.Element
+import com.monsterquest.core.EncounterType
+import com.monsterquest.core.Item
+import com.monsterquest.core.Skill
+
+/** Immutable snapshot of a [Battle] for the UI (the engine itself is mutable). */
+data class BattleView(
+    val allies: List<FighterView>,
+    val enemy: FighterView,
+    val log: List<String>,
+    val current: FighterView?,
+    val outcome: BattleOutcome,
+    val encounter: EncounterType,
+    val round: Int,
+    val itemsLeft: Int,
+    val spells: List<Skill>,
+    val specialName: String?,
+    val specialCooldown: Int,
+    val items: List<Pair<Item, Int>>,
+    val orbs: List<OrbOption>,
+    val captureBlocked: String?,
+    val resultText: String?,
+) {
+    val isBoss: Boolean get() = encounter != EncounterType.WILD
+
+    companion object {
+        fun of(b: Battle, resultText: String?): BattleView {
+            val cur = b.current
+            return BattleView(
+                allies = b.allies.map { FighterView.of(it) },
+                enemy = FighterView.of(b.enemy),
+                log = b.log.toList(),
+                current = cur?.let { FighterView.of(it) },
+                outcome = b.outcome,
+                encounter = b.encounter,
+                round = b.round,
+                itemsLeft = b.itemsRemainingThisBattle,
+                spells = cur?.let { b.spellsFor(it) } ?: emptyList(),
+                specialName = cur?.special?.name,
+                specialCooldown = cur?.cooldown ?: 0,
+                items = b.battleItems().map { it to b.count(it) },
+                orbs = b.orbs().map { OrbOption(it, b.count(it), b.captureOdds(it)) },
+                captureBlocked = b.captureBlockedReason(),
+                resultText = resultText,
+            )
+        }
+    }
+}
+
+data class OrbOption(val item: Item, val count: Int, val odds: Double)
+
+data class FighterView(
+    val key: String,
+    val name: String,
+    val emoji: String,
+    val element: Element,
+    val level: Int,
+    val hp: Int,
+    val maxHp: Int,
+    val mp: Int,
+    val maxMp: Int,
+    val isHero: Boolean,
+) {
+    val alive: Boolean get() = hp > 0
+    val hpFraction: Float get() = hp.toFloat() / maxHp
+
+    companion object {
+        fun of(c: Combatant) = FighterView(
+            c.key, c.name, c.emoji, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero,
+        )
+    }
+}
