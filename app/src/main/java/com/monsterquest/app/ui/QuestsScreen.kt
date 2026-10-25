@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,13 +75,13 @@ fun QuestsScreen(vm: GameViewModel) {
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { showAdd = true }, modifier = Modifier.weight(1f)) { Text("+ New quest") }
-                OutlinedButton(
-                    onClick = {
-                        if (hasCalendar) vm.syncCalendar() else permissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-                    },
-                    modifier = Modifier.weight(1f),
-                ) { Text(if (vm.syncingCalendar) "Syncing…" else "📅 Sync calendar") }
+                SmallButton("+ New quest", { showAdd = true }, Modifier.weight(1f))
+                SmallButton(
+                    if (vm.syncingCalendar) "Syncing…" else "📅 Sync calendar",
+                    { if (hasCalendar) vm.syncCalendar() else permissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                    Modifier.weight(1f),
+                    outlined = true,
+                )
             }
             SectionTitle("Active quests (${pending.size})")
         }
@@ -145,9 +146,11 @@ private fun QuestRow(task: QuestTask, onComplete: () -> Unit, onDelete: () -> Un
                 Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (task.source == TaskSource.MANUAL) {
-                TextButton(onClick = onDelete) { Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                TextButton(onClick = onDelete, contentPadding = PaddingValues(4.dp)) {
+                    Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Button(onClick = onComplete) { Text("Done") }
+            SmallButton("✔ Done", onComplete)
         }
     }
 }
@@ -171,11 +174,7 @@ private fun AddQuestDialog(onDismiss: () -> Unit, onAdd: (String, Difficulty) ->
                 Text("Difficulty", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Difficulty.entries.forEach { d ->
-                        if (d == difficulty) {
-                            Button(onClick = { difficulty = d }, modifier = Modifier.weight(1f)) { Text(d.label, fontSize = 12.sp) }
-                        } else {
-                            OutlinedButton(onClick = { difficulty = d }, modifier = Modifier.weight(1f)) { Text(d.label, fontSize = 12.sp) }
-                        }
+                        SmallButton(d.label, { difficulty = d }, Modifier.weight(1f), outlined = d != difficulty)
                     }
                 }
                 Spacer(Modifier.width(4.dp))

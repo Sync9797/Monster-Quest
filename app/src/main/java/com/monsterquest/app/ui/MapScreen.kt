@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -128,7 +129,7 @@ fun MapScreen(vm: GameViewModel) {
 
     val mapPane: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                 AndroidView(
                     factory = {
                         // The same MapView moves between layouts when the phone folds or unfolds.

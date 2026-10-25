@@ -1,6 +1,7 @@
 package com.monsterquest.app
 
 import android.app.Application
+import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -71,6 +72,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun apply(u: Update) {
         set(u.state)
         message = u.message
+    }
+
+    /** Test hook: replace the save without touching disk. */
+    @VisibleForTesting
+    fun debugLoad(s: GameState) = set(s)
+
+    /** Test hook: pretend to be somewhere with the given shrines, skipping the network. */
+    @VisibleForTesting
+    fun debugSetLocation(lat: Double, lon: Double, nearby: List<Shrine>) {
+        placesFetchedAt = lat to lon
+        location = lat to lon
+        shrines = nearby
     }
 
     fun clearMessage() {

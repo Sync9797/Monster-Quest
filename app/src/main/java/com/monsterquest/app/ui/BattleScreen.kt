@@ -3,6 +3,9 @@ package com.monsterquest.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,9 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.BattleView
@@ -65,7 +70,7 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
     // Enemy + log on top / left; party + commands on bottom / right. On a
     // half-folded phone in tabletop posture the controls sit on the lower half.
     val top: @Composable () -> Unit = {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().clipToBounds()) {
             EnemyPanel(b)
             Spacer(Modifier.height(8.dp))
             BattleLog(b.log, Modifier.weight(1f))
@@ -90,14 +95,21 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
         AdaptivePanes(
             modifier = Modifier.safeDrawingPadding().padding(12.dp),
             compact = {
-                Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) { top() }
-                    Spacer(Modifier.height(8.dp))
-                    controls()
+                // Commands may use at most ~55% of the height; the enemy and log
+                // shrink (and clip) instead of being drawn underneath them.
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val controlsMax = maxHeight * 0.55f
+                    Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) { top() }
+                        Spacer(Modifier.height(8.dp))
+                        Box(Modifier.fillMaxWidth().heightIn(max = controlsMax)) { controls() }
+                    }
                 }
             },
             first = top,
-            second = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) { controls() } },
+            second = {
+                Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
+            },
         )
     }
 }
@@ -107,11 +119,17 @@ private fun EnemyPanel(b: BattleView) {
     val e = b.enemy
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(e.emoji, fontSize = 64.sp)
+            Text(e.emoji, fontSize = 52.sp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 if (b.isBoss) Text("BOSS", color = BossRed, fontWeight = FontWeight.Black, fontSize = 12.sp)
-                Text("${e.name}  Lv ${e.level}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(
+                    "${e.name}  Lv ${e.level}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text("${e.element.emoji} ${e.element.label}", fontSize = 13.sp)
                 Spacer(Modifier.height(4.dp))
                 Bar(e.hpFraction, hpColor(e.hpFraction), Modifier.fillMaxWidth(), heightDp = 10)
@@ -168,6 +186,7 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
             a.name,
             fontSize = 11.sp,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             color = if (active) Gold else MaterialTheme.colorScheme.onSurface,
         )
@@ -185,9 +204,12 @@ private fun ActionButton(text: String, modifier: Modifier = Modifier, enabled: B
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(48.dp),
+        modifier = modifier.heightIn(min = 48.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
         colors = if (color != null) ButtonDefaults.buttonColors(containerColor = color) else ButtonDefaults.buttonColors(),
-    ) { Text(text, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 2) }
+    ) {
+        Text(text, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 @Composable
@@ -206,7 +228,14 @@ private fun ActionPanel(
             .padding(10.dp)
             .verticalScroll(rememberScrollState()),
     ) {
-        Text("What will ${actor.name} do?", fontWeight = FontWeight.Bold, color = Gold)
+        Text("What will ${actor.name} do?", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (!actor.isHero && b.specialName != null) {
+            Text(
+                "Special: ${b.specialName}" + if (b.specialCooldown > 0) " (ready in ${b.specialCooldown})" else " (ready)",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Spacer(Modifier.height(6.dp))
         when (menu) {
             Menu.Main -> {
@@ -217,7 +246,7 @@ private fun ActionPanel(
                     } else {
                         val ready = b.specialCooldown == 0
                         ActionButton(
-                            if (ready) "💥 ${b.specialName}" else "💥 ${b.specialName} (${b.specialCooldown})",
+                            if (ready) "💥 Special" else "💥 (${b.specialCooldown})",
                             Modifier.weight(1f),
                             enabled = ready && b.specialName != null,
                         ) { onAction(BattleAction.Special) }

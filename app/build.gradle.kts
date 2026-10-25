@@ -45,6 +45,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -64,4 +70,11 @@ dependencies {
 
     // OpenStreetMap map view (no API key needed).
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+
+    // Screenshot tests: render screens on the JVM at foldable sizes.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

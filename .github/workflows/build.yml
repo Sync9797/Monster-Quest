@@ -51,3 +51,25 @@ jobs:
             --title "Latest build ($(git rev-parse --short HEAD))" \
             --notes "Automatic build of ${GITHUB_SHA}. Download MonsterQuest.apk on your Android phone and open it to install." \
             --target "${GITHUB_SHA}"
+
+      # Render every screen at foldable/phone sizes and publish the PNGs to the
+      # `screenshots` branch for layout review.
+      - name: Render screenshots
+        continue-on-error: true
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Publish screenshots
+        if: always() && github.event_name == 'push'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p shots
+          cp app/build/screenshots/*.png shots/ 2>/dev/null || true
+          mkdir -p shots/results
+          cp app/build/test-results/testDebugUnitTest/*.xml shots/results/ 2>/dev/null || true
+          cd shots
+          git init -q
+          git checkout -q -b screenshots
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Screenshots for ${GITHUB_SHA}" || exit 0
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" screenshots

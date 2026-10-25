@@ -14,6 +14,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,11 +78,32 @@ fun GameCard(modifier: Modifier = Modifier, border: Color? = null, content: @Com
     }
 }
 
+/** A value over a label. Give it Modifier.weight(1f) in a Row so a row of pills always fits. */
 @Composable
 fun StatPill(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier.width(56.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A button with tight padding whose text ellipsizes instead of overflowing on narrow screens. */
+@Composable
+fun SmallButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    outlined: Boolean = false,
+) {
+    val padding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+    val content: @Composable RowScope.() -> Unit = {
+        Text(text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    if (outlined) {
+        OutlinedButton(onClick = onClick, modifier = modifier, enabled = enabled, contentPadding = padding, content = content)
+    } else {
+        Button(onClick = onClick, modifier = modifier, enabled = enabled, contentPadding = padding, content = content)
     }
 }
 
@@ -89,9 +115,9 @@ fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modi
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Lv $level", fontWeight = FontWeight.Bold, color = XpPurple)
-        Text("🪙 $gold", fontWeight = FontWeight.Bold, color = Gold)
-        Text("🎯 $tokens hunts", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+        Text("Lv $level", fontWeight = FontWeight.Bold, color = XpPurple, maxLines = 1)
+        Text("🪙 $gold", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1)
+        Text("🎯 $tokens", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary, maxLines = 1)
     }
 }
 

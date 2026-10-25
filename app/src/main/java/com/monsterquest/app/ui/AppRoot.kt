@@ -15,6 +15,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +35,7 @@ enum class Tab(val label: String, val emoji: String) {
 }
 
 @Composable
-fun AppRoot(vm: GameViewModel) {
+fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     val state = vm.state
     if (!state.starterChosen) {
         StarterScreen(onChoose = vm::chooseStarter)
@@ -46,7 +47,7 @@ fun AppRoot(vm: GameViewModel) {
         return
     }
 
-    var tab by rememberSaveable { mutableStateOf(Tab.QUESTS) }
+    var tab by rememberSaveable { mutableStateOf(initialTab) }
     val snackbar = remember { SnackbarHostState() }
     val msg = vm.message
     LaunchedEffect(msg) {
@@ -77,7 +78,8 @@ fun AppRoot(vm: GameViewModel) {
     ) { padding ->
         Row(Modifier.fillMaxSize().padding(padding)) {
             if (wide) {
-                NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
+                // Scaffold already applied the system-bar insets; don't pad twice.
+                NavigationRail(containerColor = MaterialTheme.colorScheme.surface, windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { t ->
                         NavigationRailItem(
                             selected = tab == t,

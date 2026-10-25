@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +48,7 @@ fun HeroScreen(vm: GameViewModel) {
                 Text("🧙", fontSize = 48.sp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Level ${h.level} Adventurer", color = XpPurple)
                 }
                 TextButton(onClick = { renaming = true }) { Text("Rename") }
@@ -56,12 +57,12 @@ fun HeroScreen(vm: GameViewModel) {
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                StatPill("Max HP", h.maxHp.toString())
-                StatPill("Energy", h.maxMp.toString())
-                StatPill("Atk", h.attack.toString())
-                StatPill("Mag", h.magic.toString())
-                StatPill("Def", h.defense.toString())
-                StatPill("Spd", h.speed.toString())
+                StatPill("Max HP", h.maxHp.toString(), Modifier.weight(1f))
+                StatPill("Energy", h.maxMp.toString(), Modifier.weight(1f))
+                StatPill("Atk", h.attack.toString(), Modifier.weight(1f))
+                StatPill("Mag", h.magic.toString(), Modifier.weight(1f))
+                StatPill("Def", h.defense.toString(), Modifier.weight(1f))
+                StatPill("Spd", h.speed.toString(), Modifier.weight(1f))
             }
         }
 
@@ -94,8 +95,8 @@ fun HeroScreen(vm: GameViewModel) {
             if (s.pendingUpgrades > 0) {
                 Text("You have ${s.pendingUpgrades} upgrade(s) to claim!", color = Gold, modifier = Modifier.padding(vertical = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { vm.upgrade(bag = true) }, modifier = Modifier.weight(1f)) { Text("Bag +$BAG_UPGRADE_AMOUNT") }
-                    Button(onClick = { vm.upgrade(bag = false) }, modifier = Modifier.weight(1f)) { Text("Monsters +$STORAGE_UPGRADE_AMOUNT") }
+                    SmallButton("🎒 Bag +$BAG_UPGRADE_AMOUNT", { vm.upgrade(bag = true) }, Modifier.weight(1f))
+                    SmallButton("🐾 Storage +$STORAGE_UPGRADE_AMOUNT", { vm.upgrade(bag = false) }, Modifier.weight(1f))
                 }
             } else {
                 val next = (h.level / UPGRADE_LEVEL_INTERVAL + 1) * UPGRADE_LEVEL_INTERVAL

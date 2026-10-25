@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -134,8 +135,15 @@ private fun MonsterCard(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    if (inParty) Text("  ⚔️ Party", fontSize = 12.sp, color = Gold)
+                    Text(
+                        m.displayName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (inParty) Text("  ⚔️ Party", fontSize = 12.sp, color = Gold, maxLines = 1)
                 }
                 Text(
                     "Lv ${m.level} ${sp.name} • ${sp.element.emoji} ${sp.element.label}",
@@ -153,11 +161,11 @@ private fun MonsterCard(
         Spacer(Modifier.height(4.dp))
         LabeledBar("XP", m.xp, m.xpToNext, XpPurple)
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceAround) {
-            StatPill("HP", st.hp.toString())
-            StatPill("Atk", st.attack.toString())
-            StatPill("Mag", st.magic.toString())
-            StatPill("Def", st.defense.toString())
-            StatPill("Spd", st.speed.toString())
+            StatPill("HP", st.hp.toString(), Modifier.weight(1f))
+            StatPill("Atk", st.attack.toString(), Modifier.weight(1f))
+            StatPill("Mag", st.magic.toString(), Modifier.weight(1f))
+            StatPill("Def", st.defense.toString(), Modifier.weight(1f))
+            StatPill("Spd", st.speed.toString(), Modifier.weight(1f))
         }
         if (expanded) {
             Spacer(Modifier.height(8.dp))
@@ -169,16 +177,12 @@ private fun MonsterCard(
             )
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button(onClick = onParty, modifier = Modifier.weight(1f)) {
-                    Text(if (inParty) "Bench" else "To party", fontSize = 12.sp)
-                }
-                OutlinedButton(onClick = onTreat, enabled = treats > 0, modifier = Modifier.weight(1f)) {
-                    Text("🍖 +${GameEngine.treatXp(m)}", fontSize = 12.sp)
-                }
+                SmallButton(if (inParty) "Bench" else "To party", onParty, Modifier.weight(1f))
+                SmallButton("🍖 +${GameEngine.treatXp(m)} XP", onTreat, Modifier.weight(1f), enabled = treats > 0, outlined = true)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(onClick = onRename, modifier = Modifier.weight(1f)) { Text("Rename", fontSize = 12.sp) }
-                OutlinedButton(onClick = onRelease, modifier = Modifier.weight(1f)) { Text("Release", fontSize = 12.sp) }
+                SmallButton("Rename", onRename, Modifier.weight(1f), outlined = true)
+                SmallButton("Release", onRelease, Modifier.weight(1f), outlined = true)
             }
         } else {
             Text(
