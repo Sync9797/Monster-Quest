@@ -44,6 +44,8 @@ class Combatant(
     val isHero: Boolean,
     val special: Skill?,
 ) {
+    /** Type of this fighter's basic Attack (the hero's comes from their weapon). */
+    var attackElement: Element = Element.NEUTRAL
     var cooldown: Int = 0
     var defending: Boolean = false
     val alive: Boolean get() = hp > 0
@@ -55,10 +57,11 @@ class Combatant(
         const val SPECIAL_COOLDOWN = 3
         const val BOSS_HP_MULTIPLIER = 2
 
-        fun fromHero(h: Hero) = Combatant(
+        fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
             HERO_KEY, h.name, "🧙", Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
-            h.attack, h.magic, h.defense, h.speed, h.maxMp, h.maxMp, true, null,
-        )
+            h.attack + (weapon?.attack ?: 0), h.magic + (weapon?.magic ?: 0),
+            h.defense, h.speed, h.maxMp, h.maxMp, true, null,
+        ).apply { attackElement = weapon?.element ?: Element.NEUTRAL }
 
         /** Bosses get [BOSS_HP_MULTIPLIER] times the HP. */
         fun fromMonster(m: Monster, key: String = m.uid, boss: Boolean = false): Combatant {
@@ -104,12 +107,13 @@ class Battle(
     private val storageFull: Boolean,
     val shrineId: String? = null,
     private val rng: Random = Random.Default,
+    weapon: Weapon? = null,
 ) {
-    val allies: List<Combatant> = listOf(Combatant.fromHero(hero)) +
+    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, weapon)) +
         party.take(MAX_PARTY_SIZE).map { Combatant.fromMonster(it) }
     val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, boss = encounter != EncounterType.WILD)
     private val heroLevel = hero.level
-    private val heroSkills = HeroSkills.unlockedAt(hero.level)
+    private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
     private val partyUids = party.take(MAX_PARTY_SIZE).map { it.uid }
 
     private val bag: MutableMap<Item, Int> = inventory.toMutableMap()
@@ -225,7 +229,7 @@ class Battle(
     private fun perform(actor: Combatant, action: BattleAction): Boolean {
         when (action) {
             BattleAction.Attack -> {
-                strike(actor, enemy, 20, SkillKind.PHYSICAL, Element.NEUTRAL, "attacks")
+                strike(actor, enemy, 20, SkillKind.PHYSICAL, actor.attackElement, "attacks")
             }
             BattleAction.Defend -> {
                 actor.defending = true

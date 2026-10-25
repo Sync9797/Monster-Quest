@@ -16,14 +16,23 @@ import java.net.URLEncoder
 import java.util.Locale
 
 /**
- * Finds real places near the player (parks, museums, landmarks, places of
- * worship, libraries, artwork...) from OpenStreetMap's free Overpass API and
- * turns them into shrines. Falls back to generated shrines when offline or in
- * areas with few mapped places.
+ * Finds real places near the player from OpenStreetMap's free Overpass API and
+ * turns them into shrines:
+ * - Item shrines: everyday spots you pass often (cafes, restaurants, parks, libraries).
+ * - Boss shrines: bigger destinations (cinemas, theatres, stadiums, arcades,
+ *   bowling, museums, zoos, theme parks, castles and monuments).
+ * Falls back to generated shrines when offline or in areas with few mapped places.
  */
 object PlacesRepository {
     private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private const val RADIUS_M = 1500
+    private const val MAX_ITEM_SHRINES = 60
+    private const val MAX_BOSS_SHRINES = 20
+
+    private val bossAmenity = setOf("cinema", "theatre", "arts_centre", "nightclub", "casino")
+    private val bossLeisure = setOf("stadium", "bowling_alley", "amusement_arcade", "water_park", "sports_centre", "escape_game", "miniature_golf")
+    private val bossTourism = setOf("museum", "theme_park", "zoo", "aquarium", "attraction")
+    private val bossHistoric = setOf("castle", "monument", "fort", "ruins")
 
     fun shrinesNear(lat: Double, lon: Double, userAgent: String): List<Shrine> {
         val places = try {
@@ -40,12 +49,12 @@ object PlacesRepository {
         val query = """
             [out:json][timeout:25];
             (
-              nwr($around)["tourism"~"museum|attraction|artwork|viewpoint|gallery"];
-              nwr($around)["historic"~"monument|memorial|castle|ruins|fort|archaeological_site"];
-              nwr($around)["amenity"~"place_of_worship|library|fountain|theatre|townhall|arts_centre"];
-              nwr($around)["leisure"~"park|garden|playground"]["name"];
+              nwr($around)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino)$"];
+              nwr($around)["leisure"~"^(park|garden|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
+              nwr($around)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction)$"];
+              nwr($around)["historic"~"^(castle|monument|fort|ruins)$"];
             );
-            out center 120;
+            out center 300;
         """.trimIndent()
 
         val conn = URL(ENDPOINT).openConnection() as HttpURLConnection
@@ -59,7 +68,7 @@ object PlacesRepository {
             conn.outputStream.use { it.write(("data=" + URLEncoder.encode(query, "UTF-8")).toByteArray()) }
             if (conn.responseCode != 200) error("Overpass HTTP ${conn.responseCode}")
             val body = conn.inputStream.bufferedReader().use { it.readText() }
-            return parse(body)
+            return parse(body, lat, lon)
         } finally {
             conn.disconnect()
         }
@@ -67,37 +76,44 @@ object PlacesRepository {
 
     private fun JsonObject.str(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
 
-    private fun parse(body: String): List<Shrine> {
+    private fun parse(body: String, myLat: Double, myLon: Double): List<Shrine> {
         val root = Json.parseToJsonElement(body).jsonObject
         val elements = root["elements"]?.jsonArray ?: return emptyList()
-        val shrines = mutableListOf<Shrine>()
+        val items = mutableListOf<Shrine>()
+        val bosses = mutableListOf<Shrine>()
         for (el in elements) {
             val o = el.jsonObject
             val center = o["center"]?.jsonObject ?: o
             val lat = center["lat"]?.jsonPrimitive?.doubleOrNull ?: continue
             val lon = center["lon"]?.jsonPrimitive?.doubleOrNull ?: continue
             val tags = o["tags"]?.jsonObject ?: JsonObject(emptyMap())
-            val tourism = tags.str("tourism")
-            val historic = tags.str("historic")
             val amenity = tags.str("amenity")
             val leisure = tags.str("leisure")
-            val name = tags.str("name") ?: fallbackName(tourism, historic, amenity, leisure)
-            val landmark = tourism == "museum" || tourism == "attraction" ||
-                (historic != null && historic in setOf("castle", "monument", "fort", "ruins", "archaeological_site"))
+            val tourism = tags.str("tourism")
+            val historic = tags.str("historic")
+            val boss = (amenity != null && amenity in bossAmenity) ||
+                (leisure != null && leisure in bossLeisure) ||
+                (tourism != null && tourism in bossTourism) ||
+                (historic != null && historic in bossHistoric)
+            val name = tags.str("name") ?: fallbackName(amenity, leisure, tourism, historic)
             // Skip anything almost on top of an existing shrine to avoid clutter.
-            if (shrines.any { World.distanceMeters(it.lat, it.lon, lat, lon) < 40 }) continue
-            shrines += World.shrineFromPlace("${o.str("type")}${o.str("id")}", name, lat, lon, landmark)
+            if ((items + bosses).any { World.distanceMeters(it.lat, it.lon, lat, lon) < 40 }) continue
+            val shrine = World.shrineFromPlace("${o.str("type")}${o.str("id")}", name, lat, lon, boss)
+            if (boss) bosses += shrine else items += shrine
         }
-        return shrines
+        // Dense downtowns have hundreds of cafes; keep the closest ones.
+        fun List<Shrine>.closest(n: Int) = sortedBy { World.distanceMeters(myLat, myLon, it.lat, it.lon) }.take(n)
+        return items.closest(MAX_ITEM_SHRINES) + bosses.closest(MAX_BOSS_SHRINES)
     }
 
-    private fun fallbackName(tourism: String?, historic: String?, amenity: String?, leisure: String?): String = when {
-        tourism == "artwork" -> "Artwork Shrine"
-        tourism == "viewpoint" -> "Lookout Shrine"
-        historic != null -> "Historic Shrine"
-        amenity == "fountain" -> "Fountain Shrine"
-        amenity == "place_of_worship" -> "Sacred Shrine"
+    private fun fallbackName(amenity: String?, leisure: String?, tourism: String?, historic: String?): String = when {
+        amenity == "cafe" -> "Cafe Shrine"
+        amenity == "restaurant" || amenity == "fast_food" || amenity == "food_court" -> "Diner Shrine"
+        amenity == "library" -> "Library Shrine"
+        amenity != null -> "Hangout Shrine"
         leisure != null -> "Park Shrine"
+        tourism != null -> "Landmark Arena"
+        historic != null -> "Ancient Arena"
         else -> "Shrine"
     }
 }

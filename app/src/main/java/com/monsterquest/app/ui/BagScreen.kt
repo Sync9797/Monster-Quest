@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_ITEMS_PER_BATTLE
+import com.monsterquest.core.Spells
 
 @Composable
 fun BagScreen(vm: GameViewModel) {
@@ -52,6 +53,50 @@ fun BagScreen(vm: GameViewModel) {
         }
 
     }
+    val gear: @Composable () -> Unit = {
+        SectionTitle("Weapons")
+        s.equippedWeapon?.let { w ->
+            GameCard(Modifier.padding(vertical = 3.dp), border = Gold) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(w.emoji, fontSize = 26.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("${w.label} (equipped)", fontWeight = FontWeight.SemiBold)
+                        Text(w.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = vm::unequip) { Text("Remove") }
+                }
+            }
+        }
+        if (s.weapons.isEmpty() && s.equippedWeapon == null) {
+            Text("No weapons yet. Item shrines 🎁 sometimes have one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        s.weapons.forEachIndexed { i, w ->
+            GameCard(Modifier.padding(vertical = 3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(w.emoji, fontSize = 26.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(w.label, fontWeight = FontWeight.SemiBold)
+                        Text("${w.rarity.label} • ${w.description}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = { vm.dropWeapon(i) }) { Text("Drop") }
+                    SmallButton("Equip", { vm.equip(i) })
+                }
+            }
+        }
+        val pages = s.spellPages.filterValues { it > 0 }
+        if (pages.isNotEmpty()) {
+            SectionTitle("Spell pages")
+            pages.forEach { (id, n) ->
+                val sp = Spells.byId(id) ?: return@forEach
+                Text(
+                    "📜 ${sp.element.emoji} ${sp.name}: $n/${Spells.PAGES_TO_LEARN} pages",
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
+            }
+        }
+    }
     val shop: @Composable () -> Unit = {
         SectionTitle("Shop  •  🪙 ${s.gold}")
         Item.entries.filter { it.price > 0 }.forEach { item ->
@@ -75,6 +120,7 @@ fun BagScreen(vm: GameViewModel) {
         compact = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 bag()
+                gear()
                 shop()
                 Spacer(Modifier.height(24.dp))
             }
@@ -82,6 +128,7 @@ fun BagScreen(vm: GameViewModel) {
         first = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
                 bag()
+                gear()
                 Spacer(Modifier.height(24.dp))
             }
         },

@@ -68,13 +68,12 @@ object World {
     private fun bossSpeciesFor(id: String): String = Bestiary.bosses[stableHash(id) % Bestiary.bosses.size].id
 
     /**
-     * Turn a real-world place (from OpenStreetMap) into a shrine. Landmarks
-     * such as museums, castles and monuments are always boss shrines; other
-     * places have about a 1 in 6 chance.
+     * Turn a real-world place (from OpenStreetMap) into a shrine. Everyday
+     * spots (cafes, restaurants, parks, libraries) are item shrines; big
+     * destinations (cinemas, stadiums, museums, landmarks) are boss shrines.
      */
-    fun shrineFromPlace(placeId: String, name: String, lat: Double, lon: Double, landmark: Boolean): Shrine {
+    fun shrineFromPlace(placeId: String, name: String, lat: Double, lon: Double, boss: Boolean): Shrine {
         val id = "osm:$placeId"
-        val boss = landmark || stableHash(id) % 6 == 0
         return Shrine(id, name, lat, lon, boss, if (boss) bossSpeciesFor(id) else null)
     }
 
@@ -92,7 +91,7 @@ object World {
             val boss = r.nextDouble() < 0.15
             val sLat = (x + r.nextDouble()) * SHRINE_CELL_DEG
             val sLon = (y + r.nextDouble()) * SHRINE_CELL_DEG
-            val name = if (boss) "Ancient Altar" else listOf("Wayshrine", "Mossy Shrine", "Stone Circle", "Spirit Well").random(r)
+            val name = if (boss) "Ancient Altar" else listOf("Wayshrine", "Supply Cache", "Stone Circle", "Spirit Well").random(r)
             out += Shrine(id, name, sLat, sLon, boss, if (boss) bossSpeciesFor(id) else null)
         }
         return out
@@ -117,11 +116,12 @@ object World {
             val y = cy + dy
             val r = Random(seed(x, y, window))
             if (r.nextDouble() > 0.25) continue
-            val species = Bestiary.randomWild(r)
+            val level = GameEngine.wildLevel(heroLevel, r)
+            val species = Bestiary.randomWild(r, level)
             out += WildSpawn(
                 id = "s:$window:$x:$y",
                 speciesId = species.id,
-                level = GameEngine.wildLevel(heroLevel, r),
+                level = level,
                 lat = (x + r.nextDouble()) * SPAWN_CELL_DEG,
                 lon = (y + r.nextDouble()) * SPAWN_CELL_DEG,
                 expiresAtMs = expires,

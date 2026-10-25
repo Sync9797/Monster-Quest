@@ -8,29 +8,36 @@ your hero.
 
 - **Quests:** add to-dos, or sync your phone's calendar so events become
   quests. Completing one gives **XP, gold and a hunt token**.
+- **📵 Phone-free challenge:** pick 15–120 minutes and lock your phone.
+  - Keep it locked until time's up for XP, gold and loot.
+  - Unlocking early, or not locking within a minute, costs gold and a hunt token.
 - **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
-  Defense and Speed**. New spells unlock as you level.
+  Defense and Speed**.
+  - Equip **weapons** for bonus stats and a typed basic attack.
+  - Learn spells by collecting **5 spell-book pages**.
 - **Storage upgrades:** every 5 levels you can choose **+5 bag slots** or
   **+3 monster storage**.
+- **Types** work like rock-paper-scissors. Each beats exactly one other:
+  ⚡ Electric > 💧 Water > 🔥 Fire > 🌑 Corrupt > 🕊️ Flight > ☠️ Poison > ⚡ Electric.
+- **50 monsters:**
+  - 6 four-stage lines (3 evolutions)
+  - 6 hound breeds with three stages (2 evolutions)
+  - 2 rare mythics
+  - 6 legendary bosses
+
+  Monsters evolve automatically at set levels, and longer lines end in
+  stronger final forms. Each also rolls a **personality** and hidden
+  **potential**, so no two are alike.
 - **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
-  monsters** and can use up to **3 items per battle**. Elements have strengths
-  and weaknesses (🔥 > 🌿 > 💧 > 🔥, ...).
-- **Taming:** get a monster below 50% HP and throw an orb. Lower HP gives
-  better odds. Monster storage is limited.
-- **Losing** costs 10% of your gold.
-- **Monsters** level up from battles (or 🍖 treats) and are each unique:
-  - A random **personality** shifts their stats, e.g. a *Ferocious* wolf has
-    high Attack and low Defense, while a *Stalwart* one has high Defense and
-    low Speed.
-  - Hidden **potential** (IVs) adds further variation.
+  monsters** and can use up to **3 items per battle**. Losing costs 10% of
+  your gold.
+- **Taming:** get a monster below 50% HP and throw an orb.
 - **Map (GPS):**
-  - Real places near you (parks, landmarks, museums, places of worship,
-    libraries) become **shrines**. Visit one within 60 m for loot.
-  - 👹 **Boss shrines** hold legendary guardians that are 5 levels above you,
-    have double HP and act twice per round. You must **defeat a guardian once**
-    before you can try to tame it on a later visit.
-  - Wild monsters roam the map and reshuffle every 15 minutes.
-  - **Hunt tokens** let you battle from anywhere.
+  - 🎁 **Item shrines** are at cafes, restaurants, parks and libraries. They
+    give weapons, spell pages, orbs and potions.
+  - 👹 **Boss shrines** are at cinemas, theatres, stadiums, arcades, museums,
+    zoos and landmarks. You must **defeat the guardian once** before you can
+    try to tame it on a later visit.
 
 ## Foldable and large-screen support
 

@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 class GameTest {
     private val rng = Random(42)
 
-    private fun started(): GameState = GameEngine.chooseStarter(GameState(), "emberpup", rng).state
+    private fun started(): GameState = GameEngine.chooseStarter(GameState(), "emberkit", rng).state
 
     @Test
     fun completingTaskGivesXpGoldAndToken() {
@@ -41,10 +41,10 @@ class GameTest {
 
     @Test
     fun personalitiesAndIvsMakeSameSpeciesDiffer() {
-        val wolf = Bestiary.get("greywolf")
+        val wolf = Bestiary.get("shadow_pup")
         val wolves = (1..20).map { Monster.create(wolf, 20, rng) }
         assertTrue(wolves.map { it.stats }.toSet().size > 15)
-        val fierce = Monster(uid = "a", speciesId = "greywolf", personality = Personality.FEROCIOUS, ivs = StatBlock(), level = 20)
+        val fierce = Monster(uid = "a", speciesId = "shadow_pup", personality = Personality.FEROCIOUS, ivs = StatBlock(), level = 20)
         val stalwart = fierce.copy(personality = Personality.STALWART)
         assertTrue(fierce.stats.attack > stalwart.stats.attack)
         assertTrue(stalwart.stats.defense > fierce.stats.defense)
@@ -53,16 +53,17 @@ class GameTest {
 
     @Test
     fun monstersLevelUp() {
-        val m = Monster.create(Bestiary.get("pebblet"), 5, rng)
+        val m = Monster.create(Bestiary.get("ember_pup"), 5, rng)
         val up = m.gainXp(monsterXpForNext(5) + monsterXpForNext(6))
         assertEquals(7, up.level)
+        assertEquals("ember_pup", up.speciesId)
         assertTrue(up.stats.hp > m.stats.hp)
     }
 
     @Test
     fun partyLimitEnforced() {
         var s = started()
-        repeat(4) { s = s.copy(monsters = s.monsters + Monster.create(Bestiary.get("squeaker"), 3, rng)) }
+        repeat(4) { s = s.copy(monsters = s.monsters + Monster.create(Bestiary.get("zapmouse"), 3, rng)) }
         s.monsters.forEach { s = GameEngine.toggleParty(s, it.uid).state }
         assertEquals(MAX_PARTY_SIZE, s.party.size)
     }
@@ -89,7 +90,7 @@ class GameTest {
     @Test
     fun bossMustBeDefeatedBeforeTaming() {
         val s = started()
-        val shrine = World.shrineFromPlace("1", "Museum", 0.0, 0.0, landmark = true)
+        val shrine = World.shrineFromPlace("1", "Museum", 0.0, 0.0, boss = true)
         val (boss, mode) = GameEngine.bossEncounter(s, shrine, 0)
         assertNotNull(boss)
         assertEquals("challenge", mode)
@@ -105,7 +106,7 @@ class GameTest {
     @Test
     fun battleItemLimit() {
         val s = started().copy(inventory = mapOf(Item.POTION to 10))
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("squeaker"), 1, rng), EncounterType.WILD, rng = rng)
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 1, rng), EncounterType.WILD, rng = rng)
         var uses = 0
         while (b.outcome == BattleOutcome.ONGOING && uses < 10) {
             b.act(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)); uses++
@@ -116,7 +117,7 @@ class GameTest {
     @Test
     fun fullBattleWinsAndPaysOut() {
         val s = started()
-        val enemy = Monster.create(Bestiary.get("squeaker"), 1, rng)
+        val enemy = Monster.create(Bestiary.get("zapmouse"), 1, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = rng)
         var guard = 0
         while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Attack)
@@ -129,7 +130,7 @@ class GameTest {
     @Test
     fun losingCostsGold() {
         val s = started().copy(gold = 200)
-        val boss = Monster.create(Bestiary.get("titan_golem"), 60, rng)
+        val boss = Monster.create(Bestiary.get("thunder_titan"), 60, rng)
         val b = GameEngine.newBattle(s, boss, EncounterType.WILD, rng = rng)
         var guard = 0
         while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Defend)
@@ -141,7 +142,7 @@ class GameTest {
     @Test
     fun captureAddsMonster() {
         val s = started().copy(inventory = mapOf(Item.MASTER_ORB to 3))
-        val enemy = Monster.create(Bestiary.get("squeaker"), 1, rng)
+        val enemy = Monster.create(Bestiary.get("zapmouse"), 1, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = Random(1))
         b.enemy.hp = 1
         var guard = 0
@@ -185,5 +186,105 @@ class GameTest {
         val s = started()
         assertNull(GameEngine.release(s, s.monsters.single().uid).state.monsters.firstOrNull { false })
         assertEquals(1, GameEngine.release(s, s.monsters.single().uid).state.monsters.size)
+    }
+
+    @Test
+    fun fiftyMonstersWithEvolutionLines() {
+        assertEquals(50, Bestiary.all.size)
+        assertEquals(50, Bestiary.all.map { it.id }.toSet().size)
+        val lines = Bestiary.all.groupBy { it.family }
+        assertEquals(6, lines.values.count { it.size == 4 })
+        assertEquals(6, lines.values.count { it.size == 3 })
+        // Every type is represented, and every evolution target exists.
+        assertEquals(Element.typed.toSet(), Bestiary.all.map { it.element }.toSet())
+        Bestiary.all.mapNotNull { it.evolvesTo }.forEach { Bestiary.get(it) }
+        // Final forms of four-stage lines out-stat the final hound breeds.
+        val tiger = Bestiary.get("solar_tiger").base
+        val fenrir = Bestiary.get("inferno_fenrir").base
+        assertTrue(tiger.hp + tiger.attack + tiger.magic + tiger.defense + tiger.speed >
+            fenrir.hp + fenrir.attack + fenrir.magic + fenrir.defense + fenrir.speed)
+    }
+
+    @Test
+    fun monstersEvolveAtLevels() {
+        val kit = Monster.create(Bestiary.get("emberkit"), 13, rng)
+        assertEquals("emberkit", kit.speciesId)
+        val evolved = kit.gainXp(monsterXpForNext(13))
+        assertEquals("blazecat", evolved.speciesId)
+        val all3 = Monster.create(Bestiary.get("emberkit"), 45, rng)
+        assertEquals("solar_tiger", all3.speciesId)
+        val hound = Monster.create(Bestiary.get("ember_pup"), 32, rng)
+        assertEquals("inferno_fenrir", hound.speciesId)
+    }
+
+    @Test
+    fun rockPaperScissorsTypes() {
+        for (t in Element.typed) {
+            val beats = t.beats!!
+            assertEquals(1.5, t.multiplierAgainst(beats))
+            assertTrue(beats.multiplierAgainst(t) < 1.0)
+            assertEquals(t, beats.weakTo)
+        }
+        assertEquals(1.5, Element.ELECTRIC.multiplierAgainst(Element.WATER))
+        assertEquals(1.5, Element.POISON.multiplierAgainst(Element.ELECTRIC))
+        assertEquals(1.0, Element.FIRE.multiplierAgainst(Element.ELECTRIC))
+    }
+
+    @Test
+    fun spellPagesTeachSpells() {
+        var s = started()
+        repeat(4) { s = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gale" to 1))).state }
+        assertTrue("gale" !in s.hero.knownSpells)
+        assertEquals(4, s.spellPages["gale"])
+        val u = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gale" to 1)))
+        assertTrue("gale" in u.state.hero.knownSpells)
+        assertNull(u.state.spellPages["gale"])
+        assertTrue(u.message.contains("learned Gale"))
+    }
+
+    @Test
+    fun weaponsEquipAndTypeTheAttack() {
+        var s = GameEngine.grantLoot(started(), GameEngine.Loot(weapons = listOf(Weapon.STORM_SPEAR))).state
+        assertEquals(1, s.weapons.size)
+        val before = s.bagCount
+        s = GameEngine.equip(s, 0).state
+        assertEquals(Weapon.STORM_SPEAR, s.equippedWeapon)
+        assertEquals(before - 1, s.bagCount)
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("bubblefin"), 1, rng), EncounterType.WILD, rng = rng)
+        val hero = b.allies.first()
+        assertEquals(Element.ELECTRIC, hero.attackElement)
+        assertEquals(s.hero.attack + Weapon.STORM_SPEAR.attack, hero.attack)
+    }
+
+    @Test
+    fun itemShrineGivesLoot() {
+        val s = started().copy(inventory = emptyMap())
+        val shrine = World.shrineFromPlace("9", "Cafe", 0.0, 0.0, boss = false)
+        val u = GameEngine.visitShrine(s, shrine, 0, Random(5))
+        val got = u.state.bagCount + u.state.spellPages.values.sum() + (u.state.hero.knownSpells.size - s.hero.knownSpells.size)
+        assertTrue(got >= 2)
+        assertTrue(GameEngine.shrineCooldownLeft(u.state, shrine, 1) > 0)
+    }
+
+    @Test
+    fun focusRewardsAndPenalties() {
+        val s = started().copy(gold = 500)
+        val running = GameEngine.startFocus(s, 60, 0).state
+        assertNotNull(running.focus)
+        val win = GameEngine.resolveFocus(running, success = true, rng = rng).state
+        assertNull(win.focus)
+        assertTrue(win.gold >= 560)
+        assertEquals(60, win.stats.focusMinutes)
+        val fail = GameEngine.resolveFocus(running, success = false).state
+        assertEquals(450, fail.gold)
+        assertEquals(0, fail.huntTokens)
+        assertEquals(1, fail.stats.focusFails)
+    }
+
+    @Test
+    fun oldSavesMigrate() {
+        val old = started().copy(version = 1, monsters = listOf(Monster("x", "greywolf", Personality.BRAVE, StatBlock(), level = 20)))
+        val m = GameState.fromJson(old.toJson()).monsters.single()
+        assertEquals("dusk_hound", m.speciesId) // shadow_pup, evolved at 16
     }
 }

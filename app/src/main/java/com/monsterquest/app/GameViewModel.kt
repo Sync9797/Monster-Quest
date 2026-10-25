@@ -10,6 +10,8 @@ import androidx.lifecycle.viewModelScope
 import com.monsterquest.app.data.CalendarReader
 import com.monsterquest.app.data.PlacesRepository
 import com.monsterquest.app.data.SaveRepository
+import com.monsterquest.app.focus.FocusService
+import com.monsterquest.app.focus.FocusStore
 import com.monsterquest.core.Battle
 import com.monsterquest.core.BattleAction
 import com.monsterquest.core.BattleOutcome
@@ -129,6 +131,58 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- monsters & items --------------------------------------------------
+
+    // ---- phone-free sessions -----------------------------------------------
+
+    /** Result of the last phone-free session, shown in a dialog. */
+    var focusResult by mutableStateOf<String?>(null)
+        private set
+
+    fun startFocus(minutes: Int) {
+        val u = GameEngine.startFocus(state, minutes, System.currentTimeMillis())
+        apply(u)
+        val f = u.state.focus ?: return
+        FocusStore.clear(getApplication())
+        FocusService.start(getApplication(), f.id, f.startMs, f.endMs)
+    }
+
+    fun giveUpFocus() = endFocus(success = false)
+
+    fun dismissFocusResult() {
+        focusResult = null
+    }
+
+    /**
+     * Called whenever the app comes to the foreground. Opening the app means the
+     * phone was unlocked, so a session that's still running at this point has
+     * failed (unless it only just started, e.g. a permission dialog closed).
+     */
+    fun onAppResumed() {
+        val f = state.focus ?: return
+        val now = System.currentTimeMillis()
+        if (now - f.startMs < 10_000) return
+        val success = when (FocusStore.outcome(getApplication(), f.id)) {
+            FocusStore.Outcome.FAILED -> false
+            FocusStore.Outcome.SUCCESS -> true
+            null -> now >= f.endMs
+        }
+        endFocus(success)
+    }
+
+    private fun endFocus(success: Boolean) {
+        if (state.focus == null) return
+        val u = GameEngine.resolveFocus(state, success)
+        set(u.state)
+        focusResult = u.message
+        FocusService.stop(getApplication())
+        FocusStore.clear(getApplication())
+    }
+
+    // ---- weapons -----------------------------------------------------------
+
+    fun equip(index: Int) = apply(GameEngine.equip(state, index))
+    fun unequip() = apply(GameEngine.unequip(state))
+    fun dropWeapon(index: Int) = apply(GameEngine.dropWeapon(state, index))
 
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
     fun release(uid: String) = apply(GameEngine.release(state, uid))

@@ -95,8 +95,9 @@ fun MapScreen(vm: GameViewModel) {
         ) {
             Text("🗺️", fontSize = 56.sp)
             Text(
-                "Explore the real world! Visit shrines at parks, landmarks and other places for loot, " +
-                    "challenge boss shrines, and battle monsters roaming nearby.",
+                "Explore the real world! Item shrines 🎁 at cafes, restaurants and parks hold weapons, " +
+                    "spell pages, orbs and potions. Boss shrines 👹 at cinemas, stadiums and landmarks hold guardians. " +
+                    "Monsters roam nearby too.",
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 16.dp),
             )
@@ -163,7 +164,7 @@ fun MapScreen(vm: GameViewModel) {
                                 sh.isBoss && rec?.bossDefeated == true -> "🏯"
                                 sh.isBoss -> "👹"
                                 cooling -> "🪨"
-                                else -> "⛩️"
+                                else -> "🎁"
                             }
                             val ring = when {
                                 sh.isBoss -> 0xCCEF4444.toInt()
@@ -219,7 +220,7 @@ fun MapScreen(vm: GameViewModel) {
                 Text(
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
-                        else -> "⛩️ ${shrines.count { !it.isBoss }}  👹 ${shrines.count { it.isBoss }}  🐾 ${spawns.size} nearby"
+                        else -> "🎁 ${shrines.count { !it.isBoss }}  👹 ${shrines.count { it.isBoss }}  🐾 ${spawns.size} nearby"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -351,7 +352,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text((if (shrine.isBoss) "👹 " else "⛩️ ") + shrine.name) },
+        title = { Text((if (shrine.isBoss) "👹 " else "🎁 ") + shrine.name) },
         text = {
             Column {
                 Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -366,7 +367,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                         else "🔒 Defeat the guardian once to unlock taming.",
                     )
                 } else {
-                    Text("Visit for gold, XP, items and a hunt token.")
+                    Text("Item shrine: weapons, spell-book pages, capture orbs and potions.")
                 }
                 if (cooldown > 0) Text("Recharging: ${formatDuration(cooldown)}", color = HpYellow)
                 if (!inRange) {
@@ -385,7 +386,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                 }
             } else {
                 TextButton(onClick = { vm.visitShrine(shrine); onDismiss() }, enabled = inRange && cooldown == 0L) {
-                    Text("Visit")
+                    Text("Collect")
                 }
             }
         },
@@ -431,9 +432,9 @@ private fun NearbyList(
         val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
         Entry(
             d,
-            if (sh.isBoss) "👹" else "⛩️",
+            if (sh.isBoss) "👹" else "🎁",
             sh.name,
-            (if (sh.isBoss) "Boss shrine • " else "Shrine • ") + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            (if (sh.isBoss) "Boss shrine • " else "Item shrine • ") + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SHRINE_RANGE_M,
         ) { onShrine(sh) }
     } + spawns.map { sp ->

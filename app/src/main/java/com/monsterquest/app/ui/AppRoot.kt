@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -41,6 +43,11 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
         StarterScreen(onChoose = vm::chooseStarter)
         return
     }
+    val focus = state.focus
+    if (focus != null) {
+        FocusOverlay(focus, onGiveUp = vm::giveUpFocus)
+        return
+    }
     val battle = vm.battle
     if (battle != null) {
         BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle)
@@ -59,6 +66,15 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
 
     // Wide screens (unfolded foldables, tablets) get a side rail; phones a bottom bar.
     val wide = widthClass() != WidthClass.COMPACT
+    vm.focusResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissFocusResult,
+            title = { Text(if (text.startsWith("📵")) "Session complete!" else "Session failed") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissFocusResult) { Text("OK") } },
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {

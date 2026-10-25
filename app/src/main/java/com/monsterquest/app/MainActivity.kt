@@ -26,6 +26,11 @@ class MainActivity : ComponentActivity() {
     private val vm: GameViewModel by viewModels()
     private var fold by mutableStateOf<FoldInfo?>(null)
 
+    override fun onResume() {
+        super.onResume()
+        vm.onAppResumed()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // OpenStreetMap tile servers require an identifying user agent.

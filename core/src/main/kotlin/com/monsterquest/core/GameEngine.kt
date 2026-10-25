@@ -18,7 +18,7 @@ data class CalendarEvent(
 
 object GameEngine {
 
-    val starters = listOf("emberpup", "bubblefin", "sproutling")
+    val starters = listOf("emberkit", "bubblefin", "zapmouse")
 
     fun chooseStarter(state: GameState, speciesId: String, rng: Random = Random.Default): Update {
         if (state.starterChosen) return Update(state, "Starter already chosen.")
@@ -207,6 +207,9 @@ object GameEngine {
         )
     }
 
+    private fun evolutionText(before: Monster, after: Monster): String =
+        if (before.speciesId == after.speciesId) "" else " ✨ ${before.displayName} evolved into ${after.species.name}!"
+
     fun treatXp(m: Monster): Int = maxOf(Item.TREAT.power.toInt(), m.xpToNext * 2 / 5)
 
     fun feedTreat(state: GameState, uid: String): Update {
@@ -215,7 +218,7 @@ object GameEngine {
         if (m.level >= MAX_MONSTER_LEVEL) return Update(state, "${m.displayName} is already max level.")
         val xp = treatXp(m)
         val fed = m.gainXp(xp)
-        val lvlMsg = if (fed.level > m.level) " Grew to Lv ${fed.level}!" else ""
+        val lvlMsg = (if (fed.level > m.level) " Grew to Lv ${fed.level}!" else "") + evolutionText(m, fed)
         return Update(
             state.copy(
                 monsters = state.monsters.map { if (it.uid == uid) fed else it },
@@ -234,8 +237,8 @@ object GameEngine {
     /** Spends a hunt token for a wild encounter anywhere. */
     fun startHunt(state: GameState, rng: Random = Random.Default): Pair<GameState, Monster?> {
         if (state.huntTokens <= 0) return state to null
-        val species = Bestiary.randomWild(rng)
-        val enemy = Monster.create(species, wildLevel(state.hero.level, rng), rng)
+        val level = wildLevel(state.hero.level, rng)
+        val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng)
         return state.copy(huntTokens = state.huntTokens - 1) to enemy
     }
 
@@ -246,7 +249,7 @@ object GameEngine {
     }
 
     fun newBattle(state: GameState, enemy: Monster, encounter: EncounterType, shrineId: String? = null, rng: Random = Random.Default) =
-        Battle(state.hero, state.partyMonsters, enemy, encounter, state.inventory, state.storageFull, shrineId, rng)
+        Battle(state.hero, state.partyMonsters, enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedWeapon)
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
         var s = state.copy(inventory = removeItems(state.inventory, r.itemsUsed))
@@ -266,6 +269,7 @@ object GameEngine {
                         val xp = r.monsterXp[m.uid] ?: return@map m
                         val after = m.gainXp(xp)
                         if (after.level > m.level) levelled += "${after.displayName} → Lv ${after.level}"
+                        if (after.speciesId != m.speciesId) levelled += evolutionText(m, after).trim()
                         after
                     },
                 )
@@ -327,29 +331,179 @@ object GameEngine {
         return (rec.lastVisitMs + cd - nowMs).coerceAtLeast(0)
     }
 
-    /** Collect loot from a normal shrine. */
+    /** What an item shrine (or a phone-free session) hands out. */
+    data class Loot(
+        val items: Map<Item, Int> = emptyMap(),
+        val weapons: List<Weapon> = emptyList(),
+        /** Spell id -> pages. */
+        val pages: Map<String, Int> = emptyMap(),
+    )
+
+    /**
+     * Rolls item-shrine loot: weapons, spell-book pages, capture orbs and potions.
+     * Pages are only for spells the hero doesn't know yet.
+     */
+    fun rollLoot(state: GameState, rolls: Int, rng: Random): Loot {
+        val items = mutableMapOf<Item, Int>()
+        val weapons = mutableListOf<Weapon>()
+        val pages = mutableMapOf<String, Int>()
+        val unknownSpells = Spells.all.filter { it.id !in state.hero.knownSpells }
+        repeat(rolls) {
+            val r = rng.nextDouble()
+            when {
+                r < 0.12 -> weapons += rollWeapon(state.hero.level, rng)
+                r < 0.42 && unknownSpells.isNotEmpty() -> {
+                    val sp = unknownSpells.random(rng)
+                    pages[sp.id] = (pages[sp.id] ?: 0) + 1
+                }
+                r < 0.71 -> {
+                    val orb = if (rng.nextDouble() < 0.75) Item.TAMING_ORB else Item.GREAT_ORB
+                    items[orb] = (items[orb] ?: 0) + 1
+                }
+                else -> {
+                    val potion = listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN).random(rng)
+                    items[potion] = (items[potion] ?: 0) + 1
+                }
+            }
+        }
+        return Loot(items, weapons, pages)
+    }
+
+    private fun rollWeapon(heroLevel: Int, rng: Random): Weapon {
+        // Better weapons become more likely as the hero levels up.
+        val weights = Weapon.entries.map { w ->
+            w to when (w.rarity) {
+                Rarity.COMMON -> 50
+                Rarity.UNCOMMON -> 30
+                Rarity.RARE -> 10 + heroLevel
+                Rarity.EPIC -> heroLevel / 3
+                Rarity.LEGENDARY -> 0
+            }
+        }
+        var roll = rng.nextInt(weights.sumOf { it.second })
+        for ((w, wt) in weights) {
+            roll -= wt
+            if (roll < 0) return w
+        }
+        return Weapon.WOODEN_SWORD
+    }
+
+    /** Adds loot to the save (respecting bag space) and describes it. */
+    fun grantLoot(state: GameState, loot: Loot): Update {
+        var s = state
+        val parts = mutableListOf<String>()
+        val (withItems, lostItems) = addItems(s, loot.items)
+        s = withItems
+        loot.items.forEach { (item, n) -> parts += "${item.emoji}${item.label} x$n" }
+        var lostWeapons = 0
+        for (w in loot.weapons) {
+            if (s.bagCount < s.bagCapacity) {
+                s = s.copy(weapons = s.weapons + w)
+                parts += "${w.emoji}${w.label}"
+            } else {
+                lostWeapons++
+            }
+        }
+        val learned = mutableListOf<String>()
+        for ((spellId, n) in loot.pages) {
+            val spell = Spells.byId(spellId) ?: continue
+            val total = (s.spellPages[spellId] ?: 0) + n
+            parts += "📜${spell.name} page"
+            if (total >= Spells.PAGES_TO_LEARN && spellId !in s.hero.knownSpells) {
+                s = s.copy(
+                    hero = s.hero.copy(knownSpells = s.hero.knownSpells + spellId),
+                    spellPages = s.spellPages - spellId,
+                )
+                learned += spell.name
+            } else {
+                s = s.copy(spellPages = s.spellPages + (spellId to total))
+            }
+        }
+        val msg = buildString {
+            append(parts.joinToString(", ").ifEmpty { "nothing" })
+            val lost = lostItems + lostWeapons
+            if (lost > 0) append(" (Bag full: $lost left behind.)")
+            learned.forEach { append(" 📖 You learned $it!") }
+        }
+        return Update(s, msg)
+    }
+
+    /** Collect loot from an item shrine. */
     fun visitShrine(state: GameState, shrine: Shrine, nowMs: Long, rng: Random = Random.Default): Update {
         if (shrine.isBoss) return Update(state, "This is a boss shrine. Challenge the guardian!")
         if (shrineCooldownLeft(state, shrine, nowMs) > 0) return Update(state, "This shrine is recharging.")
-        val lvl = state.hero.level
-        val gold = rng.nextInt(15, 41) + lvl * 2
-        val xp = 10 + lvl * 2
-        val pool = listOf(Item.POTION, Item.POTION, Item.TAMING_ORB, Item.TAMING_ORB, Item.ETHER, Item.GREAT_ORB, Item.TREAT)
-        val loot = mutableMapOf<Item, Int>()
-        repeat(rng.nextInt(1, 3)) { val i = pool.random(rng); loot[i] = (loot[i] ?: 0) + 1 }
+        val gold = rng.nextInt(5, 16)
         var s = state.copy(
             gold = state.gold + gold,
-            huntTokens = minOf(MAX_HUNT_TOKENS, state.huntTokens + 1),
             shrines = state.shrines + (shrine.id to (state.shrines[shrine.id] ?: ShrineRecord()).copy(lastVisitMs = nowMs)),
             stats = state.stats.copy(shrinesVisited = state.stats.shrinesVisited + 1),
         )
-        val (withLoot, lost) = addItems(s, loot)
-        s = withLoot
-        val gain = addHeroXp(s, xp)
-        s = gain.state
-        val lootText = loot.entries.joinToString { "${it.key.emoji}${it.key.label} x${it.value}" }
-        val lostText = if (lost > 0) " (Bag full: $lost left behind.)" else ""
-        return Update(s, "${shrine.name}: +$gold gold, +$xp XP, +1 hunt token, $lootText.$lostText${levelUpText(gain)}")
+        val loot = grantLoot(s, rollLoot(s, rng.nextInt(2, 4), rng))
+        s = loot.state
+        return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.")
+    }
+
+    // ---- weapons -----------------------------------------------------------
+
+    fun equip(state: GameState, index: Int): Update {
+        val w = state.weapons.getOrNull(index) ?: return Update(state, "Weapon not found.")
+        val rest = state.weapons.toMutableList().apply { removeAt(index) }
+        // The previously equipped weapon goes back in the bag (equipping frees a slot, so it fits).
+        val back = state.equippedWeapon?.let { rest + it } ?: rest
+        return Update(state.copy(weapons = back, equippedWeapon = w), "Equipped ${w.label}.")
+    }
+
+    fun unequip(state: GameState): Update {
+        val w = state.equippedWeapon ?: return Update(state, "Nothing equipped.")
+        if (state.bagFull) return Update(state, "Bag is full.")
+        return Update(state.copy(weapons = state.weapons + w, equippedWeapon = null), "Unequipped ${w.label}.")
+    }
+
+    fun dropWeapon(state: GameState, index: Int): Update {
+        val w = state.weapons.getOrNull(index) ?: return Update(state, "Weapon not found.")
+        return Update(state.copy(weapons = state.weapons.toMutableList().apply { removeAt(index) }), "Dropped ${w.label}.")
+    }
+
+    // ---- phone-free focus sessions ------------------------------------------
+
+    /** Grace period after starting a session to lock the phone. */
+    const val FOCUS_GRACE_MS = 60_000L
+
+    fun startFocus(state: GameState, minutes: Int, nowMs: Long, rng: Random = Random.Default): Update {
+        if (state.focus != null) return Update(state, "A phone-free session is already running.")
+        val session = FocusSession(newId(rng), nowMs, nowMs + minutes * 60_000L, minutes)
+        return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Lock your phone now!")
+    }
+
+    fun focusPenalty(state: GameState): Int = maxOf(10, state.gold * GOLD_LOSS_PERCENT / 100).coerceAtMost(state.gold)
+
+    /**
+     * Ends the current session. Success pays XP, gold and loot that scale with
+     * its length; failure costs gold and a hunt token.
+     */
+    fun resolveFocus(state: GameState, success: Boolean, rng: Random = Random.Default): Update {
+        val f = state.focus ?: return Update(state, "")
+        var s = state.copy(focus = null)
+        return if (success) {
+            val xp = f.minutes * 2
+            val gold = f.minutes
+            s = s.copy(
+                gold = s.gold + gold,
+                stats = s.stats.copy(focusWins = s.stats.focusWins + 1, focusMinutes = s.stats.focusMinutes + f.minutes),
+            )
+            val loot = grantLoot(s, rollLoot(s, maxOf(1, f.minutes / 30), rng))
+            s = loot.state
+            val gain = addHeroXp(s, xp)
+            Update(gain.state, "📵 Phone-free for ${f.minutes} min! +$xp XP, +$gold gold, ${loot.message}.${levelUpText(gain)}")
+        } else {
+            val loss = focusPenalty(s)
+            s = s.copy(
+                gold = s.gold - loss,
+                huntTokens = (s.huntTokens - 1).coerceAtLeast(0),
+                stats = s.stats.copy(focusFails = s.stats.focusFails + 1),
+            )
+            Update(s, "📱 You picked up your phone early. Lost $loss gold and a hunt token.")
+        }
     }
 
     /** Build the boss for a boss shrine, or explain why it can't be fought. */

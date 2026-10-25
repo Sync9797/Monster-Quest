@@ -5,36 +5,46 @@ import kotlin.math.floor
 import kotlin.random.Random
 
 // ---------------------------------------------------------------------------
-// Elements
+// Types: a rock-paper-scissors cycle. Each type beats exactly one other and
+// loses to exactly one other:
+//   Electric > Water > Fire > Corrupt > Flight > Poison > Electric
 // ---------------------------------------------------------------------------
 
 @Serializable
 enum class Element(val label: String, val emoji: String) {
     NEUTRAL("Neutral", "⚪"),
     FIRE("Fire", "🔥"),
+    ELECTRIC("Electric", "⚡"),
+    FLIGHT("Flight", "🕊️"),
     WATER("Water", "💧"),
-    NATURE("Nature", "🌿"),
-    EARTH("Earth", "⛰️"),
-    AIR("Air", "🌪️"),
-    LIGHT("Light", "✨"),
-    DARK("Dark", "🌑");
+    POISON("Poison", "☠️"),
+    CORRUPT("Corrupt", "🌑");
 
-    /** Damage multiplier when an attack of this element hits [defender]. */
+    /** The one type this type deals double-ish damage to. */
+    val beats: Element?
+        get() = when (this) {
+            ELECTRIC -> WATER
+            WATER -> FIRE
+            FIRE -> CORRUPT
+            CORRUPT -> FLIGHT
+            FLIGHT -> POISON
+            POISON -> ELECTRIC
+            NEUTRAL -> null
+        }
+
+    /** The one type that beats this type. */
+    val weakTo: Element?
+        get() = entries.firstOrNull { it.beats == this }
+
+    /** Damage multiplier when an attack of this type hits [defender]. */
     fun multiplierAgainst(defender: Element): Double = when {
-        defender in strongAgainst() -> 1.5
-        this in defender.strongAgainst() && this != defender -> 0.75
+        beats == defender -> 1.5
+        defender.beats == this -> 0.67
         else -> 1.0
     }
 
-    fun strongAgainst(): Set<Element> = when (this) {
-        FIRE -> setOf(NATURE, AIR)
-        WATER -> setOf(FIRE, EARTH)
-        NATURE -> setOf(WATER, EARTH)
-        EARTH -> setOf(FIRE, AIR)
-        AIR -> setOf(NATURE, WATER)
-        LIGHT -> setOf(DARK)
-        DARK -> setOf(LIGHT)
-        NEUTRAL -> emptySet()
+    companion object {
+        val typed: List<Element> = entries.filter { it != NEUTRAL }
     }
 }
 
@@ -75,8 +85,8 @@ data class StatBlock(
 }
 
 // ---------------------------------------------------------------------------
-// Personalities: every monster rolls one, so two Greywolves can play very
-// differently (e.g. a Ferocious wolf hits hard but folds quickly, a Stalwart
+// Personalities: every monster rolls one, so two Ember Pups can play very
+// differently (e.g. a Ferocious one hits hard but folds quickly, a Stalwart
 // one is a slow wall).
 // ---------------------------------------------------------------------------
 
@@ -130,25 +140,61 @@ data class Skill(
     val unlockLevel: Int = 1,
 )
 
-object HeroSkills {
+/** Hero spells. Fire Bolt and Heal are known from the start; the rest are
+ * learned by collecting [PAGES_TO_LEARN] spell-book pages from item shrines. */
+object Spells {
+    const val PAGES_TO_LEARN = 5
+
     val all = listOf(
-        Skill("fire_bolt", "Fire Bolt", Element.FIRE, SkillKind.MAGICAL, 30, mpCost = 4, unlockLevel = 1),
-        Skill("heal", "Heal", Element.LIGHT, SkillKind.HEAL, 30, mpCost = 5, unlockLevel = 1),
-        Skill("frost_lance", "Frost Lance", Element.WATER, SkillKind.MAGICAL, 32, mpCost = 5, unlockLevel = 4),
-        Skill("gale", "Gale", Element.AIR, SkillKind.MAGICAL, 34, mpCost = 6, unlockLevel = 7),
-        Skill("stone_spike", "Stone Spike", Element.EARTH, SkillKind.MAGICAL, 36, mpCost = 6, unlockLevel = 10),
-        Skill("vine_lash", "Vine Lash", Element.NATURE, SkillKind.MAGICAL, 38, mpCost = 7, unlockLevel = 12),
-        Skill("holy_light", "Holy Light", Element.LIGHT, SkillKind.MAGICAL, 45, mpCost = 9, unlockLevel = 15),
-        Skill("shadow_rend", "Shadow Rend", Element.DARK, SkillKind.MAGICAL, 50, mpCost = 10, unlockLevel = 20),
+        Skill("fire_bolt", "Fire Bolt", Element.FIRE, SkillKind.MAGICAL, 30, mpCost = 4),
+        Skill("heal", "Heal", Element.NEUTRAL, SkillKind.HEAL, 30, mpCost = 5),
+        Skill("thunderclap", "Thunderclap", Element.ELECTRIC, SkillKind.MAGICAL, 32, mpCost = 5),
+        Skill("tidal_lance", "Tidal Lance", Element.WATER, SkillKind.MAGICAL, 32, mpCost = 5),
+        Skill("gale", "Gale", Element.FLIGHT, SkillKind.MAGICAL, 32, mpCost = 5),
+        Skill("venom_cloud", "Venom Cloud", Element.POISON, SkillKind.MAGICAL, 34, mpCost = 6),
+        Skill("shadow_rend", "Shadow Rend", Element.CORRUPT, SkillKind.MAGICAL, 36, mpCost = 6),
+        Skill("mega_heal", "Mega Heal", Element.NEUTRAL, SkillKind.HEAL, 70, mpCost = 10),
+        Skill("inferno", "Inferno", Element.FIRE, SkillKind.MAGICAL, 50, mpCost = 10),
+        Skill("judgement", "Judgement", Element.NEUTRAL, SkillKind.MAGICAL, 60, mpCost = 14),
     )
 
-    fun unlockedAt(level: Int) = all.filter { it.unlockLevel <= level }
-    fun byId(id: String) = all.first { it.id == id }
+    val starting: Set<String> = setOf("fire_bolt", "heal")
+
+    fun byId(id: String): Skill? = all.find { it.id == id }
 }
 
 // ---------------------------------------------------------------------------
-// Species
+// Weapons: found at item shrines. The equipped weapon adds to the hero's
+// Attack/Magic and gives their basic attack its type.
 // ---------------------------------------------------------------------------
+
+@Serializable
+enum class Weapon(
+    val label: String,
+    val emoji: String,
+    val attack: Int,
+    val magic: Int,
+    val element: Element,
+    val rarity: Rarity,
+) {
+    WOODEN_SWORD("Wooden Sword", "🗡️", 3, 0, Element.NEUTRAL, Rarity.COMMON),
+    APPRENTICE_STAFF("Apprentice Staff", "🪄", 0, 4, Element.NEUTRAL, Rarity.COMMON),
+    IRON_SWORD("Iron Sword", "⚔️", 6, 0, Element.NEUTRAL, Rarity.UNCOMMON),
+    FLAME_BLADE("Flame Blade", "🔥", 8, 2, Element.FIRE, Rarity.RARE),
+    STORM_SPEAR("Storm Spear", "⚡", 8, 2, Element.ELECTRIC, Rarity.RARE),
+    WIND_BOW("Wind Bow", "🏹", 7, 3, Element.FLIGHT, Rarity.RARE),
+    TIDE_TRIDENT("Tide Trident", "🔱", 8, 2, Element.WATER, Rarity.RARE),
+    VENOM_DAGGER("Venom Dagger", "🗡️", 7, 3, Element.POISON, Rarity.RARE),
+    SHADOW_SCYTHE("Shadow Scythe", "🌙", 10, 3, Element.CORRUPT, Rarity.EPIC),
+    ARCANE_STAFF("Arcane Staff", "🔮", 2, 10, Element.NEUTRAL, Rarity.EPIC);
+
+    val description: String
+        get() = buildList {
+            if (attack > 0) add("+$attack Attack")
+            if (magic > 0) add("+$magic Magic")
+            if (element != Element.NEUTRAL) add("${element.emoji} ${element.label} attacks")
+        }.joinToString(" • ")
+}
 
 @Serializable
 enum class Rarity(val label: String, val spawnWeight: Int, val captureMultiplier: Double) {
@@ -157,81 +203,6 @@ enum class Rarity(val label: String, val spawnWeight: Int, val captureMultiplier
     RARE("Rare", 11, 0.65),
     EPIC("Epic", 4, 0.45),
     LEGENDARY("Legendary", 0, 0.3),
-}
-
-@Serializable
-data class Species(
-    val id: String,
-    val name: String,
-    val emoji: String,
-    val element: Element,
-    val rarity: Rarity,
-    val base: StatBlock,
-    val special: Skill,
-    /** Boss species only appear at boss shrines. */
-    val bossOnly: Boolean = false,
-)
-
-object Bestiary {
-    private fun sp(
-        id: String, name: String, emoji: String, element: Element, rarity: Rarity,
-        hp: Int, atk: Int, mag: Int, def: Int, spd: Int,
-        special: String, kind: SkillKind, power: Int, bossOnly: Boolean = false,
-    ) = Species(
-        id, name, emoji, element, rarity, StatBlock(hp, atk, mag, def, spd),
-        Skill("${id}_special", special, element, kind, power), bossOnly,
-    )
-
-    val all: List<Species> = listOf(
-        // Common
-        sp("emberpup", "Emberpup", "🐕", Element.FIRE, Rarity.COMMON, 38, 14, 10, 9, 12, "Ember Bite", SkillKind.PHYSICAL, 32),
-        sp("bubblefin", "Bubblefin", "🐟", Element.WATER, Rarity.COMMON, 40, 9, 13, 10, 11, "Bubble Jet", SkillKind.MAGICAL, 32),
-        sp("sproutling", "Sproutling", "🌱", Element.NATURE, Rarity.COMMON, 44, 9, 12, 12, 8, "Leaf Dart", SkillKind.MAGICAL, 30),
-        sp("pebblet", "Pebblet", "🪨", Element.EARTH, Rarity.COMMON, 46, 12, 7, 15, 6, "Rock Toss", SkillKind.PHYSICAL, 32),
-        sp("breezling", "Breezling", "🐦", Element.AIR, Rarity.COMMON, 34, 11, 11, 8, 16, "Gust", SkillKind.MAGICAL, 30),
-        sp("greywolf", "Greywolf", "🐺", Element.NEUTRAL, Rarity.COMMON, 40, 15, 6, 10, 14, "Pack Howl Bite", SkillKind.PHYSICAL, 34),
-        sp("squeaker", "Squeaker", "🐭", Element.NEUTRAL, Rarity.COMMON, 30, 10, 8, 8, 18, "Nibble Flurry", SkillKind.PHYSICAL, 28),
-        // Uncommon
-        sp("glowmoth", "Glowmoth", "🦋", Element.LIGHT, Rarity.UNCOMMON, 38, 8, 17, 10, 15, "Dazzle Dust", SkillKind.MAGICAL, 36),
-        sp("shadecat", "Shadecat", "🐈", Element.DARK, Rarity.UNCOMMON, 40, 16, 12, 10, 17, "Night Claw", SkillKind.PHYSICAL, 36),
-        sp("thornboar", "Thornboar", "🐗", Element.NATURE, Rarity.UNCOMMON, 52, 17, 6, 15, 9, "Thorn Charge", SkillKind.PHYSICAL, 38),
-        sp("tidecrab", "Tidecrab", "🦀", Element.WATER, Rarity.UNCOMMON, 46, 14, 8, 19, 7, "Tidal Pinch", SkillKind.PHYSICAL, 36),
-        sp("cinderfox", "Cinderfox", "🦊", Element.FIRE, Rarity.UNCOMMON, 40, 12, 17, 9, 16, "Foxfire", SkillKind.MAGICAL, 38),
-        sp("dustmole", "Dustmole", "🐹", Element.EARTH, Rarity.UNCOMMON, 50, 15, 9, 16, 9, "Burrow Strike", SkillKind.PHYSICAL, 36),
-        // Rare
-        sp("stormhawk", "Stormhawk", "🦅", Element.AIR, Rarity.RARE, 46, 19, 14, 12, 22, "Thunder Dive", SkillKind.PHYSICAL, 44),
-        sp("frostbear", "Frostbear", "🐻", Element.WATER, Rarity.RARE, 62, 20, 12, 18, 8, "Glacier Maul", SkillKind.PHYSICAL, 44),
-        sp("ironshell", "Ironshell", "🐢", Element.EARTH, Rarity.RARE, 60, 12, 12, 26, 5, "Quake Shell", SkillKind.MAGICAL, 40),
-        sp("wraith", "Wraith", "👻", Element.DARK, Rarity.RARE, 42, 10, 22, 12, 18, "Soul Drain", SkillKind.MAGICAL, 44),
-        // Epic
-        sp("sunlion", "Sunlion", "🦁", Element.LIGHT, Rarity.EPIC, 60, 22, 18, 17, 17, "Solar Roar", SkillKind.MAGICAL, 50),
-        sp("wyrmling", "Wyrmling", "🐉", Element.FIRE, Rarity.EPIC, 58, 21, 21, 16, 15, "Dragon Flame", SkillKind.MAGICAL, 52),
-        // Legendary bosses
-        sp("elder_treant", "Elder Treant", "🌳", Element.NATURE, Rarity.LEGENDARY, 85, 22, 20, 24, 8, "Ancient Roots", SkillKind.MAGICAL, 56, bossOnly = true),
-        sp("abyss_kraken", "Abyss Kraken", "🐙", Element.WATER, Rarity.LEGENDARY, 80, 24, 22, 18, 12, "Maelstrom", SkillKind.MAGICAL, 58, bossOnly = true),
-        sp("titan_golem", "Titan Golem", "🗿", Element.EARTH, Rarity.LEGENDARY, 90, 26, 10, 28, 6, "Colossus Slam", SkillKind.PHYSICAL, 60, bossOnly = true),
-        sp("sky_serpent", "Sky Serpent", "🐲", Element.AIR, Rarity.LEGENDARY, 72, 22, 24, 16, 22, "Cyclone Coil", SkillKind.MAGICAL, 58, bossOnly = true),
-        sp("magma_behemoth", "Magma Behemoth", "🌋", Element.FIRE, Rarity.LEGENDARY, 84, 27, 18, 20, 9, "Eruption", SkillKind.PHYSICAL, 60, bossOnly = true),
-        sp("dread_lich", "Dread Lich", "💀", Element.DARK, Rarity.LEGENDARY, 70, 14, 28, 18, 16, "Death Knell", SkillKind.MAGICAL, 62, bossOnly = true),
-        sp("seraph", "Seraph", "👼", Element.LIGHT, Rarity.LEGENDARY, 74, 18, 27, 20, 18, "Judgement", SkillKind.MAGICAL, 60, bossOnly = true),
-    )
-
-    private val byId = all.associateBy { it.id }
-
-    fun get(id: String): Species = byId.getValue(id)
-
-    val wild: List<Species> = all.filter { !it.bossOnly }
-    val bosses: List<Species> = all.filter { it.bossOnly }
-
-    fun randomWild(rng: Random): Species {
-        val total = wild.sumOf { it.rarity.spawnWeight }
-        var roll = rng.nextInt(total)
-        for (s in wild) {
-            roll -= s.rarity.spawnWeight
-            if (roll < 0) return s
-        }
-        return wild.last()
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -277,19 +248,20 @@ data class Monster(
     val xpToNext: Int get() = monsterXpForNext(level)
 
     companion object {
+        /** A new monster; it evolves straight away if [level] is past its evolution levels. */
         fun create(species: Species, level: Int, rng: Random): Monster = Monster(
             uid = newId(rng),
             speciesId = species.id,
             personality = Personality.entries[rng.nextInt(Personality.entries.size)],
             ivs = StatBlock.random(rng, MAX_IV),
             level = level.coerceIn(1, MAX_MONSTER_LEVEL),
-        )
+        ).evolved()
     }
 }
 
 fun monsterXpForNext(level: Int): Int = 20 + level * level * 5
 
-/** Adds XP to a monster, levelling it up as needed. */
+/** Adds XP to a monster, levelling it up (and evolving it) as needed. */
 fun Monster.gainXp(amount: Int): Monster {
     var lvl = level
     var x = xp + amount
@@ -298,7 +270,19 @@ fun Monster.gainXp(amount: Int): Monster {
         lvl++
     }
     if (lvl >= MAX_MONSTER_LEVEL) x = 0
-    return copy(level = lvl, xp = x)
+    return copy(level = lvl, xp = x).evolved()
+}
+
+/** Applies every evolution this monster's level qualifies for. */
+fun Monster.evolved(): Monster {
+    var m = this
+    while (true) {
+        val next = m.species.evolvesTo ?: break
+        val at = m.species.evolveLevel ?: break
+        if (m.level < at) break
+        m = m.copy(speciesId = next)
+    }
+    return m
 }
 
 fun newId(rng: Random = Random.Default): String =

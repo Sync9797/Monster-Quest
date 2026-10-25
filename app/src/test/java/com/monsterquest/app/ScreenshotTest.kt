@@ -24,6 +24,7 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.Monster
 import com.monsterquest.core.QuestTask
 import com.monsterquest.core.TaskSource
+import com.monsterquest.core.Weapon
 import com.monsterquest.core.World
 import org.junit.Rule
 import org.junit.Test
@@ -50,11 +51,11 @@ abstract class ScreenshotBase(private val device: String) {
     private fun sampleState(): GameState {
         val rng = Random(3)
         val monsters = listOf(
-            Monster.create(Bestiary.get("emberpup"), 14, rng).copy(nickname = "Sir Barksalot III"),
-            Monster.create(Bestiary.get("greywolf"), 12, rng),
-            Monster.create(Bestiary.get("stormhawk"), 11, rng),
-            Monster.create(Bestiary.get("tidecrab"), 9, rng),
-            Monster.create(Bestiary.get("elder_treant"), 15, rng),
+            Monster.create(Bestiary.get("ember_pup"), 20, rng).copy(nickname = "Sir Barksalot III"),
+            Monster.create(Bestiary.get("zapmouse"), 12, rng),
+            Monster.create(Bestiary.get("emberkit"), 30, rng),
+            Monster.create(Bestiary.get("toxbug"), 9, rng),
+            Monster.create(Bestiary.get("dread_lich"), 15, rng),
         )
         val now = System.currentTimeMillis()
         return GameState(
@@ -71,6 +72,9 @@ abstract class ScreenshotBase(private val device: String) {
             starterChosen = true,
             monsters = monsters,
             party = monsters.take(3).map { it.uid },
+            weapons = listOf(Weapon.IRON_SWORD, Weapon.TIDE_TRIDENT),
+            equippedWeapon = Weapon.STORM_SPEAR,
+            spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
             inventory = mapOf(Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY),
@@ -123,6 +127,12 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm()
         v.hunt()
         shot("07_battle") { AppRoot(v) }
+    }
+
+    @Test fun focus() {
+        val v = vm()
+        v.startFocus(30)
+        shot("09_focus") { AppRoot(v) }
     }
 
     @Test fun battleTabletop() {

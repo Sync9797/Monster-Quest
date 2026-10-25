@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.BAG_UPGRADE_AMOUNT
 import com.monsterquest.core.HeroAttribute
-import com.monsterquest.core.HeroSkills
+import com.monsterquest.core.Spells
 import com.monsterquest.core.STORAGE_UPGRADE_AMOUNT
 import com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
 
@@ -118,14 +118,39 @@ fun HeroScreen(vm: GameViewModel) {
             }
         }
 
+        SectionTitle("Weapon")
+        GameCard {
+            val w = s.equippedWeapon
+            if (w == null) {
+                Text("Bare-handed. Find weapons at item shrines 🎁 and equip them from the Bag.")
+            } else {
+                Text("${w.emoji} ${w.label}", fontWeight = FontWeight.SemiBold)
+                Text(w.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
         SectionTitle("Spells")
-        HeroSkills.all.forEach { sk ->
-            val unlocked = sk.unlockLevel <= h.level
-            Text(
-                "${sk.element.emoji} ${sk.name}: ${if (unlocked) "${sk.mpCost} Energy" else "unlocks at Lv ${sk.unlockLevel}"}",
-                color = if (unlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 2.dp),
-            )
+        Text(
+            "Collect ${Spells.PAGES_TO_LEARN} pages of a spell book at item shrines to learn it.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spells.all.forEach { sk ->
+            val known = sk.id in h.knownSpells
+            val pages = s.spellPages[sk.id] ?: 0
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${sk.element.emoji} ${sk.name}",
+                    modifier = Modifier.weight(1f),
+                    color = if (known) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (known) FontWeight.SemiBold else FontWeight.Normal,
+                )
+                if (known) {
+                    Text("⚡${sk.mpCost}", fontSize = 13.sp, color = MpBlue)
+                } else {
+                    Text("📜 $pages/${Spells.PAGES_TO_LEARN}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
 
         SectionTitle("Journey")
@@ -135,6 +160,7 @@ fun HeroScreen(vm: GameViewModel) {
         Text("Monsters tamed: ${st.monstersTamed}")
         Text("Shrines visited: ${st.shrinesVisited}")
         Text("Bosses defeated: ${st.bossesDefeated}")
+        Text("Phone-free sessions: ${st.focusWins} won / ${st.focusFails} failed (${st.focusMinutes} min)")
     }
 
     AdaptivePanes(

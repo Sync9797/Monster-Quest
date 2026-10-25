@@ -31,6 +31,7 @@ data class Hero(
     val xp: Int = 0,
     val unspentPoints: Int = 0,
     val attributes: Map<HeroAttribute, Int> = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE },
+    val knownSpells: Set<String> = Spells.starting,
 ) {
     fun attr(a: HeroAttribute): Int = attributes[a] ?: STARTING_ATTRIBUTE
 
@@ -90,6 +91,20 @@ data class ShrineRecord(
 )
 
 // ---------------------------------------------------------------------------
+// Phone-free focus sessions
+// ---------------------------------------------------------------------------
+
+@Serializable
+data class FocusSession(
+    val id: String,
+    val startMs: Long,
+    val endMs: Long,
+    val minutes: Int,
+)
+
+val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
+
+// ---------------------------------------------------------------------------
 // Whole save game
 // ---------------------------------------------------------------------------
 
@@ -102,7 +117,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 1,
+    val version: Int = 2,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -110,6 +125,13 @@ data class GameState(
     /** UIDs of monsters that join battles (max [MAX_PARTY_SIZE]). */
     val party: List<String> = emptyList(),
     val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.TAMING_ORB to 5),
+    /** Unequipped weapons (each takes a bag slot). */
+    val weapons: List<Weapon> = emptyList(),
+    val equippedWeapon: Weapon? = null,
+    /** Spell-book pages collected per spell id; [Spells.PAGES_TO_LEARN] teach the spell. */
+    val spellPages: Map<String, Int> = emptyMap(),
+    /** The phone-free session in progress, if any. */
+    val focus: FocusSession? = null,
     val bagCapacity: Int = STARTING_BAG_CAPACITY,
     val monsterCapacity: Int = STARTING_MONSTER_CAPACITY,
     /** Storage upgrades earned (one per [UPGRADE_LEVEL_INTERVAL] levels) but not yet spent. */
@@ -122,7 +144,7 @@ data class GameState(
     val stats: Lifetime = Lifetime(),
     val starterChosen: Boolean = false,
 ) {
-    val bagCount: Int get() = inventory.values.sum()
+    val bagCount: Int get() = inventory.values.sum() + weapons.size
     val bagFull: Boolean get() = bagCount >= bagCapacity
     val storageFull: Boolean get() = monsters.size >= monsterCapacity
     val partyMonsters: List<Monster> get() = party.mapNotNull { uid -> monsters.find { it.uid == uid } }
@@ -132,7 +154,16 @@ data class GameState(
 
     companion object {
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; allowStructuredMapKeys = true }
-        fun fromJson(text: String): GameState = json.decodeFromString(serializer(), text)
+        fun fromJson(text: String): GameState = json.decodeFromString(serializer(), text).migrated()
+    }
+
+    /** Brings older saves up to date (e.g. monsters from the previous roster). */
+    fun migrated(): GameState {
+        if (version >= 2) return this
+        return copy(
+            version = 2,
+            monsters = monsters.map { it.copy(speciesId = Bestiary.migrateId(it.speciesId)).evolved() },
+        )
     }
 }
 
@@ -144,4 +175,7 @@ data class Lifetime(
     val monstersTamed: Int = 0,
     val shrinesVisited: Int = 0,
     val bossesDefeated: Int = 0,
+    val focusWins: Int = 0,
+    val focusFails: Int = 0,
+    val focusMinutes: Int = 0,
 )

@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
+import com.monsterquest.core.Bestiary
+import com.monsterquest.core.Element
 import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_PARTY_SIZE
@@ -84,7 +86,13 @@ fun MonstersScreen(vm: GameViewModel) {
                 onRelease = { releasing = m },
             )
         }
-        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Column {
+                SectionTitle("Type chart")
+                TypeChart()
+                Spacer(Modifier.height(24.dp))
+            }
+        }
     }
 
     releasing?.let { m ->
@@ -149,7 +157,17 @@ private fun MonsterCard(
                     "Lv ${m.level} ${sp.name} • ${sp.element.emoji} ${sp.element.label}",
                     fontSize = 13.sp,
                 )
-                Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
+                Row {
+                    Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
+                    if (sp.stages > 1) {
+                        Text("  • Stage ${sp.stage}/${sp.stages}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                sp.evolveLevel?.let { lvl ->
+                    if (m.level < lvl) {
+                        Text("Evolves at Lv $lvl", fontSize = 12.sp, color = XpPurple)
+                    }
+                }
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -172,9 +190,22 @@ private fun MonsterCard(
             Text("Special: ${sp.special.name} (power ${sp.special.power})", fontSize = 13.sp)
             Text("Potential: ${m.potential}%", fontSize = 13.sp)
             Text(
-                "Strong vs: ${sp.element.strongAgainst().joinToString { it.label }.ifEmpty { "nothing" }}",
+                "Strong vs ${sp.element.beats?.let { "${it.emoji} ${it.label}" } ?: "nothing"} • " +
+                    "Weak to ${sp.element.weakTo?.let { "${it.emoji} ${it.label}" } ?: "nothing"}",
                 fontSize = 13.sp,
             )
+            sp.breed?.let { Text("Breed: $it Hound", fontSize = 13.sp) }
+            val line = Bestiary.lineOf(sp)
+            if (line.size > 1) {
+                Text(
+                    "Evolution: " + line.joinToString(" → ") { s ->
+                        val tag = s.evolveLevel?.let { " (Lv $it)" } ?: ""
+                        if (s.id == sp.id) "[${s.emoji} ${s.name}]$tag" else "${s.emoji} ${s.name}$tag"
+                    },
+                    fontSize = 13.sp,
+                    color = XpPurple,
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SmallButton(if (inParty) "Bench" else "To party", onParty, Modifier.weight(1f))
@@ -192,5 +223,22 @@ private fun MonsterCard(
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+    }
+}
+
+/** The rock-paper-scissors cycle: each type beats the next one. */
+@Composable
+fun TypeChart() {
+    GameCard {
+        Element.typed.forEach { t ->
+            val b = t.beats ?: return@forEach
+            Text("${t.emoji} ${t.label}  beats  ${b.emoji} ${b.label}", fontSize = 13.sp, modifier = Modifier.padding(vertical = 2.dp))
+        }
+        Text(
+            "Super effective hits deal ×1.5; hitting a type that beats yours deals ×0.67.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
