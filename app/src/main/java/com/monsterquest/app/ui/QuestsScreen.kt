@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -64,8 +66,13 @@ fun QuestsScreen(vm: GameViewModel) {
     val pending = state.tasks.filter { !it.completed }.sortedWith(compareBy<QuestTask> { it.startMs ?: Long.MAX_VALUE }.thenBy { it.title })
     val done = state.tasks.filter { it.completed }.sortedByDescending { it.completedAtMs }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        item {
+    // One column on phones; more side by side when unfolded.
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { showAdd = true }, modifier = Modifier.weight(1f)) { Text("+ New quest") }
                 OutlinedButton(
@@ -78,7 +85,7 @@ fun QuestsScreen(vm: GameViewModel) {
             SectionTitle("Active quests (${pending.size})")
         }
         if (pending.isEmpty()) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     "No quests yet. Add a to-do, or sync your calendar so events become quests.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -88,7 +95,7 @@ fun QuestsScreen(vm: GameViewModel) {
         items(pending, key = { it.id }) { task ->
             QuestRow(task, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionTitle("Completed (${done.size})")
                 Spacer(Modifier.weight(1f))
@@ -96,7 +103,7 @@ fun QuestsScreen(vm: GameViewModel) {
             }
         }
         if (showDone) {
-            items(done.take(50), key = { "done_" + it.id }) { task ->
+            items(done.take(50), key = { "done_" + it.id }, span = { GridItemSpan(maxLineSpan) }) { task ->
                 Text(
                     "✔ ${task.title}",
                     modifier = Modifier.padding(vertical = 4.dp),

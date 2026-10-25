@@ -62,12 +62,17 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
     // Return to the main menu whenever the turn passes to someone else.
     LaunchedEffect(b.current?.key, b.round, b.log.size) { menu = Menu.Main }
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.safeDrawingPadding().padding(12.dp)) {
+    // Enemy + log on top / left; party + commands on bottom / right. On a
+    // half-folded phone in tabletop posture the controls sit on the lower half.
+    val top: @Composable () -> Unit = {
+        Column(Modifier.fillMaxSize()) {
             EnemyPanel(b)
             Spacer(Modifier.height(8.dp))
             BattleLog(b.log, Modifier.weight(1f))
-            Spacer(Modifier.height(8.dp))
+        }
+    }
+    val controls: @Composable () -> Unit = {
+        Column {
             AllyRow(b)
             Spacer(Modifier.height(8.dp))
             if (b.outcome == BattleOutcome.ONGOING) {
@@ -79,6 +84,21 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
                 ResultPanel(b, onClose)
             }
         }
+    }
+
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        AdaptivePanes(
+            modifier = Modifier.safeDrawingPadding().padding(12.dp),
+            compact = {
+                Column(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(1f)) { top() }
+                    Spacer(Modifier.height(8.dp))
+                    controls()
+                }
+            },
+            first = top,
+            second = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) { controls() } },
+        )
     }
 }
 

@@ -32,6 +32,19 @@ your hero.
   - Wild monsters roam the map and reshuffle every 15 minutes.
   - **Hunt tokens** let you battle from anywhere.
 
+## Foldable and large-screen support
+
+- **Folded / regular phone:** single column with a bottom navigation bar.
+- **Unfolded (or tablet):** side navigation rail and two-pane layouts. Quests
+  and monsters are shown in a grid; hero, bag and map get side-by-side panes.
+- **Book posture** (half-open, vertical hinge): panes split exactly at the
+  hinge, so nothing is drawn across the fold.
+- **Tabletop posture** (half-open, horizontal hinge, including flip phones):
+  - Battles show the enemy and battle log on the top half and your party and
+    commands on the bottom half.
+  - The map sits on top with the nearby list below.
+- Folding or unfolding mid-battle keeps all game state.
+
 ## Install on your phone
 
 Every push to `main` builds the app on GitHub Actions and publishes it as the

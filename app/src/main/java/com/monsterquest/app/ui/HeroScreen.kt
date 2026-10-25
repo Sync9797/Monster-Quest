@@ -41,7 +41,7 @@ fun HeroScreen(vm: GameViewModel) {
     val h = s.hero
     var renaming by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    val profile: @Composable () -> Unit = {
         GameCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("🧙", fontSize = 48.sp)
@@ -86,6 +86,8 @@ fun HeroScreen(vm: GameViewModel) {
             modifier = Modifier.padding(top = 4.dp),
         )
 
+    }
+    val progress: @Composable () -> Unit = {
         SectionTitle("Storage upgrades")
         GameCard(border = if (s.pendingUpgrades > 0) Gold else null) {
             Text("🎒 Bag: ${s.bagCount}/${s.bagCapacity}    🐾 Monsters: ${s.monsters.size}/${s.monsterCapacity}")
@@ -131,8 +133,29 @@ fun HeroScreen(vm: GameViewModel) {
         Text("Monsters tamed: ${st.monstersTamed}")
         Text("Shrines visited: ${st.shrinesVisited}")
         Text("Bosses defeated: ${st.bossesDefeated}")
-        Spacer(Modifier.height(24.dp))
     }
+
+    AdaptivePanes(
+        compact = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                profile()
+                progress()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        first = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
+                profile()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        second = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(end = 16.dp)) {
+                progress()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+    )
 
     if (renaming) {
         var name by remember { mutableStateOf(h.name) }

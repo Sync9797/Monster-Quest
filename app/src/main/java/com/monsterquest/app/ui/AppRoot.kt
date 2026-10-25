@@ -1,11 +1,15 @@
 package com.monsterquest.app.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -52,29 +56,47 @@ fun AppRoot(vm: GameViewModel) {
         }
     }
 
+    // Wide screens (unfolded foldables, tablets) get a side rail; phones a bottom bar.
+    val wide = widthClass() != WidthClass.COMPACT
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                Tab.entries.forEach { t ->
-                    NavigationBarItem(
-                        selected = tab == t,
-                        onClick = { tab = t },
-                        icon = { Text(t.emoji, fontSize = 22.sp) },
-                        label = { Text(t.label) },
-                    )
+            if (!wide) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    Tab.entries.forEach { t ->
+                        NavigationBarItem(
+                            selected = tab == t,
+                            onClick = { tab = t },
+                            icon = { Text(t.emoji, fontSize = 22.sp) },
+                            label = { Text(t.label) },
+                        )
+                    }
                 }
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            ResourceHeader(state.hero.level, state.gold, state.huntTokens)
-            when (tab) {
-                Tab.QUESTS -> QuestsScreen(vm)
-                Tab.HERO -> HeroScreen(vm)
-                Tab.MONSTERS -> MonstersScreen(vm)
-                Tab.MAP -> MapScreen(vm)
-                Tab.BAG -> BagScreen(vm)
+        Row(Modifier.fillMaxSize().padding(padding)) {
+            if (wide) {
+                NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
+                    Tab.entries.forEach { t ->
+                        NavigationRailItem(
+                            selected = tab == t,
+                            onClick = { tab = t },
+                            icon = { Text(t.emoji, fontSize = 22.sp) },
+                            label = { Text(t.label) },
+                        )
+                    }
+                }
+            }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                ResourceHeader(state.hero.level, state.gold, state.huntTokens)
+                when (tab) {
+                    Tab.QUESTS -> QuestsScreen(vm)
+                    Tab.HERO -> HeroScreen(vm)
+                    Tab.MONSTERS -> MonstersScreen(vm)
+                    Tab.MAP -> MapScreen(vm)
+                    Tab.BAG -> BagScreen(vm)
+                }
             }
         }
     }

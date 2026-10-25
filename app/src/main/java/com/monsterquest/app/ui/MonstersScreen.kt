@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -54,8 +56,13 @@ fun MonstersScreen(vm: GameViewModel) {
     // Party first, then by level.
     val sorted = s.monsters.sortedWith(compareBy<Monster> { it.uid !in s.party }.thenByDescending { it.level })
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        item {
+    // One column on phones; more side by side when unfolded.
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 "Storage ${s.monsters.size}/${s.monsterCapacity}  •  Battle party ${s.party.size}/$MAX_PARTY_SIZE  •  🍖 ${s.count(Item.TREAT)}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -76,7 +83,7 @@ fun MonstersScreen(vm: GameViewModel) {
                 onRelease = { releasing = m },
             )
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
     }
 
     releasing?.let { m ->

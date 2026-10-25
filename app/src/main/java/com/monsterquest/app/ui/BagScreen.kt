@@ -26,7 +26,7 @@ import com.monsterquest.core.MAX_ITEMS_PER_BATTLE
 @Composable
 fun BagScreen(vm: GameViewModel) {
     val s = vm.state
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    val bag: @Composable () -> Unit = {
         SectionTitle("Bag ${s.bagCount}/${s.bagCapacity}")
         LabeledBar("Space", s.bagCount, s.bagCapacity, if (s.bagFull) HpRed else MpBlue)
         Text(
@@ -51,6 +51,8 @@ fun BagScreen(vm: GameViewModel) {
             }
         }
 
+    }
+    val shop: @Composable () -> Unit = {
         SectionTitle("Shop  •  🪙 ${s.gold}")
         Item.entries.filter { it.price > 0 }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
@@ -67,6 +69,27 @@ fun BagScreen(vm: GameViewModel) {
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
     }
+
+    AdaptivePanes(
+        compact = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                bag()
+                shop()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        first = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
+                bag()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        second = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(end = 16.dp)) {
+                shop()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+    )
 }

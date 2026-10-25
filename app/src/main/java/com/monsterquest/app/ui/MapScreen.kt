@@ -13,6 +13,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
+import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -122,108 +126,129 @@ fun MapScreen(vm: GameViewModel) {
     fun markerIcon(key: String, emoji: String, ring: Int) =
         icons.getOrPut(key) { emojiDrawable(context, emoji, ring) }
 
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize(),
-                update = { mv ->
-                    mv.overlays.clear()
-                    if (loc != null) {
-                        val here = GeoPoint(loc.first, loc.second)
-                        if (!centered) {
-                            mv.controller.setCenter(here)
-                            centered = true
+    val mapPane: @Composable () -> Unit = {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                AndroidView(
+                    factory = {
+                        // The same MapView moves between layouts when the phone folds or unfolds.
+                        (mapView.parent as? ViewGroup)?.removeView(mapView)
+                        mapView
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { mv ->
+                        mv.overlays.clear()
+                        if (loc != null) {
+                            val here = GeoPoint(loc.first, loc.second)
+                            if (!centered) {
+                                mv.controller.setCenter(here)
+                                centered = true
+                            }
+                            // Reach circle for shrines.
+                            mv.overlays.add(
+                                Polygon(mv).apply {
+                                    setPoints(Polygon.pointsAsCircle(here, World.SHRINE_RANGE_M))
+                                    fillPaint.color = 0x228B5CF6
+                                    outlinePaint.color = 0x888B5CF6.toInt()
+                                    outlinePaint.strokeWidth = 3f
+                                },
+                            )
                         }
-                        // Reach circle for shrines.
-                        mv.overlays.add(
-                            Polygon(mv).apply {
-                                setPoints(Polygon.pointsAsCircle(here, World.SHRINE_RANGE_M))
-                                fillPaint.color = 0x228B5CF6
-                                outlinePaint.color = 0x888B5CF6.toInt()
-                                outlinePaint.strokeWidth = 3f
-                            },
-                        )
-                    }
-                    shrines.forEach { sh ->
-                        val rec = vm.state.shrines[sh.id]
-                        val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
-                        val emoji = when {
-                            sh.isBoss && rec?.bossDefeated == true -> "🏯"
-                            sh.isBoss -> "👹"
-                            cooling -> "🪨"
-                            else -> "⛩️"
+                        shrines.forEach { sh ->
+                            val rec = vm.state.shrines[sh.id]
+                            val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
+                            val emoji = when {
+                                sh.isBoss && rec?.bossDefeated == true -> "🏯"
+                                sh.isBoss -> "👹"
+                                cooling -> "🪨"
+                                else -> "⛩️"
+                            }
+                            val ring = when {
+                                sh.isBoss -> 0xCCEF4444.toInt()
+                                cooling -> 0x88666666.toInt()
+                                else -> 0xCC8B5CF6.toInt()
+                            }
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(sh.lat, sh.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                    setIcon(markerIcon("shrine_${emoji}_$ring", emoji, ring))
+                                    title = sh.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.ShrinePick(sh); true }
+                                },
+                            )
                         }
-                        val ring = when {
-                            sh.isBoss -> 0xCCEF4444.toInt()
-                            cooling -> 0x88666666.toInt()
-                            else -> 0xCC8B5CF6.toInt()
+                        spawns.forEach { sp ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(sp.lat, sp.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                    setIcon(markerIcon("spawn_${sp.speciesId}", sp.species.emoji, 0xAA1E1A2B.toInt()))
+                                    title = sp.species.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
+                                },
+                            )
                         }
-                        mv.overlays.add(
-                            Marker(mv).apply {
-                                position = GeoPoint(sh.lat, sh.lon)
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                setIcon(markerIcon("shrine_${emoji}_$ring", emoji, ring))
-                                title = sh.name
-                                setOnMarkerClickListener { _, _ -> pick = MapPick.ShrinePick(sh); true }
-                            },
-                        )
-                    }
-                    spawns.forEach { sp ->
-                        mv.overlays.add(
-                            Marker(mv).apply {
-                                position = GeoPoint(sp.lat, sp.lon)
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                setIcon(markerIcon("spawn_${sp.speciesId}", sp.species.emoji, 0xAA1E1A2B.toInt()))
-                                title = sp.species.name
-                                setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
-                            },
-                        )
-                    }
-                    if (loc != null) {
-                        mv.overlays.add(
-                            Marker(mv).apply {
-                                position = GeoPoint(loc.first, loc.second)
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                setIcon(markerIcon("player", "🧙", 0xCCF5C542.toInt()))
-                                setOnMarkerClickListener { _, _ -> true }
-                            },
-                        )
-                    }
-                    mv.invalidate()
-                },
-            )
-            if (loc == null) {
-                Text(
-                    "Finding your location…",
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    color = MaterialTheme.colorScheme.onSurface,
+                        if (loc != null) {
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(loc.first, loc.second)
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                    setIcon(markerIcon("player", "🧙", 0xCCF5C542.toInt()))
+                                    setOnMarkerClickListener { _, _ -> true }
+                                },
+                            )
+                        }
+                        mv.invalidate()
+                    },
                 )
+                if (loc == null) {
+                    Text(
+                        "Finding your location…",
+                        modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    when {
+                        vm.loadingPlaces -> "Scanning for shrines…"
+                        else -> "⛩️ ${shrines.count { !it.isBoss }}  👹 ${shrines.count { it.isBoss }}  🐾 ${spawns.size} nearby"
+                    },
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedButton(onClick = {
+                    loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+                }) { Text("📍 Center") }
+            }
             Text(
-                when {
-                    vm.loadingPlaces -> "Scanning for shrines…"
-                    else -> "⛩️ ${shrines.count { !it.isBoss }}  👹 ${shrines.count { it.isBoss }}  🐾 ${spawns.size} nearby"
-                },
-                fontSize = 13.sp,
-                modifier = Modifier.weight(1f),
+                "© OpenStreetMap contributors",
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
             )
-            OutlinedButton(onClick = {
-                loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
-            }) { Text("📍 Center") }
         }
-        Text(
-            "© OpenStreetMap contributors",
-            fontSize = 9.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
-        )
     }
+
+    AdaptivePanes(
+        firstWeight = 0.62f,
+        compact = mapPane,
+        first = mapPane,
+        second = {
+            NearbyList(
+                vm = vm,
+                shrines = shrines,
+                spawns = spawns,
+                onShrine = { pick = MapPick.ShrinePick(it) },
+                onSpawn = { pick = MapPick.SpawnPick(it) },
+            )
+        },
+    )
 
     when (val p = pick) {
         is MapPick.ShrinePick -> ShrineDialog(vm, p.shrine, now) { pick = null }
@@ -387,4 +412,55 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+private class Entry(val dist: Double, val emoji: String, val title: String, val sub: String, val inRange: Boolean, val onClick: () -> Unit)
+
+/** Nearby shrines and monsters sorted by distance, shown beside the map on big screens. */
+@Composable
+private fun NearbyList(
+    vm: GameViewModel,
+    shrines: List<Shrine>,
+    spawns: List<WildSpawn>,
+    onShrine: (Shrine) -> Unit,
+    onSpawn: (WildSpawn) -> Unit,
+) {
+    val entries = shrines.map { sh ->
+        val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
+        Entry(
+            d,
+            if (sh.isBoss) "👹" else "⛩️",
+            sh.name,
+            (if (sh.isBoss) "Boss shrine • " else "Shrine • ") + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            d <= World.SHRINE_RANGE_M,
+        ) { onShrine(sh) }
+    } + spawns.map { sp ->
+        val d = vm.distanceTo(sp.lat, sp.lon) ?: Double.MAX_VALUE
+        Entry(
+            d,
+            sp.species.emoji,
+            "Wild ${sp.species.name} Lv ${sp.level}",
+            "${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            d <= World.SPAWN_RANGE_M,
+        ) { onSpawn(sp) }
+    }
+
+    LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp)) {
+        item { SectionTitle("Nearby") }
+        if (entries.isEmpty()) {
+            item { Text("Nothing found nearby yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        items(entries.sortedBy { it.dist }.take(40)) { e ->
+            GameCard(Modifier.padding(vertical = 3.dp).clickable(onClick = e.onClick), border = if (e.inRange) Gold else null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(e.emoji, fontSize = 26.sp)
+                    Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                        Text(e.title, fontWeight = FontWeight.SemiBold)
+                        Text(e.sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (e.inRange) Text("In range", fontSize = 12.sp, color = Gold)
+                }
+            }
+        }
+    }
 }

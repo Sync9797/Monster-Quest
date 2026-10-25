@@ -59,6 +59,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
+    // Foldable support: hinge position and posture (tabletop / book).
+    implementation("androidx.window:window:1.3.0")
+
     // OpenStreetMap map view (no API key needed).
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 }
