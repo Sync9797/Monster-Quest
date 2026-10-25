@@ -75,6 +75,15 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
         )
     }
 
+    vm.boxResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissBoxResult,
+            title = { Text("Loot box opened!") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissBoxResult) { Text("Awesome") } },
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {

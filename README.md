@@ -9,8 +9,18 @@ your hero.
 - **Quests:** add to-dos, or sync your phone's calendar so events become
   quests. Completing one gives **XP, gold and a hunt token**.
 - **📵 Phone-free challenge:** pick 15–120 minutes and lock your phone.
-  - Keep it locked until time's up for XP, gold and loot.
+  - Keep it locked until time's up to win a **loot box**. Longer sessions give
+    better odds of rare boxes.
   - Unlocking early, or not locking within a minute, costs gold and a hunt token.
+- **Loot boxes** open by walking, tracked with the phone's step counter
+  (GPS if there isn't one):
+  - 📦 Common: 1 mile
+  - 🎁 Rare: 3 miles
+  - 💎 Epic: 5 miles
+  - 👑 Legendary: 10 miles
+
+  You can hold **6** and unlock **2 at a time**. Boxes contain gold, XP and
+  items. Epic and Legendary boxes always include a weapon.
 - **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
   Defense and Speed**.
   - Equip **weapons** for bonus stats and a typed basic attack.
@@ -18,7 +28,7 @@ your hero.
 - **Storage upgrades:** every 5 levels you can choose **+5 bag slots** or
   **+3 monster storage**.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:
-  ⚡ Electric > 💧 Water > 🔥 Fire > 🌑 Corrupt > 🕊️ Flight > ☠️ Poison > ⚡ Electric.
+  ⚡ Electric > 💧 Water > 🔥 Fire > 🌑 Corrupt > 🕊️ Flight > 💨 Gas > ⚡ Electric.
 - **50 monsters:**
   - 6 four-stage lines (3 evolutions)
   - 6 hound breeds with three stages (2 evolutions)

@@ -28,6 +28,7 @@ import com.monsterquest.core.Spells
 fun BagScreen(vm: GameViewModel) {
     val s = vm.state
     val bag: @Composable () -> Unit = {
+        LootBoxSection(vm)
         SectionTitle("Bag ${s.bagCount}/${s.bagCapacity}")
         LabeledBar("Space", s.bagCount, s.bagCapacity, if (s.bagFull) HpRed else MpBlue)
         Text(

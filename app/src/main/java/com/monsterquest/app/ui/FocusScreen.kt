@@ -37,6 +37,8 @@ import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.FOCUS_DURATIONS
 import com.monsterquest.core.FocusSession
 import com.monsterquest.core.GameEngine
+import com.monsterquest.core.LootBoxes
+import com.monsterquest.core.MAX_LOOT_BOXES
 import kotlinx.coroutines.delay
 
 /** Card on the Quests tab for starting a phone-free session. */
@@ -65,9 +67,14 @@ fun FocusCard(vm: GameViewModel) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "Win: +${minutes * 2} XP, +$minutes gold, ${maxOf(1, minutes / 30)} loot roll(s)",
+            "Win a loot box: " + LootBoxes.odds(minutes).entries.joinToString("  ") { (r, pct) -> "${r.emoji} $pct%" },
             fontSize = 12.sp,
             color = HpGreen,
+        )
+        Text(
+            "Boxes unlock by walking: 📦 1 mi • 🎁 3 mi • 💎 5 mi • 👑 10 mi",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             "Unlock early: −${GameEngine.focusPenalty(vm.state)} gold, −1 hunt token",
@@ -75,13 +82,15 @@ fun FocusCard(vm: GameViewModel) {
             color = HpRed,
         )
         Spacer(Modifier.height(8.dp))
+        val full = vm.state.lootBoxes.size >= MAX_LOOT_BOXES
         Button(
             onClick = {
                 if (Build.VERSION.SDK_INT >= 33) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else vm.startFocus(minutes)
             },
+            enabled = !full,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Start $minutes-minute session") }
+        ) { Text(if (full) "Box storage full ($MAX_LOOT_BOXES). Open one in the Bag" else "Start $minutes-minute session") }
     }
 }
 

@@ -16,6 +16,8 @@ import com.monsterquest.app.ui.LocalFold
 import com.monsterquest.app.ui.MonsterQuestTheme
 import com.monsterquest.app.ui.Tab
 import com.monsterquest.core.Bestiary
+import com.monsterquest.core.BoxRarity
+import com.monsterquest.core.LootBox
 import com.monsterquest.core.Difficulty
 import com.monsterquest.core.GameState
 import com.monsterquest.core.Hero
@@ -73,6 +75,11 @@ abstract class ScreenshotBase(private val device: String) {
             monsters = monsters,
             party = monsters.take(3).map { it.uid },
             weapons = listOf(Weapon.IRON_SWORD, Weapon.TIDE_TRIDENT),
+            lootBoxes = listOf(
+                LootBox("b1", BoxRarity.RARE, 0, unlocking = true, walkedMeters = 2_000.0),
+                LootBox("b2", BoxRarity.COMMON, 0, unlocking = true, walkedMeters = BoxRarity.COMMON.meters),
+                LootBox("b3", BoxRarity.LEGENDARY, 0),
+            ),
             equippedWeapon = Weapon.STORM_SPEAR,
             spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
             inventory = mapOf(Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),

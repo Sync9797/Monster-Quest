@@ -21,6 +21,7 @@ import com.monsterquest.core.GameEngine
 import com.monsterquest.core.GameState
 import com.monsterquest.core.HeroAttribute
 import com.monsterquest.core.Item
+import com.monsterquest.core.LootBoxes
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Shrine
 import com.monsterquest.core.Update
@@ -178,6 +179,46 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         FocusStore.clear(getApplication())
     }
 
+    // ---- loot boxes ---------------------------------------------------------
+
+    /** Result of opening a loot box, shown in a dialog. */
+    var boxResult by mutableStateOf<String?>(null)
+        private set
+
+    /** True when the phone's step counter is usable; otherwise GPS distance is used. */
+    var stepSensorAvailable by mutableStateOf(false)
+
+    private var lastWalkPoint: Pair<Double, Double>? = null
+
+    fun onStepCount(totalSteps: Long) = set(LootBoxes.onStepCount(state, totalSteps))
+
+    fun startUnlocking(id: String) = apply(LootBoxes.startUnlocking(state, id))
+    fun discardBox(id: String) = apply(LootBoxes.discard(state, id))
+
+    fun openBox(id: String) {
+        val ready = state.lootBoxes.find { it.id == id }?.ready == true
+        val u = LootBoxes.open(state, id)
+        set(u.state)
+        if (ready) boxResult = u.message else message = u.message
+    }
+
+    fun dismissBoxResult() {
+        boxResult = null
+    }
+
+    /** GPS fallback for phones without a step counter: count distance moved while the app is open. */
+    private fun walkFromGps(lat: Double, lon: Double) {
+        if (stepSensorAvailable) return
+        val last = lastWalkPoint
+        if (last != null) {
+            val d = World.distanceMeters(last.first, last.second, lat, lon)
+            // Ignore GPS jitter and big jumps (e.g. a fix after being in a car or tunnel).
+            if (d < 5) return
+            if (d < 300) set(LootBoxes.addWalk(state, d))
+        }
+        lastWalkPoint = lat to lon
+    }
+
     // ---- weapons -----------------------------------------------------------
 
     fun equip(index: Int) = apply(GameEngine.equip(state, index))
@@ -195,6 +236,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onLocation(lat: Double, lon: Double) {
         location = lat to lon
+        walkFromGps(lat, lon)
         val last = placesFetchedAt
         if (!loadingPlaces && (last == null || World.distanceMeters(last.first, last.second, lat, lon) > 500)) {
             loadingPlaces = true

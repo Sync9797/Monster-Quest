@@ -131,7 +131,7 @@ object Bestiary {
             Member("reefjaw", "Reefjaw", "🦈", "Riptide"),
             Member("leviathan", "Leviathan", "🐋", "Abyssal Wave"),
         )))
-        addAll(line("Toxbug line", Element.POISON, StatBlock(42, 12, 13, 13, 10), SkillKind.MAGICAL, listOf(
+        addAll(line("Toxbug line", Element.GAS, StatBlock(42, 12, 13, 13, 10), SkillKind.MAGICAL, listOf(
             Member("toxbug", "Toxbug", "🐛", "Toxic Spit"),
             Member("mirepede", "Mirepede", "🐜", "Acid Bite"),
             Member("stingscor", "Stingscor", "🦂", "Venom Sting"),
@@ -149,7 +149,7 @@ object Bestiary {
         addAll(hounds("Spark", Element.ELECTRIC, listOf("Spark Pup", "Volt Hound", "Thunder Fenrir"), listOf("Spark Bite", "Volt Fang", "Thunder Howl")))
         addAll(hounds("Gale", Element.FLIGHT, listOf("Gale Pup", "Sky Hound", "Tempest Fenrir"), listOf("Gust Bite", "Sky Fang", "Tempest Howl")))
         addAll(hounds("Tide", Element.WATER, listOf("Tide Pup", "Surf Hound", "Tsunami Fenrir"), listOf("Splash Bite", "Surf Fang", "Tsunami Howl")))
-        addAll(hounds("Venom", Element.POISON, listOf("Venom Pup", "Toxic Hound", "Plague Fenrir"), listOf("Venom Bite", "Toxic Fang", "Plague Howl")))
+        addAll(hounds("Venom", Element.GAS, listOf("Venom Pup", "Toxic Hound", "Plague Fenrir"), listOf("Venom Bite", "Toxic Fang", "Plague Howl")))
         addAll(hounds("Shadow", Element.CORRUPT, listOf("Shadow Pup", "Dusk Hound", "Void Fenrir"), listOf("Shadow Bite", "Dusk Fang", "Void Howl")))
 
         // ---- Mythics: rare single-stage monsters ----
@@ -161,7 +161,7 @@ object Bestiary {
         add(single("thunder_titan", "Thunder Titan", "🌩️", Element.ELECTRIC, Rarity.LEGENDARY, StatBlock(78, 20, 27, 18, 16), "Judgement Bolt", SkillKind.MAGICAL, 60, true))
         add(single("sky_serpent", "Sky Serpent", "🐲", Element.FLIGHT, Rarity.LEGENDARY, StatBlock(72, 22, 24, 16, 22), "Cyclone Coil", SkillKind.MAGICAL, 58, true))
         add(single("abyss_kraken", "Abyss Kraken", "🐙", Element.WATER, Rarity.LEGENDARY, StatBlock(80, 24, 22, 18, 12), "Maelstrom", SkillKind.MAGICAL, 58, true))
-        add(single("miasma_hydra", "Miasma Hydra", "🐉", Element.POISON, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
+        add(single("miasma_hydra", "Miasma Hydra", "🐉", Element.GAS, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
         add(single("dread_lich", "Dread Lich", "💀", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
     }
 

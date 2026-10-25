@@ -369,7 +369,7 @@ object GameEngine {
         return Loot(items, weapons, pages)
     }
 
-    private fun rollWeapon(heroLevel: Int, rng: Random): Weapon {
+    fun rollWeapon(heroLevel: Int, rng: Random): Weapon {
         // Better weapons become more likely as the hero levels up.
         val weights = Weapon.entries.map { w ->
             w to when (w.rarity) {
@@ -471,6 +471,9 @@ object GameEngine {
 
     fun startFocus(state: GameState, minutes: Int, nowMs: Long, rng: Random = Random.Default): Update {
         if (state.focus != null) return Update(state, "A phone-free session is already running.")
+        if (state.lootBoxes.size >= MAX_LOOT_BOXES) {
+            return Update(state, "You're holding $MAX_LOOT_BOXES loot boxes. Open or discard one first.")
+        }
         val session = FocusSession(newId(rng), nowMs, nowMs + minutes * 60_000L, minutes)
         return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Lock your phone now!")
     }
@@ -478,23 +481,22 @@ object GameEngine {
     fun focusPenalty(state: GameState): Int = maxOf(10, state.gold * GOLD_LOSS_PERCENT / 100).coerceAtMost(state.gold)
 
     /**
-     * Ends the current session. Success pays XP, gold and loot that scale with
-     * its length; failure costs gold and a hunt token.
+     * Ends the current session. Success awards a loot box (rarer for longer
+     * sessions) that opens after walking; failure costs gold and a hunt token.
      */
     fun resolveFocus(state: GameState, success: Boolean, rng: Random = Random.Default): Update {
         val f = state.focus ?: return Update(state, "")
         var s = state.copy(focus = null)
         return if (success) {
-            val xp = f.minutes * 2
-            val gold = f.minutes
-            s = s.copy(
-                gold = s.gold + gold,
-                stats = s.stats.copy(focusWins = s.stats.focusWins + 1, focusMinutes = s.stats.focusMinutes + f.minutes),
-            )
-            val loot = grantLoot(s, rollLoot(s, maxOf(1, f.minutes / 30), rng))
-            s = loot.state
-            val gain = addHeroXp(s, xp)
-            Update(gain.state, "📵 Phone-free for ${f.minutes} min! +$xp XP, +$gold gold, ${loot.message}.${levelUpText(gain)}")
+            s = s.copy(stats = s.stats.copy(focusWins = s.stats.focusWins + 1, focusMinutes = s.stats.focusMinutes + f.minutes))
+            if (s.lootBoxes.size >= MAX_LOOT_BOXES) {
+                // Shouldn't happen (starting is blocked when full), but don't lose the reward entirely.
+                val gold = f.minutes
+                return Update(s.copy(gold = s.gold + gold), "📵 Phone-free for ${f.minutes} min! Box storage full, so you got $gold gold instead.")
+            }
+            val rarity = LootBoxes.roll(f.minutes, rng)
+            s = s.copy(lootBoxes = s.lootBoxes + LootBox(newId(rng), rarity, f.endMs))
+            Update(s, "📵 Phone-free for ${f.minutes} min! You earned a ${rarity.emoji} ${rarity.label} loot box. Walk ${rarity.miles} mile(s) to open it.")
         } else {
             val loss = focusPenalty(s)
             s = s.copy(

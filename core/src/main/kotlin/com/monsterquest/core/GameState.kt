@@ -132,6 +132,10 @@ data class GameState(
     val spellPages: Map<String, Int> = emptyMap(),
     /** The phone-free session in progress, if any. */
     val focus: FocusSession? = null,
+    /** Loot boxes from phone-free sessions (max [MAX_LOOT_BOXES]); opened by walking. */
+    val lootBoxes: List<LootBox> = emptyList(),
+    /** Last step-counter reading, to work out steps walked since. */
+    val lastStepCount: Long? = null,
     val bagCapacity: Int = STARTING_BAG_CAPACITY,
     val monsterCapacity: Int = STARTING_MONSTER_CAPACITY,
     /** Storage upgrades earned (one per [UPGRADE_LEVEL_INTERVAL] levels) but not yet spent. */

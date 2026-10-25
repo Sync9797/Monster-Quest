@@ -7,7 +7,8 @@ import kotlin.random.Random
 // ---------------------------------------------------------------------------
 // Types: a rock-paper-scissors cycle. Each type beats exactly one other and
 // loses to exactly one other:
-//   Electric > Water > Fire > Corrupt > Flight > Poison > Electric
+//   Electric > Water > Fire > Corrupt > Flight > Gas > Electric
+// (Flight blows Gas away; Gas corrodes and shorts out Electric.)
 // ---------------------------------------------------------------------------
 
 @Serializable
@@ -17,7 +18,7 @@ enum class Element(val label: String, val emoji: String) {
     ELECTRIC("Electric", "⚡"),
     FLIGHT("Flight", "🕊️"),
     WATER("Water", "💧"),
-    POISON("Poison", "☠️"),
+    GAS("Gas", "💨"),
     CORRUPT("Corrupt", "🌑");
 
     /** The one type this type deals double-ish damage to. */
@@ -27,8 +28,8 @@ enum class Element(val label: String, val emoji: String) {
             WATER -> FIRE
             FIRE -> CORRUPT
             CORRUPT -> FLIGHT
-            FLIGHT -> POISON
-            POISON -> ELECTRIC
+            FLIGHT -> GAS
+            GAS -> ELECTRIC
             NEUTRAL -> null
         }
 
@@ -151,7 +152,7 @@ object Spells {
         Skill("thunderclap", "Thunderclap", Element.ELECTRIC, SkillKind.MAGICAL, 32, mpCost = 5),
         Skill("tidal_lance", "Tidal Lance", Element.WATER, SkillKind.MAGICAL, 32, mpCost = 5),
         Skill("gale", "Gale", Element.FLIGHT, SkillKind.MAGICAL, 32, mpCost = 5),
-        Skill("venom_cloud", "Venom Cloud", Element.POISON, SkillKind.MAGICAL, 34, mpCost = 6),
+        Skill("venom_cloud", "Choking Gas", Element.GAS, SkillKind.MAGICAL, 34, mpCost = 6),
         Skill("shadow_rend", "Shadow Rend", Element.CORRUPT, SkillKind.MAGICAL, 36, mpCost = 6),
         Skill("mega_heal", "Mega Heal", Element.NEUTRAL, SkillKind.HEAL, 70, mpCost = 10),
         Skill("inferno", "Inferno", Element.FIRE, SkillKind.MAGICAL, 50, mpCost = 10),
@@ -184,7 +185,7 @@ enum class Weapon(
     STORM_SPEAR("Storm Spear", "⚡", 8, 2, Element.ELECTRIC, Rarity.RARE),
     WIND_BOW("Wind Bow", "🏹", 7, 3, Element.FLIGHT, Rarity.RARE),
     TIDE_TRIDENT("Tide Trident", "🔱", 8, 2, Element.WATER, Rarity.RARE),
-    VENOM_DAGGER("Venom Dagger", "🗡️", 7, 3, Element.POISON, Rarity.RARE),
+    VENOM_DAGGER("Venom Dagger", "🗡️", 7, 3, Element.GAS, Rarity.RARE),
     SHADOW_SCYTHE("Shadow Scythe", "🌙", 10, 3, Element.CORRUPT, Rarity.EPIC),
     ARCANE_STAFF("Arcane Staff", "🔮", 2, 10, Element.NEUTRAL, Rarity.EPIC);
 

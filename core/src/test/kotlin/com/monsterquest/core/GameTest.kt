@@ -226,7 +226,7 @@ class GameTest {
             assertEquals(t, beats.weakTo)
         }
         assertEquals(1.5, Element.ELECTRIC.multiplierAgainst(Element.WATER))
-        assertEquals(1.5, Element.POISON.multiplierAgainst(Element.ELECTRIC))
+        assertEquals(1.5, Element.GAS.multiplierAgainst(Element.ELECTRIC))
         assertEquals(1.0, Element.FIRE.multiplierAgainst(Element.ELECTRIC))
     }
 
@@ -273,7 +273,8 @@ class GameTest {
         assertNotNull(running.focus)
         val win = GameEngine.resolveFocus(running, success = true, rng = rng).state
         assertNull(win.focus)
-        assertTrue(win.gold >= 560)
+        assertEquals(500, win.gold)
+        assertEquals(1, win.lootBoxes.size)
         assertEquals(60, win.stats.focusMinutes)
         val fail = GameEngine.resolveFocus(running, success = false).state
         assertEquals(450, fail.gold)
@@ -286,5 +287,50 @@ class GameTest {
         val old = started().copy(version = 1, monsters = listOf(Monster("x", "greywolf", Personality.BRAVE, StatBlock(), level = 20)))
         val m = GameState.fromJson(old.toJson()).monsters.single()
         assertEquals("dusk_hound", m.speciesId) // shadow_pup, evolved at 16
+    }
+
+    @Test
+    fun lootBoxesUnlockByWalking() {
+        var s = started().copy(
+            lootBoxes = listOf(
+                LootBox("a", BoxRarity.COMMON, 0),
+                LootBox("b", BoxRarity.RARE, 0),
+                LootBox("c", BoxRarity.LEGENDARY, 0),
+            ),
+        )
+        s = LootBoxes.startUnlocking(s, "a").state
+        s = LootBoxes.startUnlocking(s, "b").state
+        // Only two at a time.
+        val third = LootBoxes.startUnlocking(s, "c")
+        assertEquals(s, third.state)
+        // First reading sets the baseline; 2,000 steps later = 1 mile.
+        s = LootBoxes.onStepCount(s, 10_000)
+        assertEquals(0.0, s.lootBoxes[0].walkedMeters)
+        s = LootBoxes.onStepCount(s, 12_000)
+        assertTrue(s.lootBoxes[0].ready)
+        assertTrue(!s.lootBoxes[1].ready)
+        assertEquals(0.0, s.lootBoxes[2].walkedMeters)
+        // Can't open early.
+        assertEquals(s, LootBoxes.open(s, "b").state)
+        val opened = LootBoxes.open(s, "a", rng)
+        assertEquals(2, opened.state.lootBoxes.size)
+        assertTrue(opened.state.gold > s.gold)
+        // Reboot: counter restarts from zero.
+        s = LootBoxes.onStepCount(opened.state, 4_000)
+        assertEquals(3 * METERS_PER_MILE, s.lootBoxes.first { it.id == "b" }.walkedMeters, 0.01)
+    }
+
+    @Test
+    fun boxLimitBlocksNewSessions() {
+        val full = started().copy(lootBoxes = (1..MAX_LOOT_BOXES).map { LootBox("$it", BoxRarity.COMMON, 0) })
+        assertNull(GameEngine.startFocus(full, 30, 0).state.focus)
+    }
+
+    @Test
+    fun longerSessionsGiveRarerBoxes() {
+        val short = (1..2000).count { LootBoxes.roll(15, Random(it)) != BoxRarity.COMMON }
+        val long = (1..2000).count { LootBoxes.roll(120, Random(it)) != BoxRarity.COMMON }
+        assertTrue(long > short)
+        assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.GAS))
     }
 }
