@@ -74,16 +74,19 @@ fun QuestsScreen(vm: GameViewModel) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallButton("+ New quest", { showAdd = true }, Modifier.weight(1f))
-                SmallButton(
-                    if (vm.syncingCalendar) "Syncing…" else "📅 Sync calendar",
-                    { if (hasCalendar) vm.syncCalendar() else permissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
-                    Modifier.weight(1f),
-                    outlined = true,
-                )
+            // Grid items stack their children on top of each other, so wrap in a Column.
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallButton("+ New quest", { showAdd = true }, Modifier.weight(1f))
+                    SmallButton(
+                        if (vm.syncingCalendar) "Syncing…" else "📅 Sync calendar",
+                        { if (hasCalendar) vm.syncCalendar() else permissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                        Modifier.weight(1f),
+                        outlined = true,
+                    )
+                }
+                SectionTitle("Active quests (${pending.size})")
             }
-            SectionTitle("Active quests (${pending.size})")
         }
         if (pending.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {

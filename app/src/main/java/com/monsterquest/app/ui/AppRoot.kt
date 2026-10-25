@@ -69,7 +69,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
                             selected = tab == t,
                             onClick = { tab = t },
                             icon = { Text(t.emoji, fontSize = 22.sp) },
-                            label = { Text(t.label) },
+                            label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                         )
                     }
                 }

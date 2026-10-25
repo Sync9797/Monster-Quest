@@ -2,6 +2,7 @@ package com.monsterquest.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,7 +52,7 @@ fun HeroScreen(vm: GameViewModel) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Level ${h.level} Adventurer", color = XpPurple)
                 }
-                TextButton(onClick = { renaming = true }) { Text("Rename") }
+                TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) { Text("✏️") }
             }
             Spacer(Modifier.height(8.dp))
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)

@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -440,8 +441,8 @@ private fun NearbyList(
         Entry(
             d,
             sp.species.emoji,
-            "Wild ${sp.species.name} Lv ${sp.level}",
-            "${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            "Wild ${sp.species.name}",
+            "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SPAWN_RANGE_M,
         ) { onSpawn(sp) }
     }
@@ -456,7 +457,7 @@ private fun NearbyList(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(e.emoji, fontSize = 26.sp)
                     Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                        Text(e.title, fontWeight = FontWeight.SemiBold)
+                        Text(e.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(e.sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (e.inRange) Text("In range", fontSize = 12.sp, color = Gold)

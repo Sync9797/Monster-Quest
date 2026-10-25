@@ -40,7 +40,7 @@ object World {
     const val SPAWN_WINDOW_MS = 15 * 60_000L
 
     private const val SPAWN_CELL_DEG = 0.0015 // ~160 m
-    private const val SPAWN_CELL_RADIUS = 4
+    private const val SPAWN_CELL_RADIUS = 3
     private const val SHRINE_CELL_DEG = 0.004 // ~440 m
     private const val SHRINE_CELL_RADIUS = 3
 
@@ -116,7 +116,7 @@ object World {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, window))
-            if (r.nextDouble() > 0.35) continue
+            if (r.nextDouble() > 0.25) continue
             val species = Bestiary.randomWild(r)
             out += WildSpawn(
                 id = "s:$window:$x:$y",
