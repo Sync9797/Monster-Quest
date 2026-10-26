@@ -14,6 +14,17 @@ val XpPurple = Color(0xFFA78BFA)
 val BossRed = Color(0xFFEF4444)
 val SilverColor = Color(0xFFC0C7D1)
 
+/** Button/accent color per attack type. */
+fun typeColor(e: com.monsterquest.core.Element): Color = when (e) {
+    com.monsterquest.core.Element.NEUTRAL -> Color(0xFF6B7280)
+    com.monsterquest.core.Element.FIRE -> Color(0xFFDC5A2B)
+    com.monsterquest.core.Element.ELECTRIC -> Color(0xFFC9A000)
+    com.monsterquest.core.Element.FLIGHT -> Color(0xFF4F8FD6)
+    com.monsterquest.core.Element.WATER -> Color(0xFF2563EB)
+    com.monsterquest.core.Element.GAS -> Color(0xFF7E9F2F)
+    com.monsterquest.core.Element.CORRUPT -> Color(0xFF6D28D9)
+}
+
 private val Scheme = darkColorScheme(
     primary = Color(0xFF8B5CF6),
     onPrimary = Color.White,

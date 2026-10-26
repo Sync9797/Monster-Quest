@@ -126,7 +126,9 @@ data class GameState(
     val monsters: List<Monster> = emptyList(),
     /** UIDs of monsters that join battles (max [MAX_PARTY_SIZE]). */
     val party: List<String> = emptyList(),
-    val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.TAMING_ORB to 5),
+    val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.TAMING_ORB to 5, Item.RESTORE_POTION to 1),
+    /** Epoch day of the last free daily recovery (see GameEngine.dailyRecovery). */
+    val lastRecoveryDay: Long? = null,
     /** Unequipped weapons (each takes a bag slot). */
     val weapons: List<Weapon> = emptyList(),
     val equippedWeapon: Weapon? = null,

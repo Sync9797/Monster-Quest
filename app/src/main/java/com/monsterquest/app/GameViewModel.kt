@@ -159,6 +159,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      * failed (unless it only just started, e.g. a permission dialog closed).
      */
     fun onAppResumed() {
+        GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
         val f = state.focus ?: return
         val now = System.currentTimeMillis()
         if (now - f.startMs < 10_000) return
@@ -237,6 +238,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun equip(index: Int) = apply(GameEngine.equip(state, index))
     fun unequip() = apply(GameEngine.unequip(state))
     fun dropWeapon(index: Int) = apply(GameEngine.dropWeapon(state, index))
+
+    fun restore(uid: String) = apply(GameEngine.restore(state, uid))
+    fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
+    fun resetMoves(uid: String) =
+        set(state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = null) else it }))
 
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
     fun release(uid: String) = apply(GameEngine.release(state, uid))

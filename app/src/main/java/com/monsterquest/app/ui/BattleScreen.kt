@@ -47,11 +47,14 @@ import com.monsterquest.app.BattleView
 import com.monsterquest.app.FighterView
 import com.monsterquest.core.BattleAction
 import com.monsterquest.core.BattleOutcome
+import com.monsterquest.core.Element
 import com.monsterquest.core.EncounterType
 import com.monsterquest.core.Item
 import com.monsterquest.core.ItemKind
+import com.monsterquest.core.Move
 import com.monsterquest.core.Skill
 import com.monsterquest.core.SkillKind
+import com.monsterquest.core.Weather
 
 private sealed interface Menu {
     data object Main : Menu
@@ -118,6 +121,17 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
 @Composable
 private fun EnemyPanel(b: BattleView) {
     val e = b.enemy
+    if (b.weather != Weather.CLEAR || b.reversedOrder) {
+        Text(
+            listOfNotNull(
+                if (b.weather != Weather.CLEAR) "${b.weather.emoji} ${b.weather.label}" else null,
+                if (b.reversedOrder) "🌀 Slowest move first" else null,
+            ).joinToString("   "),
+            fontSize = 13.sp,
+            color = MpBlue,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+    }
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(e.emoji, fontSize = 52.sp)
@@ -143,6 +157,9 @@ private fun EnemyPanel(b: BattleView) {
                 Spacer(Modifier.height(4.dp))
                 Bar(e.hpFraction, hpColor(e.hpFraction), Modifier.fillMaxWidth(), heightDp = 10)
                 Text("${e.hp} / ${e.maxHp} HP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (e.tags.isNotEmpty()) {
+                    Text(e.tags.joinToString("  "), fontSize = 12.sp, color = HpYellow, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
@@ -201,6 +218,7 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
         )
         Bar(a.hpFraction, hpColor(a.hpFraction), Modifier.fillMaxWidth(), heightDp = 6)
         Text("${a.hp}/${a.maxHp}", fontSize = 10.sp)
+        a.tags.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = HpYellow, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         if (a.isHero) {
             Bar(a.mp.toFloat() / a.maxMp.coerceAtLeast(1), MpBlue, Modifier.fillMaxWidth(), heightDp = 4)
             Text("⚡${a.mp}/${a.maxMp}", fontSize = 10.sp)
@@ -221,6 +239,40 @@ private fun ActionButton(text: String, modifier: Modifier = Modifier, enabled: B
     }
 }
 
+/** A move button: type-colored, with power and a hint when it's super effective. */
+@Composable
+private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick: () -> Unit) {
+    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyType) else 1.0
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 52.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = typeColor(mv.type)),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "${mv.type.emoji} ${mv.name}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color.White,
+            )
+            Text(
+                when {
+                    !mv.isDamaging -> "Status"
+                    mult > 1.0 -> "${mv.power} • Super effective!"
+                    mult < 1.0 -> "${mv.power} • Weak"
+                    else -> "Power ${mv.power}"
+                },
+                fontSize = 11.sp,
+                maxLines = 1,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ActionPanel(
     b: BattleView,
@@ -238,29 +290,25 @@ private fun ActionPanel(
             .verticalScroll(rememberScrollState()),
     ) {
         Text("What will ${actor.name} do?", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (!actor.isHero && b.specialName != null) {
-            Text(
-                "Special: ${b.specialName}" + if (b.specialCooldown > 0) " (ready in ${b.specialCooldown})" else " (ready)",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
         Spacer(Modifier.height(6.dp))
         when (menu) {
             Menu.Main -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ActionButton("⚔️ Attack", Modifier.weight(1f)) { onAction(BattleAction.Attack) }
-                    if (actor.isHero) {
+                if (actor.isHero) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ActionButton("⚔️ Attack", Modifier.weight(1f)) { onAction(BattleAction.Attack) }
                         ActionButton("✨ Magic", Modifier.weight(1f), enabled = b.spells.isNotEmpty()) { onMenu(Menu.Magic) }
-                    } else {
-                        val ready = b.specialCooldown == 0
-                        ActionButton(
-                            if (ready) "💥 Special" else "💥 (${b.specialCooldown})",
-                            Modifier.weight(1f),
-                            enabled = ready && b.specialName != null,
-                        ) { onAction(BattleAction.Special) }
+                        ActionButton("🛡️ Defend", Modifier.weight(1f)) { onAction(BattleAction.Defend) }
                     }
-                    ActionButton("🛡️ Defend", Modifier.weight(1f)) { onAction(BattleAction.Defend) }
+                } else {
+                    // A monster's 4 moves, two per row.
+                    b.moves.chunked(2).forEach { row ->
+                        Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { mv ->
+                                MoveButton(mv, b.enemy.element, Modifier.weight(1f)) { onAction(BattleAction.UseMove(mv.id)) }
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -274,6 +322,9 @@ private fun ActionPanel(
                         Modifier.weight(1f),
                         color = if (b.captureBlocked == null) Color(0xFF7C3AED) else null,
                     ) { onMenu(Menu.Tame) }
+                    if (!actor.isHero) {
+                        ActionButton("🛡️ Defend", Modifier.weight(1f), color = Color(0xFF4B5563)) { onAction(BattleAction.Defend) }
+                    }
                     ActionButton("🏃 Flee", Modifier.weight(1f), color = Color(0xFF4B5563)) { onAction(BattleAction.Flee) }
                 }
             }

@@ -135,7 +135,10 @@ object LootBoxes {
             else -> rng.nextInt(200, 301)
         }
         val items = mutableMapOf<Item, Int>()
-        repeat(level + 1) { val p = potions.random(rng); items[p] = (items[p] ?: 0) + 1 }
+        repeat(level + 1) {
+            val p = if (rng.nextDouble() < 0.08) Item.RESTORE_POTION else potions.random(rng)
+            items[p] = (items[p] ?: 0) + 1
+        }
         val parts = when (level) {
             1 -> 0
             2 -> rng.nextInt(2, 4)

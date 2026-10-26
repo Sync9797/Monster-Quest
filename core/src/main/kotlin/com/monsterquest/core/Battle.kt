@@ -21,7 +21,7 @@ enum class EncounterType {
     val hpMultiplier: Double
         get() = when (this) {
             WILD -> 1.0
-            SILVER_BOSS -> 1.5
+            SILVER_BOSS -> 2.2
             else -> 2.0
         }
 
@@ -36,10 +36,12 @@ enum class EncounterType {
 enum class BattleOutcome { ONGOING, WON, LOST, CAPTURED, FLED }
 
 sealed interface BattleAction {
+    /** Hero's basic weapon attack. */
     data object Attack : BattleAction
     data object Defend : BattleAction
     data class CastSpell(val skillId: String, val targetKey: String? = null) : BattleAction
-    data object Special : BattleAction
+    /** A monster uses one of its 4 moves. */
+    data class UseMove(val moveId: String) : BattleAction
     data class UseItem(val item: Item, val targetKey: String) : BattleAction
     data class Capture(val orb: Item) : BattleAction
     data object Flee : BattleAction
@@ -61,24 +63,61 @@ class Combatant(
     val maxMp: Int,
     var mp: Int,
     val isHero: Boolean,
-    val special: Skill?,
+    /** Monster moves (empty for the hero, who uses Attack and spells). */
+    val moves: List<Move>,
 ) {
-    /** Type of this fighter's basic Attack (the hero's comes from their weapon). */
+    /** Type of the hero's basic Attack (from their weapon). */
     var attackElement: Element = Element.NEUTRAL
-    var cooldown: Int = 0
     var defending: Boolean = false
+
+    // ---- conditions ----
+    var status: Status? = null
+    var statusTurns: Int = 0
+    var nightmareDamage: Int = 0
+    var scorchTurns: Int = 0
+    var scorchDamage: Int = 0
+    /** Next move has a 40% chance to miss. */
+    var accuracyDown: Boolean = false
+    /** Next move misses. */
+    var missNext: Boolean = false
+    var flinch: Boolean = false
+    var mustRecharge: Boolean = false
+    var protecting: Boolean = false
+    var usedProtectLast: Boolean = false
+    /** Mid-dive (Dive Bomb turn 1): out of reach until it strikes. */
+    var diving: Move? = null
+    val stages: MutableMap<BattleStat, Int> = mutableMapOf()
+    /** Steel Wing stacks, in percent. */
+    var powerUp: Int = 0
+    var scared: Boolean = false
+
     val alive: Boolean get() = hp > 0
     val hpFraction: Double get() = hp.toDouble() / maxHp
+
+    fun stageMultiplier(stat: BattleStat): Double = (1.0 + 0.15 * (stages[stat] ?: 0)).coerceIn(0.4, 2.0)
+    val effectiveSpeed: Double get() = speed * stageMultiplier(BattleStat.SPEED)
+
+    /** Short labels for the UI, e.g. "💤 Asleep 2", "Def ↓1", "🌧️". */
+    fun tags(): List<String> = buildList {
+        status?.let { add("${it.emoji} ${it.label}") }
+        if (scorchTurns > 0) add("🔥 Scorched")
+        stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
+        if (powerUp > 0) add("Power +$powerUp%")
+        if (scared) add("😨 Scared")
+        if (diving != null) add("🪽 In the air")
+        if (protecting) add("🛡️ Guarding")
+        if (mustRecharge) add("Recharging")
+        if (accuracyDown || missNext) add("🎯 Blinded")
+    }
 
     companion object {
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
-        const val SPECIAL_COOLDOWN = 3
 
         fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
             HERO_KEY, h.name, "🧙", Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
             h.attack + (weapon?.attack ?: 0), h.magic + (weapon?.magic ?: 0),
-            h.defense, h.speed, h.maxMp, h.maxMp, true, null,
+            h.defense, h.speed, h.maxMp, h.maxMp, true, emptyList(),
         ).apply { attackElement = weapon?.element ?: Element.NEUTRAL }
 
         fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
@@ -86,7 +125,7 @@ class Combatant(
             val hp = (s.hp * hpMultiplier).toInt()
             return Combatant(
                 key, m.displayName, m.species.emoji, m.species.element, m.level, hp, hp,
-                s.attack, s.magic, s.defense, s.speed, 0, 0, false, m.species.special,
+                s.attack, s.attack, s.defense, s.speed, 0, 0, false, m.activeMoves,
             )
         }
     }
@@ -104,6 +143,8 @@ data class BattleResult(
     val drops: Map<Item, Int>,
     val captured: Monster?,
     val shrineId: String?,
+    /** Party monsters knocked out at the end of the battle; they stay down until restored. */
+    val faintedUids: Set<String> = emptySet(),
 )
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
@@ -126,12 +167,12 @@ class Battle(
     private val rng: Random = Random.Default,
     weapon: Weapon? = null,
 ) {
-    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, weapon)) +
-        party.take(MAX_PARTY_SIZE).map { Combatant.fromMonster(it) }
+    private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
+    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, weapon)) + fighters.map { Combatant.fromMonster(it) }
     val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, encounter.hpMultiplier)
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
-    private val partyUids = party.take(MAX_PARTY_SIZE).map { it.uid }
+    private val partyUids = fighters.map { it.uid }
 
     private val bag: MutableMap<Item, Int> = inventory.toMutableMap()
     private val itemsUsed = mutableMapOf<Item, Int>()
@@ -142,6 +183,11 @@ class Battle(
     var outcome: BattleOutcome = BattleOutcome.ONGOING
         private set
     var round: Int = 0
+        private set
+    var weather: Weather = Weather.CLEAR
+        private set
+    /** Rounds left with reversed turn order (Wild Wind). */
+    var reversedRounds: Int = 0
         private set
 
     private val queue = ArrayDeque<String>()
@@ -189,9 +235,12 @@ class Battle(
         else -> null
     }
 
+    /** Status conditions (sleep, shock, poison, burn) make taming easier. */
     fun captureOdds(orb: Item): Double =
-        (captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb) * encounter.captureMultiplier)
-            .coerceIn(0.0, 0.95)
+        (
+            captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb) *
+                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0)
+            ).coerceIn(0.0, 0.95)
 
     // ---- turn handling ------------------------------------------------------
 
@@ -211,8 +260,9 @@ class Battle(
             val key = queue.removeFirst()
             val c = combatant(key) ?: continue
             if (!c.alive) continue
-            c.defending = false
-            if (c.cooldown > 0) c.cooldown--
+            val canAct = beginTurn(c)
+            checkEnd()
+            if (!canAct || outcome != BattleOutcome.ONGOING) continue
             if (key == Combatant.ENEMY_KEY) {
                 enemyTurn()
                 checkEnd()
@@ -226,12 +276,85 @@ class Battle(
 
     private fun startRound() {
         round++
+        if (reversedRounds > 0) reversedRounds--
         val everyone = (allies + enemy).filter { it.alive }
-        // Sort by speed with a small random tiebreak.
-        val order = everyone.sortedByDescending { it.speed + rng.nextDouble() }.map { it.key }
+        val bySpeed = everyone.sortedByDescending { it.effectiveSpeed + rng.nextDouble() }
+        val order = (if (reversedRounds > 0) bySpeed.reversed() else bySpeed).map { it.key }
         queue.addAll(order)
         // Bosses act twice per round.
         if (isBoss) queue.addLast(Combatant.ENEMY_KEY)
+    }
+
+    /** Damage of a fixed "base" amount, scaled by level like normal attacks. */
+    private fun scaled(base: Int, level: Int) = (base * (1 + level * 0.08)).roundToInt()
+
+    private fun hurt(c: Combatant, amount: Int, text: String) {
+        c.hp = max(0, c.hp - amount)
+        log += "${c.name} $text ($amount)."
+        if (!c.alive) log += "${c.name} falls!"
+    }
+
+    /** Ticks conditions at the start of a fighter's turn. Returns false if it loses the turn. */
+    private fun beginTurn(c: Combatant): Boolean {
+        c.defending = false
+        c.protecting = false
+        if (c.scorchTurns > 0) {
+            c.scorchTurns--
+            hurt(c, c.scorchDamage, "is scorched")
+        }
+        when (c.status) {
+            Status.POISON -> hurt(c, max(1, c.maxHp / 10), "is hurt by poison")
+            Status.BURN -> hurt(c, max(1, c.maxHp * 6 / 100), "is hurt by its burn")
+            else -> {}
+        }
+        if (c.status == Status.POISON || c.status == Status.BURN) tickStatus(c)
+        if (!c.alive) return false
+
+        if (c.status == Status.SLEEP) {
+            if (c.nightmareDamage > 0) hurt(c, c.nightmareDamage, "writhes in a nightmare")
+            if (!c.alive) return false
+            tickStatus(c)
+            if (c.status == Status.SLEEP) {
+                log += "${c.name} is fast asleep."
+                return false
+            }
+            log += "${c.name} woke up!"
+        }
+        if (c.mustRecharge) {
+            c.mustRecharge = false
+            log += "${c.name} must recharge."
+            return false
+        }
+        if (c.flinch) {
+            c.flinch = false
+            log += "${c.name} flinched and lost its turn!"
+            return false
+        }
+        if (c.status == Status.SHOCK) {
+            tickStatus(c)
+            if (rng.nextDouble() < 0.25) {
+                log += "${c.name} is shocked and can't move!"
+                return false
+            }
+        }
+        val dive = c.diving
+        if (dive != null) {
+            c.diving = null
+            val target = if (c.key == Combatant.ENEMY_KEY) pickTarget() else enemy
+            if (target != null) useMove(c, target, dive, diveStrike = true)
+            return false
+        }
+        return true
+    }
+
+    private fun tickStatus(c: Combatant) {
+        c.statusTurns--
+        if (c.statusTurns <= 0) {
+            val s = c.status
+            c.status = null
+            c.nightmareDamage = 0
+            if (s != null && s != Status.SLEEP) log += "${c.name} is no longer ${s.label.lowercase()}."
+        }
     }
 
     private fun checkEnd() {
@@ -249,11 +372,20 @@ class Battle(
     private fun perform(actor: Combatant, action: BattleAction): Boolean {
         when (action) {
             BattleAction.Attack -> {
-                strike(actor, enemy, 20, SkillKind.PHYSICAL, actor.attackElement, "attacks")
+                if (actor.isHero) {
+                    if (!rollHit(actor, enemy, 100)) return true
+                    strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks")
+                } else {
+                    useMove(actor, enemy, actor.moves.firstOrNull() ?: Moves.get("tackle"))
+                }
             }
             BattleAction.Defend -> {
                 actor.defending = true
                 log += "${actor.name} braces for impact."
+            }
+            is BattleAction.UseMove -> {
+                val move = actor.moves.find { it.id == action.moveId } ?: return false
+                useMove(actor, enemy, move)
             }
             is BattleAction.CastSpell -> {
                 val skill = spellsFor(actor).find { it.id == action.skillId } ?: return false
@@ -265,14 +397,9 @@ class Battle(
                     heal(target, (skill.power + actor.magic * 1.5).roundToInt(), "${actor.name} casts ${skill.name}")
                 } else {
                     actor.mp -= skill.mpCost
-                    strike(actor, enemy, skill.power, skill.kind, skill.element, "casts ${skill.name} on")
+                    if (!rollHit(actor, enemy, 100)) return true
+                    strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on")
                 }
-            }
-            BattleAction.Special -> {
-                val skill = actor.special ?: return false
-                if (actor.cooldown > 0) return false
-                actor.cooldown = Combatant.SPECIAL_COOLDOWN
-                strike(actor, enemy, skill.power, skill.kind, skill.element, "uses ${skill.name} on")
             }
             is BattleAction.UseItem -> {
                 val target = combatant(action.targetKey)?.takeIf { it.key != Combatant.ENEMY_KEY } ?: return false
@@ -280,7 +407,7 @@ class Battle(
                 when (action.item.kind) {
                     ItemKind.HEAL_HP -> {
                         if (!target.alive) return refund(action.item)
-                        heal(target, action.item.power.toInt(), "${actor.name} uses ${action.item.label}")
+                        heal(target, max(50, (target.maxHp * action.item.power).roundToInt()), "${actor.name} uses ${action.item.label}")
                     }
                     ItemKind.HEAL_MP -> {
                         if (!target.isHero || !target.alive) return refund(action.item)
@@ -340,15 +467,152 @@ class Battle(
         log += "$prefix: ${target.name} +${target.hp - before} HP."
     }
 
-    private fun strike(a: Combatant, d: Combatant, power: Int, kind: SkillKind, element: Element, verb: String) {
-        val atk = if (kind == SkillKind.PHYSICAL) a.attack else a.magic
-        val def = if (kind == SkillKind.PHYSICAL) d.defense else (d.defense + d.magic) / 2
-        val elementMult = element.multiplierAgainst(d.element)
-        val sameElement = if (element != Element.NEUTRAL && element == a.element) 1.2 else 1.0
+    /** Accuracy check, including blinding effects. Logs a miss. */
+    private fun rollHit(a: Combatant, d: Combatant, accuracy: Int): Boolean {
+        if (a.missNext) {
+            a.missNext = false
+            a.accuracyDown = false
+            log += "${a.name} misses!"
+            return false
+        }
+        var chance = accuracy / 100.0
+        if (a.accuracyDown) {
+            chance *= 0.6
+            a.accuracyDown = false
+        }
+        if (rng.nextDouble() >= chance) {
+            log += "${a.name}'s attack misses ${d.name}!"
+            return false
+        }
+        return true
+    }
+
+    private fun MoveEffect.targetsFoe(): Boolean = when (this) {
+        is MoveEffect.Inflict, is MoveEffect.LowerFoe, is MoveEffect.FoeAccuracyDown, is MoveEffect.FoeMissesNext,
+        is MoveEffect.Flinch, is MoveEffect.Scorch, is MoveEffect.Nightmare, MoveEffect.Scare -> true
+        else -> false
+    }
+
+    private fun useMove(a: Combatant, d: Combatant, move: Move, diveStrike: Boolean = false) {
+        val isProtect = MoveEffect.Protect in move.effects
+        if (isProtect && a.usedProtectLast) {
+            a.usedProtectLast = false
+            log += "${a.name} tries ${move.name}, but it fails twice in a row!"
+            return
+        }
+        a.usedProtectLast = isProtect
+
+        if (MoveEffect.TwoTurnDive in move.effects && !diveStrike) {
+            a.diving = move
+            log += "${a.name} uses ${move.name} and soars out of reach!"
+            return
+        }
+
+        val hitsFoe = move.isDamaging || move.effects.any { it.targetsFoe() }
+        if (hitsFoe) {
+            log += "${a.name} uses ${move.name}!"
+            if (d.diving != null && move.id != "thunder_bolt") {
+                log += "${d.name} is high in the air. It can't be reached!"
+                return
+            }
+            if (d.protecting) {
+                log += "${d.name}'s Wave Guard blocks it!"
+                return
+            }
+            if (!rollHit(a, d, move.accuracy)) return
+            if (move.isDamaging) {
+                if (d.diving != null) log += "Thunder Bolt strikes ${d.name} mid-dive!"
+                strike(a, d, move.power, move.type, useMagic = false, verb = null)
+            }
+        } else {
+            log += "${a.name} uses ${move.name}!"
+        }
+        applyEffects(a, d, move)
+    }
+
+    private fun applyEffects(a: Combatant, d: Combatant, move: Move) {
+        for (fx in move.effects) {
+            when (fx) {
+                is MoveEffect.Inflict -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
+                    d.status = fx.status
+                    d.statusTurns = rng.nextInt(fx.minTurns, fx.maxTurns + 1)
+                    log += when (fx.status) {
+                        Status.SLEEP -> "${d.name} fell asleep!"
+                        Status.SHOCK -> "${d.name} is shocked!"
+                        Status.POISON -> "${d.name} is poisoned!"
+                        Status.BURN -> "${d.name} is burned!"
+                    }
+                } else if (move.power == 0 && d.status != null) {
+                    log += "${d.name} is already ${d.status!!.label.lowercase()}."
+                }
+                is MoveEffect.Nightmare -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
+                    d.status = Status.SLEEP
+                    d.statusTurns = rng.nextInt(3, 6)
+                    d.nightmareDamage = scaled(fx.base, a.level)
+                    log += "${d.name} falls into a nightmare!"
+                } else {
+                    log += "${d.name} resists the nightmare."
+                }
+                is MoveEffect.LowerFoe -> if (d.alive && rng.nextDouble() < fx.chance) {
+                    fx.stats.forEach { d.stages[it] = ((d.stages[it] ?: 0) - 1).coerceAtLeast(-4) }
+                    log += "${d.name}'s ${fx.stats.joinToString(", ") { it.label }} fell!"
+                }
+                is MoveEffect.SetWeather -> if (rng.nextDouble() < fx.chance && weather != fx.weather) {
+                    weather = fx.weather
+                    log += when (fx.weather) {
+                        Weather.RAIN -> "🌧️ It started to rain! Water and Electric moves are stronger."
+                        Weather.DROUGHT -> "☀️ A drought sets in! Fire and Corrupt moves are stronger."
+                        Weather.CLEAR -> "The weather cleared."
+                    }
+                }
+                is MoveEffect.FoeAccuracyDown -> if (rng.nextDouble() < fx.chance) {
+                    d.accuracyDown = true
+                    log += "${d.name}'s accuracy fell!"
+                }
+                is MoveEffect.FoeMissesNext -> if (rng.nextDouble() < fx.chance) {
+                    d.missNext = true
+                    log += "${d.name} is thrown off balance!"
+                }
+                is MoveEffect.Flinch -> if (d.alive && rng.nextDouble() < fx.chance) d.flinch = true
+                is MoveEffect.Scorch -> if (d.alive) {
+                    d.scorchTurns = fx.turns
+                    d.scorchDamage = scaled(fx.base, a.level)
+                    log += "${d.name} is scorched by lingering flames!"
+                }
+                MoveEffect.Protect -> {
+                    a.protecting = true
+                    log += "${a.name} raises a Wave Guard!"
+                }
+                MoveEffect.Recharge -> a.mustRecharge = true
+                is MoveEffect.Recoil -> if (rng.nextDouble() < fx.chance) hurt(a, scaled(fx.base, a.level), "is hurt by recoil")
+                is MoveEffect.PowerUp -> {
+                    a.powerUp += fx.percent
+                    log += "${a.name}'s power rises! (+${a.powerUp}%)"
+                }
+                MoveEffect.Scare -> {
+                    d.scared = true
+                    log += "${d.name} is scared and will deal less damage!"
+                }
+                MoveEffect.ReverseOrder -> {
+                    reversedRounds = 4
+                    log += "🌀 Wild winds swirl! The slowest now move first."
+                }
+                MoveEffect.TwoTurnDive -> {}
+            }
+        }
+    }
+
+    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?) {
+        val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
+        val def = d.defense * d.stageMultiplier(BattleStat.DEFENSE)
+        val typeMult = type.multiplierAgainst(d.element)
+        val sameType = if (type != Element.NEUTRAL && type == a.element) 1.2 else 1.0
         val crit = rng.nextDouble() < 0.06
-        val raw = power * atk.toDouble() / (atk + def) *
+        val raw = power * atk / (atk + def) *
             (1 + a.level * 0.08) *
-            elementMult * sameElement *
+            typeMult * sameType * weather.multiplier(type) *
+            (1 + a.powerUp / 100.0) *
+            (if (a.scared) 0.75 else 1.0) *
             (0.85 + rng.nextDouble() * 0.15) *
             (if (crit) 1.5 else 1.0) *
             (if (d.defending) 0.5 else 1.0)
@@ -356,24 +620,40 @@ class Battle(
         d.hp = max(0, d.hp - dmg)
         val notes = buildList {
             if (crit) add("Critical!")
-            if (elementMult > 1.0) add("Super effective!")
-            if (elementMult < 1.0) add("Not very effective...")
+            if (typeMult > 1.0) add("Super effective!")
+            if (typeMult < 1.0) add("Not very effective...")
         }.joinToString(" ")
-        log += "${a.name} $verb ${d.name} for $dmg damage. $notes".trim()
+        log += (if (verb != null) "${a.name} $verb ${d.name} for $dmg damage. $notes" else "It hits ${d.name} for $dmg damage. $notes").trim()
         if (!d.alive) log += "${d.name} falls!"
     }
 
-    private fun enemyTurn() {
+    private fun pickTarget(): Combatant? {
         val targets = allies.filter { it.alive }
-        if (targets.isEmpty()) return
-        val target = if (rng.nextDouble() < 0.35) targets.minBy { it.hpFraction } else targets.random(rng)
-        val special = enemy.special
-        if (special != null && enemy.cooldown == 0 && rng.nextDouble() < 0.5) {
-            enemy.cooldown = Combatant.SPECIAL_COOLDOWN
-            strike(enemy, target, special.power, special.kind, special.element, "uses ${special.name} on")
+        if (targets.isEmpty()) return null
+        val reachable = targets.filter { it.diving == null }.ifEmpty { targets }
+        return if (rng.nextDouble() < 0.35) reachable.minBy { it.hpFraction } else reachable.random(rng)
+    }
+
+    /** Enemy AI: usually its best damaging move, sometimes a useful status move. */
+    private fun enemyTurn() {
+        val target = pickTarget() ?: return
+        val usable = enemy.moves.filter { m ->
+            when {
+                MoveEffect.Protect in m.effects -> !enemy.usedProtectLast && enemy.hpFraction < 0.5
+                m.isDamaging -> true
+                m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.Nightmare } -> target.status == null
+                m.effects.any { it is MoveEffect.SetWeather } -> m.effects.filterIsInstance<MoveEffect.SetWeather>().none { it.weather == weather }
+                m.effects.contains(MoveEffect.Scare) -> !target.scared
+                m.effects.contains(MoveEffect.ReverseOrder) -> reversedRounds == 0
+                else -> true
+            }
+        }.ifEmpty { listOf(Moves.get("tackle")) }
+        val move = if (rng.nextDouble() < 0.7) {
+            usable.maxBy { m -> if (m.isDamaging) m.power * m.type.multiplierAgainst(target.element) * m.accuracy / 100 else 25.0 }
         } else {
-            strike(enemy, target, 20, SkillKind.PHYSICAL, Element.NEUTRAL, "attacks")
+            usable.random(rng)
         }
+        useMove(enemy, target, move)
     }
 
     // ---- result -------------------------------------------------------------
@@ -409,8 +689,9 @@ class Battle(
             }
         }
         val captured = if (outcome == BattleOutcome.CAPTURED) enemyMonster.copy(uid = newId(rng), xp = 0) else null
+        val fainted = partyUids.filter { combatant(it)?.alive == false }.toSet()
         return BattleResult(
-            outcome, encounter, enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId,
+            outcome, encounter, enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
         )
     }
 }

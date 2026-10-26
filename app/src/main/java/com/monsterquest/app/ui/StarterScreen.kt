@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.core.Bestiary
 import com.monsterquest.core.GameEngine
+import com.monsterquest.core.Moves
 
 @Composable
 fun StarterScreen(onChoose: (String) -> Unit) {
@@ -52,7 +53,11 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                             Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                Text("${sp.element.emoji} ${sp.element.label} • Special: ${sp.special.name}", fontSize = 13.sp)
+                                Text(
+                                    "${sp.element.emoji} ${sp.element.label} • Moves: " +
+                                        Moves.autoLoadout(sp, 3).joinToString { it.name },
+                                    fontSize = 13.sp,
+                                )
                                 Text(
                                     "Strong vs ${sp.element.beats?.label} • Weak to ${sp.element.weakTo?.label}",
                                     fontSize = 12.sp,

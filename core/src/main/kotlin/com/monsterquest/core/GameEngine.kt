@@ -216,6 +216,73 @@ object GameEngine {
     private fun evolutionText(before: Monster, after: Monster): String =
         if (before.speciesId == after.speciesId) "" else " ✨ ${before.displayName} evolved into ${after.species.name}!"
 
+    /**
+     * Adds XP, then reports evolutions and newly learned moves. New moves fill
+     * empty slots of a custom loadout; automatic loadouts update themselves.
+     */
+    fun grow(m: Monster, xp: Int): Pair<Monster, List<String>> {
+        val before = m.learnedMoves.map { it.id }.toSet()
+        var after = m.gainXp(xp)
+        val notes = mutableListOf<String>()
+        evolutionText(m, after).takeIf { it.isNotBlank() }?.let { notes += it.trim() }
+        val newMoves = after.learnedMoves.filter { it.id !in before }
+        for (mv in newMoves) {
+            val custom = after.moves
+            if (custom != null && custom.size < Moves.MAX_MOVES) {
+                after = after.copy(moves = custom + mv.id)
+                notes += "${after.displayName} learned ${mv.name}!"
+            } else if (custom != null) {
+                notes += "${after.displayName} can learn ${mv.name}. Swap it in from its stat page."
+            } else {
+                notes += "${after.displayName} learned ${mv.name}!"
+            }
+        }
+        return after to notes
+    }
+
+    /** Sets a monster's 4 move slots (must be moves it has learned). */
+    fun setMoves(state: GameState, uid: String, moveIds: List<String>): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        val learned = m.learnedMoves.map { it.id }.toSet()
+        val valid = moveIds.distinct().filter { it in learned }.take(Moves.MAX_MOVES)
+        if (valid.isEmpty()) return Update(state, "A monster needs at least one move.")
+        return Update(
+            state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = valid) else it }),
+            "${m.displayName}'s moves updated.",
+        )
+    }
+
+    fun restore(state: GameState, uid: String): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        if (!m.fainted) return Update(state, "${m.displayName} isn't hurt.")
+        if (state.count(Item.RESTORE_POTION) <= 0) return Update(state, "You need a Restore Potion (Shop or loot).")
+        return Update(
+            state.copy(
+                monsters = state.monsters.map { if (it.uid == uid) it.copy(fainted = false) else it },
+                inventory = removeItems(state.inventory, mapOf(Item.RESTORE_POTION to 1)),
+            ),
+            "❤️‍🩹 ${m.displayName} is back on its feet!",
+        )
+    }
+
+    /**
+     * Safety net: if every monster you own has fainted, your strongest one
+     * recovers on its own once per day so you're never stuck.
+     */
+    fun dailyRecovery(state: GameState, nowMs: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Update? {
+        if (state.monsters.isEmpty() || state.monsters.any { !it.fainted }) return null
+        val today = java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
+        if (state.lastRecoveryDay == today) return null
+        val best = state.monsters.maxBy { it.level }
+        return Update(
+            state.copy(
+                monsters = state.monsters.map { if (it.uid == best.uid) it.copy(fainted = false) else it },
+                lastRecoveryDay = today,
+            ),
+            "🌅 ${best.displayName} recovered overnight. Restore Potions heal the rest.",
+        )
+    }
+
     fun treatXp(m: Monster): Int = maxOf(Item.TREAT.power.toInt(), m.xpToNext * 2 / 5)
 
     fun feedTreat(state: GameState, uid: String): Update {
@@ -223,8 +290,8 @@ object GameEngine {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (m.level >= MAX_MONSTER_LEVEL) return Update(state, "${m.displayName} is already max level.")
         val xp = treatXp(m)
-        val fed = m.gainXp(xp)
-        val lvlMsg = (if (fed.level > m.level) " Grew to Lv ${fed.level}!" else "") + evolutionText(m, fed)
+        val (fed, notes) = grow(m, xp)
+        val lvlMsg = (if (fed.level > m.level) " Grew to Lv ${fed.level}!" else "") + notes.joinToString("") { " $it" }
         return Update(
             state.copy(
                 monsters = state.monsters.map { if (it.uid == uid) fed else it },
@@ -273,9 +340,9 @@ object GameEngine {
                 s = s.copy(
                     monsters = s.monsters.map { m ->
                         val xp = r.monsterXp[m.uid] ?: return@map m
-                        val after = m.gainXp(xp)
+                        val (after, notes) = grow(m, xp)
                         if (after.level > m.level) levelled += "${after.displayName} → Lv ${after.level}"
-                        if (after.speciesId != m.speciesId) levelled += evolutionText(m, after).trim()
+                        levelled += notes
                         after
                     },
                 )
@@ -329,6 +396,12 @@ object GameEngine {
             BattleOutcome.FLED -> msg.append("You escaped.")
             BattleOutcome.ONGOING -> {}
         }
+        // Monsters knocked out stay down until a Restore Potion is used.
+        if (r.faintedUids.isNotEmpty()) {
+            val names = s.monsters.filter { it.uid in r.faintedUids }.map { it.displayName }
+            s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true) else it })
+            msg.append(" 💤 ${names.joinToString()} fainted and need${if (names.size == 1) "s" else ""} a Restore Potion.")
+        }
         return Update(s, msg.toString())
     }
 
@@ -375,7 +448,9 @@ object GameEngine {
                     items[orb] = (items[orb] ?: 0) + 1
                 }
                 else -> {
-                    val potion = listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN).random(rng)
+                    // Restore Potions are deliberately rare.
+                    val potion = if (rng.nextDouble() < 0.06) Item.RESTORE_POTION
+                    else listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN).random(rng)
                     items[potion] = (items[potion] ?: 0) + 1
                 }
             }
@@ -543,13 +618,13 @@ object GameEngine {
 
     /** Sets at least [count] random stats to a perfect IV. */
     fun withPerfectStats(m: Monster, count: Int, rng: Random): Monster {
-        val perfect = Stat.entries.shuffled(rng).take(count).toSet()
+        val perfect = MONSTER_STATS.shuffled(rng).take(count).toSet()
         fun iv(stat: Stat) = if (stat in perfect) MAX_IV else m.ivs[stat]
         return m.copy(ivs = StatBlock(iv(Stat.HP), iv(Stat.ATTACK), iv(Stat.MAGIC), iv(Stat.DEFENSE), iv(Stat.SPEED)))
     }
 
     /** Number of perfect (maximum) IVs, shown as stars in the UI. */
-    fun perfectStatCount(m: Monster): Int = Stat.entries.count { m.ivs[it] == MAX_IV }
+    fun perfectStatCount(m: Monster): Int = MONSTER_STATS.count { m.ivs[it] == MAX_IV }
 
     /**
      * Build the guardian for a silver or gold shrine, or explain why it can't

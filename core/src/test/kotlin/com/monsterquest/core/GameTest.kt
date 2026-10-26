@@ -420,4 +420,102 @@ class GameTest {
         assertEquals(1, u.state.weapons.size)
         assertEquals(u.state, GameEngine.forge(u.state, rng).state)
     }
+
+    @Test
+    fun learnsetsAndLoadouts() {
+        Moves.learnsets.values.flatten().forEach { (_, id) -> Moves.get(id) }
+        for (sp in Bestiary.all) {
+            val m = Monster.create(sp, 1, rng)
+            assertTrue(m.activeMoves.any { it.isDamaging }, "${sp.id} needs an attack at Lv 1")
+            assertTrue(Monster.create(sp, 60, rng).activeMoves.size == Moves.MAX_MOVES)
+            // No monster is Normal type; Normal is attack-only.
+            assertNotEquals(Element.NEUTRAL, sp.element)
+        }
+        // Better moves as they grow.
+        val young = Monster.create(Bestiary.get("bubblefin"), 5, rng).activeMoves.maxOf { it.power }
+        val old = Monster.create(Bestiary.get("bubblefin"), 40, rng).activeMoves.maxOf { it.power }
+        assertTrue(old > young)
+    }
+
+    @Test
+    fun monstersOutclassTheHero() {
+        // A level-20 hero who spread their points evenly, vs. every species at level 20 with average genes.
+        val hero = Hero(level = 20, attributes = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE + 19 * STAT_POINTS_PER_LEVEL / 5 })
+        val heroTotal = hero.maxHp + hero.attack + hero.defense + hero.speed
+        for (sp in Bestiary.all) {
+            val m = Monster(uid = "m", speciesId = sp.id, personality = Personality.BALANCED, ivs = StatBlock(7, 7, 7, 7, 7), level = 20).stats
+            assertTrue(m.hp + m.attack + m.defense + m.speed > heroTotal, "${sp.id} should out-stat the hero")
+            assertTrue(m.hp > hero.maxHp, "${sp.id} HP")
+        }
+    }
+
+    @Test
+    fun growingTeachesMoves() {
+        val m = Monster.create(Bestiary.get("emberkit"), 6, rng)
+        val (after, notes) = GameEngine.grow(m, monsterXpForNext(6))
+        assertEquals(7, after.level)
+        assertTrue(notes.any { it.contains("learned Fire Fang") })
+        // A custom loadout with a free slot gets the new move...
+        val (filled, _) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite")), monsterXpForNext(6))
+        assertEquals(listOf("spit_fire", "tackle", "bite", "fire_fang"), filled.moves)
+        // ...but a full one is left alone, with a hint to swap it in.
+        val (full, fullNotes) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite", "spit_fire").distinct() + "tackle"), monsterXpForNext(6))
+        assertTrue(fullNotes.any { it.contains("can learn Fire Fang") })
+        assertTrue("fire_fang" !in full.moves!!)
+        // Players can choose any learned moves for their 4 slots.
+        val s = started().copy(monsters = listOf(after))
+        val set = GameEngine.setMoves(s, after.uid, listOf("fire_fang", "bite", "not_a_move")).state
+        assertEquals(listOf("fire_fang", "bite"), set.monsters.single().moves)
+    }
+
+    @Test
+    fun sleepStopsEnemyAndHelpsTaming() {
+        val s = started().copy(party = emptyList())
+        val enemy = Monster.create(Bestiary.get("zapmouse"), 5, rng)
+        val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = Random(4))
+        b.enemy.hp = b.enemy.maxHp / 4
+        val awake = b.captureOdds(Item.TAMING_ORB)
+        b.enemy.status = Status.SLEEP
+        b.enemy.statusTurns = 99
+        assertTrue(b.captureOdds(Item.TAMING_ORB) > awake)
+        val heroHp = b.allies.first().hp
+        repeat(5) { b.act(BattleAction.Defend) }
+        assertEquals(heroHp, b.allies.first().hp)
+    }
+
+    @Test
+    fun weatherAndTypes() {
+        assertEquals(1.25, Weather.RAIN.multiplier(Element.WATER))
+        assertEquals(1.25, Weather.RAIN.multiplier(Element.ELECTRIC))
+        assertEquals(0.85, Weather.RAIN.multiplier(Element.FIRE))
+        assertEquals(1.25, Weather.DROUGHT.multiplier(Element.CORRUPT))
+        assertEquals(0.85, Weather.DROUGHT.multiplier(Element.WATER))
+    }
+
+    @Test
+    fun faintedMonstersNeedRestorePotions() {
+        var s = started().copy(gold = 100)
+        val starter = s.monsters.single()
+        val brute = Monster.create(Bestiary.get("thunder_titan"), 60, rng)
+        val b = GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng)
+        var guard = 0
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Defend)
+        val r = b.result()
+        assertTrue(starter.uid in r.faintedUids)
+        s = GameEngine.applyBattleResult(s, r, 0).state
+        assertTrue(s.monsters.single().fainted)
+        // Fainted monsters sit out battles.
+        assertEquals(1, GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng).allies.size)
+        val restored = GameEngine.restore(s, starter.uid).state
+        assertTrue(!restored.monsters.single().fainted)
+        assertEquals(0, restored.count(Item.RESTORE_POTION))
+        // Without a potion, the daily recovery kicks in once a day.
+        val noPotion = s.copy(inventory = emptyMap())
+        assertEquals(noPotion, GameEngine.restore(noPotion, starter.uid).state)
+        val rec = GameEngine.dailyRecovery(noPotion, at(27), utc)
+        assertNotNull(rec)
+        assertTrue(!rec.state.monsters.single().fainted)
+        val again = rec.state.copy(monsters = rec.state.monsters.map { it.copy(fainted = true) })
+        assertNull(GameEngine.dailyRecovery(again, at(27, 20), utc))
+    }
 }

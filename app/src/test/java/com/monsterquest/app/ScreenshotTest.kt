@@ -56,7 +56,7 @@ abstract class ScreenshotBase(private val device: String) {
             Monster.create(Bestiary.get("ember_pup"), 20, rng).copy(nickname = "Sir Barksalot III"),
             Monster.create(Bestiary.get("zapmouse"), 12, rng),
             Monster.create(Bestiary.get("emberkit"), 30, rng),
-            Monster.create(Bestiary.get("toxbug"), 9, rng),
+            Monster.create(Bestiary.get("toxbug"), 9, rng).copy(fainted = true),
             Monster.create(Bestiary.get("dread_lich"), 15, rng),
         )
         val now = System.currentTimeMillis()

@@ -6,7 +6,9 @@ import com.monsterquest.core.Combatant
 import com.monsterquest.core.Element
 import com.monsterquest.core.EncounterType
 import com.monsterquest.core.Item
+import com.monsterquest.core.Move
 import com.monsterquest.core.Skill
+import com.monsterquest.core.Weather
 
 /** Immutable snapshot of a [Battle] for the UI (the engine itself is mutable). */
 data class BattleView(
@@ -19,8 +21,10 @@ data class BattleView(
     val round: Int,
     val itemsLeft: Int,
     val spells: List<Skill>,
-    val specialName: String?,
-    val specialCooldown: Int,
+    /** The current monster's 4 moves (empty for the hero). */
+    val moves: List<Move>,
+    val weather: Weather,
+    val reversedOrder: Boolean,
     val items: List<Pair<Item, Int>>,
     val orbs: List<OrbOption>,
     val captureBlocked: String?,
@@ -41,8 +45,9 @@ data class BattleView(
                 round = b.round,
                 itemsLeft = b.itemsRemainingThisBattle,
                 spells = cur?.let { b.spellsFor(it) } ?: emptyList(),
-                specialName = cur?.special?.name,
-                specialCooldown = cur?.cooldown ?: 0,
+                moves = cur?.moves ?: emptyList(),
+                weather = b.weather,
+                reversedOrder = b.reversedRounds > 0,
                 items = b.battleItems().map { it to b.count(it) },
                 orbs = b.orbs().map { OrbOption(it, b.count(it), b.captureOdds(it)) },
                 captureBlocked = b.captureBlockedReason(),
@@ -65,13 +70,15 @@ data class FighterView(
     val mp: Int,
     val maxMp: Int,
     val isHero: Boolean,
+    /** Status and stat-change labels, e.g. "💤 Asleep", "Def ↓1". */
+    val tags: List<String>,
 ) {
     val alive: Boolean get() = hp > 0
     val hpFraction: Float get() = hp.toFloat() / maxHp
 
     companion object {
         fun of(c: Combatant) = FighterView(
-            c.key, c.name, c.emoji, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero,
+            c.key, c.name, c.emoji, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(),
         )
     }
 }

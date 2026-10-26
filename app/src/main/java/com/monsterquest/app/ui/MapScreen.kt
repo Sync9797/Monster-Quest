@@ -14,6 +14,7 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -270,6 +271,10 @@ private fun rememberMapView(): MapView {
     val context = LocalContext.current
     val mapView = remember {
         MapView(context).apply {
+            // osmdroid draws tiles past its own edges; clip it to its bounds so it
+            // can't paint over the nav rail, headers or the status row.
+            outlineProvider = ViewOutlineProvider.BOUNDS
+            clipToOutline = true
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)

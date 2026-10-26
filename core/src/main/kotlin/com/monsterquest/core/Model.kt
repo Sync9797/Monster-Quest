@@ -13,7 +13,8 @@ import kotlin.random.Random
 
 @Serializable
 enum class Element(val label: String, val emoji: String) {
-    NEUTRAL("Neutral", "⚪"),
+    /** "Normal": an attack type only; no monster is Normal type. */
+    NEUTRAL("Normal", "⚪"),
     FIRE("Fire", "🔥"),
     ELECTRIC("Electric", "⚡"),
     FLIGHT("Flight", "🕊️"),
@@ -57,6 +58,9 @@ enum class Element(val label: String, val emoji: String) {
 enum class Stat(val label: String) {
     HP("HP"), ATTACK("Attack"), MAGIC("Magic"), DEFENSE("Defense"), SPEED("Speed")
 }
+
+/** The stats monsters use (Magic is hero-only). */
+val MONSTER_STATS: List<Stat> = listOf(Stat.HP, Stat.ATTACK, Stat.DEFENSE, Stat.SPEED)
 
 @Serializable
 data class StatBlock(
@@ -223,19 +227,40 @@ data class Monster(
     val level: Int = 1,
     val xp: Int = 0,
     val nickname: String? = null,
+    /** Move ids chosen by the player for the 4 slots; null = automatic best loadout. */
+    val moves: List<String>? = null,
+    /** Knocked out in battle; only a Restore Potion brings it back. */
+    val fainted: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name
 
+    /**
+     * Monster stats run well above the hero's: they're the real fighters.
+     * Monsters use HP, Attack, Defense and Speed (Magic is a hero-only stat).
+     */
     fun stat(stat: Stat): Int {
-        val raw = species.base[stat] + ivs[stat]
+        // Monsters fight with one Attack stat; caster-style species use their Magic base for it.
+        val base = if (stat == Stat.ATTACK) maxOf(species.base.attack, species.base.magic) else species.base[stat]
+        val raw = base + ivs[stat]
         val value = if (stat == Stat.HP) {
-            raw * level / 6.0 + level * 2 + 30
+            raw * level / 3.0 + level * 3 + 40
         } else {
-            raw * level / 20.0 + 5
+            raw * level / 8.0 + 15
         }
         return floor(value * personality.modifier(stat)).toInt().coerceAtLeast(1)
     }
+
+    /** Every move this monster knows at its level. */
+    val learnedMoves: List<Move> get() = Moves.learned(species, level)
+
+    /** The (up to) 4 moves it fights with. */
+    val activeMoves: List<Move>
+        get() {
+            val learned = learnedMoves
+            val chosen = moves?.mapNotNull { id -> learned.find { it.id == id } }?.take(Moves.MAX_MOVES)
+            return if (chosen.isNullOrEmpty()) Moves.autoLoadout(species, level) else chosen
+        }
 
     val stats: StatBlock
         get() = StatBlock(
@@ -244,7 +269,7 @@ data class Monster(
 
     /** Average IV as a 0-100% "potential" rating shown in the UI. */
     val potential: Int
-        get() = ((ivs.hp + ivs.attack + ivs.magic + ivs.defense + ivs.speed) * 100) / (MAX_IV * 5)
+        get() = (MONSTER_STATS.sumOf { ivs[it] } * 100) / (MAX_IV * MONSTER_STATS.size)
 
     val xpToNext: Int get() = monsterXpForNext(level)
 
@@ -294,7 +319,7 @@ fun newId(rng: Random = Random.Default): String =
 // ---------------------------------------------------------------------------
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE }
 
 @Serializable
 enum class Item(
@@ -306,14 +331,15 @@ enum class Item(
     val price: Int,
     val description: String,
 ) {
-    POTION("Potion", "🧪", ItemKind.HEAL_HP, 50.0, 25, "Restores 50 HP to one ally."),
-    HI_POTION("Hi-Potion", "⚗️", ItemKind.HEAL_HP, 150.0, 70, "Restores 150 HP to one ally."),
+    POTION("Potion", "🧪", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
+    HI_POTION("Hi-Potion", "⚗️", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
     ETHER("Ether", "🔷", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
-    PHOENIX_DOWN("Phoenix Down", "🪶", ItemKind.REVIVE, 0.5, 90, "Revives a fallen ally at 50% HP."),
+    PHOENIX_DOWN("Phoenix Down", "🪶", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
+    RESTORE_POTION("Restore Potion", "❤️‍🩹", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
     TAMING_ORB("Taming Orb", "🔮", ItemKind.CAPTURE, 1.0, 30, "Tames a weakened monster."),
     GREAT_ORB("Great Orb", "🟣", ItemKind.CAPTURE, 1.5, 80, "Better taming odds."),
     MASTER_ORB("Master Orb", "🌟", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
     TREAT("Monster Treat", "🍖", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost.");
 
-    val usableInBattle: Boolean get() = kind != ItemKind.TREAT
+    val usableInBattle: Boolean get() = kind != ItemKind.TREAT && kind != ItemKind.RESTORE
 }

@@ -40,6 +40,19 @@ your hero.
   Monsters evolve automatically at set levels, and longer lines end in
   stronger final forms. Each also rolls a **personality** and hidden
   **potential**, so no two are alike.
+- **Monster stat pages:** tap a monster to see its stats and compare it with
+  another monster. Monsters use HP, Attack, Defense and Speed, and run well
+  above the hero's stats.
+- **Moves:**
+  - Every monster has **4 move slots**. It learns its own type's moves plus
+    **Normal** moves as it levels up (no monster is Normal type).
+  - Moves can inflict **sleep, shock, poison and burn**, lower stats, set
+    **rain or drought**, guard, dive out of reach, or reverse turn order.
+    Stat drops and weather last one battle.
+  - Status conditions make monsters easier to tame.
+- **Fainting:** a monster knocked out in battle stays down until healed with
+  a rare **Restore Potion**. If all your monsters are down, your strongest
+  recovers once a day.
 - **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.
