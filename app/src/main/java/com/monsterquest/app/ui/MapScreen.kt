@@ -102,6 +102,7 @@ private sealed interface MapPick {
     data class ShrinePick(val shrine: Shrine) : MapPick
     data class SpawnPick(val spawn: WildSpawn) : MapPick
     data class VillainPick(val camp: VillainCamp) : MapPick
+    data class TrackedPick(val spawn: WildSpawn) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -266,7 +267,7 @@ fun MapScreen(vm: GameViewModel) {
                         mv.invalidate()
                     },
                 )
-                TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter))
+                TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
                 if (loc == null) {
                     Text(
                         "Finding your location…",
@@ -325,6 +326,11 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.ShrinePick -> ShrineDialog(vm, p.shrine, now) { pick = null }
         is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
         is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
+        is MapPick.TrackedPick -> TrackedDialog(
+            vm,
+            p.spawn,
+            onShowArea = { mapView.controller.animateTo(GeoPoint(p.spawn.lat, p.spawn.lon)) },
+        ) { pick = null }
         null -> {}
     }
 }
@@ -428,11 +434,8 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
 }
 
 
-private fun distanceText(m: Double?): String = when {
-    m == null -> "unknown distance"
-    m < 1000 -> "${m.toInt()} m away"
-    else -> String.format(java.util.Locale.US, "%.1f km away", m / 1000)
-}
+private fun distanceText(m: Double?, imperial: Boolean): String =
+    if (m == null) "unknown distance" else "${formatDistance(m, imperial)} away"
 
 @Composable
 private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss: () -> Unit) {
@@ -448,7 +451,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
         title = { IconText(shrine.tier.icon(), shrine.name, tint = shrine.tier.color(), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column {
-                Text("${shrine.tier.label} • ${distanceText(dist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${shrine.tier.label} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 when (shrine.tier) {
                     ShrineTier.ITEM -> Text("Weapons, spell-book pages, capture orbs and potions.")
@@ -479,7 +482,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                 if (cooldown > 0) Text("Recharging: ${formatDuration(cooldown)}", color = HpYellow)
                 if (!inRange) {
                     Text(
-                        "Walk within ${World.SHRINE_RANGE_M.toInt()} m to interact.",
+                        "Walk within ${formatDistance(World.SHRINE_RANGE_M, vm.state.settings.imperialUnits)} to interact.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
                     )
@@ -522,7 +525,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
                 if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
                 Text("Level ${spawn.level} • ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
                 if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
-                Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(distanceText(dist, vm.state.settings.imperialUnits), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
                 if (pack.isNotEmpty()) {
                     Text(
@@ -533,7 +536,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                if (!inRange) Text("Walk within ${World.SPAWN_RANGE_M.toInt()} m to battle.", modifier = Modifier.padding(top = 6.dp))
+                if (!inRange) Text("Walk within ${formatDistance(World.SPAWN_RANGE_M, vm.state.settings.imperialUnits)} to battle.", modifier = Modifier.padding(top = 6.dp))
             }
         },
         confirmButton = {
@@ -549,9 +552,10 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
  * direction to walk. Walking draws them toward you.
  */
 @Composable
-private fun TrackerBar(vm: GameViewModel, tracked: List<WildSpawn>, modifier: Modifier = Modifier) {
+private fun TrackerBar(vm: GameViewModel, tracked: List<WildSpawn>, modifier: Modifier = Modifier, onSelect: (WildSpawn) -> Unit) {
     if (tracked.isEmpty()) return
     val here = vm.location ?: return
+    val imperial = vm.state.settings.imperialUnits
     Row(
         modifier
             .padding(8.dp)
@@ -561,32 +565,75 @@ private fun TrackerBar(vm: GameViewModel, tracked: List<WildSpawn>, modifier: Mo
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         GIcon(GameIcon.EYE, Modifier.size(16.dp), Gold)
         tracked.take(8).forEach { sp ->
             val d = World.distanceMeters(here.first, here.second, sp.lat, sp.lon)
             val dir = World.compass(World.bearing(here.first, here.second, sp.lat, sp.lon))
-            val steps = when {
-                d < 400 -> 1
-                d < 700 -> 2
-                else -> 3
-            }
             val seen = sp.speciesId in vm.state.seen
-            Column(
-                Modifier.clickable {
-                    vm.toast("${if (seen) sp.species.name else "Something"} is about ${(d / 50).toInt() * 50} m to the $dir. Walk that way; it's coming toward you.")
-                },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            Column(Modifier.clickable { onSelect(sp) }, horizontalAlignment = Alignment.CenterHorizontally) {
                 MonsterArt(sp.species, Modifier.size(34.dp), silhouette = !seen)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(steps) { GIcon(GameIcon.PAW, Modifier.size(9.dp), MaterialTheme.colorScheme.onSurfaceVariant) }
-                    Text(" $dir", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text(formatDistance(d, imperial), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text(dir, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
+}
+
+/** More about a monster sensed by the tracker: where it is, what it's near, and what it's doing. */
+@Composable
+private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () -> Unit, onDismiss: () -> Unit) {
+    val here = vm.location
+    val imperial = vm.state.settings.imperialUnits
+    val seen = spawn.speciesId in vm.state.seen
+    val sp = spawn.species
+    val d = here?.let { World.distanceMeters(it.first, it.second, spawn.lat, spawn.lon) }
+    val dir = here?.let { World.compass(World.bearing(it.first, it.second, spawn.lat, spawn.lon)) }
+    val landmark = vm.landmarkNear(spawn.lat, spawn.lon)
+    val moving = vm.spawnConditions(System.currentTimeMillis()).activity >= 0.05
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (seen) "${sp.name} nearby" else "Something is out there") },
+        text = {
+            Column {
+                MonsterArt(sp, Modifier.size(96.dp).align(Alignment.CenterHorizontally), silhouette = !seen)
+                if (seen) {
+                    IconText(sp.element.icon(), "${sp.element.label} • ${sp.rarity.label}", tint = sp.element.color(), fontSize = 13.sp)
+                } else {
+                    Text("You've never met this kind of monster. Find it to add it to your Journal.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (d != null && dir != null) {
+                    IconText(GameIcon.COMPASS, "About ${formatDistance(d, imperial)} to the $dir", tint = Gold, textColor = Gold, bold = true, fontSize = 15.sp)
+                }
+                if (landmark != null) {
+                    val (place, gap) = landmark
+                    IconText(
+                        place.tier.icon(),
+                        if (gap < 40) "At ${place.name}" else "Near ${place.name} (${formatDistance(gap, imperial)} from it)",
+                        tint = place.tier.color(),
+                        fontSize = 13.sp,
+                    )
+                } else {
+                    Text("Not near any landmark: open ground.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(
+                    if (moving) "It heard you walking and is closing in fast." else "It's slowly wandering your way. Walk toward it to meet it sooner.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    "Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}. " +
+                        "It shows on the map within ${formatDistance(World.REVEAL_M, imperial)}; battle it within ${formatDistance(World.SPAWN_RANGE_M, imperial)}.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onShowArea(); onDismiss() }) { Text("Show area") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable
@@ -598,7 +645,7 @@ private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () ->
         title = { IconText(GameIcon.SKULL, camp.leader, tint = Color(0xFFF28B9B), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column {
-                Text("${camp.tier.label} of the ${camp.crew} • ${distanceText(dist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${camp.tier.label} of the ${camp.crew} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     "Their monsters carry the shadow curse (Defense -50%, Attack +25%) and can't be tamed. " +
                         "Beat the whole team in a row for gold and loot, then use a Restore Potion to try to free one.",
@@ -613,7 +660,7 @@ private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () ->
                         }
                     }
                 }
-                if (!inRange) Text("Walk within ${Villains.RANGE_M.toInt()} m to fight.", modifier = Modifier.padding(top = 6.dp))
+                if (!inRange) Text("Walk within ${formatDistance(Villains.RANGE_M, vm.state.settings.imperialUnits)} to fight.", modifier = Modifier.padding(top = 6.dp))
             }
         },
         confirmButton = {
@@ -661,7 +708,7 @@ private fun NearbyList(
             d,
             { GIcon(sh.tier.icon(), Modifier.size(28.dp), sh.tier.color()) },
             sh.name,
-            "${sh.tier.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            "${sh.tier.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SHRINE_RANGE_M,
         ) { onShrine(sh) }
     } + spawns.map { sp ->
@@ -670,7 +717,7 @@ private fun NearbyList(
             d,
             { MonsterArt(sp.species, Modifier.size(40.dp)) },
             "Wild ${sp.species.name}",
-            "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SPAWN_RANGE_M,
         ) { onSpawn(sp) }
     } + villains.map { v ->
@@ -679,7 +726,7 @@ private fun NearbyList(
             d,
             { GIcon(GameIcon.SKULL, Modifier.size(28.dp), Color(0xFFF28B9B)) },
             v.leader,
-            "${v.tier.label} • ${v.team.size} cursed monsters • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            "${v.tier.label} • ${v.team.size} cursed monsters • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= Villains.RANGE_M,
         ) { onVillain(v) }
     }

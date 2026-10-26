@@ -87,6 +87,16 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                 )
             }
 
+            // ---- General ----
+            SectionTitle("General")
+            GameCard {
+                ToggleRow(
+                    "Feet and yards",
+                    "Show distances in feet, yards and miles. Turn off for meters and kilometers.",
+                    prefs.imperialUnits,
+                ) { on -> vm.updateSettings { it.copy(imperialUnits = on) } }
+            }
+
             // ---- Steps ----
             SectionTitle("Step sync")
             Text(
@@ -196,7 +206,7 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                 ) { on -> vm.updateSettings { it.copy(ambushes = on) } }
                 ToggleRow(
                     "Vibrate for new monsters",
-                    "A short buzz when a monster comes within battle range (${com.monsterquest.app.ALERT_RANGE_M.toInt()} m), even on the battery saver screen.",
+                    "A short buzz when a monster comes within battle range (${formatDistance(com.monsterquest.app.ALERT_RANGE_M, prefs.imperialUnits)}), even on the battery saver screen.",
                     prefs.vibrateOnSpawn,
                 ) { on -> vm.updateSettings { it.copy(vibrateOnSpawn = on) } }
                 ToggleRow(

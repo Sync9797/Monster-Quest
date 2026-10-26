@@ -1212,4 +1212,14 @@ class GameTest {
         val workOnly = GameEngine.syncCalendar(both, listOf(work)).state
         assertEquals(listOf("Standup"), workOnly.tasks.filter { it.source == TaskSource.CALENDAR }.map { it.title })
     }
+
+    @Test
+    fun compassAndUnitsSettingSaved() {
+        assertEquals("N", World.compass(World.bearing(40.0, -75.0, 40.01, -75.0)))
+        assertEquals("E", World.compass(World.bearing(40.0, -75.0, 40.0, -74.99)))
+        assertEquals("SW", World.compass(World.bearing(40.0, -75.0, 39.99, -75.013)))
+        assertTrue(Settings().imperialUnits)
+        val s = started().copy(settings = Settings(imperialUnits = false))
+        assertTrue(!GameState.fromJson(s.toJson()).settings.imperialUnits)
+    }
 }

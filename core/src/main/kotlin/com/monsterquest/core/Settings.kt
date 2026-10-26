@@ -31,6 +31,8 @@ enum class FrameRate(val label: String, val hz: Float?, val description: String)
 data class Settings(
     val stepSource: StepSource = StepSource.PHONE,
     val frameRate: FrameRate = FrameRate.HIGH,
+    /** Show distances in feet, yards and miles (true) or meters and kilometers. */
+    val imperialUnits: Boolean = true,
     /** Turn off glows, auras, mist and engraving for smoother scrolling on older phones. */
     val reducedEffects: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */

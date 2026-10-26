@@ -157,7 +157,9 @@ your hero.
     reach you even if you stand still. Only monsters within about 200 m stand
     on the map.
   - The **tracker bar** at the top of the map shows monsters farther out, with
-    footprints for distance and the direction to walk.
+    their distance (feet and yards, or meters) and direction. Tap one to see
+    which landmark it's near, whether it's closing in, and to pan the map
+    there.
   - **Walking reward:** every 1,000 steps a monster follows your footsteps,
     even with the phone in your pocket (up to 3 wait beside you).
   - **Packs:** nearby monsters may team up against you (2 vs 4, 3 vs 3, 4 vs

@@ -472,6 +472,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         return followers + wild
     }
 
+    /**
+     * The nearest landmark to a spot: a real named place (cafe, park, museum...)
+     * within 250 m, or any shrine within 150 m. Returns it and how far it is from the spot.
+     */
+    fun landmarkNear(lat: Double, lon: Double): Pair<Shrine, Double>? {
+        val withDistance = shrines.map { it to World.distanceMeters(lat, lon, it.lat, it.lon) }
+        return withDistance.filter { (s, d) -> s.id.startsWith("osm:") && d <= 250 }.minByOrNull { it.second }
+            ?: withDistance.filter { it.second <= 150 }.minByOrNull { it.second }
+    }
+
+    /** A distance in the player's chosen units. */
+    private fun dist(meters: Double) = com.monsterquest.app.ui.formatDistance(meters, state.settings.imperialUnits)
+
     /** Monsters close enough to show on the map. */
     fun visibleSpawns(nowMs: Long): List<WildSpawn> =
         spawnsNear(nowMs).filter { (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= World.REVEAL_M }
@@ -533,7 +546,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun visitShrine(shrine: Shrine) {
         val d = distanceTo(shrine.lat, shrine.lon)
         if (d == null || d > World.SHRINE_RANGE_M) {
-            message = "Get closer to ${shrine.name} (within ${World.SHRINE_RANGE_M.toInt()} m)."
+            message = "Get closer to ${shrine.name} (within ${dist(World.SHRINE_RANGE_M)})."
             return
         }
         val u = GameEngine.visitShrine(state, shrine, System.currentTimeMillis())
@@ -553,7 +566,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun challengeBoss(shrine: Shrine) {
         val d = distanceTo(shrine.lat, shrine.lon)
         if (d == null || d > World.SHRINE_RANGE_M) {
-            message = "Get closer to ${shrine.name} (within ${World.SHRINE_RANGE_M.toInt()} m)."
+            message = "Get closer to ${shrine.name} (within ${dist(World.SHRINE_RANGE_M)})."
             return
         }
         val (boss, mode) = GameEngine.bossEncounter(state, shrine, System.currentTimeMillis())
@@ -572,7 +585,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun battleSpawn(spawn: WildSpawn) {
         val d = distanceTo(spawn.lat, spawn.lon)
         if (d == null || d > World.SPAWN_RANGE_M) {
-            message = "Get closer to the ${spawn.species.name} (within ${World.SPAWN_RANGE_M.toInt()} m)."
+            message = "Get closer to the ${spawn.species.name} (within ${dist(World.SPAWN_RANGE_M)})."
             return
         }
         if (state.monsters.isEmpty()) {
@@ -655,7 +668,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun challengeVillain(camp: VillainCamp) {
         val d = distanceTo(camp.lat, camp.lon)
         if (d == null || d > Villains.RANGE_M) {
-            message = "Get closer to ${camp.leader} (within ${Villains.RANGE_M.toInt()} m)."
+            message = "Get closer to ${camp.leader} (within ${dist(Villains.RANGE_M)})."
             return
         }
         villainRun = VillainRun(camp, 0)

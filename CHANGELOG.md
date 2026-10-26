@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.5
+
+- **Tracker distances:** each monster in the tracker bar shows how far away it
+  is (feet up close, then yards, then miles) and its direction.
+- **Tap a tracked monster for details:** distance and direction, the landmark
+  it's near (a real cafe, park, museum... or a shrine), whether it's closing
+  in, and when it leaves. "Show area" pans the map toward it.
+- **Units setting:** feet and yards (default) or meters, in Settings, then
+  General. Distances everywhere on the map follow it.
+
 ## 0.5.4
 
 - **Choose which calendars to sync:** Settings, then Calendar, lists every

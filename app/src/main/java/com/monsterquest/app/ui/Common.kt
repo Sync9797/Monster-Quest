@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import kotlin.math.roundToInt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.GameIcon
 import androidx.compose.foundation.layout.Arrangement
@@ -127,6 +128,24 @@ fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modi
         }
         IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
         IconText(GameIcon.TARGET, "$tokens hunts", tint = Mint, textColor = Mint, bold = true)
+    }
+}
+
+/**
+ * A distance for people: feet up close, then yards, then miles (or meters and
+ * kilometers), rounded so it doesn't flicker as GPS wobbles.
+ */
+fun formatDistance(meters: Double, imperial: Boolean): String {
+    if (!imperial) {
+        return if (meters < 1000) "${((meters / 10).roundToInt() * 10).coerceAtLeast(10)} m"
+        else String.format(java.util.Locale.US, "%.1f km", meters / 1000)
+    }
+    val feet = meters * 3.28084
+    val yards = meters * 1.09361
+    return when {
+        feet < 300 -> "${((feet / 10).roundToInt() * 10).coerceAtLeast(10)} ft"
+        yards < 1760 -> "${(yards / 10).roundToInt() * 10} yd"
+        else -> String.format(java.util.Locale.US, "%.1f mi", yards / 1760)
     }
 }
 
