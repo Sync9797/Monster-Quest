@@ -50,6 +50,8 @@ import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.core.CALENDAR_DAYS_AHEAD_OPTIONS
 import com.monsterquest.core.StepSource
+import com.monsterquest.core.ColorStyle
+import com.monsterquest.core.ThemeMode
 
 /** Settings: performance, calendar and where steps come from. */
 @Composable
@@ -85,6 +87,41 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            // ---- Appearance ----
+            SectionTitle("Appearance")
+            GameCard {
+                Text("Theme", fontWeight = FontWeight.SemiBold)
+                Text("Light or dark screens, or follow your phone's setting.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ThemeMode.entries.forEach { m ->
+                        SmallButton(m.label, { vm.updateSettings { it.copy(themeMode = m) } }, Modifier.weight(1f), outlined = m != prefs.themeMode)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Colors", fontWeight = FontWeight.SemiBold)
+                ColorStyle.entries.forEach { style ->
+                    val supported = style != ColorStyle.SYSTEM || dynamicColorSupported
+                    Row(
+                        Modifier.fillMaxWidth().clickable(enabled = supported) { vm.updateSettings { it.copy(colorStyle = style) } }.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = style == prefs.colorStyle,
+                            onClick = { vm.updateSettings { it.copy(colorStyle = style) } },
+                            enabled = supported,
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(style.label, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (supported) style.description else "Needs Android 12 or newer.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
 
             // ---- General ----

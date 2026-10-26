@@ -125,11 +125,17 @@ abstract class ScreenshotBase(private val device: String) {
 
     private fun vm(state: GameState = sampleState()) = GameViewModel(app).also { it.debugLoad(state) }
 
-    private fun shot(name: String, fold: FoldInfo? = null, advanceMs: Long = 1_000, content: @Composable () -> Unit) {
+    private fun shot(
+        name: String,
+        fold: FoldInfo? = null,
+        advanceMs: Long = 1_000,
+        theme: com.monsterquest.core.ThemeMode = com.monsterquest.core.ThemeMode.DARK,
+        content: @Composable () -> Unit,
+    ) {
         rule.mainClock.autoAdvance = false
         rule.setContent {
             CompositionLocalProvider(LocalFold provides fold) {
-                MonsterQuestTheme { content() }
+                MonsterQuestTheme(theme) { content() }
             }
         }
         capture(name, advanceMs)
@@ -557,6 +563,17 @@ abstract class ScreenshotBase(private val device: String) {
         check(b.enemies.size == 3)
         capture("35_secret_ambush_battle", 1_000)
     }
+
+    /** The light theme on the busiest screens. */
+    @Test fun lightQuests() { val v = vm(); shot("40_light_quests", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v, Tab.QUESTS) } }
+    @Test fun lightHero() { val v = vm(); shot("41_light_hero", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v, Tab.HERO) } }
+    @Test fun lightMonsters() { val v = vm(); shot("42_light_monsters", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v, Tab.MONSTERS) } }
+    @Test fun lightBattle() {
+        val v = vm()
+        v.hunt()
+        shot("43_light_battle", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v) }
+    }
+    @Test fun lightSettings() { val v = vm(); shot("44_light_settings", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v, initialSettings = true) } }
 
     @Test fun battleTabletop() {
         val v = vm()

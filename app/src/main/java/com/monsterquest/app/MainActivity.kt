@@ -167,8 +167,21 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.LaunchedEffect(rate, vm.batterySaver, config.screenWidthDp, config.screenHeightDp) {
                 applyFrameRate(if (vm.batterySaver) FrameRate.STANDARD else rate)
             }
+            // Light, dark or follow the system; the game's colors or Material You.
+            val prefs = vm.state.settings
+            val dark = com.monsterquest.app.ui.isDarkTheme(prefs.themeMode)
+            androidx.compose.runtime.LaunchedEffect(dark) {
+                // Status and navigation bar icons dark on light screens, light on dark ones.
+                val transparent = android.graphics.Color.TRANSPARENT
+                enableEdgeToEdge(
+                    statusBarStyle = if (dark) androidx.activity.SystemBarStyle.dark(transparent)
+                    else androidx.activity.SystemBarStyle.light(transparent, transparent),
+                    navigationBarStyle = if (dark) androidx.activity.SystemBarStyle.dark(transparent)
+                    else androidx.activity.SystemBarStyle.light(transparent, transparent),
+                )
+            }
             CompositionLocalProvider(LocalFold provides fold) {
-                MonsterQuestTheme {
+                MonsterQuestTheme(prefs.themeMode, prefs.colorStyle) {
                     AppRoot(vm)
                 }
             }

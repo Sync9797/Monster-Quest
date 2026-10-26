@@ -339,7 +339,7 @@ private fun LevelUpBanner(up: LevelUp, modifier: Modifier) {
                 alpha = pop.value.coerceIn(0f, 1f)
             }
             .clip(RoundedCornerShape(8.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xFFF5DA93), Gold)))
+            .background(Brush.verticalGradient(listOf(Color(0xFFF5DA93), FixedGold)))
             .border(1.dp, Color(0xFF6B5126), RoundedCornerShape(8.dp))
             .padding(horizontal = 7.dp, vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -492,7 +492,7 @@ private fun ActionButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp),
         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-        colors = if (color != null) ButtonDefaults.buttonColors(containerColor = color, contentColor = MaterialTheme.colorScheme.onSurface) else ButtonDefaults.buttonColors(),
+        colors = if (color != null) ButtonDefaults.buttonColors(containerColor = color, contentColor = Color(0xFFF5F2EA)) else ButtonDefaults.buttonColors(),
     ) {
         if (icon != null) {
             GIcon(icon, Modifier.size(16.dp))
@@ -521,7 +521,7 @@ private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick
         onClick = onClick,
         modifier = modifier.heightIn(min = 52.dp),
         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = typeColor(mv.type)),
+        colors = ButtonDefaults.buttonColors(containerColor = typeColor(mv.type), contentColor = Color(0xFFF5F2EA)),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -602,9 +602,9 @@ private fun ActionPanel(
 
                     ) { onMenu(Menu.Tame) }
                     if (!actor.isHero) {
-                        ActionButton("Guard", Modifier.weight(1f), color = Line) { onAction(BattleAction.Defend) }
+                        ActionButton("Guard", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Defend) }
                     }
-                    ActionButton("Flee", Modifier.weight(1f), color = Line) { onAction(BattleAction.Flee) }
+                    ActionButton("Flee", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Flee) }
                 }
             }
             Menu.Magic -> {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.0
+
+- **Light and dark themes:** Settings, then Appearance, then Theme: System
+  (follows your phone's light/dark setting, the default), Light or Dark. The
+  light theme is warm parchment with deeper gold, green and blue accents so
+  everything stays readable; status bar icons switch to match.
+- **Match system colors (Material You):** Settings, then Appearance, then
+  Colors. "Monster Quest" keeps the game's gold-and-teal look; "Match system
+  colors" uses your wallpaper and system accent colors on Android 12+,
+  in light or dark.
+
 ## 1.8.1
 
 - **Your battle party stays with you:** monsters in your battle party can't

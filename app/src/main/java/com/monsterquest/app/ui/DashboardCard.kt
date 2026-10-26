@@ -170,7 +170,7 @@ private fun DayCell(
                 fontSize = 12.sp,
                 fontWeight = if (today || quest || selected) FontWeight.Bold else FontWeight.Normal,
                 color = when {
-                    selected || quest -> Color(0xFF0D171A)
+                    selected || quest -> OnAccent
                     today -> Gold
                     future -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                     else -> MaterialTheme.colorScheme.onSurface

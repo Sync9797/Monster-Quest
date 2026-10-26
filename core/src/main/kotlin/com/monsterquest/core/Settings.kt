@@ -26,6 +26,17 @@ enum class FrameRate(val label: String, val hz: Float?, val description: String)
     AUTO("Auto", null, "Let the phone decide."),
 }
 
+/** Light or dark screens. */
+@Serializable
+enum class ThemeMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
+
+/** The game's own gold-and-teal colors, or the phone's Material You colors. */
+@Serializable
+enum class ColorStyle(val label: String, val description: String) {
+    GAME("Monster Quest", "The game's own gold and teal colors."),
+    SYSTEM("Match system colors", "Material You: use the colors from your wallpaper and system theme (Android 12+)."),
+}
+
 /** Player preferences, saved with the game. */
 @Serializable
 data class Settings(
@@ -50,6 +61,8 @@ data class Settings(
     val syncCalendars: Set<Long> = emptySet(),
     val calendarDaysAhead: Int = 7,
     val includeAllDayEvents: Boolean = true,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val colorStyle: ColorStyle = ColorStyle.GAME,
 )
 
 val CALENDAR_DAYS_AHEAD_OPTIONS = listOf(1, 3, 7, 14)
