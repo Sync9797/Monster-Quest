@@ -118,14 +118,19 @@ abstract class ScreenshotBase(private val device: String) {
 
     private fun vm(state: GameState = sampleState()) = GameViewModel(app).also { it.debugLoad(state) }
 
-    private fun shot(name: String, fold: FoldInfo? = null, content: @Composable () -> Unit) {
+    private fun shot(name: String, fold: FoldInfo? = null, advanceMs: Long = 1_000, content: @Composable () -> Unit) {
         rule.mainClock.autoAdvance = false
         rule.setContent {
             CompositionLocalProvider(LocalFold provides fold) {
                 MonsterQuestTheme { content() }
             }
         }
-        rule.mainClock.advanceTimeBy(1_000)
+        capture(name, advanceMs)
+    }
+
+    /** Lets time pass, then saves what's on screen. */
+    private fun capture(name: String, advanceMs: Long) {
+        rule.mainClock.advanceTimeBy(advanceMs)
         rule.waitForIdle()
         val view = rule.activity.window.decorView
         val bmp = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -284,7 +289,9 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm()
         v.hunt()
         v.battleAction(com.monsterquest.core.BattleAction.Attack)
-        shot("18_battle_fx") { AppRoot(v) }
+        // Partway through: the bolt is in flight.
+        shot("18_battle_fx", advanceMs = 330) { AppRoot(v) }
+        capture("19_battle_hit", 300)
     }
 
     @Test fun battleTabletop() {
