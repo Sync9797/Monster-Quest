@@ -185,6 +185,9 @@ private fun EnemyPanel(b: BattleView) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 IconText(e.element.icon(), "${e.element.label} type", tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
+                if (!b.isBoss && b.encounter == EncounterType.WILD && b.teamSize > 1) {
+                    Text("Stronger vs your team of ${b.teamSize}", fontSize = 11.sp, color = HpYellow)
+                }
                 Spacer(Modifier.height(4.dp))
                 Bar(e.hpFraction, hpColor(e.hpFraction), Modifier.fillMaxWidth(), heightDp = 10)
                 Text("${e.hp} / ${e.maxHp} HP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

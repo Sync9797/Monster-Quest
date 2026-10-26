@@ -931,4 +931,22 @@ class GameTest {
             assertEquals(if (it.element == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT, it.style)
         }
     }
+
+    @Test
+    fun enemiesScaleWithTeamSize() {
+        val rng0 = Random(1)
+        val party = (1..3).map { Monster.create(Bestiary.get("emberkit"), 15, rng0) }
+        val base = GameState(hero = Hero(level = 15), monsters = party, starterChosen = true)
+        val foe = Monster.create(Bestiary.get("zapmouse"), 15, Random(2))
+        fun battle(n: Int, type: EncounterType) =
+            GameEngine.newBattle(base.copy(party = party.take(n - 1).map { it.uid }), foe, type, rng = Random(3))
+        val hp = (1..4).map { battle(it, EncounterType.WILD).enemy.maxHp }
+        assertEquals(hp.sorted(), hp)
+        assertTrue(hp[3] > hp[0] * 5)
+        assertEquals(4, battle(4, EncounterType.WILD).teamSize)
+        // Bosses keep their full-team strength and get easier for smaller teams.
+        val boss4 = battle(4, EncounterType.SILVER_BOSS).enemy
+        assertEquals(Combatant.fromMonster(foe, Combatant.ENEMY_KEY, EncounterType.SILVER_BOSS.hpMultiplier).maxHp, boss4.maxHp)
+        assertTrue(battle(2, EncounterType.SILVER_BOSS).enemy.maxHp < boss4.maxHp)
+    }
 }

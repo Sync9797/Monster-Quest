@@ -116,6 +116,12 @@ your hero.
 - **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.
+  - **Wild monsters scale with your team:** bring more fighters and they get
+    more HP, Attack and Defense (about 4x HP and 2x Attack against a full
+    team of 4, weaker against a lone hero). Bigger fights pay up to 45% more
+    XP and gold.
+  - **Bosses and villains** are built for a full team and get easier when you
+    bring fewer fighters.
 - **Battle animations:** spells and typed moves throw a bolt of their type,
   and swords and Normal moves slash. The attacker is ringed in gold, the
   fighter whose turn it is pulses, and a **turn order** strip shows who acts

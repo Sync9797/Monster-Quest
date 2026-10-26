@@ -159,12 +159,19 @@ class Combatant(
             }
         }
 
-        fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
+        fun fromMonster(
+            m: Monster,
+            key: String = m.uid,
+            hpMultiplier: Double = 1.0,
+            attackMultiplier: Double = 1.0,
+            defenseMultiplier: Double = 1.0,
+        ): Combatant {
             val s = m.stats
             val hp = (s.hp * hpMultiplier).toInt()
+            val atk = (s.attack * attackMultiplier).toInt()
             return Combatant(
                 key, m.displayName, m.species.element, m.level, hp, (hp - m.damage).coerceIn(1, hp),
-                s.attack, s.attack, s.defense, s.speed, 0, 0, false, m.activeMoves,
+                atk, atk, (s.defense * defenseMultiplier).toInt(), s.speed, 0, 0, false, m.activeMoves,
             ).apply {
                 speciesId = m.speciesId
                 cursed = m.cursed
@@ -194,6 +201,35 @@ data class BattleEvent(
     val crit: Boolean = false,
     val superEffective: Boolean = false,
 )
+
+/**
+ * Enemies grow with the size of your team (the hero plus up to 3 monsters),
+ * so a full team of 4 faces a real fight while a lone hero isn't overwhelmed.
+ * Bosses and villains are already built for a full team: they keep their
+ * strength against 4 and get easier against smaller teams.
+ */
+object TeamScaling {
+    data class Factors(val hp: Double, val attack: Double, val defense: Double)
+
+    fun factors(teamSize: Int, encounter: EncounterType): Factors =
+        if (encounter == EncounterType.WILD) {
+            Factors(hp(teamSize), attack(teamSize), defense(teamSize))
+        } else {
+            Factors(hp(teamSize) / hp(4), attack(teamSize) / attack(4), defense(teamSize) / defense(4))
+        }
+
+    private val hpByTeam = listOf(0.35, 1.2, 2.6, 4.2)
+    private val attackByTeam = listOf(0.45, 1.1, 1.6, 2.0)
+    private val defenseByTeam = listOf(1.0, 1.0, 1.1, 1.2)
+
+    private fun pick(table: List<Double>, teamSize: Int) = table[(teamSize - 1).coerceIn(0, table.size - 1)]
+
+    fun hp(teamSize: Int) = pick(hpByTeam, teamSize)
+    fun attack(teamSize: Int) = pick(attackByTeam, teamSize)
+    fun defense(teamSize: Int) = pick(defenseByTeam, teamSize)
+    /** Bigger fights pay more XP and gold. */
+    fun reward(teamSize: Int) = 1 + 0.15 * (teamSize - 1)
+}
 
 data class BattleResult(
     val outcome: BattleOutcome,
@@ -238,7 +274,16 @@ class Battle(
 ) {
     private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
     val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage, armor)) + fighters.map { Combatant.fromMonster(it) }
-    val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, encounter.hpMultiplier)
+    /** Fighters on your side: the hero plus the party monsters able to fight. */
+    val teamSize: Int = 1 + fighters.size
+    private val scaling = TeamScaling.factors(teamSize, encounter)
+    val enemy: Combatant = Combatant.fromMonster(
+        enemyMonster,
+        Combatant.ENEMY_KEY,
+        hpMultiplier = encounter.hpMultiplier * scaling.hp,
+        attackMultiplier = scaling.attack,
+        defenseMultiplier = scaling.defense,
+    )
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
     private val partyUids = fighters.map { it.uid }
@@ -280,6 +325,7 @@ class Battle(
             EncounterType.VILLAIN -> "A shadow-cursed ${enemy.name} (Lv ${enemy.level}) attacks! It can't be tamed."
         }
         log += intro
+        if (encounter == EncounterType.WILD && teamSize > 1) log += "${enemy.name} grows stronger against your team of $teamSize!"
         advance()
     }
 
@@ -783,12 +829,13 @@ class Battle(
         check(outcome != BattleOutcome.ONGOING) { "Battle still in progress" }
         val lvl = enemy.level
         val bossMult = if (isBoss) 3 else 1
+        val rewardMult = if (encounter == EncounterType.WILD) TeamScaling.reward(teamSize) else 1.0
         val heroXp = when (outcome) {
             BattleOutcome.WON -> lvl * 3 * bossMult
             BattleOutcome.CAPTURED -> lvl * 2 * bossMult
             else -> 0
-        }
-        val gold = if (outcome == BattleOutcome.WON) (lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) else 0
+        }.let { (it * rewardMult).roundToInt() }
+        val gold = if (outcome == BattleOutcome.WON) ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult).roundToInt() else 0
         val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED) {
             partyUids.associateWith { uid ->
                 val base = lvl * 12 * (if (isBoss) 2 else 1)

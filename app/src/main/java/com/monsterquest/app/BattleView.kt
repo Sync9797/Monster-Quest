@@ -38,6 +38,8 @@ data class BattleView(
     val events: List<BattleEvent> = emptyList(),
     /** Fighter keys in the order they'll act, starting with the one acting now. */
     val turnOrder: List<String> = emptyList(),
+    /** Fighters on your side (hero + monsters); wild enemies scale with it. */
+    val teamSize: Int = 1,
 ) {
     fun fighter(key: String): FighterView? = if (key == enemy.key) enemy else allies.find { it.key == key }
 
@@ -66,6 +68,7 @@ data class BattleView(
                 nextOpponent = nextOpponent,
                 events = b.events.toList(),
                 turnOrder = if (b.outcome == BattleOutcome.ONGOING) b.turnOrder() else emptyList(),
+                teamSize = b.teamSize,
             )
         }
     }

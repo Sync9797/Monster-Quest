@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0
+
+The "Battle" update.
+
+- **Battle animations:** spells and typed moves throw a bolt of their type
+  (fireballs, lightning, water orbs, wind crescents, gas clouds, shadow orbs);
+  sword attacks and Normal moves slash. Targets shake and flash with floating
+  damage numbers (gold for critical and super-effective hits); misses and
+  heals show too.
+- **Clear turns:** the attacker gets a gold ring, the fighter whose turn it is
+  pulses with "Your move", and a turn order strip shows who acts next.
+- **Tougher wild monsters that scale with your team:** the more fighters you
+  bring (hero plus up to 3 monsters), the more HP, Attack and Defense a wild
+  monster has; a full team of 4 faces about 4x HP and 2x Attack, a lone hero
+  faces a weaker one. Bigger fights pay up to 45% more XP and gold.
+- **Bosses and villains** keep their strength against a full team and get
+  easier when you bring fewer fighters.
+
 ## 0.2.5
 
 - **Battle animations:** spells and typed moves throw a bolt of their type
