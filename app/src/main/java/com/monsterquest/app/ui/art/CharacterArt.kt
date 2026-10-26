@@ -330,8 +330,8 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     val hx = shape.headX
     val hy = shape.headY
     val r = shape.headR
-    // Stage 3+: horns.
-    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC) {
+    // Stage 3+: horns (birds and fish rely on their crest, gem and halo instead).
+    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC && shape !== BIRD && shape !== FISH) {
         val horn = { side: Float ->
             val bx = hx + side * r * 0.45f
             val by = hy - r * 0.75f
