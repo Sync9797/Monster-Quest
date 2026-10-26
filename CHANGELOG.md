@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14.2
+
+- **Quest buttons:** "+ To-do" is gone. Things with a date go on your
+  calendar (the Calendar button opens it) and come into the game from
+  there. "+ Task" stays for things without a due date.
+- **Sync:** a new button pulls in your calendar right away, in case the
+  game has fallen behind. Without calendar access, it asks for it.
+
 ## 1.14.1
 
 - **Smack Down:** a new Earth move (power 65) that can hit fliers. Against

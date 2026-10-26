@@ -82,7 +82,6 @@ import java.util.Locale
 fun QuestsScreen(vm: GameViewModel) {
     val context = LocalContext.current
     val state = vm.state
-    var showAdd by remember { mutableStateOf(false) }
     var addTask by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<QuestTask?>(null) }
     // Tick so "due in" times and the within-the-hour highlight stay current.
@@ -101,7 +100,7 @@ fun QuestsScreen(vm: GameViewModel) {
     }
     val calendarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCalendar = granted
-        if (granted) vm.syncCalendar() else vm.toast("Without calendar access you can still add to-dos by hand.")
+        if (granted) vm.syncCalendar() else vm.toast("Without calendar access you can still add tasks by hand.")
     }
     LaunchedEffect(hasCalendar) {
         if (hasCalendar && state.settings.calendarAutoSync) vm.syncCalendar(quiet = true)
@@ -121,14 +120,22 @@ fun QuestsScreen(vm: GameViewModel) {
     val overview: @Composable () -> Unit = {
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Left: a to-do that isn't on the calendar. Right: open the calendar app.
-                SmallButton("+ To-do", { showAdd = true }, Modifier.weight(1f))
-                // A task has no due date.
-                SmallButton("+ Task", { addTask = true }, Modifier.weight(1f), outlined = true)
+                // A task has no due date. Anything with a date goes on the calendar (in the calendar app).
+                SmallButton("+ Task", { addTask = true }, Modifier.weight(1f))
                 SmallButton(
                     "Calendar",
                     { if (!openCalendar(context)) vm.toast("No calendar app found.") },
                     Modifier.weight(1f),
+                    outlined = true,
+                )
+                // Pull the calendar in again now, in case the game has fallen behind.
+                SmallButton(
+                    if (vm.syncingCalendar) "Syncing…" else "Sync",
+                    {
+                        if (hasCalendar) vm.syncCalendar() else calendarLauncher.launch(Manifest.permission.READ_CALENDAR)
+                    },
+                    Modifier.weight(1f),
+                    enabled = !vm.syncingCalendar,
                     outlined = true,
                 )
             }
@@ -191,7 +198,7 @@ fun QuestsScreen(vm: GameViewModel) {
         if (pending.isEmpty()) {
             item(key = "empty") {
                 Text(
-                    "No quests yet. Add a to-do or a task, or sync your calendar so events become quests.",
+                    "No quests yet. Add a task, or add events in your calendar and sync so they become quests.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -247,9 +254,6 @@ fun QuestsScreen(vm: GameViewModel) {
         },
     )
 
-    if (showAdd) {
-        QuestEditor(null, onDismiss = { showAdd = false }) { t, d, due, p -> vm.addTask(t, d, due, p); showAdd = false }
-    }
     if (addTask) {
         QuestEditor(null, asTask = true, onDismiss = { addTask = false }) { t, d, _, p -> vm.addTask(t, d, null, p); addTask = false }
     }

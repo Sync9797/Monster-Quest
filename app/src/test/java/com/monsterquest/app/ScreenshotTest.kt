@@ -165,6 +165,10 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun quests() {
         val v = vm()
         shot("02_quests") { AppRoot(v, Tab.QUESTS) }
+        // Buttons: + Task, Calendar and Sync (no more + To-do).
+        rule.onNodeWithText("+ Task").assertExists()
+        rule.onNodeWithText("Sync").assertExists()
+        check(rule.onAllNodesWithText("+ To-do").fetchSemanticsNodes().isEmpty())
         // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
         rule.onNodeWithText("2 quests due within the hour").assertExists()
         // Tap today on the calendar: just today's quests. Tap it again: everything.
