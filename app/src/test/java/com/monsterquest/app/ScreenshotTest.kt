@@ -3,6 +3,7 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import android.Manifest
@@ -607,10 +608,13 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm(base.copy(monsters = base.monsters + extra, swaps = extra.map { it.uid }))
         v.hunt()
         shot("38_swap") { AppRoot(v) }
-        rule.onNodeWithText("Swap").performClick()
+        // On small screens the button can sit below the panel's fold: click it through its semantics.
+        rule.onNodeWithText("Swap").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.mainClock.advanceTimeBy(300)
+        rule.waitForIdle()
         rule.onNodeWithText("Send in from the swap slots").assertExists()
-        rule.onNodeWithText(extra[0].displayName, substring = true).performClick()
+        rule.onNodeWithText(extra[0].displayName, substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${extra[0].displayName} takes whose place?").assertExists()
         capture("39_swap_pick", 300)
@@ -624,6 +628,8 @@ abstract class ScreenshotBase(private val device: String) {
             v.debugSpeed(40.002, -74.0, 6_000, 14f)
         }
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(500)
         rule.waitForIdle()
         rule.onNodeWithText("Moving too fast").assertExists()
         check(v.tooFast(6_000))
