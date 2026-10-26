@@ -256,4 +256,64 @@ class EncountersTest {
         assertTrue(muddied <= Spells.MUD_SHOT_ACCURACY * Spells.MUD_SHOT_STACKS)
         assertTrue(b.enemy.tags().any { "Acc" in it })
     }
+
+    @Test
+    fun questRewardsResistFakeQuests() {
+        val t0 = 1_700_000_000_000L
+        val later = t0 + QuestRewards.MIN_AGE_MS
+        fun add(st: GameState, title: String, d: Difficulty = Difficulty.NORMAL, at: Long = t0) = GameEngine.addTask(st, title, d, rng, nowMs = at).state
+        fun done(st: GameState, title: String, at: Long = later) = GameEngine.completeTask(st, st.tasks.last { it.title == title && !it.completed }.id, at)
+
+        // 1. Added and ticked straight away: done, but no reward.
+        var s = add(withMonsters(1), "asdf")
+        val quick = done(s, "asdf", t0 + 60_000)
+        assertEquals(s.gold, quick.state.gold)
+        assertEquals(s.huntTokens, quick.state.huntTokens)
+        assertTrue("No reward" in quick.message)
+        assertTrue(quick.state.tasks.single().completed)
+
+        // 2. Eight full, four half, then nothing.
+        s = withMonsters(1).copy(huntTokens = 0)
+        val golds = (1..13).map { i ->
+            s = add(s, "Chore $i")
+            val before = s.gold
+            s = done(s, "Chore $i").state
+            s.gold - before
+        }
+        assertEquals(List(8) { 15 } + List(4) { 7 } + listOf(0), golds)
+        assertEquals(0, QuestRewards.status(s, later).fullLeft)
+        // A new day starts fresh.
+        val tomorrow = later + 24 * 3_600_000L
+        s = add(s, "Fresh", at = tomorrow - QuestRewards.MIN_AGE_MS)
+        val before = s.gold
+        s = done(s, "Fresh", tomorrow).state
+        assertEquals(15, s.gold - before)
+
+        // 3. Only three Hard quests a day pay the Hard rate.
+        s = withMonsters(1)
+        val hard = (1..4).map { i ->
+            s = add(s, "Big $i", Difficulty.HARD)
+            val g = s.gold
+            s = done(s, "Big $i").state
+            s.gold - g
+        }
+        assertEquals(listOf(30, 30, 30, 15), hard)
+
+        // 4. The same quest again the same day pays half, even if deleted and re-added.
+        s = withMonsters(1)
+        s = add(s, "Do dishes")
+        s = done(s, "Do dishes").state
+        s = GameEngine.deleteTask(s, s.tasks.single().id).state
+        s = add(s, "  do   DISHES ")
+        val g = s.gold
+        val again = done(s, "do   DISHES")
+        assertEquals(7, again.state.gold - g)
+        assertTrue("already did" in again.message)
+
+        // Calendar quests pay once they've started.
+        val ev = CalendarEvent("e1", "Meeting", t0 + 3_600_000, t0 + 7_200_000, false, null)
+        s = GameEngine.syncCalendar(withMonsters(1), listOf(ev)).state
+        assertEquals(s.gold, GameEngine.completeTask(s, "e1", t0).state.gold)
+        assertTrue(GameEngine.completeTask(s, "e1", t0 + 3_600_000).state.gold > s.gold)
+    }
 }

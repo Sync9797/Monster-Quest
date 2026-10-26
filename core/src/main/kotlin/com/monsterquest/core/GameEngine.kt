@@ -261,17 +261,21 @@ object GameEngine {
     fun completeTask(state: GameState, id: String, nowMs: Long): Update {
         val task = state.tasks.find { it.id == id } ?: return Update(state, "Quest not found.")
         if (task.completed) return Update(state, "Already completed.")
-        val d = task.difficulty
+        // Limits against fake quests: too new, too many today, too many Hard, or a repeat.
+        val p = QuestRewards.payout(state, task, nowMs)
         var s = state.copy(
             tasks = state.tasks.map { if (it.id == id) it.copy(completedAtMs = nowMs) else it },
             questDays = state.questDays.let { it + (epochDay(nowMs) to (it[epochDay(nowMs)] ?: 0) + 1) },
-            gold = state.gold + d.gold,
-            huntTokens = minOf(MAX_HUNT_TOKENS, state.huntTokens + 1),
+            gold = state.gold + p.gold,
+            huntTokens = if (p.token) minOf(MAX_HUNT_TOKENS, state.huntTokens + 1) else state.huntTokens,
             stats = state.stats.copy(tasksCompleted = state.stats.tasksCompleted + 1),
+            questLimits = p.limits,
         )
-        val gain = addHeroXp(s, d.xp)
+        val gain = addHeroXp(s, p.xp)
         s = gain.state
-        return Update(s, "Quest complete! +${d.xp} XP, +${d.gold} gold, +1 hunt token.${levelUpText(gain)}")
+        val notes = p.notes.joinToString("") { " $it" }
+        val text = if (p.share > 0) "Quest complete! +${p.xp} XP, +${p.gold} gold, +1 hunt token.$notes" else "Quest done!$notes"
+        return Update(s, text + levelUpText(gain))
     }
 
     fun difficultyFor(event: CalendarEvent): Difficulty {

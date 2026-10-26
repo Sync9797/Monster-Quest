@@ -16,9 +16,10 @@ class GameTest {
 
     @Test
     fun completingTaskGivesXpGoldAndToken() {
-        var s = GameEngine.addTask(started(), "Do laundry", Difficulty.HARD, rng).state
+        var s = GameEngine.addTask(started(), "Do laundry", Difficulty.HARD, rng, nowMs = 1000).state
         val id = s.tasks.single().id
-        s = GameEngine.completeTask(s, id, 1000).state
+        // Quests pay once they've been around for a while.
+        s = GameEngine.completeTask(s, id, 1000 + QuestRewards.MIN_AGE_MS).state
         assertEquals(50 + Difficulty.HARD.gold, s.gold)
         assertEquals(2, s.huntTokens)
         assertEquals(Difficulty.HARD.xp - heroXpForNext(1), s.hero.xp) // 60 xp levels past 50

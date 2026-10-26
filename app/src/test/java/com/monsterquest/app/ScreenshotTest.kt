@@ -171,6 +171,8 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("+ Task").assertExists()
         rule.onNodeWithText("Sync").assertExists()
         check(rule.onAllNodesWithText("+ To-do").fetchSemanticsNodes().isEmpty())
+        // Today's quest reward allowance.
+        rule.onNodeWithText("Full rewards: 8 of 8 left today", substring = true).assertExists()
         // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
         rule.onNodeWithText("2 quests due within the hour").assertExists()
         // Tap today on the calendar: just today's quests. Tap it again: everything.

@@ -288,6 +288,8 @@ data class GameState(
     val stepHistory: Map<Long, Int> = emptyMap(),
     /** Epoch day -> quests completed that day. */
     val questDays: Map<Long, Int> = emptyMap(),
+    /** Today's quest rewards so far (see [QuestRewards]); kept on the hero, so deleting quests doesn't reset it. */
+    val questLimits: QuestLimits = QuestLimits(),
     /** How much you've been moving lately (0..1, fades over time); more movement, more spawns. */
     val activity: Double = 0.0,
     val activityAtMs: Long = 0,

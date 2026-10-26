@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.18.0
+
+- **Fair quest rewards** (no farming with fake quests):
+  - A new task pays out only once it's been around for 15 minutes; it
+    shows "Reward unlocks in N min" until then. Calendar quests pay once
+    they've started. Ticking one early still marks it done, with no
+    reward.
+  - The first 8 quests each day pay in full, the next 4 pay half, and
+    after that quests still count for your streak but pay nothing. The
+    Quests screen shows how many full rewards are left today.
+  - Only 3 Hard quests a day pay the Hard rate; the rest pay as Normal.
+  - Doing the same quest (same name) again on the same day pays half.
+  - The daily counts are kept on your hero, so deleting and re-adding
+    quests doesn't reset them. They reset at midnight.
+
 ## 1.17.0
 
 - **New logo:** a sword crossed with a quill pen (adventure plus your to-do

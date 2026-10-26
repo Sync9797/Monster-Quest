@@ -37,6 +37,7 @@ private val topics = listOf(
         GameIcon.QUESTS, "Quests: get work done",
         listOf(
             "Your phone's calendar events become quests automatically. To add something with a date, add it in your calendar (the Calendar button opens it), then tap Sync if it hasn't shown up yet.",
+            "Quest rewards are limited to keep things fair: a new task pays out 15 minutes after you add it (calendar quests once they start), the first 8 quests each day pay in full and the next 4 pay half, only 3 Hard quests a day pay the Hard rate, and doing the same quest twice in a day pays half. Everything still counts for your streak.",
             "Use + Task for things without a due date. Tap any quest to change its priority. The list is grouped like a planner: overdue, due within the hour, later today, tomorrow, this week and later, most important first.",
             "Anything due within the hour glows amber with a countdown and is listed in a banner at the top; overdue quests turn red.",
             "Completing a quest gives XP, gold and a hunt token (spend tokens on the Hero tab to find a monster anywhere).",

@@ -139,6 +139,19 @@ fun QuestsScreen(vm: GameViewModel) {
                     outlined = true,
                 )
             }
+            // Today's quest rewards: full ones left, then half ones.
+            val limits = com.monsterquest.core.QuestRewards.status(state, now)
+            Text(
+                when {
+                    limits.fullLeft > 0 -> "Full rewards: ${limits.fullLeft} of ${com.monsterquest.core.QuestRewards.FULL_PER_DAY} left today" +
+                        " • Hard: ${limits.hardLeft} left"
+                    limits.halfLeft > 0 -> "Half rewards: ${limits.halfLeft} left today"
+                    else -> "Today's quest rewards are used up. Quests still count for your streak."
+                },
+                fontSize = 12.sp,
+                color = if (limits.fullLeft > 0) MaterialTheme.colorScheme.onSurfaceVariant else HpYellow,
+                modifier = Modifier.padding(top = 6.dp),
+            )
             // Anything due within the hour is the first thing you see.
             if (dueSoon.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -407,6 +420,12 @@ internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplet
                     add("+${task.difficulty.gold} gold")
                 }.joinToString(" • ")
                 Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // A brand-new to-do only pays out once it's been around a little while.
+                if (task.source == TaskSource.MANUAL && !task.completed) {
+                    com.monsterquest.core.QuestRewards.tooSoon(task, now)?.let { left ->
+                        Text("Reward unlocks in ${(left + 59_999) / 60_000} min", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
             if (task.source == TaskSource.MANUAL) {
                 TextButton(onClick = onDelete, contentPadding = PaddingValues(4.dp)) {
