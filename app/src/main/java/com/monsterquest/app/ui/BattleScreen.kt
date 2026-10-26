@@ -185,8 +185,14 @@ private fun EnemyPanel(b: BattleView) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 IconText(e.element.icon(), "${e.element.label} type", tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
-                if (!b.isBoss && b.encounter == EncounterType.WILD && b.teamSize > 1) {
-                    Text("Stronger vs your team of ${b.teamSize}", fontSize = 11.sp, color = HpYellow)
+                if (b.encounter == EncounterType.WILD) {
+                    val reward = "%.2g".format(com.monsterquest.core.TeamScaling.reward(b.teamSize))
+                    Text(
+                        if (b.teamSize > 1) "Stronger vs your team of ${b.teamSize} • Rewards x$reward"
+                        else "Weaker vs a lone hero • Rewards x$reward",
+                        fontSize = 11.sp,
+                        color = if (b.teamSize > 1) HpYellow else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Spacer(Modifier.height(4.dp))
                 Bar(e.hpFraction, hpColor(e.hpFraction), Modifier.fillMaxWidth(), heightDp = 10)

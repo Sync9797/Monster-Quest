@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1
+
+- **Rewards follow the monster's strength.** Wild monsters already scale with
+  your team; now XP, gold and monster XP do too: x0.6 alone, x1.25 with 2,
+  x2 with 3 and x2.75 with a full team of 4. Going in alone is easier but pays
+  less; a 4-on-1 is a harder fight for much more.
+- **Better drops from bigger fights:** more frequent item drops, plus a bonus
+  drop for teams of 3 or 4 (Hi-Potions, Great Orbs, Phoenix Downs, and a small
+  chance of a Restore Potion).
+- The battle screen shows the reward multiplier next to the enemy.
+
 ## 0.3.0
 
 The "Battle" update.

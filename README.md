@@ -118,8 +118,10 @@ your hero.
   your gold.
   - **Wild monsters scale with your team:** bring more fighters and they get
     more HP, Attack and Defense (about 4x HP and 2x Attack against a full
-    team of 4, weaker against a lone hero). Bigger fights pay up to 45% more
-    XP and gold.
+    team of 4, weaker against a lone hero). Rewards follow the monster's
+    strength: XP, gold and monster XP are x0.6 alone, x1.25 with 2, x2 with 3
+    and x2.75 with a full team, and teams of 3 or 4 earn bonus drops (with a
+    small chance of a Restore Potion).
   - **Bosses and villains** are built for a full team and get easier when you
     bring fewer fighters.
 - **Battle animations:** spells and typed moves throw a bolt of their type,

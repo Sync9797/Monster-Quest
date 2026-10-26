@@ -948,5 +948,19 @@ class GameTest {
         val boss4 = battle(4, EncounterType.SILVER_BOSS).enemy
         assertEquals(Combatant.fromMonster(foe, Combatant.ENEMY_KEY, EncounterType.SILVER_BOSS.hpMultiplier).maxHp, boss4.maxHp)
         assertTrue(battle(2, EncounterType.SILVER_BOSS).enemy.maxHp < boss4.maxHp)
+        // Rewards follow the enemy's strength: less alone, much more with a full team.
+        assertTrue(TeamScaling.reward(1) < 1.0)
+        assertTrue(TeamScaling.reward(4) > TeamScaling.reward(3) && TeamScaling.reward(3) > TeamScaling.reward(2))
+        fun xpFor(n: Int): Int {
+            val b = battle(n, EncounterType.WILD)
+            var guard = 0
+            while (b.outcome == BattleOutcome.ONGOING && guard++ < 300) {
+                if (b.current != null) b.act(BattleAction.Attack) else break
+            }
+            return if (b.outcome == BattleOutcome.WON) b.result().heroXp else -1
+        }
+        val solo = (1..4).map { xpFor(1) }.filter { it > 0 }
+        val full = (1..4).map { xpFor(4) }.filter { it > 0 }
+        if (solo.isNotEmpty() && full.isNotEmpty()) assertTrue(full.max() > solo.max() * 4)
     }
 }

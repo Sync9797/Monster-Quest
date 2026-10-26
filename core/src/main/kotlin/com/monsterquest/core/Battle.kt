@@ -227,8 +227,13 @@ object TeamScaling {
     fun hp(teamSize: Int) = pick(hpByTeam, teamSize)
     fun attack(teamSize: Int) = pick(attackByTeam, teamSize)
     fun defense(teamSize: Int) = pick(defenseByTeam, teamSize)
-    /** Bigger fights pay more XP and gold. */
-    fun reward(teamSize: Int) = 1 + 0.15 * (teamSize - 1)
+    private val rewardByTeam = listOf(0.6, 1.25, 2.0, 2.75)
+
+    /**
+     * Rewards follow the enemy's strength: a lone hero faces a weaker monster
+     * for less, a full team faces a much stronger one for much more.
+     */
+    fun reward(teamSize: Int) = pick(rewardByTeam, teamSize)
 }
 
 data class BattleResult(
@@ -838,7 +843,7 @@ class Battle(
         val gold = if (outcome == BattleOutcome.WON) ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult).roundToInt() else 0
         val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED) {
             partyUids.associateWith { uid ->
-                val base = lvl * 12 * (if (isBoss) 2 else 1)
+                val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult).roundToInt()
                 if (combatant(uid)?.alive == true) base else base / 2
             }
         } else {
@@ -852,8 +857,16 @@ class Battle(
             } else if (isBoss) {
                 drops[Item.MASTER_ORB] = 1
                 drops[Item.HI_POTION] = 2
-            } else if (rng.nextDouble() < 0.25) {
-                drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER).random(rng)] = 1
+            } else {
+                // Stronger (team-scaled) monsters drop more, and better.
+                if (rng.nextDouble() < (0.25 * rewardMult).coerceAtMost(0.9)) {
+                    drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER).random(rng)] = 1
+                }
+                if (teamSize >= 3 && rng.nextDouble() < 0.2 * (teamSize - 2)) {
+                    val bonus = if (rng.nextDouble() < 0.04 * (teamSize - 1)) Item.RESTORE_POTION
+                    else listOf(Item.HI_POTION, Item.GREAT_ORB, Item.PHOENIX_DOWN).random(rng)
+                    drops[bonus] = (drops[bonus] ?: 0) + 1
+                }
             }
         }
         val captured = if (outcome == BattleOutcome.CAPTURED) enemyMonster.copy(uid = newId(rng), xp = 0) else null
