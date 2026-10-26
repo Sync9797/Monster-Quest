@@ -104,6 +104,10 @@ class Combatant(
     // Skills: the fighter's own, at their rank, and what they (or a teammate's) give it.
     val traits: MutableMap<Trait, Int> = mutableMapOf()
     var immuneEarth: Boolean = false
+    /** Hovering only because of the hero's maxed Hover (it breaks when the hero is hit). */
+    var borrowedHover: Boolean = false
+    /** Knocked down by Smack Down: Earth moves hit it for the rest of the battle. */
+    var grounded: Boolean = false
     /** Less damage from Earth moves, in percent (a hovering hero's team). */
     var earthResistPct: Int = 0
     var oblivious: Boolean = false
@@ -143,7 +147,14 @@ class Combatant(
     fun shareTrait(t: Trait, rank: Int) {
         when (t) {
             Trait.INSOMNIA -> sleepCut = maxOf(sleepCut, t.sleepCut(rank.coerceAtMost(MAX_SKILL_RANK - 1)))
-            Trait.HOVER -> earthResistPct = maxOf(earthResistPct, t.hoverTeamPct(rank))
+            Trait.HOVER -> {
+                earthResistPct = maxOf(earthResistPct, t.hoverTeamPct(rank))
+                // Maxed: the whole team hovers too, until the hero takes a hit.
+                if (rank >= MAX_SKILL_RANK && !immuneEarth) {
+                    immuneEarth = true
+                    borrowedHover = true
+                }
+            }
             Trait.OBLIVIOUS -> oblivious = true
             Trait.QUICK_STEP -> evasion += t.dodgePct(rank) / 200.0
             Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
@@ -193,6 +204,8 @@ class Combatant(
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
         if (powerUp > 0) add("Power +$powerUp%")
         if (scared) add("Scared")
+        if (immuneEarth) add("Hovering")
+        if (grounded) add("Grounded")
         traits.forEach { (t, r) -> add("${t.label} ${"★".repeat(r)}") }
         if (diving != null) add("In the air")
         if (protecting) add("Guarding")
@@ -702,6 +715,13 @@ class Battle(
         secondWind(c)
     }
 
+    private fun breakTeamHover(hero: Combatant) {
+        val lifted = teamOf(hero).filter { it.borrowedHover } + reserve.filter { it.borrowedHover }
+        if (lifted.isEmpty()) return
+        lifted.forEach { it.borrowedHover = false; it.immuneEarth = false }
+        log += "${hero.name} is hit! The team's hover breaks (${hero.name} keeps floating)."
+    }
+
     /** Second Wind: once a battle, a big heal on dropping below a quarter of max HP. */
     private fun secondWind(c: Combatant) {
         if (c.secondWindPct <= 0 || c.secondWindUsed || !c.alive || c.hpFraction >= 0.25) return
@@ -1031,7 +1051,8 @@ class Battle(
             return false
         }
         if (t.protecting) log += "${move.name} pierces ${t.name}'s guard!"
-        if (floatsOver(a, t, move.type)) return false
+        val smack = move.effects.filterIsInstance<MoveEffect.SmackDown>().firstOrNull()
+        if (floatsOver(a, t, move.type, smackDown = smack != null)) return false
         if (MoveEffect.SureHit !in move.effects && !rollHit(a, t, move.accuracy)) return false
         if (!move.isDamaging) return true
         if (t.diving != null) log += "Thunder Bolt strikes ${t.name} mid-dive!"
@@ -1039,7 +1060,9 @@ class Battle(
         val crit = if (MoveEffect.HighCrit in move.effects) 0.25 else 0.0
         val multi = move.effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()
         val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
-        val power = (move.power * mult).roundToInt()
+        // Smack Down hits a hovering foe harder and knocks it to the ground.
+        val airborne = smack != null && t.immuneEarth
+        val power = ((if (airborne) smack!!.groundedPower else move.power) * mult).roundToInt()
         var count = 0
         var dealt = 0
         while (count < hits && t.alive) {
@@ -1047,6 +1070,13 @@ class Battle(
             count++
         }
         if (multi != null) log += "Hit $count time${if (count == 1) "" else "s"}!"
+        if (airborne && t.alive) {
+            t.immuneEarth = false
+            t.borrowedHover = false
+            t.earthResistPct = 0
+            t.grounded = true
+            log += "${t.name} is knocked out of the air! Earth moves can hit it now."
+        }
         move.effects.filterIsInstance<MoveEffect.LifeDrain>().firstOrNull()?.let { fx ->
             if (a.alive && dealt > 0 && a.hp < a.maxHp) heal(a, maxOf(1, dealt * fx.percent / 100), "${a.name} drains the foe")
         }
@@ -1054,8 +1084,8 @@ class Battle(
     }
 
     /** Hover and Levitate: Earth attacks pass beneath. Logs it and returns true if [t] is out of reach. */
-    private fun floatsOver(a: Combatant, t: Combatant, type: Element): Boolean {
-        if (type != Element.EARTH || !t.immuneEarth) return false
+    private fun floatsOver(a: Combatant, t: Combatant, type: Element, smackDown: Boolean = false): Boolean {
+        if (type != Element.EARTH || !t.immuneEarth || smackDown) return false
         log += "${t.name} floats above it. Earth attacks can't reach!"
         record(a, t, StrikeStyle.MISS, Element.NEUTRAL)
         return true
@@ -1143,7 +1173,8 @@ class Battle(
                     }
                     log += "The whole team's ${fx.stats.joinToString(" and ") { it.label }} rose!"
                 }
-                is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit, MoveEffect.HitsAllFoes, MoveEffect.Pierce, is MoveEffect.LifeDrain -> {}
+                is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit, MoveEffect.HitsAllFoes, MoveEffect.Pierce, is MoveEffect.LifeDrain,
+                is MoveEffect.SmackDown -> {}
                 MoveEffect.Recharge -> a.mustRecharge = true
                 is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
                     heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
@@ -1224,6 +1255,8 @@ class Battle(
         log += (if (verb != null) "${a.name} $verb ${d.name} for $dmg damage. $notes" else "It hits ${d.name} for $dmg damage. $notes").trim()
         if (!d.alive) log += "${d.name} falls!"
         secondWind(d)
+        // The team's borrowed hover breaks when the hero is hit (the hero keeps hovering).
+        if (d.isHero && dmg > 0) breakTeamHover(d)
         // Static, Flame Body and Poison Point punish whoever strikes in close.
         val touch = d.touchStatus
         if (touch != null && !useMagic && a.alive && a.status == null && rng.nextInt(100) < d.touchPct) {
@@ -1260,7 +1293,15 @@ class Battle(
             }
         }.ifEmpty { listOf(Moves.get("tackle")) }
         val move = if (rng.nextDouble() < 0.7) {
-            usable.maxBy { m -> if (m.isDamaging) m.expectedPower * m.type.multiplierAgainst(target.element) else 25.0 }
+            usable.maxBy { m ->
+                val smack = m.effects.filterIsInstance<MoveEffect.SmackDown>().firstOrNull()
+                when {
+                    !m.isDamaging -> 25.0
+                    // Earth moves pass under a hovering target, except Smack Down, which hits harder.
+                    m.type == Element.EARTH && target.immuneEarth -> if (smack != null) smack.groundedPower * m.type.multiplierAgainst(target.element) else 0.0
+                    else -> m.expectedPower * m.type.multiplierAgainst(target.element)
+                }
+            }
         } else {
             usable.random(rng)
         }

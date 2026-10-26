@@ -197,8 +197,12 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     fun hidePct(rank: Int) = 5 + 2 * rank
     /** Static, Flame Body, Poison Point: chance to afflict an attacker, in percent. */
     fun touchPct(rank: Int) = 8 + 3 * rank
-    /** Hover at team range: less Earth damage for the rest of the team, in percent. */
-    fun hoverTeamPct(rank: Int) = if (rank >= 5) 50 else 25
+    /**
+     * Hover at team range: less Earth damage for the rest of the team, in
+     * percent. At rank 5 the whole team hovers until the hero takes a hit,
+     * then falls back to this.
+     */
+    fun hoverTeamPct(rank: Int) = if (rank >= 4) 50 else 25
 
     /** Whether the effect covers the owner's whole side at this rank (hero skills only). */
     fun teamRange(rank: Int, hero: Boolean) = hero && rank >= TEAM_RANGE_RANK && this in RANGED
@@ -217,7 +221,11 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
             INSOMNIA -> if (r >= MAX_SKILL_RANK) "Can't be put to sleep" + (if (team) ", and your team wakes ${sleepCut(r - 1)} turns sooner" else "")
             else "Wakes ${sleepCut(r)} turn${if (sleepCut(r) > 1) "s" else ""} sooner from sleep" + if (team) " (whole team)" else ""
             INTIMIDATE -> "Lowers every foe's Attack by ${intimidateStages(r)} stage${if (intimidateStages(r) > 1) "s" else ""} as the battle starts"
-            HOVER -> "Earth moves can't touch you" + if (team) "; your team takes ${hoverTeamPct(r)}% less Earth damage" else ""
+            HOVER -> "Earth moves can't touch you" + when {
+                r >= MAX_SKILL_RANK -> "; your whole team hovers too, until you take a hit (then ${hoverTeamPct(r)}% less Earth damage)"
+                team -> "; your team takes ${hoverTeamPct(r)}% less Earth damage"
+                else -> ""
+            }
             LEVITATE -> "Floats: Earth moves can't touch it"
             OBLIVIOUS -> "$whoCap can't have stats lowered or be scared" + if (team) " (whole team)" else ""
             QUICK_STEP -> "${dodgePct(r)}% chance to dodge attacks" + if (team) " (your monsters: ${dodgePct(r) / 2}%)" else ""

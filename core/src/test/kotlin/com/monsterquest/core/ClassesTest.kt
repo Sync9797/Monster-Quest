@@ -135,7 +135,7 @@ class ClassesTest {
         val earthUser = Monster.create(Bestiary.get("terraursa"), 40, rng)
         val battle = Battle(Hero(level = 40), listOf(earthUser), flier, EncounterType.WILD, emptyMap(), false, rng = Random(3))
         val hp = battle.enemy.hp
-        val earthMove = earthUser.activeMoves.firstOrNull { it.type == Element.EARTH && it.isDamaging }
+        val earthMove = earthUser.activeMoves.firstOrNull { it.type == Element.EARTH && it.isDamaging && it.effects.none { e -> e is MoveEffect.SmackDown } }
         assertNotNull(earthMove)
         repeat(6) {
             val c = battle.current ?: return@repeat

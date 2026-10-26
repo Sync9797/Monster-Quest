@@ -80,6 +80,12 @@ sealed interface MoveEffect {
     data class LifeDrain(val percent: Int) : MoveEffect
     /** Goes through guards, Wave Guard and the foe's raised Defense. */
     data object Pierce : MoveEffect
+    /**
+     * Smack Down: an Earth move that reaches fliers anyway. Against a hovering
+     * foe it hits at [groundedPower] and knocks it down for good, so Earth moves
+     * hit it for the rest of the battle.
+     */
+    data class SmackDown(val groundedPower: Int) : MoveEffect
     /** Every ally (the user included) heals [percent]% of its max HP. */
     data class TeamHeal(val percent: Int) : MoveEffect
     /** Every ally's [stats] rise by [stages]. */
@@ -234,6 +240,7 @@ object Moves {
         m("thorn_trap", "Thorn Trap", Element.EARTH, 0, desc = "Thorns that cut 6 damage a turn for 5 turns.", fx = *arrayOf(MoveEffect.Scorch(6, 5))),
         m("ground_pound", "Ground Pound", Element.EARTH, 70, desc = "20% chance the foe loses its next turn.", fx = *arrayOf(MoveEffect.Flinch(0.2))),
         m("stone_edge", "Stone Edge", Element.EARTH, 100, 80, "Jagged stones: high critical-hit chance.", MoveEffect.HighCrit),
+        m("smack_down", "Smack Down", Element.EARTH, 65, desc = "Hurls a rock that reaches fliers. Against a hovering foe: 85 power, and it's knocked down so Earth moves hit it for the rest of the battle.", fx = *arrayOf(MoveEffect.SmackDown(85))),
 
         // ---- Starter signature moves: only the four starter lines learn these ----
         m("storm_antlers", "Storm Antlers", Element.ELECTRIC, 85, desc = "Lightning leaps from its antlers to every foe. 30% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
@@ -290,13 +297,32 @@ object Moves {
         "Prism Fairy" to listOf(8 to "cleansing_wave", 20 to "quick_bolt"),
     )
 
+    /** Smack Down: Earth monsters learn it at 20, almost everyone else at 24. */
+    const val SMACK_DOWN_EARTH_LEVEL = 20
+    const val SMACK_DOWN_LEVEL = 24
+
+    /**
+     * Who can't learn Smack Down: creatures with nothing to throw a rock
+     * with, or that live in the water or the air: fish, slimes, wisps and
+     * the fairy, and the Sky Serpent.
+     */
+    private val noSmackDown = listOf("Bubblefin", "Goopling", "Gloomwisp", "Prism Fairy", "Sky Serpent")
+
+    fun canLearnSmackDown(species: Species): Boolean = noSmackDown.none { species.family.startsWith(it) }
+
+    private fun smackDownFor(species: Species): List<Pair<Int, String>> = when {
+        !canLearnSmackDown(species) -> emptyList()
+        species.element == Element.EARTH -> listOf(SMACK_DOWN_EARTH_LEVEL to "smack_down")
+        else -> listOf(SMACK_DOWN_LEVEL to "smack_down")
+    }
+
     fun familyMovesFor(species: Species): List<Pair<Int, String>> =
         familyMoves.entries.firstOrNull { (key, _) -> species.family.startsWith(key) || (key == "Hound" && species.family.contains("Hound")) }
             ?.value.orEmpty()
 
     /** Moves a monster of [species] knows at [level], with the level each was learned. */
     fun learnable(species: Species): List<Pair<Int, Move>> =
-        (learnsets.getValue(species.element) + learnsets.getValue(Element.NEUTRAL) + familyMovesFor(species))
+        (learnsets.getValue(species.element) + learnsets.getValue(Element.NEUTRAL) + familyMovesFor(species) + smackDownFor(species))
             .distinctBy { it.second }
             .map { (lvl, id) -> lvl to get(id) }
             .sortedBy { it.first }

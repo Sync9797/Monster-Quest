@@ -132,4 +132,55 @@ class EncountersTest {
         w = SpeedGuard.update(w, 40.000045, -74.0, 4_000)
         assertFalse(w.tooFast)
     }
+
+    @Test
+    fun smackDownGroundsFliersAndMostMonstersLearnIt() {
+        val sd = Moves.get("smack_down")
+        assertEquals(Element.EARTH, sd.type)
+        assertEquals(65, sd.power)
+        // Most monsters learn it; fish, slimes, wisps and the fairy don't.
+        assertTrue(Moves.learned(Bestiary.get("mosscub"), 20).contains(sd))
+        assertTrue(Moves.learned(Bestiary.get("cindrake"), 24).contains(sd))
+        for (id in listOf("bubblefin", "goopling", "gloomwisp", "prism_fairy")) assertFalse(Moves.learned(Bestiary.get(id), 100).contains(sd), id)
+        val learners = Bestiary.all.count { Moves.canLearnSmackDown(it) }
+        assertTrue(learners > Bestiary.all.size * 3 / 4)
+
+        // Against a levitating bird: it connects, and afterwards Earth moves land.
+        val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng)
+        val bear = Monster.create(Bestiary.get("terraursa"), 40, rng).copy(moves = listOf("smack_down"))
+        val b = Battle(Hero(level = 40), listOf(bear), bird, EncounterType.WILD, emptyMap(), false, rng = Random(12))
+        assertTrue(b.enemy.immuneEarth)
+        var tries = 0
+        while (b.enemy.immuneEarth && b.outcome == BattleOutcome.ONGOING && tries++ < 20) {
+            val c = b.current ?: break
+            if (c.key == bear.uid) b.act(BattleAction.UseMove("smack_down")) else b.act(BattleAction.Defend)
+        }
+        assertFalse(b.enemy.immuneEarth)
+        assertTrue(b.enemy.grounded)
+        assertTrue(b.log.any { "knocked out of the air" in it })
+    }
+
+    @Test
+    fun maxedHoverLiftsTheTeamUntilTheHeroIsHit() {
+        val s = withMonsters(2, level = 70)
+        val hero = s.hero.copy(level = 70, skills = listOf(Trait.HOVER))
+        assertEquals(5, hero.rankOf(Trait.HOVER))
+        val foe = Monster.create(Bestiary.get("goopling"), 70, rng) // no Smack Down: only a hit on the hero ends the hover
+        val b = GameEngine.newBattle(s.copy(hero = hero), foe, EncounterType.WILD, rng = Random(3))
+        // Everyone hovers (unless a faster foe already hit the hero before your first turn).
+        assertTrue(b.allies.all { it.immuneEarth } || b.log.any { "hover breaks" in it })
+        assertTrue(b.allies.first().immuneEarth)
+        // Rank 4 only softens Earth damage for the team.
+        val r4 = GameEngine.newBattle(s.copy(hero = hero.copy(level = 69)), foe, EncounterType.WILD, rng = Random(3))
+        assertFalse(r4.allies[1].immuneEarth)
+        assertEquals(50, r4.allies[1].earthResistPct)
+        // Fight until the hero takes a hit: the team drops, the hero keeps floating.
+        var tries = 0
+        while (b.allies.drop(1).any { it.immuneEarth } && b.outcome == BattleOutcome.ONGOING && tries++ < 60) b.act(BattleAction.Defend)
+        if (b.outcome == BattleOutcome.ONGOING) {
+            assertTrue(b.allies.first().immuneEarth)
+            assertTrue(b.allies.drop(1).none { it.immuneEarth })
+            assertTrue(b.log.any { "hover breaks" in it })
+        }
+    }
 }

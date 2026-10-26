@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.14.1
+
+- **Smack Down:** a new Earth move (power 65) that can hit fliers. Against
+  a hovering foe it hits at 85 and knocks it down, so Earth moves hit it
+  for the rest of the battle. Earth monsters learn it at level 20 and most
+  others at 24. Fish, slimes, wisps, the Prism Fairy and the Sky Serpent
+  can't learn it.
+- **Hover, balanced:** at rank 3 the team takes 25% less Earth damage, and
+  50% at rank 4. At rank 5 the whole team hovers, but only until the hero
+  takes a hit. Then the team drops back to 50% (the hero keeps floating).
+  Fighters show "Hovering" or "Grounded" in battle.
+
 ## 1.14.0
 
 - **Battery saver draws more trouble:** with the phone upside down in the
