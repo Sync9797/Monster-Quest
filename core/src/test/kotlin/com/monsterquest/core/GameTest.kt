@@ -317,7 +317,7 @@ class GameTest {
         assertEquals(1.5, Element.GAS.multiplierAgainst(Element.ELECTRIC))
         // Every type has monsters, and Earth has its moves.
         assertTrue(Element.typed.all { e -> Bestiary.wild.count { it.element == e } >= 6 })
-        assertEquals(8, Moves.learnsets.getValue(Element.EARTH).size)
+        assertTrue(Element.typed.all { Moves.learnsets.getValue(it).size >= 11 })
     }
 
     @Test
@@ -380,7 +380,8 @@ class GameTest {
         while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
         val pal = b.allies.first { !it.isHero }
         b.act(BattleAction.CastSpell("ward", pal.key))
-        assertTrue(pal.shield > 0)
+        // The ward goes up (and may already have soaked a hit before we look).
+        assertTrue(b.log.any { it.contains("is shielded") })
         assertTrue(b.events.any { it.style == StrikeStyle.WARD && it.targetKey == pal.key })
         guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
@@ -1142,6 +1143,32 @@ class GameTest {
         val three = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), pack = trio.drop(1), ambush = true)
         assertTrue(three.enemies.all { it.maxHp < one.enemy.maxHp })
         assertTrue(three.enemies.sumOf { it.maxHp } < one.enemy.maxHp * 1.2)
+    }
+
+    @Test
+    fun movesAreVariedAndWork() {
+        // Every learnset and signature move exists, and every type has plenty.
+        (Moves.learnsets.values.flatten() + Moves.familyMoves.values.flatten()).forEach { (_, id) -> assertNotNull(Moves.find(id), id) }
+        assertTrue(Moves.all.size >= 90)
+        // Lines of the same type learn different signature moves.
+        val drake = Moves.learnable(Bestiary.get("infernodrake")).map { it.second.id }
+        val cat = Moves.learnable(Bestiary.get("solar_tiger")).map { it.second.id }
+        assertTrue("razor_gale" in drake && "steel_wing" in drake && "steel_wing" !in cat)
+        assertTrue("fire_fang" in Moves.learnable(Bestiary.get("tide_pup")).map { it.second.id })
+        // Multi-hit, sure-hit, self-buff and cure all work in battle.
+        val user = Monster.create(Bestiary.get("cinder_hound"), 30, Random(3)).copy(moves = listOf("fury_swipes", "focus", "kindle", "quick_strike"))
+        val s = started().let { it.copy(monsters = listOf(user), party = listOf(user.uid)) }
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5))
+        val me = b.allies.first { it.key == user.uid }
+        fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        myTurn(); b.act(BattleAction.UseMove("fury_swipes"))
+        assertTrue(b.log.any { it.matches(Regex("Hit [2-5] times!")) })
+        myTurn(); b.act(BattleAction.UseMove("focus"))
+        assertTrue((me.stages[BattleStat.ATTACK] ?: 0) >= 2)
+        me.status = Status.BURN; me.statusTurns = 3
+        myTurn(); b.act(BattleAction.UseMove("kindle"))
+        assertTrue(b.log.any { it.contains("shakes off") })
+        assertEquals(77.0, Moves.get("ember_barrage").expectedPower, 0.01)
     }
 
     @Test

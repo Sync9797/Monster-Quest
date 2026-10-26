@@ -767,13 +767,22 @@ class Battle(
                 return
             }
             if (d.protecting) {
-                log += "${d.name}'s Wave Guard blocks it!"
+                log += "${d.name}'s guard blocks it!"
                 return
             }
-            if (!rollHit(a, d, move.accuracy)) return
+            if (MoveEffect.SureHit !in move.effects && !rollHit(a, d, move.accuracy)) return
             if (move.isDamaging) {
                 if (d.diving != null) log += "Thunder Bolt strikes ${d.name} mid-dive!"
-                strike(a, d, move.power, move.type, useMagic = false, verb = null, style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT)
+                val style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT
+                val crit = if (MoveEffect.HighCrit in move.effects) 0.25 else 0.0
+                val multi = move.effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()
+                val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
+                var landed = 0
+                while (landed < hits && d.alive) {
+                    strike(a, d, move.power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit)
+                    landed++
+                }
+                if (multi != null) log += "Hit $landed time${if (landed == 1) "" else "s"}!"
             }
         } else {
             log += "${a.name} uses ${move.name}!"
@@ -832,8 +841,20 @@ class Battle(
                 }
                 MoveEffect.Protect -> {
                     a.protecting = true
-                    log += "${a.name} raises a Wave Guard!"
+                    log += "${a.name} raises a ${move.name}!"
                 }
+                is MoveEffect.RaiseSelf -> if (a.alive) {
+                    fx.stats.forEach { a.stages[it] = ((a.stages[it] ?: 0) + fx.stages).coerceAtMost(4) }
+                    log += "${a.name}'s ${fx.stats.joinToString(" and ") { it.label }} ${if (fx.stages > 1) "sharply rose" else "rose"}!"
+                }
+                MoveEffect.CureSelf -> if (a.status != null || a.scorchTurns > 0) {
+                    a.status = null
+                    a.statusTurns = 0
+                    a.nightmareDamage = 0
+                    a.scorchTurns = 0
+                    log += "${a.name} shakes off its ailments!"
+                }
+                is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit -> {}
                 MoveEffect.Recharge -> a.mustRecharge = true
                 is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
                     heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
@@ -869,12 +890,12 @@ class Battle(
         }
     }
 
-    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?, style: StrikeStyle): Int {
+    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?, style: StrikeStyle, extraCrit: Double = 0.0): Int {
         val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
         val def = d.defense * d.stageMultiplier(BattleStat.DEFENSE)
         val typeMult = type.multiplierAgainst(d.element)
         val sameType = if (type != Element.NEUTRAL && type == a.element) 1.2 else 1.0
-        val crit = rng.nextDouble() < 0.06 + a.critBonus
+        val crit = rng.nextDouble() < 0.06 + a.critBonus + extraCrit
         val raw = power * atk / (atk + def) *
             (1 + a.level * 0.08) *
             typeMult * sameType * weather.multiplier(type) *
@@ -917,11 +938,14 @@ class Battle(
                 m.effects.any { it is MoveEffect.SetWeather } -> m.effects.filterIsInstance<MoveEffect.SetWeather>().none { it.weather == weather }
                 m.effects.contains(MoveEffect.Scare) -> !target.scared
                 m.effects.contains(MoveEffect.ReverseOrder) -> reversedRounds == 0
+                m.effects.contains(MoveEffect.CureSelf) && m.effects.none { it is MoveEffect.RaiseSelf } -> enemy.status != null
+                m.effects.any { it is MoveEffect.HealSelf } && !m.isDamaging -> enemy.hpFraction < 0.6
+                m.effects.any { it is MoveEffect.RaiseSelf } -> m.effects.filterIsInstance<MoveEffect.RaiseSelf>().any { r -> r.stats.any { (enemy.stages[it] ?: 0) < 2 } }
                 else -> true
             }
         }.ifEmpty { listOf(Moves.get("tackle")) }
         val move = if (rng.nextDouble() < 0.7) {
-            usable.maxBy { m -> if (m.isDamaging) m.power * m.type.multiplierAgainst(target.element) * m.accuracy / 100 else 25.0 }
+            usable.maxBy { m -> if (m.isDamaging) m.expectedPower * m.type.multiplierAgainst(target.element) else 25.0 }
         } else {
             usable.random(rng)
         }

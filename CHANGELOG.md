@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.10.0
+
+- **39 new monster moves** (98 in all): every type now has 11 to 13 moves,
+  and Normal has 10. New kinds of moves:
+  - **Multi-hit:** Fury Swipes, Ember Barrage, Spark Storm, Bubble Barrage,
+    Feather Flurry, Toxic Barrage, Hex Barrage, Rock Blast (2 to 5 hits).
+  - **Never miss:** Quick Strike, Quick Bolt, Aqua Jet, Aerial Ace, Sucker
+    Punch.
+  - **High critical-hit chance:** Heat Claws, Razor Gale, Night Slash, Stone
+    Edge.
+  - **Self-buffs:** Focus, Charge, Tailwind, Harden, Flame Charge, Dark Pact.
+  - **Cures and heals:** Kindle, Cleansing Wave, Purify, Roost, Soul Drain.
+  - Plus Slam, Lava Plume, Volt Fang, Zap Cannon, Tidal Slam, Soak, Venom
+    Fang, Spore Cloud, Corrode, Thorn Trap and Ground Pound.
+- **Signature moves:** each evolution line also learns two or three moves of
+  another type that suit it: drakes get Steel Wing and Razor Gale, sharks Night
+  Slash and Volt Fang, wolf cubs every elemental fang, the stag Gust and Ground
+  Pound, and so on. Two monsters of the same type now fight differently, and
+  many lines get an answer to their weaknesses.
+- Monsters you already have learn the new moves for their level right away;
+  swap them in on a monster's stat page. Wild and boss monsters use them too.
+
 ## 1.9.0
 
 - **Light and dark themes:** Settings, then Appearance, then Theme: System
