@@ -96,6 +96,7 @@ class Combatant(
     var nightmareDamage: Int = 0
     var scorchTurns: Int = 0
     var scorchDamage: Int = 0
+    var scorchVerb: String = "is scorched"
     /** Next move has a 40% chance to miss. */
     var accuracyDown: Boolean = false
     /** Next move misses. */
@@ -521,7 +522,7 @@ class Battle(
         if (c.energyRegen > 0 && c.mp < c.maxMp) c.mp = minOf(c.maxMp, c.mp + c.energyRegen)
         if (c.scorchTurns > 0) {
             c.scorchTurns--
-            hurt(c, c.scorchDamage, "is scorched")
+            hurt(c, c.scorchDamage, c.scorchVerb)
         }
         when (c.status) {
             Status.POISON -> hurt(c, max(1, c.maxHp / 10), "is hurt by poison")
@@ -760,38 +761,67 @@ class Battle(
         }
 
         val hitsFoe = move.isDamaging || move.effects.any { it.targetsFoe() }
-        if (hitsFoe) {
-            log += "${a.name} uses ${move.name}!"
-            if (d.diving != null && move.id != "thunder_bolt") {
-                log += "${d.name} is high in the air. It can't be reached!"
-                return
-            }
-            if (d.protecting) {
-                log += "${d.name}'s guard blocks it!"
-                return
-            }
-            if (MoveEffect.SureHit !in move.effects && !rollHit(a, d, move.accuracy)) return
-            if (move.isDamaging) {
-                if (d.diving != null) log += "Thunder Bolt strikes ${d.name} mid-dive!"
-                val style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT
-                val crit = if (MoveEffect.HighCrit in move.effects) 0.25 else 0.0
-                val multi = move.effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()
-                val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
-                var landed = 0
-                while (landed < hits && d.alive) {
-                    strike(a, d, move.power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit)
-                    landed++
-                }
-                if (multi != null) log += "Hit $landed time${if (landed == 1) "" else "s"}!"
-            }
-        } else {
-            log += "${a.name} uses ${move.name}!"
+        log += "${a.name} uses ${move.name}!"
+        if (!hitsFoe) {
+            applyEffects(a, d, move, onFoe = true, onSelf = true)
+            return
         }
-        applyEffects(a, d, move)
+        // Spread moves strike every foe (a little weaker each when there's more than one).
+        val targets = if (MoveEffect.HitsAllFoes in move.effects) foesOf(a).filter { it.alive }.ifEmpty { listOf(d) } else listOf(d)
+        val mult = if (targets.size > 1) 0.8 else 1.0
+        var landed = false
+        for (t in targets) {
+            if (hitTarget(a, t, move, mult)) {
+                applyEffects(a, t, move, onFoe = true, onSelf = false)
+                landed = true
+            }
+        }
+        if (landed) applyEffects(a, d, move, onFoe = false, onSelf = true)
     }
 
-    private fun applyEffects(a: Combatant, d: Combatant, move: Move) {
+    /** The other side, from [a]'s point of view. */
+    private fun foesOf(a: Combatant): List<Combatant> = if (Combatant.isEnemy(a.key)) allies else enemies
+
+    /** [a]'s own side (including [a]). */
+    private fun teamOf(a: Combatant): List<Combatant> = if (Combatant.isEnemy(a.key)) enemies else allies
+
+    /** One target of a move: dodges, guards, accuracy, then damage. Returns true if it connected. */
+    private fun hitTarget(a: Combatant, t: Combatant, move: Move, mult: Double): Boolean {
+        val pierce = MoveEffect.Pierce in move.effects
+        if (t.diving != null && move.id != "thunder_bolt") {
+            log += "${t.name} is high in the air. It can't be reached!"
+            return false
+        }
+        if (t.protecting && !pierce) {
+            log += "${t.name}'s guard blocks it!"
+            return false
+        }
+        if (t.protecting) log += "${move.name} pierces ${t.name}'s guard!"
+        if (MoveEffect.SureHit !in move.effects && !rollHit(a, t, move.accuracy)) return false
+        if (!move.isDamaging) return true
+        if (t.diving != null) log += "Thunder Bolt strikes ${t.name} mid-dive!"
+        val style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT
+        val crit = if (MoveEffect.HighCrit in move.effects) 0.25 else 0.0
+        val multi = move.effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()
+        val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
+        val power = (move.power * mult).roundToInt()
+        var count = 0
+        var dealt = 0
+        while (count < hits && t.alive) {
+            dealt += strike(a, t, power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit, pierce = pierce)
+            count++
+        }
+        if (multi != null) log += "Hit $count time${if (count == 1) "" else "s"}!"
+        move.effects.filterIsInstance<MoveEffect.LifeDrain>().firstOrNull()?.let { fx ->
+            if (a.alive && dealt > 0 && a.hp < a.maxHp) heal(a, maxOf(1, dealt * fx.percent / 100), "${a.name} drains the foe")
+        }
+        return true
+    }
+
+    /** Applies [move]'s effects: those aimed at the foe [d] ([onFoe]) and/or those on the user and its team ([onSelf]). */
+    private fun applyEffects(a: Combatant, d: Combatant, move: Move, onFoe: Boolean, onSelf: Boolean) {
         for (fx in move.effects) {
+            if (if (fx.targetsFoe()) !onFoe else !onSelf) continue
             when (fx) {
                 is MoveEffect.Inflict -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
                     d.status = fx.status
@@ -837,7 +867,8 @@ class Battle(
                 is MoveEffect.Scorch -> if (d.alive) {
                     d.scorchTurns = fx.turns
                     d.scorchDamage = scaled(fx.base, a.level)
-                    log += "${d.name} is scorched by lingering flames!"
+                    d.scorchVerb = fx.verb
+                    log += if (fx.verb == "is scorched") "${d.name} is scorched by lingering flames!" else "${d.name} is caught in it!"
                 }
                 MoveEffect.Protect -> {
                     a.protecting = true
@@ -854,7 +885,16 @@ class Battle(
                     a.scorchTurns = 0
                     log += "${a.name} shakes off its ailments!"
                 }
-                is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit -> {}
+                is MoveEffect.TeamHeal -> teamOf(a).filter { it.alive && it.hp < it.maxHp }.forEach {
+                    heal(it, maxOf(1, it.maxHp * fx.percent / 100), "${a.name}'s ${move.name}")
+                }
+                is MoveEffect.TeamRaise -> {
+                    teamOf(a).filter { it.alive }.forEach { c ->
+                        fx.stats.forEach { c.stages[it] = ((c.stages[it] ?: 0) + fx.stages).coerceAtMost(4) }
+                    }
+                    log += "The whole team's ${fx.stats.joinToString(" and ") { it.label }} rose!"
+                }
+                is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit, MoveEffect.HitsAllFoes, MoveEffect.Pierce, is MoveEffect.LifeDrain -> {}
                 MoveEffect.Recharge -> a.mustRecharge = true
                 is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
                     heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
@@ -890,9 +930,15 @@ class Battle(
         }
     }
 
-    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?, style: StrikeStyle, extraCrit: Double = 0.0): Int {
+    private fun strike(
+        a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?, style: StrikeStyle,
+        extraCrit: Double = 0.0,
+        /** Ignores the target's raised Defense and its brace. */
+        pierce: Boolean = false,
+    ): Int {
         val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
-        val def = d.defense * d.stageMultiplier(BattleStat.DEFENSE)
+        val defStage = d.stageMultiplier(BattleStat.DEFENSE).let { if (pierce) minOf(it, 1.0) else it }
+        val def = d.defense * defStage
         val typeMult = type.multiplierAgainst(d.element)
         val sameType = if (type != Element.NEUTRAL && type == a.element) 1.2 else 1.0
         val crit = rng.nextDouble() < 0.06 + a.critBonus + extraCrit
@@ -903,7 +949,7 @@ class Battle(
             (if (a.scared) 0.75 else 1.0) *
             (0.85 + rng.nextDouble() * 0.15) *
             (if (crit) 1.5 else 1.0) *
-            (if (d.defending) 0.5 else 1.0)
+            (if (d.defending && !pierce) 0.5 else 1.0)
         val dmg = max(1, raw.roundToInt())
         val absorbed = minOf(d.shield, dmg)
         d.shield -= absorbed
@@ -940,6 +986,7 @@ class Battle(
                 m.effects.contains(MoveEffect.ReverseOrder) -> reversedRounds == 0
                 m.effects.contains(MoveEffect.CureSelf) && m.effects.none { it is MoveEffect.RaiseSelf } -> enemy.status != null
                 m.effects.any { it is MoveEffect.HealSelf } && !m.isDamaging -> enemy.hpFraction < 0.6
+                m.effects.any { it is MoveEffect.TeamHeal } -> enemies.any { it.alive && it.hpFraction < 0.6 }
                 m.effects.any { it is MoveEffect.RaiseSelf } -> m.effects.filterIsInstance<MoveEffect.RaiseSelf>().any { r -> r.stats.any { (enemy.stages[it] ?: 0) < 2 } }
                 else -> true
             }

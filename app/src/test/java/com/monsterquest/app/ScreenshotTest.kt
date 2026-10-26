@@ -195,7 +195,7 @@ abstract class ScreenshotBase(private val device: String) {
             }
         })
         rule.onNodeWithText("Due within the hour").assertExists()
-        rule.onNodeWithText("No due date").assertExists()
+        rule.onNodeWithText("Tasks").assertExists()
     }
     @Test fun hero() { val v = vm(); shot("03_hero") { AppRoot(v, Tab.HERO) } }
     @Test fun monsters() { val v = vm(); shot("04_monsters") { AppRoot(v, Tab.MONSTERS) } }

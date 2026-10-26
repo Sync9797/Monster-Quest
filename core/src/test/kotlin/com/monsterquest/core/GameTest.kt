@@ -1172,6 +1172,60 @@ class GameTest {
     }
 
     @Test
+    fun startersHaveUniqueSignatureMoves() {
+        val signature = mapOf(
+            "voltfawn" to listOf("storm_antlers", "heavens_charge"),
+            "cindrake" to listOf("wyrmfire", "inferno_wings"),
+            "drizzlet" to listOf("tidal_embrace", "maelstrom_vortex"),
+            "mosscub" to listOf("grove_guardian", "tectonic_fury"),
+        )
+        val everyoneElse = Bestiary.all.filter { sp -> signature.keys.none { Bestiary.lineOf(Bestiary.get(it)).contains(sp) } }
+        for ((starter, moves) in signature) {
+            val final = Bestiary.lineOf(Bestiary.get(starter)).last()
+            val known = Moves.learned(final, 40).map { it.id }
+            moves.forEach { assertTrue(it in known, "$starter learns $it") }
+            // Nobody outside the line learns them.
+            everyoneElse.forEach { sp -> moves.forEach { assertTrue(it !in Moves.learnable(sp).map { m -> m.second.id }, "${sp.id} has $it") } }
+        }
+
+        fun fight(starterId: String, move: String, packSize: Int = 3): Pair<Battle, Combatant> {
+            val m = Monster.create(Bestiary.get(starterId), 40, Random(3)).copy(moves = listOf(move))
+            val s = started().let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
+            val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)) }
+            val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1))
+            var g = 0
+            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+            return b to b.allies.first { it.key == m.uid }
+        }
+        // Spread moves hit the whole pack.
+        val (spread, _) = fight("terraursa", "tectonic_fury")
+        val before = spread.enemies.map { it.hp }
+        spread.act(BattleAction.UseMove("tectonic_fury"))
+        // It's aimed at all three: each one is hit, dodges or is missed.
+        val start = spread.log.indexOfFirst { it.contains("uses Tectonic Fury") }
+        val after = spread.log.drop(start + 1).takeWhile { !it.contains(" uses ") }
+        assertEquals(3, after.count { it.startsWith("It hits") || it.contains("misses") || it.contains("dodges") }, "spread: $after")
+        assertTrue(spread.enemies.indices.any { spread.enemies[it].hp < before[it] })
+        // Lifesteal heals the user.
+        val (drain, me) = fight("maelstrom_serpent", "tidal_embrace", 1)
+        me.hp = me.maxHp / 2
+        drain.act(BattleAction.UseMove("tidal_embrace"))
+        assertTrue(drain.log.any { it.contains("drains the foe") }, "drain: " + drain.log.takeLast(6))
+        // The grove heals and toughens the whole team.
+        val (grove, bear) = fight("terraursa", "grove_guardian", 1)
+        bear.hp = bear.maxHp / 2
+        grove.act(BattleAction.UseMove("grove_guardian"))
+        assertEquals(1, bear.stages[BattleStat.DEFENSE])
+        assertTrue(grove.allies.first().stages[BattleStat.DEFENSE] == 1, "grove: " + grove.log.takeLast(6))
+        // Heaven's Charge goes straight through a guard.
+        val (pierce, _) = fight("thunderhorn", "heavens_charge", 1)
+        pierce.enemy.protecting = true
+        val hp = pierce.enemy.hp
+        pierce.act(BattleAction.UseMove("heavens_charge"))
+        assertTrue(pierce.enemy.hp < hp || pierce.log.any { it.contains("miss") }, "pierce: " + pierce.log.takeLast(6))
+    }
+
+    @Test
     fun packsAndAmbushes() {
         val s = started()
         val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }

@@ -19,7 +19,8 @@ object Planner {
         TOMORROW("Tomorrow"),
         WEEK("This week"),
         LATER("Later"),
-        NO_DATE("No due date"),
+        /** Things without a due date. */
+        NO_DATE("Tasks"),
     }
 
     data class Section(val group: Group, val tasks: List<QuestTask>)

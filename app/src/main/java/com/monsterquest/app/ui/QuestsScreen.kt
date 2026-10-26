@@ -83,6 +83,7 @@ fun QuestsScreen(vm: GameViewModel) {
     val context = LocalContext.current
     val state = vm.state
     var showAdd by remember { mutableStateOf(false) }
+    var addTask by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<QuestTask?>(null) }
     // Tick so "due in" times and the within-the-hour highlight stay current.
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -122,6 +123,8 @@ fun QuestsScreen(vm: GameViewModel) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Left: a to-do that isn't on the calendar. Right: open the calendar app.
                 SmallButton("+ To-do", { showAdd = true }, Modifier.weight(1f))
+                // A task has no due date.
+                SmallButton("+ Task", { addTask = true }, Modifier.weight(1f), outlined = true)
                 SmallButton(
                     "Calendar",
                     { if (!openCalendar(context)) vm.toast("No calendar app found.") },
@@ -182,18 +185,36 @@ fun QuestsScreen(vm: GameViewModel) {
             }
             return
         }
-        item(key = "active_header") { SectionTitle("Active quests (${pending.size})") }
+        // Scheduled: everything with a due date (or a calendar time), grouped by when.
+        val scheduled = sections.filter { it.group != Planner.Group.NO_DATE }
+        val tasks = sections.firstOrNull { it.group == Planner.Group.NO_DATE }?.tasks.orEmpty()
         if (pending.isEmpty()) {
             item(key = "empty") {
                 Text(
-                    "No quests yet. Add a to-do, or sync your calendar so events become quests.",
+                    "No quests yet. Add a to-do or a task, or sync your calendar so events become quests.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
-        sections.forEach { sec ->
+        if (scheduled.isNotEmpty()) {
+            item(key = "active_header") { SectionTitle("Scheduled (${scheduled.sumOf { it.tasks.size }})") }
+        }
+        scheduled.forEach { sec ->
             item(key = "sec_${sec.group}") { GroupHeader(sec.group, sec.tasks.size) }
             items(sec.tasks, key = { it.id }) { task ->
+                QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
+            }
+        }
+        // Tasks: things without a due date, only shown when there are some.
+        if (tasks.isNotEmpty()) {
+            item(key = "tasks_header") {
+                Column(Modifier.padding(top = 4.dp)) {
+                    SectionTitle("Tasks (${tasks.size})")
+                    Text("No due date: get to them whenever you can.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            items(tasks, key = { it.id }) { task ->
                 QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
         }
@@ -228,6 +249,9 @@ fun QuestsScreen(vm: GameViewModel) {
 
     if (showAdd) {
         QuestEditor(null, onDismiss = { showAdd = false }) { t, d, due, p -> vm.addTask(t, d, due, p); showAdd = false }
+    }
+    if (addTask) {
+        QuestEditor(null, asTask = true, onDismiss = { addTask = false }) { t, d, _, p -> vm.addTask(t, d, null, p); addTask = false }
     }
     editing?.let { task ->
         QuestEditor(task, onDismiss = { editing = null }) { t, d, due, p -> vm.editTask(task.id, t, d, due, p); editing = null }
@@ -412,6 +436,8 @@ private fun quickDue(kind: Int, now: Long): Long {
 @Composable
 private fun QuestEditor(
     task: QuestTask?,
+    /** A new task: no due date, so the date picker is hidden. */
+    asTask: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (String, Difficulty, Long?, Priority) -> Unit,
 ) {
@@ -420,8 +446,9 @@ private fun QuestEditor(
     var title by remember { mutableStateOf(task?.title ?: "") }
     var difficulty by remember { mutableStateOf(task?.difficulty ?: Difficulty.NORMAL) }
     var priority by remember { mutableStateOf(task?.priority ?: Priority.NORMAL) }
-    var due by remember { mutableStateOf(task?.dueMs) }
     val now = System.currentTimeMillis()
+    // New to-dos start due this evening; tasks and edits keep what they have.
+    var due by remember { mutableStateOf(if (task == null && !asTask) quickDue(1, now) else task?.dueMs) }
     fun pickDateTime() {
         val c = Calendar.getInstance().apply { timeInMillis = due ?: quickDue(1, now) }
         DatePickerDialog(context, { _, y, m, d ->
@@ -432,7 +459,17 @@ private fun QuestEditor(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (task == null) "New to-do" else if (calendar) "Calendar quest" else "Edit to-do") },
+        title = {
+            Text(
+                when {
+                    task == null && asTask -> "New task"
+                    task == null -> "New to-do"
+                    calendar -> "Calendar quest"
+                    task.dueAt == null -> "Edit task"
+                    else -> "Edit to-do"
+                },
+            )
+        },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 if (calendar) {
@@ -454,7 +491,7 @@ private fun QuestEditor(
                         SmallButton(p.label, { priority = p }, Modifier.weight(1f), outlined = p != priority)
                     }
                 }
-                if (!calendar) {
+                if (!calendar && !asTask) {
                     Text("Due", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                     Text(
                         due?.let { "${whenText(it)} (${Planner.relative(it, now)})" } ?: "No due date",
@@ -470,6 +507,16 @@ private fun QuestEditor(
                         SmallButton("Pick date & time", ::pickDateTime, Modifier.weight(2f), outlined = true)
                         SmallButton("None", { due = null }, Modifier.weight(1f), outlined = true)
                     }
+                }
+                if (asTask) {
+                    Text(
+                        "Tasks have no due date. Give one a date later by tapping it.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                if (!calendar) {
                     Text("Difficulty", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Difficulty.entries.forEach { d ->

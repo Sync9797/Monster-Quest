@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.11.0
+
+- **Tasks:** things without a due date now have their own **Tasks** section
+  at the end of the Quests list (shown only when you have some), separate
+  from the **Scheduled** quests grouped by when they're due. Add one with the
+  new **+ Task** button; tap a task to give it a due date later. **+ To-do**
+  now starts with a due time this evening, which you can change.
+- **Starter signature moves:** each starter line learns two strong moves no
+  other monster has, at level 22 and level 40:
+  - Voltfawn line: **Storm Antlers** (hits every foe, 30% shock each) and
+    **Heaven's Charge** (130 power, pierces guards and raised Defense, raises
+    Speed).
+  - Cindrake line: **Wyrmfire** (always burns, plus 3 turns of scorching) and
+    **Inferno Wings** (hits every foe, then raises Attack).
+  - Drizzlet line: **Tidal Embrace** (heals half the damage it deals) and
+    **Maelstrom Vortex** (115 power, brings rain, traps the foe for 4 turns).
+  - Mosscub line: **Grove Guardian** (heals the whole team 20% and raises
+    everyone's Defense) and **Tectonic Fury** (hits every foe, 30% chance
+    each loses its turn).
+
 ## 1.10.0
 
 - **39 new monster moves** (93 in all): every type now has 11 to 13 moves,

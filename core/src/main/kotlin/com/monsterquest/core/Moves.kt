@@ -45,7 +45,7 @@ sealed interface MoveEffect {
     /** The foe loses its next turn. */
     data class Flinch(val chance: Double) : MoveEffect
     /** Damage over time: [base] (scaled by the user's level) each turn for [turns] turns. */
-    data class Scorch(val base: Int, val turns: Int) : MoveEffect
+    data class Scorch(val base: Int, val turns: Int, val verb: String = "is scorched") : MoveEffect
     /** Puts the foe to sleep; it also takes [base] (scaled) damage every turn it sleeps. */
     data class Nightmare(val chance: Double, val base: Int) : MoveEffect
     /** Blocks all damage until the user's next turn. Can't be used twice in a row. */
@@ -74,6 +74,16 @@ sealed interface MoveEffect {
     data object SureHit : MoveEffect
     /** Cures the user's own status and lingering burns. */
     data object CureSelf : MoveEffect
+    /** Strikes every foe at once (at 80% power each when there's more than one). */
+    data object HitsAllFoes : MoveEffect
+    /** Heals the user for [percent]% of the damage it deals. */
+    data class LifeDrain(val percent: Int) : MoveEffect
+    /** Goes through guards, Wave Guard and the foe's raised Defense. */
+    data object Pierce : MoveEffect
+    /** Every ally (the user included) heals [percent]% of its max HP. */
+    data class TeamHeal(val percent: Int) : MoveEffect
+    /** Every ally's [stats] rise by [stages]. */
+    data class TeamRaise(val stats: List<BattleStat>, val stages: Int) : MoveEffect
 }
 
 data class Move(
@@ -93,7 +103,8 @@ data class Move(
         get() {
             val hits = effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()?.let { (it.min + it.max) / 2.0 } ?: 1.0
             val crit = if (MoveEffect.HighCrit in effects) 1.12 else 1.0
-            return power * hits * crit * accuracy / 100.0
+            val spread = if (MoveEffect.HitsAllFoes in effects) 1.15 else 1.0
+            return power * hits * crit * spread * accuracy / 100.0
         }
 }
 
@@ -216,6 +227,16 @@ object Moves {
         m("thorn_trap", "Thorn Trap", Element.EARTH, 0, desc = "Thorns that cut 6 damage a turn for 5 turns.", fx = *arrayOf(MoveEffect.Scorch(6, 5))),
         m("ground_pound", "Ground Pound", Element.EARTH, 70, desc = "20% chance the foe loses its next turn.", fx = *arrayOf(MoveEffect.Flinch(0.2))),
         m("stone_edge", "Stone Edge", Element.EARTH, 100, 80, "Jagged stones: high critical-hit chance.", MoveEffect.HighCrit),
+
+        // ---- Starter signature moves: only the four starter lines learn these ----
+        m("storm_antlers", "Storm Antlers", Element.ELECTRIC, 85, desc = "Lightning leaps from its antlers to every foe. 30% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
+        m("heavens_charge", "Heaven's Charge", Element.ELECTRIC, 130, 95, "A divine charge that pierces guards and raised Defense, then raises the user's Speed.", MoveEffect.Pierce, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1)),
+        m("wyrmfire", "Wyrmfire", Element.FIRE, 90, desc = "Dragonfire that always burns and keeps scorching for 3 turns.", fx = *arrayOf(MoveEffect.Inflict(Status.BURN, 1.0, 4, 4), MoveEffect.Scorch(8, 3))),
+        m("inferno_wings", "Inferno Wings", Element.FIRE, 125, 90, "Sweeps every foe with burning wings, then the user's Attack rises.", MoveEffect.HitsAllFoes, MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1)),
+        m("tidal_embrace", "Tidal Embrace", Element.WATER, 80, desc = "Wraps the foe in the tide and heals half the damage dealt.", fx = *arrayOf(MoveEffect.LifeDrain(50))),
+        m("maelstrom_vortex", "Maelstrom Vortex", Element.WATER, 115, 95, "A crushing whirlpool: brings rain and traps the foe for 10 damage a turn for 4 turns.", MoveEffect.SetWeather(Weather.RAIN, 1.0), MoveEffect.Scorch(10, 4, "is battered by the whirlpool")),
+        m("grove_guardian", "Grove Guardian", Element.EARTH, 0, desc = "The ancient grove shelters the team: every ally heals 20% and gains Defense.", fx = *arrayOf(MoveEffect.TeamHeal(20), MoveEffect.TeamRaise(listOf(BattleStat.DEFENSE), 1))),
+        m("tectonic_fury", "Tectonic Fury", Element.EARTH, 120, 90, "Splits the earth under every foe. 30% chance each loses its turn.", MoveEffect.HitsAllFoes, MoveEffect.Flinch(0.3)),
     )
 
     private val byId = all.associateBy { it.id }
@@ -241,10 +262,10 @@ object Moves {
      * hound's elemental fangs), so lines of the same type fight differently.
      */
     val familyMoves: Map<String, List<Pair<Int, String>>> = mapOf(
-        "Voltfawn" to listOf(18 to "gust", 30 to "ground_pound"),
-        "Cindrake" to listOf(18 to "steel_wing", 30 to "razor_gale"),
-        "Drizzlet" to listOf(18 to "venom_fang", 34 to "thunder_bolt"),
-        "Mosscub" to listOf(20 to "night_slash", 32 to "tidal_slam"),
+        "Voltfawn" to listOf(18 to "gust", 22 to "storm_antlers", 30 to "ground_pound", 40 to "heavens_charge"),
+        "Cindrake" to listOf(18 to "steel_wing", 22 to "wyrmfire", 30 to "razor_gale", 40 to "inferno_wings"),
+        "Drizzlet" to listOf(18 to "venom_fang", 22 to "tidal_embrace", 34 to "thunder_bolt", 40 to "maelstrom_vortex"),
+        "Mosscub" to listOf(20 to "night_slash", 22 to "grove_guardian", 32 to "tidal_slam", 40 to "tectonic_fury"),
         "Emberkit" to listOf(18 to "night_slash", 40 to "razor_gale"),
         "Zapmouse" to listOf(12 to "sucker_punch", 24 to "ground_pound"),
         "Fluffchick" to listOf(20 to "night_slash", 36 to "thunder_bolt"),
