@@ -34,16 +34,12 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     SHIELD(fill("M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z")),
     SPARK(fill("M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z")),
     FIGHT(line("M4 4l10 10M20 4L10 14M5 19l3-3M19 19l-3-3M7 14l3 3M17 14l-3 3")),
-    RUN(line("M4 12h14M13 6l6 6-6 6")),
     PIN(fill("M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12z"), cut("M12 7.5a2.5 2.5 0 1 0 .01 0z")),
-    HAMMER(fill("M13 3l8 6-3 3-8-6z"), line("M11 10L4 20")),
     LOCK(fill("M6 11h12v10H6z"), line("M8.5 11V8a3.5 3.5 0 0 1 7 0v3")),
     HOURGLASS(line("M6 3h12M6 21h12"), line("M7.5 3c0 6 9 6 9 9s-9 3-9 9M16.5 3c0 6-9 6-9 9s9 3 9 9")),
     SLEEP(line("M4 6h6l-6 7h6M13 11h6l-6 7h6")),
-    TROPHY(fill("M7 3h10v5a5 5 0 0 1-10 0z"), line("M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6")),
     SKULL(fill("M12 3c-5 0-8 3-8 7 0 3 2 5 4 5.5V20h8v-4.5c2-.5 4-2.5 4-5.5 0-4-3-7-8-7z"), cut("M8.5 10a1.8 1.8 0 1 0 .01 0zM15.5 10a1.8 1.8 0 1 0 .01 0z")),
     GEAR(fill("M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z"), cut("M12 8.5a3.5 3.5 0 1 0 .01 0z")),
-    MOVE(fill("M4 12l7-7v4h9v6h-9v4z")),
 
     // Types
     FLAME(fill("M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-3-1-6 1-9z")),
@@ -75,11 +71,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     STAFF(line("M5 21L16 8"), fill("M18 3a3.2 3.2 0 1 0 .01 0z")),
     BROADSWORD(fill("M18 2h4v4L11 17l-4-4z"), fill("M5.5 11.5l7 7-1.5 1.5-7-7z"), fill("M6 17l1.5 1.5-3.5 3.5L2.5 20.5z")),
     WAND(line("M4 20L14 10"), fill("M17 3l1.2 2.8L21 7l-2.8 1.2L17 11l-1.2-2.8L13 7l2.8-1.2z")),
-    SPEAR(line("M6 18L17 7"), fill("M21 3l-2 6-4-4z")),
-    BOW(line("M6 3c9 3 9 15 0 18"), line("M6 3v18"), line("M6 12h13M16 9l3 3-3 3")),
-    TRIDENT(line("M12 22V7"), line("M7 3v4a5 5 0 0 0 10 0V3M12 2v5")),
     DAGGER(fill("M15 3l3 3-7.5 7.5-3-3z"), line("M8.5 15.5L4 20")),
-    SCYTHE(line("M7 21L15 5"), fill("M15 5c4.5 0 7.5 2.5 7.5 6.5C19.5 8.5 16.5 8 13.5 8.5z")),
 
     // Armor
     PLATE(fill("M5 5l4-2h6l4 2v6c0 5-3 9-7 11-4-2-7-6-7-11z"), cut("M12 4v17M7 9h10")),

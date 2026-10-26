@@ -5,7 +5,6 @@ import com.monsterquest.app.ui.art.MonsterArt
 import com.monsterquest.app.ui.art.HeroArt
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column

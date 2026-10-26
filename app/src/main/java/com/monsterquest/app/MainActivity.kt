@@ -29,6 +29,7 @@ import com.monsterquest.app.ui.MonsterQuestTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.monsterquest.core.StepSource
+import com.monsterquest.core.FrameRate
 import com.monsterquest.app.focus.FocusService
 import org.osmdroid.config.Configuration
 import java.io.File
@@ -98,6 +99,27 @@ class MainActivity : ComponentActivity() {
         stepListener = null
     }
 
+    /** Picks the display mode closest to (not above) the requested refresh rate, at the current resolution. */
+    private fun applyFrameRate(rate: FrameRate) {
+        @Suppress("DEPRECATION")
+        val screen = (if (Build.VERSION.SDK_INT >= 30) display else null) ?: windowManager.defaultDisplay
+        val attrs = window.attributes
+        val target = rate.hz
+        if (target == null) {
+            attrs.preferredDisplayModeId = 0
+            attrs.preferredRefreshRate = 0f
+        } else {
+            val current = screen.mode
+            val best = screen.supportedModes
+                .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+                .filter { it.refreshRate <= target + 1f }
+                .maxByOrNull { it.refreshRate } ?: current
+            attrs.preferredDisplayModeId = best.modeId
+            attrs.preferredRefreshRate = best.refreshRate
+        }
+        window.attributes = attrs
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // OpenStreetMap tile servers require an identifying user agent.
@@ -138,6 +160,12 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
+            // Ask for the chosen refresh rate; re-applied on fold/unfold (each screen has its own modes).
+            val rate = vm.state.settings.frameRate
+            val config = androidx.compose.ui.platform.LocalConfiguration.current
+            androidx.compose.runtime.LaunchedEffect(rate, vm.batterySaver, config.screenWidthDp, config.screenHeightDp) {
+                applyFrameRate(if (vm.batterySaver) FrameRate.STANDARD else rate)
+            }
             CompositionLocalProvider(LocalFold provides fold) {
                 MonsterQuestTheme {
                     AppRoot(vm)

@@ -46,6 +46,9 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** What a shrine just gave you. */
+data class LootPopup(val title: String, val rewards: List<com.monsterquest.core.Reward>, val id: Long = System.nanoTime())
+
 /** How close (meters) a new spawn must be to buzz the phone. */
 const val ALERT_RANGE_M = 200.0
 
@@ -431,8 +434,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             message = "Get closer to ${shrine.name} (within ${World.SHRINE_RANGE_M.toInt()} m)."
             return
         }
-        apply(GameEngine.visitShrine(state, shrine, System.currentTimeMillis()))
+        val u = GameEngine.visitShrine(state, shrine, System.currentTimeMillis())
+        set(u.state)
+        if (u.rewards.isEmpty()) {
+            message = u.message
+        } else {
+            lootPopup = LootPopup(shrine.name, u.rewards)
+            // Only the bag-full warning still needs a text message.
+            if (u.message.contains("Bag full")) message = "Bag full: some loot was left behind."
+        }
     }
+
+    /** Loot just collected, shown briefly over the map. */
+    var lootPopup by mutableStateOf<LootPopup?>(null)
 
     fun challengeBoss(shrine: Shrine) {
         val d = distanceTo(shrine.lat, shrine.lon)

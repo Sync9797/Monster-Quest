@@ -3,7 +3,18 @@ package com.monsterquest.core
 import kotlin.random.Random
 
 /** A state change plus a message to show the player. */
-data class Update(val state: GameState, val message: String)
+/** A game action's result: the new state, a message, and (for loot) what was received. */
+data class Update(val state: GameState, val message: String, val rewards: List<Reward> = emptyList())
+
+/** One thing received, for showing loot with icons. */
+sealed interface Reward {
+    data class Gold(val amount: Int) : Reward
+    data class Items(val item: Item, val count: Int) : Reward
+    data class WeaponDrop(val gear: Gear) : Reward
+    data class ArmorDrop(val armor: Armor) : Reward
+    data class Pages(val spellId: String, val count: Int, val learned: Boolean) : Reward
+    data class Parts(val type: WeaponType, val count: Int) : Reward
+}
 
 /** An event read from the phone's calendar. */
 data class CalendarEvent(
@@ -626,6 +637,8 @@ object GameEngine {
     fun grantLoot(state: GameState, loot: Loot): Update {
         var s = state
         val parts = mutableListOf<String>()
+        val rewards = mutableListOf<Reward>()
+        loot.items.forEach { (item, n) -> rewards += Reward.Items(item, n) }
         val (withItems, lostItems) = addItems(s, loot.items)
         s = withItems
         loot.items.forEach { (item, n) -> parts += "${item.label} x$n" }
@@ -634,6 +647,7 @@ object GameEngine {
             if (s.bagCount < s.bagCapacity) {
                 s = s.copy(gear = s.gear + w)
                 parts += "${w.rarity.label} ${w.name}"
+                rewards += Reward.WeaponDrop(w)
             } else {
                 lostWeapons++
             }
@@ -642,6 +656,7 @@ object GameEngine {
             if (s.bagCount < s.bagCapacity) {
                 s = s.copy(armor = s.armor + a)
                 parts += "${a.rarity.label} ${a.name}"
+                rewards += Reward.ArmorDrop(a)
             } else {
                 lostWeapons++
             }
@@ -649,6 +664,7 @@ object GameEngine {
         for ((type, n) in loot.parts) {
             s = s.copy(parts = s.parts + (type to (s.parts[type] ?: 0) + n))
             parts += "${type.label} part x$n"
+            rewards += Reward.Parts(type, n)
         }
         val learned = mutableListOf<String>()
         for ((spellId, n) in loot.pages) {
@@ -661,8 +677,10 @@ object GameEngine {
                     spellPages = s.spellPages - spellId,
                 )
                 learned += spell.name
+                rewards += Reward.Pages(spellId, n, learned = true)
             } else {
                 s = s.copy(spellPages = s.spellPages + (spellId to total))
+                rewards += Reward.Pages(spellId, n, learned = false)
             }
         }
         val msg = buildString {
@@ -671,7 +689,7 @@ object GameEngine {
             if (lost > 0) append(" (Bag full: $lost left behind.)")
             learned.forEach { append(" You learned $it!") }
         }
-        return Update(s, msg)
+        return Update(s, msg, rewards)
     }
 
     /** Collect loot from an item shrine. */
@@ -686,7 +704,7 @@ object GameEngine {
         )
         val loot = grantLoot(s, rollLoot(s, rng.nextInt(2, 4), rng))
         s = loot.state
-        return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.")
+        return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.", listOf(Reward.Gold(gold)) + loot.rewards)
     }
 
     // ---- weapons -----------------------------------------------------------

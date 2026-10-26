@@ -963,4 +963,17 @@ class GameTest {
         val full = (1..4).map { xpFor(4) }.filter { it > 0 }
         if (solo.isNotEmpty() && full.isNotEmpty()) assertTrue(full.max() > solo.max() * 4)
     }
+
+    @Test
+    fun shrineVisitListsRewards() {
+        val s = started()
+        val shrine = Shrine("x", "Cafe", 0.0, 0.0, ShrineTier.ITEM)
+        val u = GameEngine.visitShrine(s, shrine, 1_000_000L, Random(6))
+        val gold = u.rewards.filterIsInstance<Reward.Gold>().single().amount
+        assertEquals(s.gold + gold, u.state.gold)
+        assertTrue(u.rewards.size >= 2)
+        val items = u.rewards.filterIsInstance<Reward.Items>().sumOf { it.count }
+        val gear = u.rewards.count { it is Reward.WeaponDrop || it is Reward.ArmorDrop }
+        assertEquals(u.state.bagCount - s.bagCount, items + gear)
+    }
 }

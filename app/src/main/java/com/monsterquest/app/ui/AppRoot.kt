@@ -148,6 +148,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     }
     // Battery saver: black screen on top while the map keeps running underneath.
     if (vm.batterySaver) BatterySaverOverlay(vm)
+    vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
     }
 }
 

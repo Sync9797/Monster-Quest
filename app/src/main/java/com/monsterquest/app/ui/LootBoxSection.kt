@@ -1,7 +1,6 @@
 package com.monsterquest.app.ui
 
 import com.monsterquest.app.ui.art.color
-import com.monsterquest.app.ui.art.icon
 import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size

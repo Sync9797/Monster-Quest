@@ -134,6 +134,22 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
             // ---- Performance ----
             SectionTitle("Performance")
             GameCard {
+                Text("Frame rate", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                val maxHz = runCatching {
+                    @Suppress("DEPRECATION")
+                    (context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager)
+                        .defaultDisplay.supportedModes.maxOf { it.refreshRate }.toInt()
+                }.getOrNull()
+                Text(
+                    prefs.frameRate.description + (maxHz?.let { " This screen goes up to $it Hz." } ?: ""),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.monsterquest.core.FrameRate.entries.forEach { r ->
+                        SmallButton(r.label, { vm.updateSettings { it.copy(frameRate = r) } }, Modifier.weight(1f), outlined = r != prefs.frameRate)
+                    }
+                }
                 ToggleRow(
                     "Reduced visual effects",
                     "Turns off glows, auras, mist and engraving. Smoother on older phones and easier on the battery.",

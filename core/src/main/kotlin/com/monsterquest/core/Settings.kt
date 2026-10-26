@@ -18,10 +18,19 @@ enum class StepSource(val label: String, val description: String) {
     val usesHealthConnect: Boolean get() = this == SAMSUNG_HEALTH || this == HEALTH_CONNECT
 }
 
+/** Screen refresh rate the game asks for. */
+@Serializable
+enum class FrameRate(val label: String, val hz: Float?, val description: String) {
+    HIGH("120 fps", 120f, "Smoothest animation on screens that support it (up to 120 Hz)."),
+    STANDARD("60 fps", 60f, "Uses less battery."),
+    AUTO("Auto", null, "Let the phone decide."),
+}
+
 /** Player preferences, saved with the game. */
 @Serializable
 data class Settings(
     val stepSource: StepSource = StepSource.PHONE,
+    val frameRate: FrameRate = FrameRate.HIGH,
     /** Turn off glows, auras, mist and engraving for smoother scrolling on older phones. */
     val reducedEffects: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */

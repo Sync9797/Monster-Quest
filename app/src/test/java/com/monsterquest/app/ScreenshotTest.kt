@@ -294,6 +294,23 @@ abstract class ScreenshotBase(private val device: String) {
         capture("19_battle_hit", 300)
     }
 
+    @Test fun lootPopup() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        v.lootPopup = LootPopup(
+            "Corner Cafe",
+            listOf(
+                com.monsterquest.core.Reward.Gold(12),
+                com.monsterquest.core.Reward.Items(Item.TAMING_ORB, 2),
+                com.monsterquest.core.Reward.Items(Item.POTION, 1),
+                com.monsterquest.core.Reward.WeaponDrop(Armory.roll(12, Random(9), WeaponType.STAFF, luck = 60)),
+                com.monsterquest.core.Reward.Pages("gale", 1, learned = false),
+            ),
+        )
+        shot("20_loot_popup", advanceMs = 900) { AppRoot(v, Tab.MAP) }
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

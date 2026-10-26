@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2
+
+- **120 fps:** the game asks for your screen's highest refresh rate (up to
+  120 Hz). Settings, then Performance, then Frame rate: 120 fps (default),
+  60 fps to save battery, or Auto. The battery saver screen drops to 60.
+- **Loot pop-up:** collecting from a shrine shows what you got, with icons,
+  in a short pop-up that fades away on its own (tap to close).
+- **Smoother screens:** monster, hero and icon art is drawn once and reused,
+  so long lists and battles scroll and animate smoothly.
+- **Cleanup:** removed unused icons, helpers and imports left over from
+  earlier versions.
+
 ## 0.3.1
 
 - **Rewards follow the monster's strength.** Wild monsters already scale with

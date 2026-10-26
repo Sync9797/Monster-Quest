@@ -1,9 +1,10 @@
 package com.monsterquest.app.ui.art
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
-import androidx.compose.foundation.Canvas
+import android.util.LruCache
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -15,8 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -32,24 +31,50 @@ import com.monsterquest.core.Species
 import com.monsterquest.core.Status
 import com.monsterquest.core.Weather
 
-@Composable
-private fun ArtCanvas(modifier: Modifier, draw: (android.graphics.Canvas, Float, Float) -> Unit) {
-    // Clip so glows and halos never paint over neighboring UI.
-    Canvas(modifier.clipToBounds()) {
-        drawIntoCanvas { draw(it.nativeCanvas, size.width, size.height) }
+/**
+ * Rendered art, reused across frames and screens. Vector art (paths, glows,
+ * engraving) is costly to draw, so each picture is drawn once per size into a
+ * bitmap; scrolling and animations then just blit it, keeping 120 fps smooth.
+ */
+private object ArtCache {
+    private val cache = object : LruCache<String, Bitmap>(32 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
+
+    fun get(key: String, w: Int, h: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit): Bitmap {
+        val k = "$key@${w}x$h:${ArtQuality.reduced}"
+        cache.get(k)?.let { return it }
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        draw(android.graphics.Canvas(bmp), w.toFloat(), h.toFloat())
+        cache.put(k, bmp)
+        return bmp
+    }
+}
+
+/** Draws cached art identified by [key]; the same key must always draw the same picture. */
+@Composable
+private fun ArtCanvas(modifier: Modifier, key: String, draw: (android.graphics.Canvas, Float, Float) -> Unit) {
+    // Clip so glows and halos never paint over neighboring UI.
+    Spacer(
+        modifier.clipToBounds().drawWithCache {
+            val w = size.width.toInt()
+            val h = size.height.toInt()
+            val image = if (w > 0 && h > 0) ArtCache.get(key, w, h, draw).asImageBitmap() else null
+            onDrawBehind { image?.let { drawImage(it) } }
+        },
+    )
 }
 
 /** The hero wearing [outfit] (by default, the class's typical look). [portrait] adds the halo and sparkles. */
 @Composable
 fun HeroArt(cls: HeroClass, modifier: Modifier, portrait: Boolean = true, outfit: HeroOutfit = HeroOutfit.classic(cls)) {
-    ArtCanvas(modifier) { c, w, h -> drawHero(c, w, h, cls, portrait, outfit) }
+    ArtCanvas(modifier, "hero:$cls:$portrait:$outfit") { c, w, h -> drawHero(c, w, h, cls, portrait, outfit) }
 }
 
 /** A monster's artwork. [dim] grays it out (fainted); [silhouette] shows only its shadow (not yet seen). */
 @Composable
 fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silhouette: Boolean = false) {
-    ArtCanvas(modifier) { c, w, h ->
+    ArtCanvas(modifier, "monster:${species.id}:$dim:$silhouette") { c, w, h ->
         if (silhouette) {
             // Draw normally into a layer, then flood everything drawn with one dark color.
             val layer = c.saveLayer(0f, 0f, w, h, null)
@@ -72,7 +97,7 @@ private val silhouettePaint = android.graphics.Paint().apply {
 fun GIcon(icon: GameIcon, modifier: Modifier = Modifier.size(18.dp), tint: Color = LocalContentColor.current) {
     val cut = MaterialTheme.colorScheme.background.toArgb()
     val t = tint.toArgb()
-    ArtCanvas(modifier) { c, w, h -> drawIcon(c, w, h, icon, t, cut) }
+    ArtCanvas(modifier, "icon:$icon:$t:$cut") { c, w, h -> drawIcon(c, w, h, icon, t, cut) }
 }
 
 /** Icon followed by text, e.g. a coin and "1234". */
@@ -206,29 +231,3 @@ fun HeroClass.icon(): GameIcon = when (this) {
     HeroClass.MAGE -> GameIcon.STAFF
     HeroClass.ROGUE -> GameIcon.DAGGER
 }
-
-// ---------------------------------------------------------------------------
-// Bitmaps for map markers (osmdroid needs Drawables).
-// ---------------------------------------------------------------------------
-
-/** A round marker: colored disc, then the artwork drawn by [draw]. */
-fun markerDrawable(context: Context, sizeDp: Int, ring: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit): BitmapDrawable {
-    val px = (sizeDp * context.resources.displayMetrics.density).toInt()
-    val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
-    val c = android.graphics.Canvas(bmp)
-    ArtPainter.circle(c, px / 2f, px / 2f, px / 2f, ring)
-    ArtPainter.ringStroke(c, px / 2f, px / 2f, px / 2f - 1.5f, Argb.hex("0d171a"), 2f, 0.6f)
-    val inset = px * 0.1f
-    c.save()
-    c.translate(inset, inset)
-    draw(c, px - inset * 2, px - inset * 2)
-    c.restore()
-    return BitmapDrawable(context.resources, bmp)
-}
-
-fun drawMonsterOn(c: android.graphics.Canvas, w: Float, h: Float, sp: Species) = drawMonster(c, w, h, sp)
-
-fun drawHeroOn(c: android.graphics.Canvas, w: Float, h: Float, cls: HeroClass, outfit: HeroOutfit) = drawHero(c, w, h, cls, portrait = false, outfit = outfit)
-
-fun drawIconOn(c: android.graphics.Canvas, w: Float, h: Float, icon: GameIcon, tint: Int) =
-    drawIcon(c, w, h, icon, tint, Argb.hex("0d171a"))
