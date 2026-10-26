@@ -76,6 +76,12 @@ your hero.
 
   Monsters evolve at set levels. Each also rolls a **personality** and hidden
   **potential**, so no two are alike.
+- **Candy:** every evolution line has its own candy. Taming a monster gives
+  **3**, and releasing one gives more for evolved, higher-level monsters.
+  Spend candy on a monster's page to level it up; each level costs more.
+  Candy doesn't use bag space. Leveling and evolving never change a
+  monster's **stat points**, which are set when it's tamed, so better
+  monsters come from taming more.
 - **Journal** (Monsters, then Journal): every species in order. Monsters you
   haven't met are shadows, ones you've battled are shown, and ones you've
   owned are marked caught. Tap one to see its evolution line.

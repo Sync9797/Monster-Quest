@@ -260,6 +260,12 @@ object GameEngine {
 
     fun candyOf(state: GameState, sp: Species): Int = state.candy[sp.family] ?: 0
 
+    /** Candy for taming a monster. */
+    const val TAME_CANDY = 3
+
+    fun addCandy(state: GameState, sp: Species, n: Int): GameState =
+        state.copy(candy = state.candy + (sp.family to candyOf(state, sp) + n))
+
     /** Releasing gives more candy for evolved and higher-level monsters. */
     fun releaseCandy(m: Monster): Int = m.species.stage + m.level / 15
 
@@ -482,7 +488,8 @@ object GameEngine {
                             party = party,
                             stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1),
                         )
-                        msg.append(" Personality: ${c.personality.label} (${c.personality.description}).")
+                        s = addCandy(s, c.species, TAME_CANDY)
+                        msg.append(" Personality: ${c.personality.label} (${c.personality.description}). +$TAME_CANDY ${candyName(c.species)}.")
                     }
                 }
                 // Drops

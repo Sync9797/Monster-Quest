@@ -119,8 +119,13 @@ object Villains {
         return if (rng.nextDouble() < REDEEM_CHANCE) {
             val joined = m.copy(uid = newId(rng), xp = 0, damage = 0, fainted = false, cursed = true, cureProgress = 0)
             Update(
-                s.copy(monsters = s.monsters + joined, stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1)),
-                "${m.displayName} accepts your help and joins you! It still carries the shadow curse; battle together to lift it.",
+                GameEngine.addCandy(
+                    s.copy(monsters = s.monsters + joined, stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1)),
+                    m.species,
+                    GameEngine.TAME_CANDY,
+                ),
+                "${m.displayName} accepts your help and joins you! +${GameEngine.TAME_CANDY} ${GameEngine.candyName(m.species)}. " +
+                    "It still carries the shadow curse; battle together to lift it.",
             )
         } else {
             Update(s, "${m.displayName} recovers, but flees into the shadows.")

@@ -349,7 +349,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Column(Modifier.weight(1f)) {
                     Text("${GameEngine.candyName(sp)}: $candy", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Release monsters of this line to earn it. Next level costs $cost.",
+                        "Tame (+3) or release monsters of this line to earn it. Next level costs $cost.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

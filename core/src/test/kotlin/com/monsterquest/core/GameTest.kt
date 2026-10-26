@@ -863,4 +863,16 @@ class GameTest {
         assertEquals("blazecat", m.monsters.single().speciesId)
         assertEquals(kit.ivs, m.monsters.single().ivs)
     }
+
+    @Test
+    fun tamingGivesThreeCandy() {
+        val s = started()
+        val wild = Monster.create(Bestiary.get("galehawk"), 20, Random(8))
+        val result = BattleResult(
+            BattleOutcome.CAPTURED, EncounterType.WILD, wild, 10, 5, emptyMap(), emptyMap(), emptyMap(), wild, null,
+        )
+        val after = GameEngine.applyBattleResult(s, result, 0).state
+        assertEquals(GameEngine.TAME_CANDY, after.candy[wild.species.family])
+        assertTrue(after.monsters.any { it.uid == wild.uid })
+    }
 }
