@@ -235,7 +235,7 @@ private fun groupColor(g: Planner.Group): Color? = when (g) {
 }
 
 @Composable
-private fun GroupHeader(g: Planner.Group, count: Int) {
+internal fun GroupHeader(g: Planner.Group, count: Int) {
     val color = groupColor(g) ?: Gold
     Row(Modifier.padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         if (g == Planner.Group.SOON || g == Planner.Group.OVERDUE) {
@@ -273,7 +273,7 @@ private fun dueText(task: QuestTask, now: Long): String? {
 }
 
 @Composable
-private fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplete: () -> Unit, onDelete: () -> Unit) {
+internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplete: () -> Unit, onDelete: () -> Unit) {
     val soon = Planner.isDueSoon(task, now) || (task.source == TaskSource.CALENDAR && Planner.groupOf(task, now) == Planner.Group.HAPPENING)
     val overdue = Planner.isOverdue(task, now)
     // Due within the hour: an amber card that gently pulses. Overdue: red.

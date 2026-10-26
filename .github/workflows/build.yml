@@ -98,6 +98,7 @@ jobs:
       - name: Render screenshots
         id: render
         continue-on-error: true
+        timeout-minutes: 15
         shell: bash
         # --rerun: always render, even when Gradle could reuse earlier test results.
         run: ./gradlew :app:testDebugUnitTest --rerun 2>&1 | tee render.log
