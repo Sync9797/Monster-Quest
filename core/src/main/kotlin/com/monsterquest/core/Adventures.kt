@@ -135,7 +135,7 @@ object Adventures {
         val active = ActiveAdventure(adventure, ids, nowMs, chance)
         return Update(
             state.copy(adventures = state.adventures + active),
-            "🧭 ${team.joinToString { it.displayName }} set out: ${adventure.title}. Back in ${adventure.durationMs / 60_000} min.",
+            "${team.joinToString { it.displayName }} set out: ${adventure.title}. Back in ${adventure.durationMs / 60_000} min.",
         )
     }
 
@@ -170,7 +170,7 @@ object Adventures {
             val granted = GameEngine.grantLoot(s, loot)
             Update(
                 granted.state,
-                "✅ ${adv.title}: success! $teamNames brought back +$gold gold, ${granted.message}. Each monster +$xpEach XP." +
+                "${adv.title}: success! $teamNames brought back +$gold gold, ${granted.message}. Each monster +$xpEach XP." +
                     notes.joinToString("") { " $it" },
             )
         } else {
@@ -182,8 +182,8 @@ object Adventures {
             )
             Update(
                 s,
-                "❌ ${adv.title}: the team was driven back. +$gold gold, +$xpEach XP each." +
-                    (weakest?.let { " 💤 ${it.displayName} fainted and needs a Restore Potion." } ?: ""),
+                "${adv.title}: the team was driven back. +$gold gold, +$xpEach XP each." +
+                    (weakest?.let { " ${it.displayName} fainted and needs a Restore Potion." } ?: ""),
             )
         }
     }

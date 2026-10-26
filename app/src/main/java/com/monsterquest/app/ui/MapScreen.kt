@@ -1,12 +1,21 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.drawHeroOn
+import com.monsterquest.app.ui.art.drawMonsterOn
+import com.monsterquest.app.ui.art.drawIconOn
+import com.monsterquest.app.ui.art.markerDrawable
+import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.location.Location
 import android.location.LocationListener
@@ -96,10 +105,10 @@ fun MapScreen(vm: GameViewModel) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("🗺️", fontSize = 56.sp)
+            GIcon(GameIcon.MAP, Modifier.size(64.dp), Gold)
             Text(
-                "Explore the real world! Item shrines 🎁 at cafes, restaurants and parks hold weapons, " +
-                    "spell pages, orbs and potions. 🥈 Silver shrines (Tue/Thu) and 🥇 Gold shrines (weekends) hold guardians " +
+                "Explore the real world! Item shrines at cafes, restaurants and parks hold weapons, " +
+                    "spell pages, orbs and potions. Silver shrines (Tue/Thu) and Gold shrines (weekends) hold guardians " +
                     "that unlock when you keep up with your quests. " +
                     "Monsters roam nearby too.",
                 textAlign = TextAlign.Center,
@@ -130,8 +139,8 @@ fun MapScreen(vm: GameViewModel) {
 
     val mapView = rememberMapView()
     val icons = remember { HashMap<String, BitmapDrawable>() }
-    fun markerIcon(key: String, emoji: String, ring: Int) =
-        icons.getOrPut(key) { emojiDrawable(context, emoji, ring) }
+    fun markerIcon(key: String, ring: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
+        icons.getOrPut(key) { markerDrawable(context, 44, ring, draw) }
 
     val mapPane: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
@@ -165,10 +174,10 @@ fun MapScreen(vm: GameViewModel) {
                             val rec = vm.state.shrines[sh.id]
                             val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
                             val open = Schedule.access(vm.state, sh, now).open
-                            val emoji = when {
-                                sh.isBoss && !open -> "🔒"
-                                cooling -> "⏳"
-                                else -> sh.tier.emoji
+                            val glyph = when {
+                                sh.isBoss && !open -> GameIcon.LOCK
+                                cooling -> GameIcon.HOURGLASS
+                                else -> sh.tier.icon()
                             }
                             val ring = when {
                                 cooling || (sh.isBoss && !open) -> 0x88666666.toInt()
@@ -180,7 +189,7 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(sh.lat, sh.lon)
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("shrine_${emoji}_$ring", emoji, ring))
+                                    setIcon(markerIcon("shrine_${glyph}_$ring", ring) { c, w, h -> drawIconOn(c, w, h, glyph, 0xFF0D171A.toInt()) })
                                     title = sh.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.ShrinePick(sh); true }
                                 },
@@ -191,7 +200,7 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(sp.lat, sp.lon)
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("spawn_${sp.speciesId}", sp.species.emoji, 0xAA1E1A2B.toInt()))
+                                    setIcon(markerIcon("spawn_${sp.speciesId}", 0xDD142327.toInt()) { c, w, h -> drawMonsterOn(c, w, h, sp.species) })
                                     title = sp.species.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
                                 },
@@ -202,7 +211,7 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(loc.first, loc.second)
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("player", "🧙", 0xCCF5C542.toInt()))
+                                    setIcon(markerIcon("player_${vm.state.hero.heroClass}", 0xEEEBC678.toInt()) { c, w, h -> drawHeroOn(c, w, h, vm.state.hero.heroClass) })
                                     setOnMarkerClickListener { _, _ -> true }
                                 },
                             )
@@ -225,15 +234,15 @@ fun MapScreen(vm: GameViewModel) {
                 Text(
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
-                        else -> "🎁 ${shrines.count { it.tier == ShrineTier.ITEM }}  🥈 ${shrines.count { it.tier == ShrineTier.SILVER }}  " +
-                            "🥇 ${shrines.count { it.tier == ShrineTier.GOLD }}  🐾 ${spawns.size}"
+                        else -> "${shrines.count { it.tier == ShrineTier.ITEM }} item • ${shrines.count { it.tier == ShrineTier.SILVER }} silver • " +
+                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedButton(onClick = {
                     loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
-                }) { Text("📍 Center") }
+                }) { IconText(GameIcon.PIN, "Center") }
             }
             Text(
                 "© OpenStreetMap contributors",
@@ -330,21 +339,6 @@ internal fun TrackLocation(context: Context, onLocation: (Double, Double) -> Uni
     }
 }
 
-/** Renders an emoji on a colored circle as a map marker. */
-private fun emojiDrawable(context: Context, emoji: String, ringColor: Int): BitmapDrawable {
-    val size = (44 * context.resources.displayMetrics.density).toInt()
-    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bmp)
-    val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ringColor }
-    canvas.drawCircle(size / 2f, size / 2f, size / 2f, ring)
-    val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = size * 0.58f
-        textAlign = Paint.Align.CENTER
-    }
-    val y = size / 2f - (text.descent() + text.ascent()) / 2
-    canvas.drawText(emoji, size / 2f, y, text)
-    return BitmapDrawable(context.resources, bmp)
-}
 
 private fun distanceText(m: Double?): String = when {
     m == null -> "unknown distance"
@@ -363,7 +357,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${shrine.tier.emoji} ${shrine.name}") },
+        title = { IconText(shrine.tier.icon(), shrine.name, tint = shrine.tier.color(), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column {
                 Text("${shrine.tier.label} • ${distanceText(dist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -371,26 +365,28 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                 when (shrine.tier) {
                     ShrineTier.ITEM -> Text("Weapons, spell-book pages, capture orbs and potions.")
                     ShrineTier.SILVER -> if (guardian != null) {
-                        Text("Guardian: ${guardian.emoji} ${guardian.name} (${guardian.element.emoji} ${guardian.element.label})")
+                        GuardianPreview(guardian)
                         Text("Level ${GameEngine.silverLevel(vm.state.hero.level)} • 1.5× HP • Acts twice per round")
-                        Text("⭐ At least 3 perfect stats • Harder to tame", color = SilverColor)
+                        Text("At least 3 perfect stats • Harder to tame", color = SilverColor)
                     }
                     ShrineTier.GOLD -> if (guardian != null) {
-                        Text("Guardian: ${guardian.emoji} ${guardian.name} (${guardian.element.emoji} ${guardian.element.label})")
+                        GuardianPreview(guardian)
                         Text("Level ${GameEngine.bossLevel(vm.state.hero.level)} • Double HP • Acts twice per round")
                         Text(
-                            if (rec?.bossDefeated == true) "✅ Defeated. You may now try to tame it!"
+                            if (rec?.bossDefeated == true) "Defeated. You may now try to tame it!"
                             else "Defeat the guardian once to unlock taming.",
                         )
                     }
                 }
                 if (shrine.isBoss) {
                     Spacer(Modifier.height(6.dp))
-                    Text(
-                        (if (access.open) "🔓 " else "🔒 ") + access.reason,
-                        color = if (access.open) HpGreen else HpYellow,
-                        fontSize = 13.sp,
-                    )
+                    Row {
+                        if (!access.open) {
+                            GIcon(GameIcon.LOCK, Modifier.size(14.dp).padding(top = 2.dp), HpYellow)
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(access.reason, color = if (access.open) HpGreen else HpYellow, fontSize = 13.sp)
+                    }
                 }
                 if (cooldown > 0) Text("Recharging: ${formatDuration(cooldown)}", color = HpYellow)
                 if (!inRange) {
@@ -430,10 +426,11 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
     val sp = spawn.species
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${sp.emoji} Wild ${sp.name}") },
+        title = { Text("Wild ${sp.name}") },
         text = {
             Column {
-                Text("Level ${spawn.level} • ${sp.element.emoji} ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
+                MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally))
+                Text("Level ${spawn.level} • ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
                 Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
                 if (!inRange) Text("Walk within ${World.SPAWN_RANGE_M.toInt()} m to battle.", modifier = Modifier.padding(top = 6.dp))
@@ -446,7 +443,26 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
     )
 }
 
-private class Entry(val dist: Double, val emoji: String, val title: String, val sub: String, val inRange: Boolean, val onClick: () -> Unit)
+private class Entry(
+    val dist: Double,
+    val art: @Composable () -> Unit,
+    val title: String,
+    val sub: String,
+    val inRange: Boolean,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun GuardianPreview(sp: com.monsterquest.core.Species) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        MonsterArt(sp, Modifier.size(72.dp))
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text("Guardian: ${sp.name}", fontWeight = FontWeight.SemiBold)
+            Text("${sp.element.label} type", fontSize = 12.sp, color = sp.element.color())
+        }
+    }
+}
 
 /** Nearby shrines and monsters sorted by distance, shown beside the map on big screens. */
 @Composable
@@ -461,7 +477,7 @@ private fun NearbyList(
         val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
         Entry(
             d,
-            sh.tier.emoji,
+            { GIcon(sh.tier.icon(), Modifier.size(28.dp), sh.tier.color()) },
             sh.name,
             "${sh.tier.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SHRINE_RANGE_M,
@@ -470,7 +486,7 @@ private fun NearbyList(
         val d = vm.distanceTo(sp.lat, sp.lon) ?: Double.MAX_VALUE
         Entry(
             d,
-            sp.species.emoji,
+            { MonsterArt(sp.species, Modifier.size(40.dp)) },
             "Wild ${sp.species.name}",
             "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SPAWN_RANGE_M,
@@ -485,7 +501,7 @@ private fun NearbyList(
         items(entries.sortedBy { it.dist }.take(40)) { e ->
             GameCard(Modifier.padding(vertical = 3.dp).clickable(onClick = e.onClick), border = if (e.inRange) Gold else null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(e.emoji, fontSize = 26.sp)
+                    e.art()
                     Column(Modifier.padding(start = 10.dp).weight(1f)) {
                         Text(e.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(e.sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -12,15 +12,15 @@ import kotlin.random.Random
 // ---------------------------------------------------------------------------
 
 @Serializable
-enum class Element(val label: String, val emoji: String) {
+enum class Element(val label: String) {
     /** "Normal": an attack type only; no monster is Normal type. */
-    NEUTRAL("Normal", "⚪"),
-    FIRE("Fire", "🔥"),
-    ELECTRIC("Electric", "⚡"),
-    FLIGHT("Flight", "🕊️"),
-    WATER("Water", "💧"),
-    GAS("Gas", "💨"),
-    CORRUPT("Corrupt", "🌑");
+    NEUTRAL("Normal"),
+    FIRE("Fire"),
+    ELECTRIC("Electric"),
+    FLIGHT("Flight"),
+    WATER("Water"),
+    GAS("Gas"),
+    CORRUPT("Corrupt");
 
     /** The one type this type deals double-ish damage to. */
     val beats: Element?
@@ -176,28 +176,27 @@ object Spells {
 @Serializable
 enum class Weapon(
     val label: String,
-    val emoji: String,
     val attack: Int,
     val magic: Int,
     val element: Element,
     val rarity: Rarity,
 ) {
-    WOODEN_SWORD("Wooden Sword", "🗡️", 3, 0, Element.NEUTRAL, Rarity.COMMON),
-    APPRENTICE_STAFF("Apprentice Staff", "🪄", 0, 4, Element.NEUTRAL, Rarity.COMMON),
-    IRON_SWORD("Iron Sword", "⚔️", 6, 0, Element.NEUTRAL, Rarity.UNCOMMON),
-    FLAME_BLADE("Flame Blade", "🔥", 8, 2, Element.FIRE, Rarity.RARE),
-    STORM_SPEAR("Storm Spear", "⚡", 8, 2, Element.ELECTRIC, Rarity.RARE),
-    WIND_BOW("Wind Bow", "🏹", 7, 3, Element.FLIGHT, Rarity.RARE),
-    TIDE_TRIDENT("Tide Trident", "🔱", 8, 2, Element.WATER, Rarity.RARE),
-    VENOM_DAGGER("Venom Dagger", "🗡️", 7, 3, Element.GAS, Rarity.RARE),
-    SHADOW_SCYTHE("Shadow Scythe", "🌙", 10, 3, Element.CORRUPT, Rarity.EPIC),
-    ARCANE_STAFF("Arcane Staff", "🔮", 2, 10, Element.NEUTRAL, Rarity.EPIC);
+    WOODEN_SWORD("Wooden Sword", 3, 0, Element.NEUTRAL, Rarity.COMMON),
+    APPRENTICE_STAFF("Apprentice Staff", 0, 4, Element.NEUTRAL, Rarity.COMMON),
+    IRON_SWORD("Iron Sword", 6, 0, Element.NEUTRAL, Rarity.UNCOMMON),
+    FLAME_BLADE("Flame Blade", 8, 2, Element.FIRE, Rarity.RARE),
+    STORM_SPEAR("Storm Spear", 8, 2, Element.ELECTRIC, Rarity.RARE),
+    WIND_BOW("Wind Bow", 7, 3, Element.FLIGHT, Rarity.RARE),
+    TIDE_TRIDENT("Tide Trident", 8, 2, Element.WATER, Rarity.RARE),
+    VENOM_DAGGER("Venom Dagger", 7, 3, Element.GAS, Rarity.RARE),
+    SHADOW_SCYTHE("Shadow Scythe", 10, 3, Element.CORRUPT, Rarity.EPIC),
+    ARCANE_STAFF("Arcane Staff", 2, 10, Element.NEUTRAL, Rarity.EPIC);
 
     val description: String
         get() = buildList {
             if (attack > 0) add("+$attack Attack")
             if (magic > 0) add("+$magic Magic")
-            if (element != Element.NEUTRAL) add("${element.emoji} ${element.label} attacks")
+            if (element != Element.NEUTRAL) add("${element.label} attacks")
         }.joinToString(" • ")
 }
 
@@ -324,22 +323,21 @@ enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE }
 @Serializable
 enum class Item(
     val label: String,
-    val emoji: String,
     val kind: ItemKind,
     val power: Double,
     /** Shop price in gold; 0 = not sold. */
     val price: Int,
     val description: String,
 ) {
-    POTION("Potion", "🧪", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
-    HI_POTION("Hi-Potion", "⚗️", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
-    ETHER("Ether", "🔷", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
-    PHOENIX_DOWN("Phoenix Down", "🪶", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
-    RESTORE_POTION("Restore Potion", "❤️‍🩹", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
-    TAMING_ORB("Taming Orb", "🔮", ItemKind.CAPTURE, 1.0, 30, "Tames a weakened monster."),
-    GREAT_ORB("Great Orb", "🟣", ItemKind.CAPTURE, 1.5, 80, "Better taming odds."),
-    MASTER_ORB("Master Orb", "🌟", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
-    TREAT("Monster Treat", "🍖", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost.");
+    POTION("Potion", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
+    HI_POTION("Hi-Potion", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
+    ETHER("Ether", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
+    PHOENIX_DOWN("Phoenix Down", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
+    RESTORE_POTION("Restore Potion", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
+    TAMING_ORB("Taming Orb", ItemKind.CAPTURE, 1.0, 30, "Tames a weakened monster."),
+    GREAT_ORB("Great Orb", ItemKind.CAPTURE, 1.5, 80, "Better taming odds."),
+    MASTER_ORB("Master Orb", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
+    TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost.");
 
     val usableInBattle: Boolean get() = kind != ItemKind.TREAT && kind != ItemKind.RESTORE
 }

@@ -4,6 +4,8 @@ import com.monsterquest.core.Battle
 import com.monsterquest.core.BattleOutcome
 import com.monsterquest.core.Combatant
 import com.monsterquest.core.Element
+import com.monsterquest.core.HeroClass
+import com.monsterquest.core.Status
 import com.monsterquest.core.EncounterType
 import com.monsterquest.core.Item
 import com.monsterquest.core.Move
@@ -62,7 +64,9 @@ data class OrbOption(val item: Item, val count: Int, val odds: Double)
 data class FighterView(
     val key: String,
     val name: String,
-    val emoji: String,
+    /** For artwork: monster species id, or the hero's class. */
+    val speciesId: String?,
+    val heroClass: HeroClass?,
     val element: Element,
     val level: Int,
     val hp: Int,
@@ -70,15 +74,16 @@ data class FighterView(
     val mp: Int,
     val maxMp: Int,
     val isHero: Boolean,
-    /** Status and stat-change labels, e.g. "💤 Asleep", "Def ↓1". */
+    /** Status and stat-change labels, e.g. "Asleep", "Def ↓1". */
     val tags: List<String>,
+    val status: Status?,
 ) {
     val alive: Boolean get() = hp > 0
     val hpFraction: Float get() = hp.toFloat() / maxHp
 
     companion object {
         fun of(c: Combatant) = FighterView(
-            c.key, c.name, c.emoji, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(),
+            c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status,
         )
     }
 }

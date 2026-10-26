@@ -1,5 +1,8 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import android.content.ActivityNotFoundException
 import android.content.ContentUris
 import android.content.Context
@@ -69,7 +72,7 @@ fun QuestsScreen(vm: GameViewModel) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SmallButton("+ New quest", { showAdd = true }, Modifier.weight(1f))
                     SmallButton(
-                        "📅 Calendar",
+                        "Calendar",
                         { if (!openCalendar(context)) vm.toast("No calendar app found.") },
                         Modifier.weight(1f),
                         outlined = true,
@@ -103,7 +106,7 @@ fun QuestsScreen(vm: GameViewModel) {
         if (showDone) {
             items(done.take(50), key = { "done_" + it.id }, span = { GridItemSpan(maxLineSpan) }) { task ->
                 Text(
-                    "✔ ${task.title}",
+                    task.title,
                     modifier = Modifier.padding(vertical = 4.dp),
                     textDecoration = TextDecoration.LineThrough,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -135,19 +138,19 @@ private fun QuestRow(task: QuestTask, onComplete: () -> Unit, onDelete: () -> Un
             Column(Modifier.weight(1f)) {
                 Text(task.title, fontWeight = FontWeight.SemiBold)
                 val sub = buildList {
-                    if (task.source == TaskSource.CALENDAR) add("📅 " + (whenText(task) ?: "Calendar"))
+                    if (task.source == TaskSource.CALENDAR) add(whenText(task) ?: "Calendar")
                     add(task.difficulty.label)
                     add("+${task.difficulty.xp} XP")
-                    add("+${task.difficulty.gold} 🪙")
+                    add("+${task.difficulty.gold} gold")
                 }.joinToString(" • ")
                 Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (task.source == TaskSource.MANUAL) {
                 TextButton(onClick = onDelete, contentPadding = PaddingValues(4.dp)) {
-                    Text("✕", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    GIcon(GameIcon.CLOSE, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            SmallButton("✔ Done", onComplete)
+            SmallButton("Done", onComplete)
         }
     }
 }

@@ -71,7 +71,7 @@ object GameEngine {
         if (state.gold < cost) return Update(state, "Changing class costs $cost gold.")
         return Update(
             state.copy(hero = h.copy(heroClass = cls), gold = state.gold - cost),
-            "${cls.emoji} You are now a ${cls.label}!" + if (cost > 0) " (−$cost gold)" else "",
+            "You are now a ${cls.label}!" + if (cost > 0) " (−$cost gold)" else "",
         )
     }
 
@@ -233,7 +233,7 @@ object GameEngine {
     }
 
     private fun evolutionText(before: Monster, after: Monster): String =
-        if (before.speciesId == after.speciesId) "" else " ✨ ${before.displayName} evolved into ${after.species.name}!"
+        if (before.speciesId == after.speciesId) "" else " ${before.displayName} evolved into ${after.species.name}!"
 
     /**
      * Adds XP, then reports evolutions and newly learned moves. New moves fill
@@ -280,7 +280,7 @@ object GameEngine {
                 monsters = state.monsters.map { if (it.uid == uid) it.copy(fainted = false) else it },
                 inventory = removeItems(state.inventory, mapOf(Item.RESTORE_POTION to 1)),
             ),
-            "❤️‍🩹 ${m.displayName} is back on its feet!",
+            "${m.displayName} is back on its feet!",
         )
     }
 
@@ -298,7 +298,7 @@ object GameEngine {
                 monsters = state.monsters.map { if (it.uid == best.uid) it.copy(fainted = false) else it },
                 lastRecoveryDay = today,
             ),
-            "🌅 ${best.displayName} recovered overnight. Restore Potions heal the rest.",
+            "${best.displayName} recovered overnight. Restore Potions heal the rest.",
         )
     }
 
@@ -387,7 +387,7 @@ object GameEngine {
                 if (r.drops.isNotEmpty()) {
                     val (withDrops, lost) = addItems(s, r.drops)
                     s = withDrops
-                    msg.append(" Found: ").append(r.drops.entries.joinToString { "${it.key.emoji}${it.key.label} x${it.value}" }).append(".")
+                    msg.append(" Found: ").append(r.drops.entries.joinToString { "${it.key.label} x${it.value}" }).append(".")
                     if (lost > 0) msg.append(" (Bag full: $lost item(s) left behind.)")
                 }
                 val gain = addHeroXp(s, r.heroXp)
@@ -424,7 +424,7 @@ object GameEngine {
         if (r.faintedUids.isNotEmpty()) {
             val names = s.monsters.filter { it.uid in r.faintedUids }.map { it.displayName }
             s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true) else it })
-            msg.append(" 💤 ${names.joinToString()} fainted and need${if (names.size == 1) "s" else ""} a Restore Potion.")
+            msg.append(" ${names.joinToString()} fainted and need${if (names.size == 1) "s" else ""} a Restore Potion.")
         }
         return Update(s, msg.toString())
     }
@@ -507,25 +507,25 @@ object GameEngine {
         val parts = mutableListOf<String>()
         val (withItems, lostItems) = addItems(s, loot.items)
         s = withItems
-        loot.items.forEach { (item, n) -> parts += "${item.emoji}${item.label} x$n" }
+        loot.items.forEach { (item, n) -> parts += "${item.label} x$n" }
         var lostWeapons = 0
         for (w in loot.weapons) {
             if (s.bagCount < s.bagCapacity) {
                 s = s.copy(weapons = s.weapons + w)
-                parts += "${w.emoji}${w.label}"
+                parts += w.label
             } else {
                 lostWeapons++
             }
         }
         if (loot.parts > 0) {
             s = s.copy(weaponParts = s.weaponParts + loot.parts)
-            parts += "🔩 Weapon part x${loot.parts}"
+            parts += "Weapon part x${loot.parts}"
         }
         val learned = mutableListOf<String>()
         for ((spellId, n) in loot.pages) {
             val spell = Spells.byId(spellId) ?: continue
             val total = (s.spellPages[spellId] ?: 0) + n
-            parts += "📜${spell.name} page"
+            parts += "${spell.name} page"
             if (total >= Spells.PAGES_TO_LEARN && spellId !in s.hero.knownSpells) {
                 s = s.copy(
                     hero = s.hero.copy(knownSpells = s.hero.knownSpells + spellId),
@@ -540,7 +540,7 @@ object GameEngine {
             append(parts.joinToString(", ").ifEmpty { "nothing" })
             val lost = lostItems + lostWeapons
             if (lost > 0) append(" (Bag full: $lost left behind.)")
-            learned.forEach { append(" 📖 You learned $it!") }
+            learned.forEach { append(" You learned $it!") }
         }
         return Update(s, msg)
     }
@@ -571,7 +571,7 @@ object GameEngine {
         val w = rollWeapon(state.hero.level + 10, rng)
         return Update(
             state.copy(weaponParts = state.weaponParts - PARTS_TO_FORGE, weapons = state.weapons + w),
-            "🔨 You forged a ${w.emoji} ${w.label}! (${w.rarity.label})",
+            "You forged a ${w.label}! (${w.rarity.label})",
         )
     }
 
@@ -622,11 +622,11 @@ object GameEngine {
             if (s.lootBoxes.size >= MAX_LOOT_BOXES) {
                 // Shouldn't happen (starting is blocked when full), but don't lose the reward entirely.
                 val gold = f.minutes
-                return Update(s.copy(gold = s.gold + gold), "📵 Phone-free for ${f.minutes} min! Box storage full, so you got $gold gold instead.")
+                return Update(s.copy(gold = s.gold + gold), "Phone-free for ${f.minutes} min! Box storage full, so you got $gold gold instead.")
             }
             val rarity = LootBoxes.roll(f.minutes, rng)
             s = s.copy(lootBoxes = s.lootBoxes + LootBox(newId(rng), rarity, f.endMs))
-            Update(s, "📵 Phone-free for ${f.minutes} min! You earned a ${rarity.emoji} ${rarity.label} loot box. Walk ${rarity.miles} mile(s) to open it.")
+            Update(s, "Phone-free for ${f.minutes} min! You earned a Level ${rarity.level} ${rarity.label} loot box. Walk ${rarity.miles} mile(s) to open it.")
         } else {
             val loss = focusPenalty(s)
             s = s.copy(
@@ -634,7 +634,7 @@ object GameEngine {
                 huntTokens = (s.huntTokens - 1).coerceAtLeast(0),
                 stats = s.stats.copy(focusFails = s.stats.focusFails + 1),
             )
-            Update(s, "📱 You picked up your phone early. Lost $loss gold and a hunt token.")
+            Update(s, "You picked up your phone early. Lost $loss gold and a hunt token.")
         }
     }
 

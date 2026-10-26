@@ -1,5 +1,12 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -63,10 +70,10 @@ fun MonstersScreen(vm: GameViewModel) {
     var adventures by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallButton("🐾 Collection", { adventures = false }, Modifier.weight(1f), outlined = adventures)
+            SmallButton("Collection", { adventures = false }, Modifier.weight(1f), outlined = adventures)
             val away = vm.state.adventures.size
             SmallButton(
-                "🧭 Adventures" + if (away > 0) " ($away)" else "",
+                "Adventures" + if (away > 0) " ($away)" else "",
                 { adventures = true },
                 Modifier.weight(1f),
                 outlined = !adventures,
@@ -116,7 +123,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 "Storage ${s.monsters.size}/${s.monsterCapacity}  •  Party ${s.party.size}/$MAX_PARTY_SIZE  •  " +
-                    "❤️‍🩹 ${s.count(Item.RESTORE_POTION)}  •  Tap a monster for its stats",
+                    "Restore Potions ${s.count(Item.RESTORE_POTION)}  •  Tap a monster for its stats",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -148,7 +155,7 @@ private fun MonsterRow(m: Monster, inParty: Boolean, away: Boolean, selected: Bo
     }
     GameCard(Modifier.padding(vertical = 4.dp).clickable(onClick = onClick), border = border) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (m.fainted) "💤" else sp.emoji, fontSize = 36.sp)
+            MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -160,11 +167,14 @@ private fun MonsterRow(m: Monster, inParty: Boolean, away: Boolean, selected: Bo
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (inParty) Text("  ⚔️", fontSize = 12.sp)
+                    if (inParty) {
+                        Spacer(Modifier.width(6.dp))
+                        GIcon(GameIcon.FIGHT, Modifier.size(14.dp), Gold)
+                    }
                     if (m.fainted) Text("  Fainted", fontSize = 12.sp, color = HpRed)
-                    if (away) Text("  🧭 Away", fontSize = 12.sp, color = MpBlue)
+                    if (away) Text("  Away", fontSize = 12.sp, color = MpBlue)
                 }
-                Text("Lv ${m.level} ${sp.name} • ${sp.element.emoji} ${sp.element.label}", fontSize = 12.sp, maxLines = 1)
+                IconText(sp.element.icon(), "Lv ${m.level} ${sp.name}", tint = sp.element.color(), fontSize = 12.sp, size = 13.dp)
                 Text(
                     "HP ${st.hp} • Atk ${st.attack} • Def ${st.defense} • Spd ${st.speed}",
                     fontSize = 12.sp,
@@ -191,15 +201,15 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         if (onBack != null) {
-            TextButton(onClick = onBack) { Text("← All monsters") }
+            TextButton(onClick = onBack) { Text("All monsters") }
         }
         GameCard(border = if (m.fainted) HpRed else if (inParty) Gold else null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(sp.emoji, fontSize = 52.sp)
+                MonsterArt(sp, Modifier.size(120.dp), dim = m.fainted)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Lv ${m.level} ${sp.name} • ${sp.element.emoji} ${sp.element.label}", fontSize = 13.sp)
+                    IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.element.label}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
                     Row {
                         Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
                         if (sp.stages > 1) Text("  • Stage ${sp.stage}/${sp.stages}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -210,9 +220,9 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             if (m.fainted) {
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💤 Fainted. It can't battle until restored.", color = HpRed, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text("Fainted. It can't battle until restored.", color = HpRed, fontSize = 13.sp, modifier = Modifier.weight(1f))
                     SmallButton(
-                        "❤️‍🩹 Restore (${s.count(Item.RESTORE_POTION)})",
+                        "Restore (${s.count(Item.RESTORE_POTION)})",
                         { vm.restore(m.uid) },
                         enabled = s.count(Item.RESTORE_POTION) > 0,
                     )
@@ -220,7 +230,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             }
             s.adventures.find { m.uid in it.monsterUids }?.let { a ->
                 Text(
-                    "🧭 Away: ${a.adventure.title}. Back in ${formatDuration((a.endMs - System.currentTimeMillis()).coerceAtLeast(0))}.",
+                    "Away: ${a.adventure.title}. Back in ${formatDuration((a.endMs - System.currentTimeMillis()).coerceAtLeast(0))}.",
                     fontSize = 13.sp,
                     color = MpBlue,
                     modifier = Modifier.padding(top = 6.dp),
@@ -234,13 +244,13 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Stats + compare ----
         SectionTitle("Stats")
         Text(
-            "🎭 ${m.personality.label}: ${m.personality.description}",
+            "${m.personality.label}: ${m.personality.description}",
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         val perfect = GameEngine.perfectStatCount(m)
         Text(
-            "Potential ${m.potential}%" + if (perfect > 0) "  •  " + "⭐".repeat(perfect) + " perfect" else "",
+            "Potential ${m.potential}%" + if (perfect > 0) "  •  $perfect perfect stat${if (perfect == 1) "" else "s"}" else "",
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -249,15 +259,15 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SmallButton("None", { compareUid = null }, outlined = other != null)
             s.monsters.filter { it.uid != m.uid }.forEach { o ->
-                SmallButton("${o.species.emoji} ${o.displayName}", { compareUid = o.uid }, outlined = o.uid != compareUid)
+                SmallButton(o.displayName, { compareUid = o.uid }, outlined = o.uid != compareUid)
             }
         }
         GameCard {
             if (other != null) {
                 Row {
                     Spacer(Modifier.weight(1f))
-                    Text("${sp.emoji} ${m.displayName}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${other.species.emoji} ${other.displayName}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(m.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(other.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             val scaleMax = (s.monsters + listOfNotNull(other)).flatMap { mon -> MONSTER_STATS.map { mon.stat(it) } }.maxOrNull() ?: 1
@@ -285,7 +295,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             Text("Learns later", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
             upcoming.forEach { (lvl, mv) ->
                 Text(
-                    "Lv $lvl: ${mv.type.emoji} ${mv.name}" + if (mv.isDamaging) " (${mv.power})" else "",
+                    "Lv $lvl: ${mv.name} (${mv.type.label}" + (if (mv.isDamaging) ", ${mv.power})" else ")"),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -295,8 +305,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Type & evolution ----
         SectionTitle("Type")
         Text(
-            "Strong vs ${sp.element.beats?.let { "${it.emoji} ${it.label}" } ?: "nothing"} • " +
-                "Weak to ${sp.element.weakTo?.let { "${it.emoji} ${it.label}" } ?: "nothing"}",
+            "Strong vs ${sp.element.beats?.label ?: "nothing"} • Weak to ${sp.element.weakTo?.label ?: "nothing"}",
             fontSize = 13.sp,
         )
         val line = Bestiary.lineOf(sp)
@@ -304,7 +313,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             Text(
                 "Evolution: " + line.joinToString(" → ") { x ->
                     val tag = x.evolveLevel?.let { " (Lv $it)" } ?: ""
-                    if (x.id == sp.id) "[${x.emoji} ${x.name}]$tag" else "${x.emoji} ${x.name}$tag"
+                    if (x.id == sp.id) "[${x.name}]$tag" else "${x.name}$tag"
                 },
                 fontSize = 13.sp,
                 color = XpPurple,
@@ -316,7 +325,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         SectionTitle("Actions")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SmallButton(if (inParty) "Bench" else "To party", { vm.toggleParty(m.uid) }, Modifier.weight(1f))
-            SmallButton("🍖 +${GameEngine.treatXp(m)} XP", { vm.feedTreat(m.uid) }, Modifier.weight(1f), enabled = s.count(Item.TREAT) > 0, outlined = true)
+            SmallButton("Treat +${GameEngine.treatXp(m)} XP", { vm.feedTreat(m.uid) }, Modifier.weight(1f), enabled = s.count(Item.TREAT) > 0, outlined = true)
         }
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SmallButton("Rename", { renaming = true }, Modifier.weight(1f), outlined = true)
@@ -370,7 +379,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     }
 }
 
-/** One stat row: label with personality arrow and ⭐ for a perfect gene, a bar, and an optional comparison. */
+/** One stat row: label with personality arrow and a star for a perfect gene, a bar, and an optional comparison. */
 @Composable
 private fun StatLine(m: Monster, other: Monster?, stat: Stat, scaleMax: Int) {
     val v = m.stat(stat)
@@ -380,10 +389,16 @@ private fun StatLine(m: Monster, other: Monster?, stat: Stat, scaleMax: Int) {
         mod < 1.0 -> " ↓"
         else -> ""
     }
-    val star = if (m.ivs[stat] == MAX_IV) " ⭐" else ""
+    val perfect = m.ivs[stat] == MAX_IV
     Column(Modifier.padding(vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stat.label + arrow + star, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(stat.label + arrow, fontSize = 13.sp)
+                if (perfect) {
+                    Spacer(Modifier.width(4.dp))
+                    GIcon(GameIcon.STAR, Modifier.size(13.dp), Gold)
+                }
+            }
             Text(v.toString(), fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(if (other != null) 1.4f else 0.4f))
             if (other != null) {
                 val ov = other.stat(stat)
@@ -427,7 +442,9 @@ private fun MoveCard(mv: Move?, ownType: Element, onClick: () -> Unit) {
             Text("— Empty slot —", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${mv.type.emoji} ${mv.name}", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                GIcon(mv.type.icon(), Modifier.size(16.dp), mv.type.color())
+                Spacer(Modifier.width(6.dp))
+                Text(mv.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(
                     (if (mv.isDamaging) "Pow ${mv.power}" else "Status") + " • Acc ${mv.accuracy}" +
                         if (mv.type == ownType && mv.isDamaging) " • +20%" else "",
@@ -446,7 +463,11 @@ fun TypeChart() {
     GameCard {
         Element.typed.forEach { t ->
             val b = t.beats ?: return@forEach
-            Text("${t.emoji} ${t.label}  beats  ${b.emoji} ${b.label}", fontSize = 13.sp, modifier = Modifier.padding(vertical = 2.dp))
+            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconText(t.icon(), t.label, tint = t.color(), fontSize = 13.sp, size = 14.dp)
+                Text("  beats  ", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                IconText(b.icon(), b.label, tint = b.color(), fontSize = 13.sp, size = 14.dp)
+            }
         }
         Text(
             "Super effective hits deal ×1.5; hitting a type that beats yours deals ×0.67. " +

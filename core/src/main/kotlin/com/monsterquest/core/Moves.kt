@@ -1,19 +1,19 @@
 package com.monsterquest.core
 
 /** Status conditions. Each one also makes the monster easier to tame. */
-enum class Status(val label: String, val emoji: String, val captureBonus: Double) {
-    SLEEP("Asleep", "💤", 1.5),
-    SHOCK("Shocked", "⚡", 1.3),
-    POISON("Poisoned", "☠️", 1.2),
-    BURN("Burned", "🔥", 1.2),
+enum class Status(val label: String, val captureBonus: Double) {
+    SLEEP("Asleep", 1.5),
+    SHOCK("Shocked", 1.3),
+    POISON("Poisoned", 1.2),
+    BURN("Burned", 1.2),
 }
 
-enum class Weather(val label: String, val emoji: String) {
-    CLEAR("Clear", ""),
+enum class Weather(val label: String) {
+    CLEAR("Clear"),
     /** Water and Electric moves +25%, Fire −15%. */
-    RAIN("Rain", "🌧️"),
+    RAIN("Rain"),
     /** Fire and Corrupt moves +25%, Water −15%. */
-    DROUGHT("Drought", "☀️");
+    DROUGHT("Drought");
 
     fun multiplier(type: Element): Double = when (this) {
         CLEAR -> 1.0

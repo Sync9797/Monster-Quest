@@ -1,5 +1,11 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,7 +49,7 @@ fun BagScreen(vm: GameViewModel) {
         owned.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.emoji, fontSize = 26.sp)
+                    GIcon(item.icon(), Modifier.size(28.dp), item.color())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("${item.label} x${s.count(item)}", fontWeight = FontWeight.SemiBold)
@@ -60,7 +66,7 @@ fun BagScreen(vm: GameViewModel) {
         s.equippedWeapon?.let { w ->
             GameCard(Modifier.padding(vertical = 3.dp), border = Gold) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(w.emoji, fontSize = 26.sp)
+                    GIcon(w.icon(), Modifier.size(28.dp), w.color())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("${w.label} (equipped)", fontWeight = FontWeight.SemiBold)
@@ -71,12 +77,12 @@ fun BagScreen(vm: GameViewModel) {
             }
         }
         if (s.weapons.isEmpty() && s.equippedWeapon == null) {
-            Text("No weapons yet. Item shrines 🎁 sometimes have one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("No weapons yet. Item shrines sometimes have one, and parts can be forged into one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         s.weapons.forEachIndexed { i, w ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(w.emoji, fontSize = 26.sp)
+                    GIcon(w.icon(), Modifier.size(28.dp), w.color())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(w.label, fontWeight = FontWeight.SemiBold)
@@ -89,13 +95,13 @@ fun BagScreen(vm: GameViewModel) {
         }
         GameCard(Modifier.padding(vertical = 3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🔩", fontSize = 26.sp)
+                GIcon(GameIcon.PARTS, Modifier.size(28.dp), SilverColor)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Weapon parts ${s.weaponParts}/${GameEngine.PARTS_TO_FORGE}", fontWeight = FontWeight.SemiBold)
                     Text("From Level 2+ loot boxes. Forge ${GameEngine.PARTS_TO_FORGE} into a weapon.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                SmallButton("🔨 Forge", vm::forge, enabled = s.weaponParts >= GameEngine.PARTS_TO_FORGE && !s.bagFull)
+                SmallButton("Forge", vm::forge, enabled = s.weaponParts >= GameEngine.PARTS_TO_FORGE && !s.bagFull)
             }
         }
         val pages = s.spellPages.filterValues { it > 0 }
@@ -103,26 +109,29 @@ fun BagScreen(vm: GameViewModel) {
             SectionTitle("Spell sheets")
             pages.forEach { (id, n) ->
                 val sp = Spells.byId(id) ?: return@forEach
-                Text(
-                    "📜 ${sp.element.emoji} ${sp.name}: $n/${Spells.PAGES_TO_LEARN} pages",
-                    modifier = Modifier.padding(vertical = 2.dp),
-                )
+                Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GIcon(GameIcon.PAGE, Modifier.size(18.dp), Gold)
+                    Spacer(Modifier.width(6.dp))
+                    GIcon(sp.element.icon(), Modifier.size(16.dp), sp.element.color())
+                    Spacer(Modifier.width(6.dp))
+                    Text("${sp.name}: $n/${Spells.PAGES_TO_LEARN} pages")
+                }
             }
         }
     }
     val shop: @Composable () -> Unit = {
-        SectionTitle("Shop  •  🪙 ${s.gold}")
+        SectionTitle("Shop  •  ${s.gold} gold")
         Item.entries.filter { it.price > 0 }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.emoji, fontSize = 26.sp)
+                    GIcon(item.icon(), Modifier.size(28.dp), item.color())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(onClick = { vm.buy(item) }, enabled = s.gold >= item.price && !s.bagFull) {
-                        Text("🪙 ${item.price}")
+                        IconText(GameIcon.COIN, "${item.price}")
                     }
                 }
             }

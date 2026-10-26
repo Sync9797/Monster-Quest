@@ -121,6 +121,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Result of the last phone-free session, shown in a dialog. */
     var focusResult by mutableStateOf<String?>(null)
         private set
+    var focusSucceeded by mutableStateOf(false)
+        private set
 
     fun startFocus(minutes: Int) {
         val u = GameEngine.startFocus(state, minutes, System.currentTimeMillis())
@@ -158,6 +160,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (state.focus == null) return
         val u = GameEngine.resolveFocus(state, success)
         set(u.state)
+        focusSucceeded = success
         focusResult = u.message
         FocusService.stop(getApplication())
         FocusStore.clear(getApplication())
@@ -221,6 +224,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Result of a returning adventure, shown in a dialog. */
     var adventureResult by mutableStateOf<String?>(null)
         private set
+    var adventureSucceeded by mutableStateOf(false)
+        private set
 
     /** Today's adventures at real places near you, closest first. */
     fun adventureOffers(nowMs: Long): List<Adventure> {
@@ -235,6 +240,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun claimAdventure(id: String) {
         val u = Adventures.claim(state, id, System.currentTimeMillis())
         set(u.state)
+        adventureSucceeded = u.message.contains("success!")
         adventureResult = u.message
     }
 

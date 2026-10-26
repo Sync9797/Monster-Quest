@@ -1,5 +1,10 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -10,14 +15,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,12 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 
-enum class Tab(val label: String, val emoji: String) {
-    QUESTS("Quests", "📜"),
-    HERO("Hero", "🧙"),
-    MONSTERS("Monsters", "🐾"),
-    MAP("Map", "🗺️"),
-    BAG("Bag", "🎒"),
+enum class Tab(val label: String, val icon: GameIcon) {
+    QUESTS("Quests", GameIcon.QUESTS),
+    HERO("Hero", GameIcon.HERO),
+    MONSTERS("Monsters", GameIcon.MONSTERS),
+    MAP("Map", GameIcon.MAP),
+    BAG("Bag", GameIcon.BAG),
 }
 
 @Composable
@@ -64,66 +66,29 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
         }
     }
 
-    // Wide screens (unfolded foldables, tablets) get a side rail; phones a bottom bar.
-    val wide = widthClass() != WidthClass.COMPACT
-    vm.focusResult?.let { text ->
-        AlertDialog(
-            onDismissRequest = vm::dismissFocusResult,
-            title = { Text(if (text.startsWith("📵")) "Session complete!" else "Session failed") },
-            text = { Text(text) },
-            confirmButton = { TextButton(onClick = vm::dismissFocusResult) { Text("OK") } },
-        )
-    }
-
-    vm.adventureResult?.let { text ->
-        AlertDialog(
-            onDismissRequest = vm::dismissAdventureResult,
-            title = { Text(if (text.startsWith("✅")) "Adventure complete!" else "Adventure failed") },
-            text = { Text(text) },
-            confirmButton = { TextButton(onClick = vm::dismissAdventureResult) { Text("OK") } },
-        )
-    }
-
-    vm.boxResult?.let { text ->
-        AlertDialog(
-            onDismissRequest = vm::dismissBoxResult,
-            title = { Text(if (vm.boxBoss != null) "A boss emerges!" else "Loot box opened!") },
-            text = { Text(text) },
-            confirmButton = { TextButton(onClick = vm::dismissBoxResult) { Text(if (vm.boxBoss != null) "Fight!" else "Awesome") } },
-        )
-    }
-
+    // The menu stays at the bottom on every screen size, folded or open, so it's
+    // always within thumb reach.
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            if (!wide) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    Tab.entries.forEach { t ->
-                        NavigationBarItem(
-                            selected = tab == t,
-                            onClick = { tab = t },
-                            icon = { Text(t.emoji, fontSize = 22.sp) },
-                            label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
-                        )
-                    }
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                Tab.entries.forEach { t ->
+                    NavigationBarItem(
+                        selected = tab == t,
+                        onClick = { tab = t },
+                        icon = { GIcon(t.icon, Modifier.size(24.dp)) },
+                        label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
                 }
             }
         },
     ) { padding ->
         Row(Modifier.fillMaxSize().padding(padding)) {
-            if (wide) {
-                // Scaffold already applied the system-bar insets; don't pad twice.
-                NavigationRail(containerColor = MaterialTheme.colorScheme.surface, windowInsets = WindowInsets(0, 0, 0, 0)) {
-                    Tab.entries.forEach { t ->
-                        NavigationRailItem(
-                            selected = tab == t,
-                            onClick = { tab = t },
-                            icon = { Text(t.emoji, fontSize = 22.sp) },
-                            label = { Text(t.label) },
-                        )
-                    }
-                }
-            }
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 ResourceHeader(state.hero.level, state.gold, state.huntTokens)
                 when (tab) {

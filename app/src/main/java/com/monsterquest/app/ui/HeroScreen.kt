@@ -1,5 +1,12 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,13 +56,15 @@ fun HeroScreen(vm: GameViewModel) {
     val profile: @Composable () -> Unit = {
         GameCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(h.heroClass.emoji, fontSize = 48.sp)
+                HeroArt(h.heroClass, Modifier.size(96.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Level ${h.level} ${h.heroClass.label}", color = XpPurple)
                 }
-                TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) { Text("✏️") }
+                TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) {
+                    GIcon(GameIcon.EDIT, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Spacer(Modifier.height(8.dp))
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)
@@ -76,7 +85,7 @@ fun HeroScreen(vm: GameViewModel) {
         HeroAttribute.entries.forEach { a ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(a.emoji, fontSize = 24.sp)
+                    GIcon(a.icon(), Modifier.size(24.dp), Gold)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text("${a.label}: ${h.attr(a)}", fontWeight = FontWeight.SemiBold)
@@ -97,12 +106,12 @@ fun HeroScreen(vm: GameViewModel) {
     val progress: @Composable () -> Unit = {
         SectionTitle("Storage upgrades")
         GameCard(border = if (s.pendingUpgrades > 0) Gold else null) {
-            Text("🎒 Bag: ${s.bagCount}/${s.bagCapacity}    🐾 Monsters: ${s.monsters.size}/${s.monsterCapacity}")
+            Text("Bag ${s.bagCount}/${s.bagCapacity}   •   Monster storage ${s.monsters.size}/${s.monsterCapacity}")
             if (s.pendingUpgrades > 0) {
                 Text("You have ${s.pendingUpgrades} upgrade(s) to claim!", color = Gold, modifier = Modifier.padding(vertical = 6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SmallButton("🎒 Bag +$BAG_UPGRADE_AMOUNT", { vm.upgrade(bag = true) }, Modifier.weight(1f))
-                    SmallButton("🐾 Storage +$STORAGE_UPGRADE_AMOUNT", { vm.upgrade(bag = false) }, Modifier.weight(1f))
+                    SmallButton("Bag +$BAG_UPGRADE_AMOUNT", { vm.upgrade(bag = true) }, Modifier.weight(1f))
+                    SmallButton("Storage +$STORAGE_UPGRADE_AMOUNT", { vm.upgrade(bag = false) }, Modifier.weight(1f))
                 }
             } else {
                 val next = (h.level / UPGRADE_LEVEL_INTERVAL + 1) * UPGRADE_LEVEL_INTERVAL
@@ -119,7 +128,7 @@ fun HeroScreen(vm: GameViewModel) {
             Text("Spend a hunt token to find a wild monster wherever you are.")
             Spacer(Modifier.height(8.dp))
             Button(onClick = vm::hunt, enabled = s.huntTokens > 0, modifier = Modifier.fillMaxWidth()) {
-                Text("🎯 Hunt (${s.huntTokens} tokens)")
+                IconText(GameIcon.TARGET, "Hunt (${s.huntTokens} tokens)")
             }
         }
 
@@ -127,9 +136,9 @@ fun HeroScreen(vm: GameViewModel) {
         GameCard {
             val w = s.equippedWeapon
             if (w == null) {
-                Text("Bare-handed. Find weapons at item shrines 🎁 and equip them from the Bag.")
+                Text("Bare-handed. Find weapons at item shrines, or forge them, then equip them from the Bag.")
             } else {
-                Text("${w.emoji} ${w.label}", fontWeight = FontWeight.SemiBold)
+                IconText(w.icon(), w.label, tint = w.color(), bold = true)
                 Text(w.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -144,16 +153,18 @@ fun HeroScreen(vm: GameViewModel) {
             val known = sk.id in h.knownSpells
             val pages = s.spellPages[sk.id] ?: 0
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                GIcon(sk.element.icon(), Modifier.size(16.dp), sk.element.color())
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    "${sk.element.emoji} ${sk.name}",
+                    sk.name,
                     modifier = Modifier.weight(1f),
                     color = if (known) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (known) FontWeight.SemiBold else FontWeight.Normal,
                 )
                 if (known) {
-                    Text("⚡${sk.mpCost}", fontSize = 13.sp, color = MpBlue)
+                    Text("${sk.mpCost} energy", fontSize = 13.sp, color = MpBlue)
                 } else {
-                    Text("📜 $pages/${Spells.PAGES_TO_LEARN}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconText(GameIcon.PAGE, "$pages/${Spells.PAGES_TO_LEARN}", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp, fontSize = 13.sp)
                 }
             }
         }
@@ -211,7 +222,8 @@ private fun ClassSection(vm: GameViewModel) {
     SectionTitle("Class")
     if (h.level < CLASS_UNLOCK_LEVEL) {
         GameCard {
-            Text("🔒 Choose a class at level $CLASS_UNLOCK_LEVEL: ⚔️ Warrior, 🔮 Mage or 🗡️ Rogue.")
+            IconText(GameIcon.LOCK, "Choose a class at level $CLASS_UNLOCK_LEVEL", tint = Gold)
+            Text("Warrior, Mage or Rogue.")
             Text(
                 "Class bonuses start small and grow every level.",
                 fontSize = 12.sp,
@@ -222,7 +234,7 @@ private fun ClassSection(vm: GameViewModel) {
     }
     if (h.heroClass != HeroClass.NONE) {
         GameCard(border = Gold) {
-            Text("${h.heroClass.emoji} ${h.heroClass.label}", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            IconText(h.heroClass.icon(), h.heroClass.label, tint = Gold, bold = true, fontSize = 17.sp)
             Text(classEffects(h.heroClass, h.classBonus), fontSize = 13.sp)
             Text(
                 "Bonus grows 1.5% per level, up to 40% at level 30.",
@@ -238,7 +250,7 @@ private fun ClassSection(vm: GameViewModel) {
     HeroClass.entries.filter { it != HeroClass.NONE && it != h.heroClass }.forEach { cls ->
         GameCard(Modifier.padding(vertical = 3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(cls.emoji, fontSize = 28.sp)
+                HeroArt(cls, Modifier.size(56.dp), portrait = false)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(cls.label, fontWeight = FontWeight.SemiBold)

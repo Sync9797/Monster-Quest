@@ -1,5 +1,9 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.core.HeroClass
+import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.HeroArt
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +40,9 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                 Modifier.widthIn(max = 560.dp).verticalScroll(rememberScrollState()).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("⚔️ Monster Quest", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Gold)
+                HeroArt(HeroClass.NONE, Modifier.size(200.dp))
+                Text("MONSTER QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, style = MaterialTheme.typography.titleLarge)
+                Text("THE EVERYDAY ADVENTURE", fontSize = 10.sp, letterSpacing = 3.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "Complete real-life quests to grow stronger. Tame monsters, conquer shrines, and become a legend.",
@@ -49,12 +55,12 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                 GameEngine.starters.map { Bestiary.get(it) }.forEach { sp ->
                     GameCard(Modifier.padding(vertical = 6.dp).clickable { onChoose(sp.id) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(sp.emoji, fontSize = 44.sp)
+                            MonsterArt(sp, Modifier.size(72.dp))
                             Spacer(Modifier.width(16.dp))
                             Column {
                                 Text(sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Text(
-                                    "${sp.element.emoji} ${sp.element.label} • Moves: " +
+                                    "${sp.element.label} type • Moves: " +
                                         Moves.autoLoadout(sp, 3).joinToString { it.name },
                                     fontSize = 13.sp,
                                 )

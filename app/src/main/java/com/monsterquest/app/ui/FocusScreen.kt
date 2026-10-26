@@ -1,5 +1,8 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -50,7 +53,11 @@ fun FocusCard(vm: GameViewModel) {
         vm.startFocus(minutes)
     }
     GameCard(border = MpBlue) {
-        Text("📵 Phone-free challenge", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GIcon(GameIcon.PHONE_OFF, Modifier.size(20.dp), MpBlue)
+            Spacer(Modifier.width(8.dp))
+            Text("Phone-free challenge", style = MaterialTheme.typography.titleMedium)
+        }
         Text(
             "Start a timer and lock your phone. Keep it locked until time's up to earn rewards.",
             fontSize = 13.sp,
@@ -67,12 +74,12 @@ fun FocusCard(vm: GameViewModel) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "Win a loot box: " + LootBoxes.odds(minutes).entries.joinToString("  ") { (r, pct) -> "${r.emoji} $pct%" },
+            "Win a loot box: " + LootBoxes.odds(minutes).entries.joinToString(" • ") { (r, pct) -> "Lv ${r.level} $pct%" },
             fontSize = 12.sp,
             color = HpGreen,
         )
         Text(
-            "Boxes unlock by walking: 📦 1 mi • 🎁 3 mi • 💎 5 mi • 👑 10 mi. Level 4 👑 boxes (boss inside!) need 60+ min.",
+            "Boxes unlock by walking: Lv 1 = 1 mi, Lv 2 = 3 mi, Lv 3 = 5 mi, Lv 4 = 10 mi. Level 4 boxes (boss inside!) need 60+ minutes.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -110,7 +117,7 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(Modifier.widthIn(max = 480.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("📵", fontSize = 64.sp)
+                GIcon(GameIcon.PHONE_OFF, Modifier.size(72.dp), MpBlue)
                 Text("Phone-free session", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold)
                 Spacer(Modifier.height(12.dp))
                 val h = left / 3_600_000

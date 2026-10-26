@@ -8,12 +8,12 @@ import kotlinx.serialization.json.Json
 // ---------------------------------------------------------------------------
 
 @Serializable
-enum class HeroAttribute(val label: String, val emoji: String, val blurb: String) {
-    ATTACK("Attack", "⚔️", "Physical damage"),
-    ENERGY("Energy", "⚡", "Energy pool for spells"),
-    MAGIC("Magic", "🔮", "Spell damage and healing"),
-    DEFENSE("Defense", "🛡️", "Reduces damage, raises max HP"),
-    SPEED("Speed", "💨", "Act first, flee more easily"),
+enum class HeroAttribute(val label: String, val blurb: String) {
+    ATTACK("Attack", "Physical damage"),
+    ENERGY("Energy", "Energy pool for spells"),
+    MAGIC("Magic", "Spell damage and healing"),
+    DEFENSE("Defense", "Reduces damage, raises max HP"),
+    SPEED("Speed", "Act first, flee more easily"),
 }
 
 const val STAT_POINTS_PER_LEVEL = 3
@@ -29,11 +29,11 @@ const val STORAGE_UPGRADE_AMOUNT = 3
  * grows with level (see [Hero.classBonus]).
  */
 @Serializable
-enum class HeroClass(val label: String, val emoji: String, val summary: String) {
-    NONE("Adventurer", "🧙", "No class yet"),
-    WARRIOR("Warrior", "⚔️", "Stronger and faster, weaker magic"),
-    MAGE("Mage", "🔮", "Stronger magic and defense, weaker attack"),
-    ROGUE("Rogue", "🗡️", "Faster, and dodges some attacks"),
+enum class HeroClass(val label: String, val summary: String) {
+    NONE("Adventurer", "No class yet"),
+    WARRIOR("Warrior", "Stronger and faster, weaker magic"),
+    MAGE("Mage", "Stronger magic and defense, weaker attack"),
+    ROGUE("Rogue", "Faster, and dodges some attacks"),
 }
 
 const val CLASS_UNLOCK_LEVEL = 5

@@ -1,5 +1,7 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.GameIcon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -115,9 +117,9 @@ fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modi
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Lv $level", fontWeight = FontWeight.Bold, color = XpPurple, maxLines = 1)
-        Text("🪙 $gold", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1)
-        Text("🎯 $tokens", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary, maxLines = 1)
+        Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
+        IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
+        IconText(GameIcon.TARGET, "$tokens hunts", tint = Mint, textColor = Mint, bold = true)
     }
 }
 

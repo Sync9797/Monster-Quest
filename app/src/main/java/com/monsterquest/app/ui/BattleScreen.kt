@@ -1,5 +1,14 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.core.Bestiary
+import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -122,19 +131,14 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
 private fun EnemyPanel(b: BattleView) {
     val e = b.enemy
     if (b.weather != Weather.CLEAR || b.reversedOrder) {
-        Text(
-            listOfNotNull(
-                if (b.weather != Weather.CLEAR) "${b.weather.emoji} ${b.weather.label}" else null,
-                if (b.reversedOrder) "🌀 Slowest move first" else null,
-            ).joinToString("   "),
-            fontSize = 13.sp,
-            color = MpBlue,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
+        Row(Modifier.padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            b.weather.icon()?.let { IconText(it, b.weather.label, tint = MpBlue, textColor = MpBlue, fontSize = 13.sp) }
+            if (b.reversedOrder) IconText(GameIcon.WING, "Slowest move first", tint = MpBlue, textColor = MpBlue, fontSize = 13.sp)
+        }
     }
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(e.emoji, fontSize = 52.sp)
+            FighterArt(e, Modifier.size(96.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 if (b.isBoss) {
@@ -153,7 +157,7 @@ private fun EnemyPanel(b: BattleView) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text("${e.element.emoji} ${e.element.label}", fontSize = 13.sp)
+                IconText(e.element.icon(), "${e.element.label} type", tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
                 Spacer(Modifier.height(4.dp))
                 Bar(e.hpFraction, hpColor(e.hpFraction), Modifier.fillMaxWidth(), heightDp = 10)
                 Text("${e.hp} / ${e.maxHp} HP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -207,7 +211,7 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(if (a.alive) a.emoji else "💤", fontSize = 26.sp)
+        FighterArt(a, Modifier.size(44.dp))
         Text(
             a.name,
             fontSize = 11.sp,
@@ -221,21 +225,43 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
         a.tags.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = HpYellow, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         if (a.isHero) {
             Bar(a.mp.toFloat() / a.maxMp.coerceAtLeast(1), MpBlue, Modifier.fillMaxWidth(), heightDp = 4)
-            Text("⚡${a.mp}/${a.maxMp}", fontSize = 10.sp)
+            Text("${a.mp}/${a.maxMp} EN", fontSize = 10.sp, color = MpBlue)
         }
     }
 }
 
 @Composable
-private fun ActionButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, color: Color? = null, onClick: () -> Unit) {
+private fun ActionButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    color: Color? = null,
+    icon: GameIcon? = null,
+    onClick: () -> Unit,
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp),
         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-        colors = if (color != null) ButtonDefaults.buttonColors(containerColor = color) else ButtonDefaults.buttonColors(),
+        colors = if (color != null) ButtonDefaults.buttonColors(containerColor = color, contentColor = MaterialTheme.colorScheme.onSurface) else ButtonDefaults.buttonColors(),
     ) {
+        if (icon != null) {
+            GIcon(icon, Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+        }
         Text(text, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** The hero or a monster, as drawn art. Fallen fighters are grayed out. */
+@Composable
+private fun FighterArt(f: FighterView, modifier: Modifier) {
+    val cls = f.heroClass
+    val sp = f.speciesId?.let { Bestiary.get(it) }
+    when {
+        cls != null -> HeroArt(cls, modifier, portrait = false)
+        sp != null -> MonsterArt(sp, modifier, dim = !f.alive)
     }
 }
 
@@ -250,14 +276,18 @@ private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick
         colors = ButtonDefaults.buttonColors(containerColor = typeColor(mv.type)),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(mv.type.icon(), Modifier.size(14.dp), Color.White)
+                Spacer(Modifier.width(4.dp))
             Text(
-                "${mv.type.emoji} ${mv.name}",
+                mv.name,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = Color.White,
             )
+            }
             Text(
                 when {
                     !mv.isDamaging -> "Status"
@@ -295,9 +325,9 @@ private fun ActionPanel(
             Menu.Main -> {
                 if (actor.isHero) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        ActionButton("⚔️ Attack", Modifier.weight(1f)) { onAction(BattleAction.Attack) }
-                        ActionButton("✨ Magic", Modifier.weight(1f), enabled = b.spells.isNotEmpty()) { onMenu(Menu.Magic) }
-                        ActionButton("🛡️ Defend", Modifier.weight(1f)) { onAction(BattleAction.Defend) }
+                        ActionButton("Attack", Modifier.weight(1f), icon = GameIcon.FIGHT) { onAction(BattleAction.Attack) }
+                        ActionButton("Magic", Modifier.weight(1f), enabled = b.spells.isNotEmpty(), icon = GameIcon.SPARK) { onMenu(Menu.Magic) }
+                        ActionButton("Defend", Modifier.weight(1f), icon = GameIcon.SHIELD) { onAction(BattleAction.Defend) }
                     }
                 } else {
                     // A monster's 4 moves, two per row.
@@ -313,19 +343,21 @@ private fun ActionPanel(
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ActionButton(
-                        "🎒 Items (${b.itemsLeft})",
+                        "Items (${b.itemsLeft})",
                         Modifier.weight(1f),
+                        icon = GameIcon.POTION,
                         enabled = b.itemsLeft > 0 && b.items.isNotEmpty(),
                     ) { onMenu(Menu.Items) }
                     ActionButton(
-                        "🔮 Tame",
+                        "Tame",
                         Modifier.weight(1f),
-                        color = if (b.captureBlocked == null) Color(0xFF7C3AED) else null,
+                        color = if (b.captureBlocked == null) Color(0xFF5B4580) else null,
+                        icon = GameIcon.ORB,
                     ) { onMenu(Menu.Tame) }
                     if (!actor.isHero) {
-                        ActionButton("🛡️ Defend", Modifier.weight(1f), color = Color(0xFF4B5563)) { onAction(BattleAction.Defend) }
+                        ActionButton("Defend", Modifier.weight(1f), color = Line, icon = GameIcon.SHIELD) { onAction(BattleAction.Defend) }
                     }
-                    ActionButton("🏃 Flee", Modifier.weight(1f), color = Color(0xFF4B5563)) { onAction(BattleAction.Flee) }
+                    ActionButton("Flee", Modifier.weight(1f), color = Line, icon = GameIcon.RUN) { onAction(BattleAction.Flee) }
                 }
             }
             Menu.Magic -> {
@@ -339,7 +371,9 @@ private fun ActionPanel(
                         enabled = affordable,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("${sp.element.emoji} ${sp.name}  •  ⚡${sp.mpCost}  •  ${if (sp.kind == SkillKind.HEAL) "heal" else "power ${sp.power}"}")
+                        GIcon(sp.element.icon(), Modifier.size(16.dp), sp.element.color())
+                        Spacer(Modifier.width(6.dp))
+                        Text("${sp.name}  •  ${sp.mpCost} energy  •  ${if (sp.kind == SkillKind.HEAL) "heal" else "power ${sp.power}"}")
                     }
                 }
                 BackButton(onMenu)
@@ -348,7 +382,9 @@ private fun ActionPanel(
                 Text("${b.itemsLeft} item use(s) left this battle", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 b.items.forEach { (item, count) ->
                     OutlinedButton(onClick = { onMenu(Menu.Target(item = item)) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${item.emoji} ${item.label} x$count")
+                        GIcon(item.icon(), Modifier.size(18.dp), item.color())
+                        Spacer(Modifier.width(6.dp))
+                        Text("${item.label} x$count")
                     }
                 }
                 BackButton(onMenu)
@@ -360,7 +396,9 @@ private fun ActionPanel(
                 } else {
                     b.orbs.forEach { o ->
                         OutlinedButton(onClick = { onAction(BattleAction.Capture(o.item)) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("${o.item.emoji} ${o.item.label} x${o.count}  •  ${(o.odds * 100).toInt()}% chance")
+                            GIcon(o.item.icon(), Modifier.size(18.dp), o.item.color())
+                            Spacer(Modifier.width(6.dp))
+                            Text("${o.item.label} x${o.count}  •  ${(o.odds * 100).toInt()}% chance")
                         }
                     }
                 }
@@ -384,7 +422,9 @@ private fun ActionPanel(
                         enabled = valid,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("${a.emoji} ${a.name}  ${a.hp}/${a.maxHp} HP" + if (a.isHero) "  ⚡${a.mp}/${a.maxMp}" else "")
+                        FighterArt(a, Modifier.size(24.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("${a.name}  ${a.hp}/${a.maxHp} HP" + if (a.isHero) "  ${a.mp}/${a.maxMp} EN" else "")
                     }
                 }
                 BackButton(onMenu)
@@ -395,16 +435,16 @@ private fun ActionPanel(
 
 @Composable
 private fun BackButton(onMenu: (Menu) -> Unit) {
-    OutlinedButton(onClick = { onMenu(Menu.Main) }, modifier = Modifier.fillMaxWidth()) { Text("← Back") }
+    OutlinedButton(onClick = { onMenu(Menu.Main) }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
 }
 
 @Composable
 private fun ResultPanel(b: BattleView, onClose: () -> Unit) {
     val (title, color) = when (b.outcome) {
-        BattleOutcome.WON -> "🏆 Victory!" to Gold
-        BattleOutcome.CAPTURED -> "🔮 Tamed!" to XpPurple
-        BattleOutcome.LOST -> "💀 Defeat" to HpRed
-        BattleOutcome.FLED -> "🏃 Escaped" to MaterialTheme.colorScheme.onSurfaceVariant
+        BattleOutcome.WON -> "Victory!" to Gold
+        BattleOutcome.CAPTURED -> "Tamed!" to XpPurple
+        BattleOutcome.LOST -> "Defeat" to HpRed
+        BattleOutcome.FLED -> "Escaped" to MaterialTheme.colorScheme.onSurfaceVariant
         BattleOutcome.ONGOING -> "" to Color.Unspecified
     }
     Box(

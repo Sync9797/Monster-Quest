@@ -7,7 +7,6 @@ import kotlin.random.Random
 data class Species(
     val id: String,
     val name: String,
-    val emoji: String,
     val element: Element,
     val rarity: Rarity,
     val base: StatBlock,
@@ -42,7 +41,7 @@ object Bestiary {
     private val fourStageLevels = listOf(14, 28, 42)
     private val threeStageLevels = listOf(16, 32)
 
-    private data class Member(val id: String, val name: String, val emoji: String, val special: String)
+    private data class Member(val id: String, val name: String, val special: String)
 
     private fun scale(b: StatBlock, m: Double) = StatBlock(
         (b.hp * m).toInt(), (b.attack * m).toInt(), (b.magic * m).toInt(), (b.defense * m).toInt(), (b.speed * m).toInt(),
@@ -64,7 +63,6 @@ object Bestiary {
             Species(
                 id = m.id,
                 name = m.name,
-                emoji = m.emoji,
                 element = element,
                 rarity = rarities[i],
                 base = scale(base, mults[i]),
@@ -89,59 +87,59 @@ object Bestiary {
             base = StatBlock(40, 15, 8, 11, 14),
             kind = SkillKind.PHYSICAL,
             members = listOf(
-                Member(ids[0], names[0], "🐕", specials[0]),
-                Member(ids[1], names[1], "🐕‍🦺", specials[1]),
-                Member(ids[2], names[2], "🐺", specials[2]),
+                Member(ids[0], names[0], specials[0]),
+                Member(ids[1], names[1], specials[1]),
+                Member(ids[2], names[2], specials[2]),
             ),
             breed = breed,
         )
     }
 
     private fun single(
-        id: String, name: String, emoji: String, element: Element, rarity: Rarity,
+        id: String, name: String, element: Element, rarity: Rarity,
         base: StatBlock, special: String, kind: SkillKind, power: Int, bossOnly: Boolean, minWildLevel: Int = 1,
     ) = Species(
-        id, name, emoji, element, rarity, base, Skill("${id}_special", special, element, kind, power),
+        id, name, element, rarity, base, Skill("${id}_special", special, element, kind, power),
         bossOnly = bossOnly, family = name, minWildLevel = minWildLevel,
     )
 
     val all: List<Species> = buildList {
         // ---- Four-stage lines (3 evolutions) ----
         addAll(line("Emberkit line", Element.FIRE, StatBlock(40, 15, 10, 9, 15), SkillKind.PHYSICAL, listOf(
-            Member("emberkit", "Emberkit", "🐱", "Ember Swipe"),
-            Member("blazecat", "Blazecat", "🐈", "Blaze Pounce"),
-            Member("flarepanther", "Flarepanther", "🐆", "Flare Rush"),
-            Member("solar_tiger", "Solar Tiger", "🐅", "Solar Fang"),
+            Member("emberkit", "Emberkit", "Ember Swipe"),
+            Member("blazecat", "Blazecat", "Blaze Pounce"),
+            Member("flarepanther", "Flarepanther", "Flare Rush"),
+            Member("solar_tiger", "Solar Tiger", "Solar Fang"),
         )))
         addAll(line("Zapmouse line", Element.ELECTRIC, StatBlock(36, 9, 16, 9, 17), SkillKind.MAGICAL, listOf(
-            Member("zapmouse", "Zapmouse", "🐭", "Static Nip"),
-            Member("voltrat", "Voltrat", "🐀", "Spark Bolt"),
-            Member("thunderhog", "Thunderhog", "🦔", "Thunder Quills"),
-            Member("storm_kirin", "Storm Kirin", "🦄", "Heaven's Bolt"),
+            Member("zapmouse", "Zapmouse", "Static Nip"),
+            Member("voltrat", "Voltrat", "Spark Bolt"),
+            Member("thunderhog", "Thunderhog", "Thunder Quills"),
+            Member("storm_kirin", "Storm Kirin", "Heaven's Bolt"),
         )))
         addAll(line("Fluffchick line", Element.FLIGHT, StatBlock(36, 13, 11, 9, 18), SkillKind.PHYSICAL, listOf(
-            Member("fluffchick", "Fluffchick", "🐣", "Peck Flurry"),
-            Member("skylark", "Skylark", "🐦", "Wing Slice"),
-            Member("galehawk", "Galehawk", "🦅", "Gale Dive"),
-            Member("tempest_roc", "Tempest Roc", "🦚", "Tempest Wings"),
+            Member("fluffchick", "Fluffchick", "Peck Flurry"),
+            Member("skylark", "Skylark", "Wing Slice"),
+            Member("galehawk", "Galehawk", "Gale Dive"),
+            Member("tempest_roc", "Tempest Roc", "Tempest Wings"),
         )))
         addAll(line("Bubblefin line", Element.WATER, StatBlock(44, 12, 13, 12, 10), SkillKind.MAGICAL, listOf(
-            Member("bubblefin", "Bubblefin", "🐟", "Bubble Jet"),
-            Member("tidefin", "Tidefin", "🐠", "Tide Spout"),
-            Member("reefjaw", "Reefjaw", "🦈", "Riptide"),
-            Member("leviathan", "Leviathan", "🐋", "Abyssal Wave"),
+            Member("bubblefin", "Bubblefin", "Bubble Jet"),
+            Member("tidefin", "Tidefin", "Tide Spout"),
+            Member("reefjaw", "Reefjaw", "Riptide"),
+            Member("leviathan", "Leviathan", "Abyssal Wave"),
         )))
         addAll(line("Toxbug line", Element.GAS, StatBlock(42, 12, 13, 13, 10), SkillKind.MAGICAL, listOf(
-            Member("toxbug", "Toxbug", "🐛", "Toxic Spit"),
-            Member("mirepede", "Mirepede", "🐜", "Acid Bite"),
-            Member("stingscor", "Stingscor", "🦂", "Venom Sting"),
-            Member("basilisk", "Basilisk", "🐍", "Petrifying Gaze"),
+            Member("toxbug", "Toxbug", "Toxic Spit"),
+            Member("mirepede", "Mirepede", "Acid Bite"),
+            Member("stingscor", "Stingscor", "Venom Sting"),
+            Member("basilisk", "Basilisk", "Petrifying Gaze"),
         )))
         addAll(line("Gloomwisp line", Element.CORRUPT, StatBlock(38, 11, 16, 10, 15), SkillKind.MAGICAL, listOf(
-            Member("gloomwisp", "Gloomwisp", "👻", "Hex"),
-            Member("gloombat", "Gloombat", "🦇", "Night Shriek"),
-            Member("nightstalker", "Nightstalker", "🕷️", "Shadow Web"),
-            Member("abyss_lord", "Abyss Lord", "👹", "Oblivion"),
+            Member("gloomwisp", "Gloomwisp", "Hex"),
+            Member("gloombat", "Gloombat", "Night Shriek"),
+            Member("nightstalker", "Nightstalker", "Shadow Web"),
+            Member("abyss_lord", "Abyss Lord", "Oblivion"),
         )))
 
         // ---- Hound breeds: three-stage lines (2 evolutions) ----
@@ -153,16 +151,16 @@ object Bestiary {
         addAll(hounds("Shadow", Element.CORRUPT, listOf("Shadow Pup", "Dusk Hound", "Void Fenrir"), listOf("Shadow Bite", "Dusk Fang", "Void Howl")))
 
         // ---- Mythics: rare single-stage monsters ----
-        add(single("mimic", "Mimic", "🧰", Element.CORRUPT, Rarity.RARE, StatBlock(66, 24, 24, 24, 10), "Treasure Trap", SkillKind.PHYSICAL, 44, false, minWildLevel = 8))
-        add(single("prism_fairy", "Prism Fairy", "🧚", Element.FLIGHT, Rarity.RARE, StatBlock(54, 10, 30, 15, 27), "Prism Beam", SkillKind.MAGICAL, 44, false, minWildLevel = 8))
+        add(single("mimic", "Mimic", Element.CORRUPT, Rarity.RARE, StatBlock(66, 24, 24, 24, 10), "Treasure Trap", SkillKind.PHYSICAL, 44, false, minWildLevel = 8))
+        add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.RARE, StatBlock(54, 10, 30, 15, 27), "Prism Beam", SkillKind.MAGICAL, 44, false, minWildLevel = 8))
 
         // ---- Legendary bosses ----
-        add(single("magma_behemoth", "Magma Behemoth", "🌋", Element.FIRE, Rarity.LEGENDARY, StatBlock(84, 27, 18, 20, 9), "Eruption", SkillKind.PHYSICAL, 60, true))
-        add(single("thunder_titan", "Thunder Titan", "🌩️", Element.ELECTRIC, Rarity.LEGENDARY, StatBlock(78, 20, 27, 18, 16), "Judgement Bolt", SkillKind.MAGICAL, 60, true))
-        add(single("sky_serpent", "Sky Serpent", "🐲", Element.FLIGHT, Rarity.LEGENDARY, StatBlock(72, 22, 24, 16, 22), "Cyclone Coil", SkillKind.MAGICAL, 58, true))
-        add(single("abyss_kraken", "Abyss Kraken", "🐙", Element.WATER, Rarity.LEGENDARY, StatBlock(80, 24, 22, 18, 12), "Maelstrom", SkillKind.MAGICAL, 58, true))
-        add(single("miasma_hydra", "Miasma Hydra", "🐉", Element.GAS, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
-        add(single("dread_lich", "Dread Lich", "💀", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
+        add(single("magma_behemoth", "Magma Behemoth", Element.FIRE, Rarity.LEGENDARY, StatBlock(84, 27, 18, 20, 9), "Eruption", SkillKind.PHYSICAL, 60, true))
+        add(single("thunder_titan", "Thunder Titan", Element.ELECTRIC, Rarity.LEGENDARY, StatBlock(78, 20, 27, 18, 16), "Judgement Bolt", SkillKind.MAGICAL, 60, true))
+        add(single("sky_serpent", "Sky Serpent", Element.FLIGHT, Rarity.LEGENDARY, StatBlock(72, 22, 24, 16, 22), "Cyclone Coil", SkillKind.MAGICAL, 58, true))
+        add(single("abyss_kraken", "Abyss Kraken", Element.WATER, Rarity.LEGENDARY, StatBlock(80, 24, 22, 18, 12), "Maelstrom", SkillKind.MAGICAL, 58, true))
+        add(single("miasma_hydra", "Miasma Hydra", Element.GAS, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
+        add(single("dread_lich", "Dread Lich", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
     }
 
     private val byId = all.associateBy { it.id }

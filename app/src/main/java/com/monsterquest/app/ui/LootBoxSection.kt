@@ -1,5 +1,10 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -72,7 +77,7 @@ fun LootBoxSection(vm: GameViewModel) {
     }
     if (s.lootBoxes.isEmpty()) {
         Text(
-            "No boxes yet. Win a 📵 phone-free session on the Quests tab.",
+            "No boxes yet. Win a phone-free session on the Quests tab.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 6.dp),
         )
@@ -109,10 +114,10 @@ private fun LootBoxCard(
     val r = box.rarity
     GameCard(Modifier.padding(vertical = 3.dp), border = if (box.ready) Gold else boxColor(r).copy(alpha = 0.6f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(r.emoji, fontSize = 30.sp)
+            GIcon(GameIcon.CHEST, Modifier.size(32.dp), r.color())
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Level ${r.level} • ${r.label} box", fontWeight = FontWeight.SemiBold, color = boxColor(r))
+                Text("Level ${r.level} • ${r.label} box", fontWeight = FontWeight.SemiBold, color = r.color())
                 Text(r.contents, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 val walked = box.walkedMeters / METERS_PER_MILE
                 Text(
@@ -134,7 +139,11 @@ private fun LootBoxCard(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
                 box.ready -> SmallButton("Open!", onOpen, Modifier.weight(1f))
-                box.unlocking -> Text("🚶 Keep walking…", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                box.unlocking -> Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    GIcon(GameIcon.WALK, Modifier.size(16.dp), HpGreen)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Keep walking…", fontSize = 13.sp)
+                }
                 else -> SmallButton(
                     if (canStartUnlocking) "Start unlocking" else "2 already unlocking",
                     onUnlock,

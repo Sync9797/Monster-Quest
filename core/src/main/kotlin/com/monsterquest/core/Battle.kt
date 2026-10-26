@@ -51,7 +51,6 @@ class Combatant(
     /** "hero", "enemy", or the monster's uid. */
     val key: String,
     val name: String,
-    val emoji: String,
     val element: Element,
     val level: Int,
     val maxHp: Int,
@@ -66,6 +65,10 @@ class Combatant(
     /** Monster moves (empty for the hero, who uses Attack and spells). */
     val moves: List<Move>,
 ) {
+    /** For artwork: the monster's species, or the hero's class. */
+    var speciesId: String? = null
+    var heroClass: HeroClass? = null
+
     /** Chance to dodge incoming attacks (Rogue hero). */
     var evasion: Double = 0.0
     /** Type of the hero's basic Attack (from their weapon). */
@@ -99,17 +102,17 @@ class Combatant(
     fun stageMultiplier(stat: BattleStat): Double = (1.0 + 0.15 * (stages[stat] ?: 0)).coerceIn(0.4, 2.0)
     val effectiveSpeed: Double get() = speed * stageMultiplier(BattleStat.SPEED)
 
-    /** Short labels for the UI, e.g. "💤 Asleep 2", "Def ↓1", "🌧️". */
+    /** Short labels for the UI, e.g. "Asleep", "Def ↓1". */
     fun tags(): List<String> = buildList {
-        status?.let { add("${it.emoji} ${it.label}") }
-        if (scorchTurns > 0) add("🔥 Scorched")
+        status?.let { add(it.label) }
+        if (scorchTurns > 0) add("Scorched")
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
         if (powerUp > 0) add("Power +$powerUp%")
-        if (scared) add("😨 Scared")
-        if (diving != null) add("🪽 In the air")
-        if (protecting) add("🛡️ Guarding")
+        if (scared) add("Scared")
+        if (diving != null) add("In the air")
+        if (protecting) add("Guarding")
         if (mustRecharge) add("Recharging")
-        if (accuracyDown || missNext) add("🎯 Blinded")
+        if (accuracyDown || missNext) add("Blinded")
     }
 
     companion object {
@@ -117,21 +120,22 @@ class Combatant(
         const val ENEMY_KEY = "enemy"
 
         fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
-            HERO_KEY, h.name, h.heroClass.emoji, Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
+            HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
             h.attack + (weapon?.attack ?: 0), h.magic + (weapon?.magic ?: 0),
             h.defense, h.speed, h.maxMp, h.maxMp, true, emptyList(),
         ).apply {
             attackElement = weapon?.element ?: Element.NEUTRAL
             evasion = h.evasion
+            heroClass = h.heroClass
         }
 
         fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
             val s = m.stats
             val hp = (s.hp * hpMultiplier).toInt()
             return Combatant(
-                key, m.displayName, m.species.emoji, m.species.element, m.level, hp, hp,
+                key, m.displayName, m.species.element, m.level, hp, hp,
                 s.attack, s.attack, s.defense, s.speed, 0, 0, false, m.activeMoves,
-            )
+            ).apply { speciesId = m.speciesId }
         }
     }
 }
@@ -569,8 +573,8 @@ class Battle(
                 is MoveEffect.SetWeather -> if (rng.nextDouble() < fx.chance && weather != fx.weather) {
                     weather = fx.weather
                     log += when (fx.weather) {
-                        Weather.RAIN -> "🌧️ It started to rain! Water and Electric moves are stronger."
-                        Weather.DROUGHT -> "☀️ A drought sets in! Fire and Corrupt moves are stronger."
+                        Weather.RAIN -> "It started to rain! Water and Electric moves are stronger."
+                        Weather.DROUGHT -> "A drought sets in! Fire and Corrupt moves are stronger."
                         Weather.CLEAR -> "The weather cleared."
                     }
                 }
@@ -604,7 +608,7 @@ class Battle(
                 }
                 MoveEffect.ReverseOrder -> {
                     reversedRounds = 4
-                    log += "🌀 Wild winds swirl! The slowest now move first."
+                    log += "Wild winds swirl! The slowest now move first."
                 }
                 MoveEffect.TwoTurnDive -> {}
             }

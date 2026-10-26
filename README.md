@@ -87,10 +87,22 @@ your hero.
       quests (at least 5).
     - Legendary-class guardians. Defeat one once, then tame it on a later visit.
 
+## Art
+
+All artwork is vector art drawn in code, in the style of Questbound:
+- **Hero:** the hooded adventurer, recolored per class, with a staff for the
+  Mage and a dagger for the Rogue.
+- **Legendaries:** the six Questbound bosses.
+- **Other monsters:** one body shape per evolution line, colored by type.
+  Each stage adds features (a gem, horns, then a halo on final forms).
+- **Icons:** every icon is drawn the same way. The app uses no emoji.
+
 ## Foldable and large-screen support
 
-- **Folded / regular phone:** single column with a bottom navigation bar.
-- **Unfolded (or tablet):** side navigation rail and two-pane layouts. Quests
+- **Navigation** is always a bottom bar, folded or open, so it stays in thumb
+  reach.
+- **Folded / regular phone:** single column.
+- **Unfolded (or tablet):** two-pane layouts. Quests
   and monsters are shown in a grid; hero, bag and map get side-by-side panes.
 - **Book posture** (half-open, vertical hinge): panes split exactly at the
   hinge, so nothing is drawn across the fold.

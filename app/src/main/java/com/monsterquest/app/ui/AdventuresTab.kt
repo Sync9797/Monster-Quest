@@ -1,5 +1,13 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.foundation.layout.size
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,7 +56,7 @@ fun AdventuresTab(vm: GameViewModel) {
 
     if (s.monsters.size < Adventures.UNLOCK_MONSTERS) {
         Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🧭", fontSize = 56.sp)
+            GIcon(GameIcon.COMPASS, Modifier.size(64.dp), Gold)
             Text("Adventures unlock at ${Adventures.UNLOCK_MONSTERS} monsters", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Spacer(Modifier.height(8.dp))
             Bar(s.monsters.size.toFloat() / Adventures.UNLOCK_MONSTERS, XpPurple, Modifier.fillMaxWidth())
@@ -128,7 +136,13 @@ fun AdventuresTab(vm: GameViewModel) {
     }
 }
 
-private fun stars(d: Int) = "★".repeat(d) + "☆".repeat(5 - d)
+/** Difficulty as five drawn stars (filled up to [d]). */
+@Composable
+private fun Stars(d: Int) {
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        (1..5).forEach { i -> GIcon(GameIcon.STAR, Modifier.size(13.dp), if (i <= d) Gold else Line) }
+    }
+}
 
 private fun minutes(ms: Long) = formatDuration(ms.coerceAtLeast(0))
 
@@ -136,8 +150,9 @@ private fun minutes(ms: Long) = formatDuration(ms.coerceAtLeast(0))
 private fun AdventureCard(adv: Adventure, canSend: Boolean, onPick: () -> Unit) {
     GameCard(Modifier.padding(vertical = 4.dp)) {
         Text(adv.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Stars(adv.difficulty)
         Text(
-            "${stars(adv.difficulty)}  •  Team of ${adv.teamSize}  •  Rec. Lv ${adv.recommendedLevel}  •  ${minutes(adv.durationMs)}",
+            "Team of ${adv.teamSize}  •  Rec. Lv ${adv.recommendedLevel}  •  ${minutes(adv.durationMs)}",
             fontSize = 12.sp,
             color = Gold,
         )
@@ -157,14 +172,17 @@ private fun ActiveAdventureCard(vm: GameViewModel, a: ActiveAdventure, now: Long
     val done = a.done(now)
     GameCard(Modifier.padding(vertical = 4.dp), border = if (done) Gold else MpBlue) {
         Text(a.adventure.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(team.joinToString("  ") { "${it.species.emoji} ${it.displayName}" }, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            team.forEach { MonsterArt(it.species, Modifier.size(40.dp)) }
+        }
+        Text(team.joinToString { it.displayName }, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("Success chance ${(a.successChance * 100).toInt()}%", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(4.dp))
         val total = a.adventure.durationMs.toFloat()
         Bar(((now - a.startMs) / total).coerceIn(0f, 1f), if (done) Gold else MpBlue, Modifier.fillMaxWidth())
         Spacer(Modifier.height(6.dp))
         if (done) {
-            SmallButton("🎁 Welcome them back", { vm.claimAdventure(a.adventure.id) }, Modifier.fillMaxWidth())
+            SmallButton("Welcome them back", { vm.claimAdventure(a.adventure.id) }, Modifier.fillMaxWidth())
         } else {
             Text("Back in ${minutes(a.endMs - now)}", fontSize = 13.sp)
         }
@@ -206,13 +224,13 @@ private fun TeamPicker(vm: GameViewModel, adv: Adventure, onDismiss: () -> Unit,
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(if (on) "☑" else "☐", fontSize = 20.sp)
+                        GIcon(if (on) GameIcon.CHECK else GameIcon.RING, Modifier.size(20.dp), if (on) Gold else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(8.dp))
-                        Text(m.species.emoji, fontSize = 22.sp)
+                        MonsterArt(m.species, Modifier.size(36.dp))
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(m.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("Lv ${m.level} ${m.species.element.emoji}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Lv ${m.level} ${m.species.element.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

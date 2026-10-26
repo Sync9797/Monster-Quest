@@ -19,14 +19,13 @@ const val STEPS_PER_MILE = 2000
 @Serializable
 enum class BoxRarity(
     val label: String,
-    val emoji: String,
     /** Distance to walk before the box opens. */
     val miles: Int,
 ) {
-    COMMON("Common", "📦", 1),
-    RARE("Rare", "🎁", 3),
-    EPIC("Epic", "💎", 5),
-    LEGENDARY("Legendary", "👑", 10);
+    COMMON("Common", 1),
+    RARE("Rare", 3),
+    EPIC("Epic", 5),
+    LEGENDARY("Legendary", 10);
 
     val level: Int get() = ordinal + 1
     val meters: Double get() = miles * METERS_PER_MILE
@@ -156,7 +155,7 @@ object LootBoxes {
         var s = state.copy(lootBoxes = state.lootBoxes.filterNot { it.id == id }, gold = state.gold + gold)
         val granted = GameEngine.grantLoot(s, GameEngine.Loot(items = items, pages = pages, parts = parts))
         s = granted.state
-        val text = "${box.rarity.emoji} Level $level box: +$gold gold, ${granted.message}."
+        val text = "Level $level box: +$gold gold, ${granted.message}."
         if (level < 4) return BoxOpening(Update(s, text))
 
         val boss = boxBoss(state.hero.level, rng)

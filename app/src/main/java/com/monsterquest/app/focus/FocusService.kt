@@ -43,9 +43,9 @@ class FocusService : Service() {
                 Intent.ACTION_SCREEN_OFF -> screenWentOff = true
                 Intent.ACTION_USER_PRESENT -> {
                     if (System.currentTimeMillis() < endMs) {
-                        finish(FocusStore.Outcome.FAILED, "📱 Phone unlocked early", "The session failed. Open Monster Quest to see the damage.")
+                        finish(FocusStore.Outcome.FAILED, "Phone unlocked early", "The session failed. Open Monster Quest to see the damage.")
                     } else {
-                        finish(FocusStore.Outcome.SUCCESS, "📵 Phone-free session complete!", "Open Monster Quest to claim your rewards.")
+                        finish(FocusStore.Outcome.SUCCESS, "Phone-free session complete!", "Open Monster Quest to claim your rewards.")
                     }
                 }
             }
@@ -55,12 +55,12 @@ class FocusService : Service() {
     private val graceCheck = Runnable {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         if (!screenWentOff && pm.isInteractive) {
-            finish(FocusStore.Outcome.FAILED, "📱 You didn't put your phone down", "Lock your phone right after starting a session.")
+            finish(FocusStore.Outcome.FAILED, "You didn't put your phone down", "Lock your phone right after starting a session.")
         }
     }
 
     private val endCheck = Runnable {
-        finish(FocusStore.Outcome.SUCCESS, "📵 Phone-free session complete!", "Open Monster Quest to claim your rewards.")
+        finish(FocusStore.Outcome.SUCCESS, "Phone-free session complete!", "Open Monster Quest to claim your rewards.")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -128,7 +128,7 @@ class FocusService : Service() {
     private fun ongoingNotification(end: Long) =
         NotificationCompat.Builder(this, ONGOING_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle("📵 Phone-free session")
+            .setContentTitle("Phone-free session")
             .setContentText("Keep your phone locked until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(end))}.")
             .setOngoing(true)
             .setContentIntent(openAppIntent(this))

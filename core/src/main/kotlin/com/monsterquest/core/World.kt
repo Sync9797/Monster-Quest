@@ -8,13 +8,13 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-enum class ShrineTier(val label: String, val emoji: String) {
+enum class ShrineTier(val label: String) {
     /** Loot: weapons, spell pages, orbs, potions. Always open. */
-    ITEM("Item shrine", "🎁"),
+    ITEM("Item shrine"),
     /** Tough non-legendary guardians; open Tue/Thu when the quest goal is met. */
-    SILVER("Silver shrine", "🥈"),
+    SILVER("Silver shrine"),
     /** Legendary-class guardians; open Sat/Sun when the weekly quest goal is met. */
-    GOLD("Gold shrine", "🥇"),
+    GOLD("Gold shrine"),
 }
 
 data class Shrine(

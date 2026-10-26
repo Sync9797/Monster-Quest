@@ -1,5 +1,14 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.foundation.layout.padding
+import com.monsterquest.core.ShrineTier
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.color
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.GIcon
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,22 +34,27 @@ fun WeeklyCard(vm: GameViewModel) {
 
     GameCard(border = if (gold.open) Gold else if (silver.open) SilverColor else null) {
         Row(Modifier.fillMaxWidth()) {
-            Text("🗓️ This week", fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.weight(1f))
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                GIcon(GameIcon.CALENDAR, Modifier.size(18.dp), Gold)
+                Spacer(Modifier.width(6.dp))
+                Text("This week", style = MaterialTheme.typography.titleMedium)
+            }
             Text("${week.done}/${week.total} quests (${week.percent}%)", fontSize = 13.sp)
         }
         Spacer(Modifier.height(6.dp))
-        Text("Mon–Fri progress toward the 🥇 weekend goal (${Schedule.GOLD_PERCENT}%, at least ${Schedule.GOLD_MIN_DONE})", fontSize = 12.sp)
+        Text("Mon–Fri progress toward the weekend Gold goal (${Schedule.GOLD_PERCENT}%, at least ${Schedule.GOLD_MIN_DONE})", fontSize = 12.sp)
         Bar(workweek.percent / 100f, if (workweek.percent >= Schedule.GOLD_PERCENT) Gold else XpPurple, Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        Text(
-            "🥈 " + silver.reason,
-            fontSize = 12.sp,
-            color = if (silver.open) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            "🥇 " + gold.reason,
-            fontSize = 12.sp,
-            color = if (gold.open) Gold else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        ShrineLine(ShrineTier.SILVER, silver.reason, if (silver.open) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant)
+        ShrineLine(ShrineTier.GOLD, gold.reason, if (gold.open) Gold else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ShrineLine(tier: ShrineTier, text: String, color: androidx.compose.ui.graphics.Color) {
+    Row(Modifier.padding(top = 4.dp)) {
+        GIcon(tier.icon(), Modifier.size(14.dp).padding(top = 2.dp), tier.color())
+        Spacer(Modifier.width(6.dp))
+        Text(text, fontSize = 12.sp, color = color)
     }
 }
