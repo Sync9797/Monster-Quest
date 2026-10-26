@@ -776,6 +776,13 @@ class GameTest {
         assertTrue(Adventures.available(sent).none { it.uid in uids })
         val sentParty = sent.copy(party = uids.take(1))
         assertEquals(1, GameEngine.newBattle(sentParty, Monster.create(Bestiary.get("zapmouse"), 3, rng), EncounterType.WILD, rng = rng).allies.size)
+        // Your battle party stays with you: party monsters can't be sent...
+        val withParty = s.copy(party = listOf(team[0].uid))
+        assertTrue(Adventures.available(withParty).none { it.uid == team[0].uid })
+        assertEquals(withParty, Adventures.send(withParty, adv, team.take(adv.teamSize).map { it.uid }, at(27)).state)
+        // ...and monsters out adventuring can't join the party.
+        assertTrue(GameEngine.toggleParty(sent.copy(party = emptyList()), uids[0]).state.party.isEmpty())
+        assertTrue(GameEngine.setPartySlot(sent.copy(party = emptyList()), uids[0], 0).state.party.isEmpty())
         // The taken adventure isn't offered again.
         assertTrue(Adventures.offersNear(sent, places, at(27), utc).none { it.id == adv.id })
         // Can't claim early.

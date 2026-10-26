@@ -90,7 +90,7 @@ fun AdventuresTab(vm: GameViewModel) {
         item {
             Text(
                 "Monsters on adventures fight without you (at ${(Adventures.AUTO_BATTLE_EFFECTIVENESS * 100).toInt()}% strength). " +
-                    "Your hero earns no XP, and the team is away until it returns.",
+                    "Your hero earns no XP, and the team is away until it returns. Your battle party stays with you: only bench monsters can go.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -205,7 +205,7 @@ private fun TeamPicker(vm: GameViewModel, adv: Adventure, onDismiss: () -> Unit,
                 }
                 Spacer(Modifier.height(6.dp))
                 if (available.size < adv.teamSize) {
-                    Text("Not enough monsters available (some may be fainted or away).", color = HpRed, fontSize = 13.sp)
+                    Text("Not enough monsters available. Your battle party stays with you, and fainted or away monsters can't go.", color = HpRed, fontSize = 13.sp)
                 }
                 available.forEach { m ->
                     val on = m.uid in chosen

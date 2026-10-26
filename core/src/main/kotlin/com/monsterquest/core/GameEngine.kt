@@ -305,7 +305,9 @@ object GameEngine {
 
     fun toggleParty(state: GameState, uid: String): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
-        return if (uid in state.party) {
+        return if (uid !in state.party && uid in Adventures.awayUids(state)) {
+            Update(state, "${m.displayName} is out on an adventure.")
+        } else if (uid in state.party) {
             Update(state.copy(party = state.party - uid), "${m.displayName} left the battle party.")
         } else if (state.party.size >= MAX_PARTY_SIZE) {
             Update(state, "Battle party is full ($MAX_PARTY_SIZE). Remove a monster first.")
@@ -321,6 +323,7 @@ object GameEngine {
      */
     fun setPartySlot(state: GameState, uid: String, index: Int): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        if (uid !in state.party && uid in Adventures.awayUids(state)) return Update(state, "${m.displayName} is out on an adventure.")
         val party = state.party.filter { p -> state.monsters.any { it.uid == p } }.toMutableList()
         val slot = index.coerceIn(0, MAX_PARTY_SIZE - 1)
         val from = party.indexOf(uid)

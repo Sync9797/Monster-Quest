@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.1
+
+- **Your battle party stays with you:** monsters in your battle party can't
+  be sent on adventures; only bench monsters are offered. And monsters out
+  on an adventure can't be dragged into the party until they're back.
+
 ## 1.8.0
 
 - **Surprise attacks while walking:** with the map open, every 50 steps

@@ -96,9 +96,10 @@ object Adventures {
     /** Monsters currently out on adventures. */
     fun awayUids(state: GameState): Set<String> = state.adventures.flatMap { it.monsterUids }.toSet()
 
+    /** Monsters that can go adventuring: rested, not already away, and not in your battle party. */
     fun available(state: GameState): List<Monster> {
         val away = awayUids(state)
-        return state.monsters.filter { !it.fainted && it.uid !in away }
+        return state.monsters.filter { !it.fainted && it.uid !in away && it.uid !in state.party }
     }
 
     private fun power(m: Monster): Double {
@@ -131,6 +132,7 @@ object Adventures {
         val ids = uids.distinct()
         if (ids.size != adventure.teamSize) return Update(state, "This adventure needs exactly ${adventure.teamSize} monster(s).")
         val free = available(state).associateBy { it.uid }
+        if (ids.any { it in state.party }) return Update(state, "Your battle party stays with you. Pick monsters from your bench.")
         val team = ids.map { free[it] ?: return Update(state, "A chosen monster is fainted or already away.") }
         val chance = successChance(team, adventure)
         val active = ActiveAdventure(adventure, ids, nowMs, chance)
