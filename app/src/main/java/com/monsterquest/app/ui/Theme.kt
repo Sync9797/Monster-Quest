@@ -12,6 +12,7 @@ val HpRed = Color(0xFFF87171)
 val MpBlue = Color(0xFF60A5FA)
 val XpPurple = Color(0xFFA78BFA)
 val BossRed = Color(0xFFEF4444)
+val SilverColor = Color(0xFFC0C7D1)
 
 private val Scheme = darkColorScheme(
     primary = Color(0xFF8B5CF6),

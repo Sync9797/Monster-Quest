@@ -47,6 +47,7 @@ import com.monsterquest.app.BattleView
 import com.monsterquest.app.FighterView
 import com.monsterquest.core.BattleAction
 import com.monsterquest.core.BattleOutcome
+import com.monsterquest.core.EncounterType
 import com.monsterquest.core.Item
 import com.monsterquest.core.ItemKind
 import com.monsterquest.core.Skill
@@ -122,7 +123,15 @@ private fun EnemyPanel(b: BattleView) {
             Text(e.emoji, fontSize = 52.sp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                if (b.isBoss) Text("BOSS", color = BossRed, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                if (b.isBoss) {
+                    val silver = b.encounter == EncounterType.SILVER_BOSS
+                    Text(
+                        if (silver) "SILVER GUARDIAN" else "BOSS",
+                        color = if (silver) SilverColor else BossRed,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                    )
+                }
                 Text(
                     "${e.name}  Lv ${e.level}",
                     fontWeight = FontWeight.Bold,

@@ -78,9 +78,9 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     vm.boxResult?.let { text ->
         AlertDialog(
             onDismissRequest = vm::dismissBoxResult,
-            title = { Text("Loot box opened!") },
+            title = { Text(if (vm.boxBoss != null) "A boss emerges!" else "Loot box opened!") },
             text = { Text(text) },
-            confirmButton = { TextButton(onClick = vm::dismissBoxResult) { Text("Awesome") } },
+            confirmButton = { TextButton(onClick = vm::dismissBoxResult) { Text(if (vm.boxBoss != null) "Fight!" else "Awesome") } },
         )
     }
 

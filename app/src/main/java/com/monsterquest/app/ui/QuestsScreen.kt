@@ -87,6 +87,8 @@ fun QuestsScreen(vm: GameViewModel) {
                     )
                 }
                 Spacer(Modifier.height(10.dp))
+                WeeklyCard(vm)
+                Spacer(Modifier.height(10.dp))
                 FocusCard(vm)
                 SectionTitle("Active quests (${pending.size})")
             }

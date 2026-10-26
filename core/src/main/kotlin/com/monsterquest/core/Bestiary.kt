@@ -187,7 +187,13 @@ object Bestiary {
 
     val wild: List<Species> = all.filter { !it.bossOnly }
 
-    /** Boss shrine guardians: the legendaries plus the final forms of the four-stage lines. */
+    /**
+     * Silver shrine guardians: strong evolved monsters but never legendary:
+     * third stages of the four-stage lines and the final hound breeds.
+     */
+    val silverGuardians: List<Species> = all.filter { !it.bossOnly && it.stage == 3 }
+
+    /** Gold shrine guardians: the legendaries plus the final forms of the four-stage lines. */
     val bosses: List<Species> = all.filter { it.bossOnly || (it.stages == 4 && it.stage == 4) }
 
     /** Random wild species that can appear at [level], weighted by rarity. */

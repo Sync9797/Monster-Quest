@@ -72,7 +72,7 @@ fun FocusCard(vm: GameViewModel) {
             color = HpGreen,
         )
         Text(
-            "Boxes unlock by walking: 📦 1 mi • 🎁 3 mi • 💎 5 mi • 👑 10 mi",
+            "Boxes unlock by walking: 📦 1 mi • 🎁 3 mi • 💎 5 mi • 👑 10 mi. Level 4 👑 boxes (boss inside!) need 60+ min.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

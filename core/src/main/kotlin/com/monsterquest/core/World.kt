@@ -8,14 +8,25 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+enum class ShrineTier(val label: String, val emoji: String) {
+    /** Loot: weapons, spell pages, orbs, potions. Always open. */
+    ITEM("Item shrine", "🎁"),
+    /** Tough non-legendary guardians; open Tue/Thu when the quest goal is met. */
+    SILVER("Silver shrine", "🥈"),
+    /** Legendary-class guardians; open Sat/Sun when the weekly quest goal is met. */
+    GOLD("Gold shrine", "🥇"),
+}
+
 data class Shrine(
     val id: String,
     val name: String,
     val lat: Double,
     val lon: Double,
-    val isBoss: Boolean,
+    val tier: ShrineTier,
     val bossSpeciesId: String? = null,
-)
+) {
+    val isBoss: Boolean get() = tier != ShrineTier.ITEM
+}
 
 data class WildSpawn(
     val id: String,
@@ -36,6 +47,8 @@ object World {
     const val SPAWN_RANGE_M = 100.0
     const val SHRINE_COOLDOWN_MS = 30 * 60_000L
     const val BOSS_COOLDOWN_MS = 4 * 60 * 60_000L
+    /** Each silver shrine can be fought once per open day. */
+    const val SILVER_COOLDOWN_MS = 20 * 60 * 60_000L
     /** Wild spawns reshuffle every 15 minutes. */
     const val SPAWN_WINDOW_MS = 15 * 60_000L
 
@@ -65,16 +78,23 @@ object World {
 
     private fun stableHash(s: String): Int = abs(s.hashCode() % 1_000_000)
 
-    private fun bossSpeciesFor(id: String): String = Bestiary.bosses[stableHash(id) % Bestiary.bosses.size].id
+    private fun guardianFor(id: String, tier: ShrineTier): String? {
+        val pool = when (tier) {
+            ShrineTier.ITEM -> return null
+            ShrineTier.SILVER -> Bestiary.silverGuardians
+            ShrineTier.GOLD -> Bestiary.bosses
+        }
+        return pool[stableHash(id) % pool.size].id
+    }
 
     /**
-     * Turn a real-world place (from OpenStreetMap) into a shrine. Everyday
-     * spots (cafes, restaurants, parks, libraries) are item shrines; big
-     * destinations (cinemas, stadiums, museums, landmarks) are boss shrines.
+     * Turn a real-world place (from OpenStreetMap) into a shrine. The app
+     * picks the tier from the kind of place: everyday spots are item shrines,
+     * entertainment venues silver, and major destinations gold.
      */
-    fun shrineFromPlace(placeId: String, name: String, lat: Double, lon: Double, boss: Boolean): Shrine {
+    fun shrineFromPlace(placeId: String, name: String, lat: Double, lon: Double, tier: ShrineTier): Shrine {
         val id = "osm:$placeId"
-        return Shrine(id, name, lat, lon, boss, if (boss) bossSpeciesFor(id) else null)
+        return Shrine(id, name, lat, lon, tier, guardianFor(id, tier))
     }
 
     /** Fallback shrines for areas with no mapped places (e.g. rural areas or offline). */
@@ -88,11 +108,20 @@ object World {
             val r = Random(seed(x, y, 7))
             if (r.nextDouble() > 0.45) continue
             val id = "gen:$x:$y"
-            val boss = r.nextDouble() < 0.15
+            val roll = r.nextDouble()
+            val tier = when {
+                roll < 0.08 -> ShrineTier.GOLD
+                roll < 0.2 -> ShrineTier.SILVER
+                else -> ShrineTier.ITEM
+            }
             val sLat = (x + r.nextDouble()) * SHRINE_CELL_DEG
             val sLon = (y + r.nextDouble()) * SHRINE_CELL_DEG
-            val name = if (boss) "Ancient Altar" else listOf("Wayshrine", "Supply Cache", "Stone Circle", "Spirit Well").random(r)
-            out += Shrine(id, name, sLat, sLon, boss, if (boss) bossSpeciesFor(id) else null)
+            val name = when (tier) {
+                ShrineTier.GOLD -> "Ancient Altar"
+                ShrineTier.SILVER -> "Silver Obelisk"
+                ShrineTier.ITEM -> listOf("Wayshrine", "Supply Cache", "Stone Circle", "Spirit Well").random(r)
+            }
+            out += Shrine(id, name, sLat, sLon, tier, guardianFor(id, tier))
         }
         return out
     }

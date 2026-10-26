@@ -2,6 +2,7 @@ package com.monsterquest.app.data
 
 import android.util.Log
 import com.monsterquest.core.Shrine
+import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.World
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -19,20 +20,25 @@ import java.util.Locale
  * Finds real places near the player from OpenStreetMap's free Overpass API and
  * turns them into shrines:
  * - Item shrines: everyday spots you pass often (cafes, restaurants, parks, libraries).
- * - Boss shrines: bigger destinations (cinemas, theatres, stadiums, arcades,
- *   bowling, museums, zoos, theme parks, castles and monuments).
+ * - Silver shrines: entertainment venues (cinemas, arcades, bowling, sports
+ *   centres, escape rooms, mini golf, nightclubs).
+ * - Gold shrines: major destinations (museums, stadiums, theatres, zoos,
+ *   aquariums, theme parks, castles and monuments).
  * Falls back to generated shrines when offline or in areas with few mapped places.
  */
 object PlacesRepository {
     private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private const val RADIUS_M = 1500
     private const val MAX_ITEM_SHRINES = 60
-    private const val MAX_BOSS_SHRINES = 20
+    private const val MAX_SILVER_SHRINES = 15
+    private const val MAX_GOLD_SHRINES = 10
 
-    private val bossAmenity = setOf("cinema", "theatre", "arts_centre", "nightclub", "casino")
-    private val bossLeisure = setOf("stadium", "bowling_alley", "amusement_arcade", "water_park", "sports_centre", "escape_game", "miniature_golf")
-    private val bossTourism = setOf("museum", "theme_park", "zoo", "aquarium", "attraction")
-    private val bossHistoric = setOf("castle", "monument", "fort", "ruins")
+    private val silverAmenity = setOf("cinema", "nightclub", "casino")
+    private val silverLeisure = setOf("bowling_alley", "amusement_arcade", "sports_centre", "escape_game", "miniature_golf")
+    private val goldAmenity = setOf("theatre", "arts_centre")
+    private val goldLeisure = setOf("stadium", "water_park")
+    private val goldTourism = setOf("museum", "theme_park", "zoo", "aquarium", "attraction")
+    private val goldHistoric = setOf("castle", "monument", "fort", "ruins")
 
     fun shrinesNear(lat: Double, lon: Double, userAgent: String): List<Shrine> {
         val places = try {
@@ -79,8 +85,7 @@ object PlacesRepository {
     private fun parse(body: String, myLat: Double, myLon: Double): List<Shrine> {
         val root = Json.parseToJsonElement(body).jsonObject
         val elements = root["elements"]?.jsonArray ?: return emptyList()
-        val items = mutableListOf<Shrine>()
-        val bosses = mutableListOf<Shrine>()
+        val all = mutableListOf<Shrine>()
         for (el in elements) {
             val o = el.jsonObject
             val center = o["center"]?.jsonObject ?: o
@@ -91,19 +96,23 @@ object PlacesRepository {
             val leisure = tags.str("leisure")
             val tourism = tags.str("tourism")
             val historic = tags.str("historic")
-            val boss = (amenity != null && amenity in bossAmenity) ||
-                (leisure != null && leisure in bossLeisure) ||
-                (tourism != null && tourism in bossTourism) ||
-                (historic != null && historic in bossHistoric)
+            val tier = when {
+                (amenity != null && amenity in goldAmenity) || (leisure != null && leisure in goldLeisure) ||
+                    (tourism != null && tourism in goldTourism) || (historic != null && historic in goldHistoric) -> ShrineTier.GOLD
+                (amenity != null && amenity in silverAmenity) || (leisure != null && leisure in silverLeisure) -> ShrineTier.SILVER
+                else -> ShrineTier.ITEM
+            }
             val name = tags.str("name") ?: fallbackName(amenity, leisure, tourism, historic)
             // Skip anything almost on top of an existing shrine to avoid clutter.
-            if ((items + bosses).any { World.distanceMeters(it.lat, it.lon, lat, lon) < 40 }) continue
-            val shrine = World.shrineFromPlace("${o.str("type")}${o.str("id")}", name, lat, lon, boss)
-            if (boss) bosses += shrine else items += shrine
+            if (all.any { World.distanceMeters(it.lat, it.lon, lat, lon) < 40 }) continue
+            all += World.shrineFromPlace("${o.str("type")}${o.str("id")}", name, lat, lon, tier)
         }
-        // Dense downtowns have hundreds of cafes; keep the closest ones.
-        fun List<Shrine>.closest(n: Int) = sortedBy { World.distanceMeters(myLat, myLon, it.lat, it.lon) }.take(n)
-        return items.closest(MAX_ITEM_SHRINES) + bosses.closest(MAX_BOSS_SHRINES)
+        // Dense downtowns have hundreds of cafes; keep the closest ones of each tier.
+        fun closest(tier: ShrineTier, n: Int) =
+            all.filter { it.tier == tier }.sortedBy { World.distanceMeters(myLat, myLon, it.lat, it.lon) }.take(n)
+        return closest(ShrineTier.ITEM, MAX_ITEM_SHRINES) +
+            closest(ShrineTier.SILVER, MAX_SILVER_SHRINES) +
+            closest(ShrineTier.GOLD, MAX_GOLD_SHRINES)
     }
 
     private fun fallbackName(amenity: String?, leisure: String?, tourism: String?, historic: String?): String = when {
@@ -113,6 +122,7 @@ object PlacesRepository {
         amenity != null -> "Hangout Shrine"
         leisure != null -> "Park Shrine"
         tourism != null -> "Landmark Arena"
+        leisure == "park" || leisure == "garden" -> "Park Shrine"
         historic != null -> "Ancient Arena"
         else -> "Shrine"
     }

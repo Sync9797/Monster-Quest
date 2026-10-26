@@ -74,6 +74,8 @@ data class QuestTask(
     val endMs: Long? = null,
     val calendarName: String? = null,
     val completedAtMs: Long? = null,
+    /** When a manual quest was added (calendar quests use [startMs]). */
+    val createdAtMs: Long? = null,
 ) {
     val completed: Boolean get() = completedAtMs != null
 }
@@ -130,6 +132,8 @@ data class GameState(
     val equippedWeapon: Weapon? = null,
     /** Spell-book pages collected per spell id; [Spells.PAGES_TO_LEARN] teach the spell. */
     val spellPages: Map<String, Int> = emptyMap(),
+    /** Weapon parts; [PARTS_TO_FORGE] forge a new weapon. */
+    val weaponParts: Int = 0,
     /** The phone-free session in progress, if any. */
     val focus: FocusSession? = null,
     /** Loot boxes from phone-free sessions (max [MAX_LOOT_BOXES]); opened by walking. */

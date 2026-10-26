@@ -59,7 +59,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Bestiary
 import com.monsterquest.core.GameEngine
+import com.monsterquest.core.Schedule
 import com.monsterquest.core.Shrine
+import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.WildSpawn
 import com.monsterquest.core.World
 import kotlinx.coroutines.delay
@@ -96,7 +98,8 @@ fun MapScreen(vm: GameViewModel) {
             Text("🗺️", fontSize = 56.sp)
             Text(
                 "Explore the real world! Item shrines 🎁 at cafes, restaurants and parks hold weapons, " +
-                    "spell pages, orbs and potions. Boss shrines 👹 at cinemas, stadiums and landmarks hold guardians. " +
+                    "spell pages, orbs and potions. 🥈 Silver shrines (Tue/Thu) and 🥇 Gold shrines (weekends) hold guardians " +
+                    "that unlock when you keep up with your quests. " +
                     "Monsters roam nearby too.",
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -160,15 +163,16 @@ fun MapScreen(vm: GameViewModel) {
                         shrines.forEach { sh ->
                             val rec = vm.state.shrines[sh.id]
                             val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
+                            val open = Schedule.access(vm.state, sh, now).open
                             val emoji = when {
-                                sh.isBoss && rec?.bossDefeated == true -> "🏯"
-                                sh.isBoss -> "👹"
-                                cooling -> "🪨"
-                                else -> "🎁"
+                                sh.isBoss && !open -> "🔒"
+                                cooling -> "⏳"
+                                else -> sh.tier.emoji
                             }
                             val ring = when {
-                                sh.isBoss -> 0xCCEF4444.toInt()
-                                cooling -> 0x88666666.toInt()
+                                cooling || (sh.isBoss && !open) -> 0x88666666.toInt()
+                                sh.tier == ShrineTier.GOLD -> 0xCCF5C542.toInt()
+                                sh.tier == ShrineTier.SILVER -> 0xCCC0C7D1.toInt()
                                 else -> 0xCC8B5CF6.toInt()
                             }
                             mv.overlays.add(
@@ -220,7 +224,8 @@ fun MapScreen(vm: GameViewModel) {
                 Text(
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
-                        else -> "🎁 ${shrines.count { !it.isBoss }}  👹 ${shrines.count { it.isBoss }}  🐾 ${spawns.size} nearby"
+                        else -> "🎁 ${shrines.count { it.tier == ShrineTier.ITEM }}  🥈 ${shrines.count { it.tier == ShrineTier.SILVER }}  " +
+                            "🥇 ${shrines.count { it.tier == ShrineTier.GOLD }}  🐾 ${spawns.size}"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -348,26 +353,39 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
     val inRange = dist != null && dist <= World.SHRINE_RANGE_M
     val rec = vm.state.shrines[shrine.id]
     val cooldown = GameEngine.shrineCooldownLeft(vm.state, shrine, now)
-    val boss = shrine.bossSpeciesId?.let { Bestiary.get(it) }
+    val guardian = shrine.bossSpeciesId?.let { Bestiary.get(it) }
+    val access = Schedule.access(vm.state, shrine, now)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text((if (shrine.isBoss) "👹 " else "🎁 ") + shrine.name) },
+        title = { Text("${shrine.tier.emoji} ${shrine.name}") },
         text = {
             Column {
-                Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${shrine.tier.label} • ${distanceText(dist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
-                if (boss != null) {
-                    Text("Boss shrine", color = BossRed, fontWeight = FontWeight.Bold)
-                    Text("Guardian: ${boss.emoji} ${boss.name} (${boss.element.emoji} ${boss.element.label})")
-                    Text("Level ${GameEngine.bossLevel(vm.state.hero.level)} • Acts twice per round • Double HP")
+                when (shrine.tier) {
+                    ShrineTier.ITEM -> Text("Weapons, spell-book pages, capture orbs and potions.")
+                    ShrineTier.SILVER -> if (guardian != null) {
+                        Text("Guardian: ${guardian.emoji} ${guardian.name} (${guardian.element.emoji} ${guardian.element.label})")
+                        Text("Level ${GameEngine.silverLevel(vm.state.hero.level)} • 1.5× HP • Acts twice per round")
+                        Text("⭐ At least 3 perfect stats • Harder to tame", color = SilverColor)
+                    }
+                    ShrineTier.GOLD -> if (guardian != null) {
+                        Text("Guardian: ${guardian.emoji} ${guardian.name} (${guardian.element.emoji} ${guardian.element.label})")
+                        Text("Level ${GameEngine.bossLevel(vm.state.hero.level)} • Double HP • Acts twice per round")
+                        Text(
+                            if (rec?.bossDefeated == true) "✅ Defeated. You may now try to tame it!"
+                            else "Defeat the guardian once to unlock taming.",
+                        )
+                    }
+                }
+                if (shrine.isBoss) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        if (rec?.bossDefeated == true) "✅ Defeated. You may now try to tame it!"
-                        else "🔒 Defeat the guardian once to unlock taming.",
+                        (if (access.open) "🔓 " else "🔒 ") + access.reason,
+                        color = if (access.open) HpGreen else HpYellow,
+                        fontSize = 13.sp,
                     )
-                } else {
-                    Text("Item shrine: weapons, spell-book pages, capture orbs and potions.")
                 }
                 if (cooldown > 0) Text("Recharging: ${formatDuration(cooldown)}", color = HpYellow)
                 if (!inRange) {
@@ -381,8 +399,14 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
         },
         confirmButton = {
             if (shrine.isBoss) {
-                TextButton(onClick = { vm.challengeBoss(shrine); onDismiss() }, enabled = inRange && cooldown == 0L) {
-                    Text(if (rec?.bossDefeated == true) "Tame boss" else "Challenge")
+                TextButton(onClick = { vm.challengeBoss(shrine); onDismiss() }, enabled = inRange && cooldown == 0L && access.open) {
+                    Text(
+                        when {
+                            shrine.tier == ShrineTier.SILVER -> "Challenge"
+                            rec?.bossDefeated == true -> "Tame boss"
+                            else -> "Challenge"
+                        },
+                    )
                 }
             } else {
                 TextButton(onClick = { vm.visitShrine(shrine); onDismiss() }, enabled = inRange && cooldown == 0L) {
@@ -432,9 +456,9 @@ private fun NearbyList(
         val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
         Entry(
             d,
-            if (sh.isBoss) "👹" else "🎁",
+            sh.tier.emoji,
             sh.name,
-            (if (sh.isBoss) "Boss shrine • " else "Item shrine • ") + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            "${sh.tier.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SHRINE_RANGE_M,
         ) { onShrine(sh) }
     } + spawns.map { sp ->

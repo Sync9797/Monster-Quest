@@ -197,14 +197,27 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openBox(id: String) {
         val ready = state.lootBoxes.find { it.id == id }?.ready == true
-        val u = LootBoxes.open(state, id)
-        set(u.state)
-        if (ready) boxResult = u.message else message = u.message
+        val opening = LootBoxes.open(state, id)
+        set(opening.update.state)
+        if (ready) {
+            boxResult = opening.update.message
+            boxBoss = opening.boss
+        } else {
+            message = opening.update.message
+        }
     }
+
+    /** Boss that came out of a Level 4 box; the result dialog's button starts the fight. */
+    var boxBoss by mutableStateOf<Monster?>(null)
+        private set
 
     fun dismissBoxResult() {
         boxResult = null
+        boxBoss?.let { startBattle(it, EncounterType.BOX_BOSS, null) }
+        boxBoss = null
     }
+
+    fun forge() = apply(GameEngine.forge(state))
 
     /** GPS fallback for phones without a step counter: count distance moved while the app is open. */
     private fun walkFromGps(lat: Double, lon: Double) {
@@ -277,7 +290,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             message = mode
             return
         }
-        val type = if (mode == "taming") EncounterType.BOSS_TAMING else EncounterType.BOSS_CHALLENGE
+        val type = when (mode) {
+            "silver" -> EncounterType.SILVER_BOSS
+            "taming" -> EncounterType.BOSS_TAMING
+            else -> EncounterType.BOSS_CHALLENGE
+        }
         startBattle(boss, type, shrine.id)
     }
 

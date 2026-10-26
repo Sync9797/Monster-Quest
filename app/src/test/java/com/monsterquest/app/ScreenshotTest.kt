@@ -82,6 +82,7 @@ abstract class ScreenshotBase(private val device: String) {
             ),
             equippedWeapon = Weapon.STORM_SPEAR,
             spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
+            weaponParts = 3,
             inventory = mapOf(Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY),

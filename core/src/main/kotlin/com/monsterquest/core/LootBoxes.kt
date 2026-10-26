@@ -9,23 +9,39 @@ const val METERS_PER_MILE = 1609.344
 /** Rough average; used to turn the phone's step counter into distance. */
 const val STEPS_PER_MILE = 2000
 
+/**
+ * Box levels and what they hold:
+ * 1. gold and potions
+ * 2. + weapon parts
+ * 3. + spell sheets (pages)
+ * 4. + a boss encounter (20% legendary); only from sessions of an hour or more
+ */
 @Serializable
 enum class BoxRarity(
     val label: String,
     val emoji: String,
     /** Distance to walk before the box opens. */
     val miles: Int,
-    val lootRolls: Int,
-    val gold: Int,
-    val xp: Int,
 ) {
-    COMMON("Common", "📦", 1, 2, 30, 40),
-    RARE("Rare", "🎁", 3, 4, 80, 100),
-    EPIC("Epic", "💎", 5, 6, 150, 200),
-    LEGENDARY("Legendary", "👑", 10, 8, 300, 400);
+    COMMON("Common", "📦", 1),
+    RARE("Rare", "🎁", 3),
+    EPIC("Epic", "💎", 5),
+    LEGENDARY("Legendary", "👑", 10);
 
+    val level: Int get() = ordinal + 1
     val meters: Double get() = miles * METERS_PER_MILE
+
+    val contents: String
+        get() = when (this) {
+            COMMON -> "Gold and potions"
+            RARE -> "Gold, potions and weapon parts"
+            EPIC -> "Gold, potions, weapon parts and spell sheets"
+            LEGENDARY -> "Everything from Level 3, plus a boss encounter (20% legendary)"
+        }
 }
+
+/** Result of opening a box: the loot, and a boss to fight for Level 4 boxes. */
+data class BoxOpening(val update: Update, val boss: Monster? = null)
 
 @Serializable
 data class LootBox(
@@ -48,7 +64,8 @@ object LootBoxes {
         minutes >= 120 -> mapOf(BoxRarity.RARE to 30, BoxRarity.EPIC to 50, BoxRarity.LEGENDARY to 20)
         minutes >= 90 -> mapOf(BoxRarity.COMMON to 10, BoxRarity.RARE to 40, BoxRarity.EPIC to 38, BoxRarity.LEGENDARY to 12)
         minutes >= 60 -> mapOf(BoxRarity.COMMON to 25, BoxRarity.RARE to 45, BoxRarity.EPIC to 25, BoxRarity.LEGENDARY to 5)
-        minutes >= 45 -> mapOf(BoxRarity.COMMON to 40, BoxRarity.RARE to 45, BoxRarity.EPIC to 13, BoxRarity.LEGENDARY to 2)
+        // Level 4 boxes need at least an hour off the phone.
+        minutes >= 45 -> mapOf(BoxRarity.COMMON to 40, BoxRarity.RARE to 47, BoxRarity.EPIC to 13)
         minutes >= 30 -> mapOf(BoxRarity.COMMON to 60, BoxRarity.RARE to 35, BoxRarity.EPIC to 5)
         else -> mapOf(BoxRarity.COMMON to 85, BoxRarity.RARE to 15)
     }
@@ -100,24 +117,56 @@ object LootBoxes {
         return walked.copy(lastStepCount = totalSteps)
     }
 
-    fun open(state: GameState, id: String, rng: Random = Random.Default): Update {
-        val box = state.lootBoxes.find { it.id == id } ?: return Update(state, "Box not found.")
-        if (!box.ready) return Update(state, "Keep walking! %.1f of %d miles.".format(box.walkedMeters / METERS_PER_MILE, box.rarity.miles))
-        val r = box.rarity
-        val xp = (r.xp * (1 + state.hero.level / 10.0)).toInt()
-        var s = state.copy(lootBoxes = state.lootBoxes.filterNot { it.id == id }, gold = state.gold + r.gold)
-        val rolled = GameEngine.rollLoot(s, r.lootRolls, rng)
-        val bonusWeapons = if (r == BoxRarity.EPIC || r == BoxRarity.LEGENDARY) listOf(GameEngine.rollWeapon(s.hero.level + 10, rng)) else emptyList()
-        val bonusItems = if (r == BoxRarity.LEGENDARY) mapOf(Item.MASTER_ORB to 1) else emptyMap()
-        val loot = rolled.copy(
-            weapons = rolled.weapons + bonusWeapons,
-            items = (rolled.items.keys + bonusItems.keys).associateWith { (rolled.items[it] ?: 0) + (bonusItems[it] ?: 0) },
-        )
-        val granted = GameEngine.grantLoot(s, loot)
+    private val potions = listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN)
+
+    /** Chance that a Level 4 box's boss is a legendary. */
+    const val LEGENDARY_BOSS_CHANCE = 0.2
+
+    fun open(state: GameState, id: String, rng: Random = Random.Default): BoxOpening {
+        val box = state.lootBoxes.find { it.id == id } ?: return BoxOpening(Update(state, "Box not found."))
+        if (!box.ready) {
+            return BoxOpening(Update(state, "Keep walking! %.1f of %d miles.".format(box.walkedMeters / METERS_PER_MILE, box.rarity.miles)))
+        }
+        val level = box.rarity.level
+        val gold = when (level) {
+            1 -> rng.nextInt(30, 61)
+            2 -> rng.nextInt(60, 121)
+            3 -> rng.nextInt(120, 201)
+            else -> rng.nextInt(200, 301)
+        }
+        val items = mutableMapOf<Item, Int>()
+        repeat(level + 1) { val p = potions.random(rng); items[p] = (items[p] ?: 0) + 1 }
+        val parts = when (level) {
+            1 -> 0
+            2 -> rng.nextInt(2, 4)
+            3 -> rng.nextInt(3, 5)
+            else -> rng.nextInt(4, 6)
+        }
+        val pages = mutableMapOf<String, Int>()
+        val unknown = Spells.all.filter { it.id !in state.hero.knownSpells }
+        if (level >= 3 && unknown.isNotEmpty()) {
+            repeat(if (level == 3) rng.nextInt(2, 4) else rng.nextInt(3, 5)) {
+                val sp = unknown.random(rng)
+                pages[sp.id] = (pages[sp.id] ?: 0) + 1
+            }
+        }
+        var s = state.copy(lootBoxes = state.lootBoxes.filterNot { it.id == id }, gold = state.gold + gold)
+        val granted = GameEngine.grantLoot(s, GameEngine.Loot(items = items, pages = pages, parts = parts))
         s = granted.state
-        val gain = GameEngine.addHeroXp(s, xp)
-        val lvl = if (gain.levelsGained > 0) " LEVEL UP! Now level ${gain.state.hero.level}." else ""
-        return Update(gain.state, "${r.emoji} ${r.label} box: +${r.gold} gold, +$xp XP, ${granted.message}.$lvl")
+        val text = "${box.rarity.emoji} Level $level box: +$gold gold, ${granted.message}."
+        if (level < 4) return BoxOpening(Update(s, text))
+
+        val boss = boxBoss(state.hero.level, rng)
+        val kind = if (boss.species.rarity == Rarity.LEGENDARY) "a LEGENDARY" else "a"
+        return BoxOpening(Update(s, "$text Something stirs inside... $kind ${boss.species.name} appears!"), boss)
+    }
+
+    /** The boss inside a Level 4 box: 20% a legendary, otherwise a top-stage monster. */
+    fun boxBoss(heroLevel: Int, rng: Random): Monster {
+        val legendary = rng.nextDouble() < LEGENDARY_BOSS_CHANCE
+        val pool = if (legendary) Bestiary.all.filter { it.bossOnly } else Bestiary.bosses.filter { !it.bossOnly }
+        val m = Monster.create(pool.random(rng), heroLevel + 4, rng)
+        return GameEngine.withPerfectStats(m, 2, rng)
     }
 
     fun discard(state: GameState, id: String): Update {

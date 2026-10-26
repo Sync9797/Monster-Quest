@@ -82,10 +82,16 @@ object GameEngine {
 
     // ---- tasks -------------------------------------------------------------
 
-    fun addTask(state: GameState, title: String, difficulty: Difficulty, rng: Random = Random.Default): Update {
+    fun addTask(
+        state: GameState,
+        title: String,
+        difficulty: Difficulty,
+        rng: Random = Random.Default,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Update {
         val t = title.trim()
         if (t.isEmpty()) return Update(state, "Quest needs a name.")
-        val task = QuestTask(id = newId(rng), title = t, difficulty = difficulty)
+        val task = QuestTask(id = newId(rng), title = t, difficulty = difficulty, createdAtMs = nowMs)
         return Update(state.copy(tasks = state.tasks + task), "Quest added: $t")
     }
 
@@ -297,7 +303,10 @@ object GameEngine {
                 s = gain.state
                 msg.append(levelUpText(gain))
                 // Boss shrine progress
-                if (r.shrineId != null && r.encounter != EncounterType.WILD) {
+                if (r.shrineId != null && r.encounter == EncounterType.SILVER_BOSS) {
+                    val rec = s.shrines[r.shrineId] ?: ShrineRecord()
+                    s = s.copy(shrines = s.shrines + (r.shrineId to rec.copy(lastVisitMs = nowMs)))
+                } else if (r.shrineId != null && r.encounter != EncounterType.WILD) {
                     val rec = s.shrines[r.shrineId] ?: ShrineRecord()
                     val firstDefeat = !rec.bossDefeated && r.outcome == BattleOutcome.WON
                     val updated = rec.copy(
@@ -327,7 +336,11 @@ object GameEngine {
 
     fun shrineCooldownLeft(state: GameState, shrine: Shrine, nowMs: Long): Long {
         val rec = state.shrines[shrine.id] ?: return 0
-        val cd = if (shrine.isBoss) World.BOSS_COOLDOWN_MS else World.SHRINE_COOLDOWN_MS
+        val cd = when (shrine.tier) {
+            ShrineTier.ITEM -> World.SHRINE_COOLDOWN_MS
+            ShrineTier.SILVER -> World.SILVER_COOLDOWN_MS
+            ShrineTier.GOLD -> World.BOSS_COOLDOWN_MS
+        }
         return (rec.lastVisitMs + cd - nowMs).coerceAtLeast(0)
     }
 
@@ -337,6 +350,7 @@ object GameEngine {
         val weapons: List<Weapon> = emptyList(),
         /** Spell id -> pages. */
         val pages: Map<String, Int> = emptyMap(),
+        val parts: Int = 0,
     )
 
     /**
@@ -404,6 +418,10 @@ object GameEngine {
                 lostWeapons++
             }
         }
+        if (loot.parts > 0) {
+            s = s.copy(weaponParts = s.weaponParts + loot.parts)
+            parts += "🔩 Weapon part x${loot.parts}"
+        }
         val learned = mutableListOf<String>()
         for ((spellId, n) in loot.pages) {
             val spell = Spells.byId(spellId) ?: continue
@@ -444,6 +462,19 @@ object GameEngine {
     }
 
     // ---- weapons -----------------------------------------------------------
+
+    const val PARTS_TO_FORGE = 5
+
+    /** Turns [PARTS_TO_FORGE] weapon parts into a random weapon (better odds than shrines). */
+    fun forge(state: GameState, rng: Random = Random.Default): Update {
+        if (state.weaponParts < PARTS_TO_FORGE) return Update(state, "Need $PARTS_TO_FORGE weapon parts to forge.")
+        if (state.bagFull) return Update(state, "Bag is full.")
+        val w = rollWeapon(state.hero.level + 10, rng)
+        return Update(
+            state.copy(weaponParts = state.weaponParts - PARTS_TO_FORGE, weapons = state.weapons + w),
+            "🔨 You forged a ${w.emoji} ${w.label}! (${w.rarity.label})",
+        )
+    }
 
     fun equip(state: GameState, index: Int): Update {
         val w = state.weapons.getOrNull(index) ?: return Update(state, "Weapon not found.")
@@ -508,15 +539,42 @@ object GameEngine {
         }
     }
 
-    /** Build the boss for a boss shrine, or explain why it can't be fought. */
-    fun bossEncounter(state: GameState, shrine: Shrine, nowMs: Long, rng: Random = Random.Default): Pair<Monster?, String> {
+    fun silverLevel(heroLevel: Int): Int = maxOf(6, heroLevel + 3)
+
+    /** Sets at least [count] random stats to a perfect IV. */
+    fun withPerfectStats(m: Monster, count: Int, rng: Random): Monster {
+        val perfect = Stat.entries.shuffled(rng).take(count).toSet()
+        fun iv(stat: Stat) = if (stat in perfect) MAX_IV else m.ivs[stat]
+        return m.copy(ivs = StatBlock(iv(Stat.HP), iv(Stat.ATTACK), iv(Stat.MAGIC), iv(Stat.DEFENSE), iv(Stat.SPEED)))
+    }
+
+    /** Number of perfect (maximum) IVs, shown as stars in the UI. */
+    fun perfectStatCount(m: Monster): Int = Stat.entries.count { m.ivs[it] == MAX_IV }
+
+    /**
+     * Build the guardian for a silver or gold shrine, or explain why it can't
+     * be fought (closed today, quest goal not met, or resting).
+     */
+    fun bossEncounter(
+        state: GameState,
+        shrine: Shrine,
+        nowMs: Long,
+        rng: Random = Random.Default,
+        zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+    ): Pair<Monster?, String> {
         if (!shrine.isBoss) return null to "Not a boss shrine."
         if (state.monsters.isEmpty()) return null to "You need at least one monster."
+        val access = Schedule.access(state, shrine, nowMs, zone)
+        if (!access.open) return null to access.reason
         val left = shrineCooldownLeft(state, shrine, nowMs)
         if (left > 0) return null to "The guardian is resting. Back in ${left / 3_600_000}h ${(left / 60_000) % 60}m."
         val species = Bestiary.get(shrine.bossSpeciesId!!)
-        // Seeded so the same shrine always has the same boss personality.
+        // Seeded so the same shrine always has the same guardian personality.
         val seeded = Random(shrine.id.hashCode())
+        if (shrine.tier == ShrineTier.SILVER) {
+            val guardian = Monster.create(species, silverLevel(state.hero.level), seeded).copy(uid = newId(rng))
+            return withPerfectStats(guardian, 3, seeded) to "silver"
+        }
         val boss = Monster.create(species, bossLevel(state.hero.level), seeded).copy(uid = newId(rng))
         val defeated = state.shrines[shrine.id]?.bossDefeated == true
         return boss to (if (defeated) "taming" else "challenge")

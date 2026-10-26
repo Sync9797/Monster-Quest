@@ -188,7 +188,11 @@ private fun MonsterCard(
         if (expanded) {
             Spacer(Modifier.height(8.dp))
             Text("Special: ${sp.special.name} (power ${sp.special.power})", fontSize = 13.sp)
-            Text("Potential: ${m.potential}%", fontSize = 13.sp)
+            val perfect = GameEngine.perfectStatCount(m)
+            Text(
+                "Potential: ${m.potential}%" + if (perfect > 0) "  •  " + "⭐".repeat(perfect) + " $perfect perfect stat${if (perfect == 1) "" else "s"}" else "",
+                fontSize = 13.sp,
+            )
             Text(
                 "Strong vs ${sp.element.beats?.let { "${it.emoji} ${it.label}" } ?: "nothing"} • " +
                     "Weak to ${sp.element.weakTo?.let { "${it.emoji} ${it.label}" } ?: "nothing"}",

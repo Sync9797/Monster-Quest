@@ -13,14 +13,16 @@ your hero.
     better odds of rare boxes.
   - Unlocking early, or not locking within a minute, costs gold and a hunt token.
 - **Loot boxes** open by walking, tracked with the phone's step counter
-  (GPS if there isn't one):
-  - 📦 Common: 1 mile
-  - 🎁 Rare: 3 miles
-  - 💎 Epic: 5 miles
-  - 👑 Legendary: 10 miles
+  (GPS if there isn't one). You can hold **6** and unlock **2 at a time**.
 
-  You can hold **6** and unlock **2 at a time**. Boxes contain gold, XP and
-  items. Epic and Legendary boxes always include a weapon.
+  | Level | Walk | Contains |
+  |---|---|---|
+  | 1 📦 | 1 mile | Gold and potions |
+  | 2 🎁 | 3 miles | + weapon parts (5 forge a weapon) |
+  | 3 💎 | 5 miles | + spell sheets (5 of a spell teach it) |
+  | 4 👑 | 10 miles | + a boss fight, 20% chance of a legendary |
+
+  Level 4 boxes only come from sessions of 60 minutes or more.
 - **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
   Defense and Speed**.
   - Equip **weapons** for bonus stats and a typed basic attack.
@@ -44,10 +46,17 @@ your hero.
 - **Taming:** get a monster below 50% HP and throw an orb.
 - **Map (GPS):**
   - 🎁 **Item shrines** are at cafes, restaurants, parks and libraries. They
-    give weapons, spell pages, orbs and potions.
-  - 👹 **Boss shrines** are at cinemas, theatres, stadiums, arcades, museums,
-    zoos and landmarks. You must **defeat the guardian once** before you can
-    try to tame it on a later visit.
+    give weapons, spell pages, orbs and potions, and are always open.
+  - 🥈 **Silver shrines** are at cinemas, arcades, bowling alleys, sports
+    centres and escape rooms.
+    - Open **Tuesday and Thursday** if you've done 50% of this week's quests
+      (at least 2).
+    - Guardians are tough evolved monsters (never legendary). They're harder
+      to tame but always have at least 3 perfect stats.
+  - 🥇 **Gold shrines** are at museums, stadiums, theatres, zoos and landmarks.
+    - Open **Saturday and Sunday** if you completed 70% of your Monday–Friday
+      quests (at least 5).
+    - Legendary-class guardians. Defeat one once, then tame it on a later visit.
 
 ## Foldable and large-screen support
 

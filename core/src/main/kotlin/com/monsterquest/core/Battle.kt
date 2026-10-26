@@ -12,6 +12,25 @@ enum class EncounterType {
     BOSS_CHALLENGE,
     /** The boss has been beaten before, so taming is now allowed. */
     BOSS_TAMING,
+    /** Silver shrine guardian (Tue/Thu): tough and harder to tame, but tameable right away. */
+    SILVER_BOSS,
+    /** Boss that bursts out of a Legendary loot box; tameable right away. */
+    BOX_BOSS;
+
+    /** Enemy HP multiplier. */
+    val hpMultiplier: Double
+        get() = when (this) {
+            WILD -> 1.0
+            SILVER_BOSS -> 1.5
+            else -> 2.0
+        }
+
+    /** Multiplier on taming odds. */
+    val captureMultiplier: Double
+        get() = when (this) {
+            SILVER_BOSS -> 0.6
+            else -> 1.0
+        }
 }
 
 enum class BattleOutcome { ONGOING, WON, LOST, CAPTURED, FLED }
@@ -55,7 +74,6 @@ class Combatant(
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
         const val SPECIAL_COOLDOWN = 3
-        const val BOSS_HP_MULTIPLIER = 2
 
         fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
             HERO_KEY, h.name, "🧙", Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
@@ -63,10 +81,9 @@ class Combatant(
             h.defense, h.speed, h.maxMp, h.maxMp, true, null,
         ).apply { attackElement = weapon?.element ?: Element.NEUTRAL }
 
-        /** Bosses get [BOSS_HP_MULTIPLIER] times the HP. */
-        fun fromMonster(m: Monster, key: String = m.uid, boss: Boolean = false): Combatant {
+        fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
             val s = m.stats
-            val hp = if (boss) s.hp * BOSS_HP_MULTIPLIER else s.hp
+            val hp = (s.hp * hpMultiplier).toInt()
             return Combatant(
                 key, m.displayName, m.species.emoji, m.species.element, m.level, hp, hp,
                 s.attack, s.magic, s.defense, s.speed, 0, 0, false, m.species.special,
@@ -111,7 +128,7 @@ class Battle(
 ) {
     val allies: List<Combatant> = listOf(Combatant.fromHero(hero, weapon)) +
         party.take(MAX_PARTY_SIZE).map { Combatant.fromMonster(it) }
-    val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, boss = encounter != EncounterType.WILD)
+    val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, encounter.hpMultiplier)
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
     private val partyUids = party.take(MAX_PARTY_SIZE).map { it.uid }
@@ -141,6 +158,8 @@ class Battle(
             EncounterType.WILD -> "A wild ${enemy.name} (Lv ${enemy.level}) appears!"
             EncounterType.BOSS_CHALLENGE -> "BOSS: ${enemy.name} (Lv ${enemy.level}) guards this shrine! Defeat it to earn the right to tame it."
             EncounterType.BOSS_TAMING -> "BOSS: ${enemy.name} (Lv ${enemy.level}) remembers you. Weaken it and try to tame it!"
+            EncounterType.SILVER_BOSS -> "SILVER GUARDIAN: ${enemy.name} (Lv ${enemy.level}) blocks your path! It's hard to tame, but it has perfect genes."
+            EncounterType.BOX_BOSS -> "The loot box bursts open... ${enemy.name} (Lv ${enemy.level}) erupts out of it!"
         }
         log += intro
         advance()
@@ -171,7 +190,8 @@ class Battle(
     }
 
     fun captureOdds(orb: Item): Double =
-        captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb)
+        (captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb) * encounter.captureMultiplier)
+            .coerceIn(0.0, 0.95)
 
     // ---- turn handling ------------------------------------------------------
 
@@ -378,7 +398,10 @@ class Battle(
         }
         val drops = mutableMapOf<Item, Int>()
         if (outcome == BattleOutcome.WON) {
-            if (isBoss) {
+            if (encounter == EncounterType.SILVER_BOSS) {
+                drops[Item.GREAT_ORB] = 2
+                drops[Item.HI_POTION] = 1
+            } else if (isBoss) {
                 drops[Item.MASTER_ORB] = 1
                 drops[Item.HI_POTION] = 2
             } else if (rng.nextDouble() < 0.25) {

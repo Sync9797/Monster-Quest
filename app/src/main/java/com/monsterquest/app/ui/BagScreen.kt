@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
+import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_ITEMS_PER_BATTLE
 import com.monsterquest.core.Spells
@@ -86,9 +87,20 @@ fun BagScreen(vm: GameViewModel) {
                 }
             }
         }
+        GameCard(Modifier.padding(vertical = 3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔩", fontSize = 26.sp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Weapon parts ${s.weaponParts}/${GameEngine.PARTS_TO_FORGE}", fontWeight = FontWeight.SemiBold)
+                    Text("From Level 2+ loot boxes. Forge ${GameEngine.PARTS_TO_FORGE} into a weapon.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                SmallButton("🔨 Forge", vm::forge, enabled = s.weaponParts >= GameEngine.PARTS_TO_FORGE && !s.bagFull)
+            }
+        }
         val pages = s.spellPages.filterValues { it > 0 }
         if (pages.isNotEmpty()) {
-            SectionTitle("Spell pages")
+            SectionTitle("Spell sheets")
             pages.forEach { (id, n) ->
                 val sp = Spells.byId(id) ?: return@forEach
                 Text(

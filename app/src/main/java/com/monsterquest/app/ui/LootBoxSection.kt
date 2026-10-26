@@ -112,7 +112,8 @@ private fun LootBoxCard(
             Text(r.emoji, fontSize = 30.sp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("${r.label} box", fontWeight = FontWeight.SemiBold, color = boxColor(r))
+                Text("Level ${r.level} • ${r.label} box", fontWeight = FontWeight.SemiBold, color = boxColor(r))
+                Text(r.contents, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 val walked = box.walkedMeters / METERS_PER_MILE
                 Text(
                     when {

@@ -87,11 +87,26 @@ class GameTest {
         assertTrue(captureChance(0.1, Rarity.LEGENDARY, 0, Item.TAMING_ORB) < low)
     }
 
+    private val utc = java.time.ZoneId.of("UTC")
+
+    /** Epoch ms for a date/time in UTC. 2026-10-26 is a Monday. */
+    private fun at(day: Int, hour: Int = 12) =
+        java.time.ZonedDateTime.of(2026, 10, day, hour, 0, 0, 0, utc).toInstant().toEpochMilli()
+
+    /** A state with [done] of [total] quests completed on Monday 2026-10-26. */
+    private fun withQuests(total: Int, done: Int): GameState {
+        val tasks = (0 until total).map { i ->
+            QuestTask("q$i", "Quest $i", createdAtMs = at(26, 9), completedAtMs = if (i < done) at(26, 10) else null)
+        }
+        return started().copy(tasks = tasks)
+    }
+
     @Test
     fun bossMustBeDefeatedBeforeTaming() {
-        val s = started()
-        val shrine = World.shrineFromPlace("1", "Museum", 0.0, 0.0, boss = true)
-        val (boss, mode) = GameEngine.bossEncounter(s, shrine, 0)
+        val s = withQuests(total = 6, done = 5)
+        val shrine = World.shrineFromPlace("1", "Museum", 0.0, 0.0, ShrineTier.GOLD)
+        val saturday = at(31)
+        val (boss, mode) = GameEngine.bossEncounter(s, shrine, saturday, zone = utc)
         assertNotNull(boss)
         assertEquals("challenge", mode)
         val battle = GameEngine.newBattle(s, boss, EncounterType.BOSS_CHALLENGE, shrine.id, rng)
@@ -101,6 +116,42 @@ class GameTest {
         // Even at 1 HP, capture is refused during the first challenge.
         battle.current?.let { battle.act(BattleAction.Capture(Item.TAMING_ORB)) }
         assertNotEquals(BattleOutcome.CAPTURED, battle.outcome)
+    }
+
+    @Test
+    fun goldShrinesOpenOnWeekendsWhenWeeklyGoalMet() {
+        val shrine = World.shrineFromPlace("1", "Stadium", 0.0, 0.0, ShrineTier.GOLD)
+        val good = withQuests(total = 7, done = 5) // 71%
+        assertTrue(Schedule.access(good, shrine, at(31), utc).open) // Saturday
+        assertTrue(Schedule.access(good, shrine, at(31) + 86_400_000, utc).open) // Sunday
+        assertTrue(!Schedule.access(good, shrine, at(29), utc).open) // Thursday: wrong day
+        val lowPercent = withQuests(total = 10, done = 6) // 60%
+        assertTrue(!Schedule.access(lowPercent, shrine, at(31), utc).open)
+        val tooFew = withQuests(total = 4, done = 4) // 100% but under the minimum of 5
+        assertTrue(!Schedule.access(tooFew, shrine, at(31), utc).open)
+        // Quests completed on the weekend don't count toward the Monday–Friday goal.
+        val weekendWork = good.copy(tasks = good.tasks + QuestTask("w", "Weekend chore", createdAtMs = at(31, 9), completedAtMs = at(31, 10)))
+        assertEquals(5, Schedule.workweek(weekendWork, at(31), utc).done)
+    }
+
+    @Test
+    fun silverShrinesOpenTuesdayAndThursday() {
+        val shrine = World.shrineFromPlace("2", "Cinema", 0.0, 0.0, ShrineTier.SILVER)
+        val ok = withQuests(total = 4, done = 2) // 50%
+        assertTrue(Schedule.access(ok, shrine, at(27), utc).open) // Tuesday
+        assertTrue(Schedule.access(ok, shrine, at(29), utc).open) // Thursday
+        assertTrue(!Schedule.access(ok, shrine, at(28), utc).open) // Wednesday
+        assertTrue(!Schedule.access(withQuests(total = 4, done = 1), shrine, at(27), utc).open)
+
+        val (guardian, mode) = GameEngine.bossEncounter(ok, shrine, at(27), rng, utc)
+        assertEquals("silver", mode)
+        assertNotNull(guardian)
+        assertTrue(GameEngine.perfectStatCount(guardian) >= 3)
+        assertTrue(guardian.species.rarity != Rarity.LEGENDARY)
+        // Harder to tame than the same monster in the wild.
+        val wild = GameEngine.newBattle(ok, guardian, EncounterType.WILD, rng = rng).apply { enemy.hp = enemy.maxHp / 5 }
+        val silver = GameEngine.newBattle(ok, guardian, EncounterType.SILVER_BOSS, shrine.id, rng).apply { enemy.hp = enemy.maxHp / 5 }
+        assertTrue(silver.captureOdds(Item.GREAT_ORB) < wild.captureOdds(Item.GREAT_ORB))
     }
 
     @Test
@@ -259,7 +310,7 @@ class GameTest {
     @Test
     fun itemShrineGivesLoot() {
         val s = started().copy(inventory = emptyMap())
-        val shrine = World.shrineFromPlace("9", "Cafe", 0.0, 0.0, boss = false)
+        val shrine = World.shrineFromPlace("9", "Cafe", 0.0, 0.0, ShrineTier.ITEM)
         val u = GameEngine.visitShrine(s, shrine, 0, Random(5))
         val got = u.state.bagCount + u.state.spellPages.values.sum() + (u.state.hero.knownSpells.size - s.hero.knownSpells.size)
         assertTrue(got >= 2)
@@ -311,8 +362,8 @@ class GameTest {
         assertTrue(!s.lootBoxes[1].ready)
         assertEquals(0.0, s.lootBoxes[2].walkedMeters)
         // Can't open early.
-        assertEquals(s, LootBoxes.open(s, "b").state)
-        val opened = LootBoxes.open(s, "a", rng)
+        assertEquals(s, LootBoxes.open(s, "b").update.state)
+        val opened = LootBoxes.open(s, "a", rng).update
         assertEquals(2, opened.state.lootBoxes.size)
         assertTrue(opened.state.gold > s.gold)
         // Reboot: counter restarts from zero.
@@ -332,5 +383,41 @@ class GameTest {
         val long = (1..2000).count { LootBoxes.roll(120, Random(it)) != BoxRarity.COMMON }
         assertTrue(long > short)
         assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.GAS))
+    }
+
+    @Test
+    fun boxContentsByLevel() {
+        val base = started().copy(inventory = emptyMap(), gold = 0)
+        fun openBox(r: BoxRarity, seed: Int): BoxOpening {
+            val s = base.copy(lootBoxes = listOf(LootBox("x", r, 0, unlocking = true, walkedMeters = r.meters)))
+            return LootBoxes.open(s, "x", Random(seed))
+        }
+        repeat(20) { seed ->
+            val l1 = openBox(BoxRarity.COMMON, seed)
+            assertTrue(l1.update.state.gold in 30..60)
+            assertEquals(0, l1.update.state.weaponParts)
+            assertTrue(l1.update.state.spellPages.isEmpty())
+            assertNull(l1.boss)
+            val l2 = openBox(BoxRarity.RARE, seed).update.state
+            assertTrue(l2.weaponParts > 0)
+            assertTrue(l2.spellPages.isEmpty())
+            val l3 = openBox(BoxRarity.EPIC, seed).update.state
+            assertTrue(l3.weaponParts > 0 && l3.spellPages.isNotEmpty())
+            assertNotNull(openBox(BoxRarity.LEGENDARY, seed).boss)
+        }
+        val legendaryBosses = (1..1000).count { LootBoxes.boxBoss(10, Random(it)).species.rarity == Rarity.LEGENDARY }
+        assertTrue(legendaryBosses in 150..250, "about 20%: $legendaryBosses")
+        // Level 4 boxes need an hour or more off the phone.
+        assertNull(LootBoxes.odds(45)[BoxRarity.LEGENDARY])
+        assertNotNull(LootBoxes.odds(60)[BoxRarity.LEGENDARY])
+    }
+
+    @Test
+    fun forgingWeapons() {
+        val s = started().copy(weaponParts = GameEngine.PARTS_TO_FORGE + 1)
+        val u = GameEngine.forge(s, rng)
+        assertEquals(1, u.state.weaponParts)
+        assertEquals(1, u.state.weapons.size)
+        assertEquals(u.state, GameEngine.forge(u.state, rng).state)
     }
 }
