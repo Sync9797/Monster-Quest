@@ -3,6 +3,9 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertCountEquals
 import android.Manifest
 import android.app.Application
@@ -160,8 +163,7 @@ abstract class ScreenshotBase(private val device: String) {
         // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
         rule.onNodeWithText("2 quests due within the hour").assertExists()
         // Scroll down to the grouped list.
-        rule.onNode(androidx.compose.ui.test.hasScrollAction())
-            .performScrollToNode(androidx.compose.ui.test.hasText("Water the plants"))
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Water the plants"))
         capture("02b_quest_list", 1_000)
         rule.onNodeWithText("No due date").assertExists()
     }

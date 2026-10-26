@@ -96,9 +96,11 @@ jobs:
       # Render every screen at foldable/phone sizes and publish the PNGs to the
       # `screenshots` branch for layout review.
       - name: Render screenshots
+        id: render
         continue-on-error: true
+        shell: bash
         # --rerun: always render, even when Gradle could reuse earlier test results.
-        run: ./gradlew :app:testDebugUnitTest --rerun
+        run: ./gradlew :app:testDebugUnitTest --rerun 2>&1 | tee render.log
 
       - name: Publish screenshots
         if: always() && github.event_name == 'push'
@@ -115,3 +117,22 @@ jobs:
           git add -A
           git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Screenshots for ${GITHUB_SHA}" || exit 0
           git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" screenshots
+
+      # A failed screenshot run (compile error or failing UI test) fails the
+      # build, after publishing what it could and pushing its log to ci-logs.
+      - name: Publish screenshot log on failure
+        if: steps.render.outcome == 'failure' && github.event_name == 'push'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p rlogs && cp render.log rlogs/build.log
+          cd rlogs
+          git init -q
+          git checkout -q -b ci-logs
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Screenshot log for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
+
+      - name: Fail if screenshots failed
+        if: steps.render.outcome == 'failure'
+        run: exit 1
