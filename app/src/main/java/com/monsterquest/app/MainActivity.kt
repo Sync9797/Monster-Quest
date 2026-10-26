@@ -121,7 +121,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The system splash (the crest) while the app starts, then the game's loading screen.
+        androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
         super.onCreate(savedInstanceState)
+        val coldStart = savedInstanceState == null
         // OpenStreetMap tile servers require an identifying user agent.
         Configuration.getInstance().apply {
             userAgentValue = packageName
@@ -183,6 +186,14 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalFold provides fold) {
                 MonsterQuestTheme(prefs.themeMode, prefs.colorStyle) {
                     AppRoot(vm)
+                    // The loading screen on a fresh start (not when the screen rotates or folds).
+                    var booting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(coldStart) }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = booting,
+                        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(400)),
+                    ) {
+                        com.monsterquest.app.ui.BootSplash(vm.state.hero.name) { booting = false }
+                    }
                 }
             }
         }

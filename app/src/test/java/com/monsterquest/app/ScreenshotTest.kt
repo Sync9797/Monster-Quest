@@ -620,6 +620,13 @@ abstract class ScreenshotBase(private val device: String) {
         capture("37_thug_battle", 1_000)
     }
 
+    /** The loading screen at start-up: crest, title and loading bar. */
+    @Test fun bootSplash() {
+        shot("42_splash", advanceMs = 900) { com.monsterquest.app.ui.BootSplash("Aaronimus", durationMs = 1_600) {} }
+        rule.onNodeWithText("Monster Quest").assertExists()
+        rule.onNodeWithText("Welcome back, Aaronimus").assertExists()
+    }
+
     /** The three kinds of thug: Brute, Hexer and Cutthroat. */
     @Test fun thugLooks() {
         shot("41_thugs") {

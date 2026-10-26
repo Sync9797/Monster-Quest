@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.17.0
+
+- **New logo:** a sword crossed with a quill pen (adventure plus your to-do
+  list) inside a gold rune ring, on the game's dark teal. It replaces the
+  old monster shield as the app icon, including themed icons on Android 13+.
+- **Loading screen:** the game opens on a splash with the new crest, then a
+  loading screen with the title, a "Welcome back" for your hero, a gold
+  loading bar and a few loading lines ("Sharpening swords…"). It fades
+  into the game; tap to skip. It only shows on a fresh start, not when the
+  screen rotates or the phone folds.
+
 ## 1.16.0
 
 - **New spell: Mud Shot** (Earth magic). It does little damage (power 12,

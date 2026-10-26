@@ -36,6 +36,7 @@
         android:theme="@style/Theme.MonsterQuest">
         <activity
             android:name=".MainActivity"
+            android:theme="@style/Theme.MonsterQuest.Starting"
             android:exported="true"
             android:resizeableActivity="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|density|keyboard|keyboardHidden|navigation|uiMode|colorMode"

@@ -4,4 +4,11 @@
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
     </style>
+
+    <!-- Shown while the app starts: the crest on the game's dark teal, then the game's theme. -->
+    <style name="Theme.MonsterQuest.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.MonsterQuest</item>
+    </style>
 </resources>
