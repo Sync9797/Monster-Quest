@@ -55,6 +55,9 @@ const val ALERT_RANGE_M = World.SPAWN_RANGE_M
 /** At most one ambush this often. */
 const val AMBUSH_COOLDOWN_MS = 10 * 60_000L
 
+/** No ambush in the first moments after opening the map. */
+const val AMBUSH_GRACE_MS = 30_000L
+
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SaveRepository(app)
 
@@ -620,6 +623,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun checkAmbush(spawns: List<WildSpawn>, nowMs: Long): Boolean {
         if (!state.settings.ambushes || battle != null || batterySaver || state.focus != null) return false
+        // Give the player a moment to look around after opening the map.
+        if (nowMs - mapOpenedAtMs < AMBUSH_GRACE_MS) return false
         if (nowMs - state.lastAmbushMs < AMBUSH_COOLDOWN_MS || state.monsters.isEmpty()) return false
         val hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour
         val attacker = spawns.firstOrNull {
@@ -633,6 +638,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     @VisibleForTesting
     fun debugStartBattle(enemy: Monster, pack: List<Monster> = emptyList(), ambush: Boolean = false) =
         startBattle(enemy, EncounterType.WILD, null, pack, ambush)
+
+    /** When the map was last opened (ambushes wait [AMBUSH_GRACE_MS] after that). */
+    private var mapOpenedAtMs = 0L
+
+    fun onMapOpened() {
+        mapOpenedAtMs = System.currentTimeMillis()
+    }
 
     fun selectTarget(key: String) {
         val b = activeBattle ?: return

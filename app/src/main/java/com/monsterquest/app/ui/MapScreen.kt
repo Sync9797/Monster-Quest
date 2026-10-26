@@ -140,6 +140,7 @@ fun MapScreen(vm: GameViewModel) {
     }
 
     TrackLocation(context, vm.state.settings.batterySaverGps || vm.batterySaver, vm::onLocation)
+    LaunchedEffect(Unit) { vm.onMapOpened() }
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
