@@ -144,13 +144,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     /** Pull events from the phone's calendar into quests. */
+    /** A sync was asked for while one was running (e.g. quick calendar toggles); run once more after. */
+    private var resyncPending = false
+
     fun syncCalendar(quiet: Boolean = false) {
-        if (syncingCalendar) return
+        if (syncingCalendar) {
+            resyncPending = true
+            return
+        }
         syncingCalendar = true
         viewModelScope.launch {
             try {
                 val prefs = state.settings
-                val events = withContext(Dispatchers.IO) { CalendarReader.read(getApplication(), daysAhead = prefs.calendarDaysAhead) }
+                val events = withContext(Dispatchers.IO) {
+                    CalendarReader.read(
+                        getApplication(),
+                        daysAhead = prefs.calendarDaysAhead,
+                        calendarIds = if (prefs.syncAllCalendars) null else prefs.syncCalendars,
+                    )
+                }
                     .filter { prefs.includeAllDayEvents || !it.allDay }
                 val u = GameEngine.syncCalendar(state, events)
                 if (quiet) set(u.state) else apply(u)
@@ -160,6 +172,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 if (!quiet) message = "Calendar sync failed: ${e.message}"
             } finally {
                 syncingCalendar = false
+                if (resyncPending) {
+                    resyncPending = false
+                    syncCalendar(quiet = true)
+                }
             }
         }
     }
@@ -276,6 +292,35 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun updateSettings(change: (Settings) -> Settings) = set(state.copy(settings = change(state.settings)))
 
     fun clearCalendarQuests() = apply(GameEngine.clearCalendarQuests(state))
+
+    /** The phone's calendars, for choosing which to sync. */
+    var phoneCalendars by mutableStateOf<List<com.monsterquest.app.data.PhoneCalendar>>(emptyList())
+        private set
+
+    fun loadCalendars() {
+        viewModelScope.launch {
+            phoneCalendars = runCatching { withContext(Dispatchers.IO) { CalendarReader.calendars(getApplication()) } }.getOrDefault(emptyList())
+        }
+    }
+
+    /**
+     * Turns one calendar on or off for syncing, then re-syncs so its events
+     * appear (or unfinished ones disappear) right away.
+     */
+    fun toggleCalendar(id: Long) {
+        val prefs = state.settings
+        // Switching from "all": start from every calendar that included.
+        val current = if (prefs.syncAllCalendars) phoneCalendars.filter { !it.isNoise }.map { it.id }.toSet() else prefs.syncCalendars
+        val next = if (id in current) current - id else current + id
+        updateSettings { it.copy(syncAllCalendars = false, syncCalendars = next) }
+        if (next.isEmpty()) message = "No calendars chosen: nothing will sync until you pick one."
+        syncCalendar(quiet = true)
+    }
+
+    fun syncAllCalendars() {
+        updateSettings { it.copy(syncAllCalendars = true, syncCalendars = emptySet()) }
+        syncCalendar(quiet = true)
+    }
 
     fun setStepSource(source: StepSource) {
         set(GameEngine.setStepSource(state, source))

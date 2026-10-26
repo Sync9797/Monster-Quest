@@ -1,5 +1,9 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Checkbox
 import androidx.activity.compose.BackHandler
 import android.Manifest
 import android.content.Intent
@@ -129,9 +133,10 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                 ToggleRow("Sync automatically", "Pull new events whenever you open Quests.", prefs.calendarAutoSync) { on ->
                     vm.updateSettings { it.copy(calendarAutoSync = on) }
                 }
-                ToggleRow("Include all-day events", "Birthdays and holidays are always skipped.", prefs.includeAllDayEvents) { on ->
+                ToggleRow("Include all-day events", "Holidays and birthdays are skipped unless you pick their calendar below.", prefs.includeAllDayEvents) { on ->
                     vm.updateSettings { it.copy(includeAllDayEvents = on) }
                 }
+                if (hasCalendar) CalendarPicker(vm)
                 Text("Look ahead", fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
                 Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     CALENDAR_DAYS_AHEAD_OPTIONS.forEach { days ->
@@ -276,5 +281,46 @@ private fun ToggleRow(title: String, description: String, checked: Boolean, onCh
         }
         Spacer(Modifier.width(8.dp))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** Choose which of the phone's calendars become quests. */
+@Composable
+private fun CalendarPicker(vm: GameViewModel) {
+    LaunchedEffect(Unit) { vm.loadCalendars() }
+    val prefs = vm.state.settings
+    val calendars = vm.phoneCalendars
+    Text("Calendars to sync", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
+    Text(
+        "Tick the calendars whose events should become quests. Changes sync right away; unfinished quests from unticked calendars are removed.",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(Modifier.fillMaxWidth().clickable { vm.syncAllCalendars() }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = prefs.syncAllCalendars, onCheckedChange = { vm.syncAllCalendars() })
+        Column {
+            Text("All calendars", fontSize = 14.sp)
+            Text("Everything except holidays and birthdays", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (calendars.isEmpty()) {
+        Text("No calendars found on this phone.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 12.dp))
+    }
+    calendars.groupBy { it.account }.forEach { (account, list) ->
+        if (account.isNotBlank()) {
+            Text(account, fontSize = 11.sp, color = Gold, modifier = Modifier.padding(start = 12.dp, top = 6.dp))
+        }
+        list.forEach { cal ->
+            val checked = if (prefs.syncAllCalendars) !cal.isNoise else cal.id in prefs.syncCalendars
+            Row(
+                Modifier.fillMaxWidth().clickable { vm.toggleCalendar(cal.id) }.padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = checked, onCheckedChange = { vm.toggleCalendar(cal.id) })
+                Box(Modifier.size(12.dp).background(androidx.compose.ui.graphics.Color(cal.color or 0xFF000000.toInt()), androidx.compose.foundation.shape.CircleShape))
+                Spacer(Modifier.width(8.dp))
+                Text(cal.name, fontSize = 14.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
     }
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.4
+
+- **Choose which calendars to sync:** Settings, then Calendar, lists every
+  calendar on your phone (grouped by account, with its color). Tick only the
+  ones you want as quests, or keep "All calendars". Changes sync right away,
+  and unfinished quests from calendars you untick are removed. Holiday and
+  birthday calendars can now be picked on purpose.
+
 ## 0.5.3
 
 - **Earth legendary: Worldroot Colossus**, a stone giant with a forest growing

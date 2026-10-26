@@ -1196,4 +1196,20 @@ class GameTest {
         val share = guardians.count { it == "worldroot_colossus" }.toDouble() / shrines.size
         assertTrue(share in 0.04..0.12, "share $share")
     }
+
+    @Test
+    fun chosenCalendarsAreSavedAndUnpickedQuestsDrop() {
+        val s = started().copy(settings = Settings(syncAllCalendars = false, syncCalendars = setOf(3L, 7L)))
+        val loaded = GameState.fromJson(s.toJson())
+        assertEquals(setOf(3L, 7L), loaded.settings.syncCalendars)
+        assertTrue(!loaded.settings.syncAllCalendars)
+        assertTrue(GameState().settings.syncAllCalendars)
+        // Re-syncing with only the still-chosen calendars' events drops the others' unfinished quests.
+        val work = CalendarEvent("cal:1:0", "Standup", 0, 1, false, "Work")
+        val home = CalendarEvent("cal:2:0", "Dentist", 0, 1, false, "Home")
+        val both = GameEngine.syncCalendar(s, listOf(work, home)).state
+        assertEquals(2, both.tasks.count { it.source == TaskSource.CALENDAR })
+        val workOnly = GameEngine.syncCalendar(both, listOf(work)).state
+        assertEquals(listOf("Standup"), workOnly.tasks.filter { it.source == TaskSource.CALENDAR }.map { it.title })
+    }
 }

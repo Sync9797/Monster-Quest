@@ -216,8 +216,9 @@ works.
   **GPS distance**. Samsung Health shares steps through Health Connect: in
   Samsung Health open Settings, then Health Connect, and allow Steps.
   Switching sources never counts the same steps twice.
-- **Calendar:** connect, sync automatically or by hand, look 1 to 14 days
-  ahead, include or skip all-day events, or clear unfinished calendar quests.
+- **Calendar:** choose exactly which of your phone's calendars to sync (or
+  all of them), sync automatically or by hand, look 1 to 14 days ahead,
+  include or skip all-day events, or clear unfinished calendar quests.
 - **Performance:** frame rate (120 fps by default, or 60 fps or Auto),
   reduced visual effects (no glows, auras, mist or engraving) and battery
   saver GPS.

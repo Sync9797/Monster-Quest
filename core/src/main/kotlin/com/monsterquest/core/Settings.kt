@@ -42,6 +42,10 @@ data class Settings(
     /** Vibrate when a new monster appears nearby. */
     val vibrateOnSpawn: Boolean = true,
     val calendarAutoSync: Boolean = true,
+    /** Sync every calendar on the phone (except holidays and birthdays)... */
+    val syncAllCalendars: Boolean = true,
+    /** ...or only these calendars, by id. */
+    val syncCalendars: Set<Long> = emptySet(),
     val calendarDaysAhead: Int = 7,
     val includeAllDayEvents: Boolean = true,
 )
