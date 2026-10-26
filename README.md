@@ -1,7 +1,7 @@
 # ⚔️ Monster Quest
 
 An Android RPG to-do list: Final Fantasy-style turn-based battles meet
-Pokémon GO-style monster taming and exploration. Your real-life tasks power
+PoGO-style monster taming and exploration. Your real-life tasks power
 your hero.
 
 ## How to play
