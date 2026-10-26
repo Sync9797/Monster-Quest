@@ -269,6 +269,15 @@ abstract class ScreenshotBase(private val device: String) {
 
     @Test fun settings() { val v = vm(); shot("16_settings") { AppRoot(v, initialSettings = true) } }
 
+    @Test fun batterySaver() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        v.lastSpawnAlert = "A wild Zipwing appeared nearby!"
+        v.batterySaver = true
+        shot("17_battery_saver") { AppRoot(v, Tab.MAP) }
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

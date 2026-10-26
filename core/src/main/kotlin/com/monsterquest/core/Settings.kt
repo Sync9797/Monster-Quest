@@ -26,6 +26,8 @@ data class Settings(
     val reducedEffects: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */
     val batterySaverGps: Boolean = false,
+    /** Vibrate when a new monster appears nearby. */
+    val vibrateOnSpawn: Boolean = true,
     val calendarAutoSync: Boolean = true,
     val calendarDaysAhead: Int = 7,
     val includeAllDayEvents: Boolean = true,

@@ -46,6 +46,9 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** How close (meters) a new spawn must be to buzz the phone. */
+const val ALERT_RANGE_M = 200.0
+
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SaveRepository(app)
 
@@ -383,6 +386,35 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
+
+    // ---- battery saver -------------------------------------------------------
+
+    /** The screen is blacked out while the game keeps tracking walking and spawns. */
+    var batterySaver by mutableStateOf(false)
+
+    /** The latest monster to appear nearby, shown on the battery saver screen. */
+    var lastSpawnAlert by mutableStateOf<String?>(null)
+
+    /** Spawns already announced, so each one buzzes only once. */
+    private val announcedSpawns = mutableSetOf<String>()
+    private var spawnsPrimed = false
+
+    /**
+     * Called with the current nearby spawns. New ones within [ALERT_RANGE_M]
+     * are announced (the first call only records what's already there).
+     * Returns the newly appeared spawns.
+     */
+    fun newSpawnsNearby(spawns: List<WildSpawn>): List<WildSpawn> {
+        val close = spawns.filter { (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= ALERT_RANGE_M }
+        val fresh = close.filter { it.id !in announcedSpawns }
+        announcedSpawns += close.map { it.id }
+        if (!spawnsPrimed) {
+            spawnsPrimed = true
+            return emptyList()
+        }
+        fresh.firstOrNull()?.let { lastSpawnAlert = "A wild ${it.species.name} appeared nearby!" }
+        return fresh
+    }
 
     fun distanceTo(lat: Double, lon: Double): Double? =
         location?.let { World.distanceMeters(it.first, it.second, lat, lon) }

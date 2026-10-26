@@ -140,6 +140,11 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
                     prefs.reducedEffects,
                 ) { on -> vm.updateSettings { it.copy(reducedEffects = on) } }
                 ToggleRow(
+                    "Vibrate for new monsters",
+                    "A short buzz when a monster appears within ${com.monsterquest.app.ALERT_RANGE_M.toInt()} m, even on the battery saver screen.",
+                    prefs.vibrateOnSpawn,
+                ) { on -> vm.updateSettings { it.copy(vibrateOnSpawn = on) } }
+                ToggleRow(
                     "Battery saver GPS",
                     "Checks your location less often. The map and GPS step counting update more slowly.",
                     prefs.batterySaverGps,

@@ -1,6 +1,7 @@
 package com.monsterquest.app.ui
 
 import com.monsterquest.app.ui.art.ArtQuality
+import com.monsterquest.app.Haptics
 import com.monsterquest.app.ui.art.BeaconState
 import com.monsterquest.app.ui.art.drawMonsterStanding
 import com.monsterquest.app.ui.art.drawPlayerOn
@@ -131,7 +132,7 @@ fun MapScreen(vm: GameViewModel) {
         return
     }
 
-    TrackLocation(context, vm.state.settings.batterySaverGps, vm::onLocation)
+    TrackLocation(context, vm.state.settings.batterySaverGps || vm.batterySaver, vm::onLocation)
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -146,6 +147,13 @@ fun MapScreen(vm: GameViewModel) {
     val shrines = vm.shrines
     val villains = vm.villainsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
+
+    // Buzz when a new monster shows up nearby (also while the battery saver screen is on).
+    LaunchedEffect(spawns.map { it.id }, loc) {
+        if (loc == null) return@LaunchedEffect
+        val fresh = vm.newSpawnsNearby(spawns)
+        if (fresh.isNotEmpty() && vm.state.settings.vibrateOnSpawn) Haptics.spawn(context)
+    }
     var centered by remember { mutableStateOf(false) }
 
     val mapView = rememberMapView()
@@ -262,9 +270,12 @@ fun MapScreen(vm: GameViewModel) {
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedButton(onClick = {
-                    loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
-                }) { IconText(GameIcon.PIN, "Center") }
+                Column(horizontalAlignment = Alignment.End) {
+                    OutlinedButton(onClick = {
+                        loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+                    }) { IconText(GameIcon.PIN, "Center") }
+                    OutlinedButton(onClick = { vm.batterySaver = true }) { IconText(GameIcon.MOON, "Saver") }
+                }
             }
             Text(
                 "© OpenStreetMap contributors",

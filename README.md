@@ -126,6 +126,11 @@ your hero.
   gold crown-crystal; purple while recharging, gray and locked off-day).
   Monsters stand on the map themselves, villain camps fly dark banners, and
   your hero stands in a gold ring.
+  - **Battery saver** (Saver button on the map): the screen goes black at
+    minimum brightness while the game keeps counting your walk and watching
+    for monsters. Press and hold anywhere to unlock.
+  - The phone **vibrates when a new monster appears** within 200 m (turn it
+    off in Settings).
   - **Item shrines** are at cafes, restaurants, parks, playgrounds, public
     art, fountains, libraries and more. **Waystones** fill the gaps so there's
     always a stop within a short walk. They give weapons, armor, spell pages,

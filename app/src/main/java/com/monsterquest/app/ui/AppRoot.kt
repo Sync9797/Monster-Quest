@@ -14,6 +14,7 @@ import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -109,6 +110,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
 
     // The menu stays at the bottom on every screen size, folded or open, so it's
     // always within thumb reach.
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -143,6 +145,9 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
                 }
             }
         }
+    }
+    // Battery saver: black screen on top while the map keeps running underneath.
+    if (vm.batterySaver) BatterySaverOverlay(vm)
     }
 }
 
