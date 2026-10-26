@@ -191,7 +191,7 @@ fun MapScreen(vm: GameViewModel) {
                                 else -> BeaconState.OPEN
                             }
                             // Boss shrines stand taller so they're easy to spot from afar.
-                            val (bw, bh) = if (sh.isBoss) 44 to 80 else 36 to 66
+                            val (bw, bh) = if (sh.isBoss) 60 to 110 else 48 to 88
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(sh.lat, sh.lon)
@@ -220,7 +220,7 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(v.lat, v.lon)
                                     setAnchor(Marker.ANCHOR_CENTER, 0.955f)
-                                    setIcon(sprite("villain_$isVillain", 38, 57) { c, w, h -> drawVillainOn(c, w, h, isVillain) })
+                                    setIcon(sprite("villain_$isVillain", 46, 69) { c, w, h -> drawVillainOn(c, w, h, isVillain) })
                                     title = v.leader
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.VillainPick(v); true }
                                 },
