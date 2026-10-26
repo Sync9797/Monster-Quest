@@ -627,6 +627,159 @@ BEASTS["BASILISK"] = [
     P("M108 122L110 134L113 124Z", "LIGHT"),
 ]
 
+# Stag: a great antlered stag, lightning crackling through its antlers.
+BEASTS["STAG"] = [
+    P("M126 150Q166 146 172 120Q176 104 188 100Q176 124 164 138Q152 154 128 158Z", "BODY"),
+    P("M86 42L72 28L60 8M72 28L56 26L42 16M66 20L70 4M62 28L52 38L38 36", "BONE", 5, M),
+    P("M60 8L56 2M42 16L36 12M38 36L32 38", "LIGHT", 3, M),
+    P("M100 64L86 70L76 92L84 102L78 112L100 118Z", "DARK", 0, M),
+    P("M100 84L82 90L74 114L76 138L70 186H84L88 152L100 148Z", "BODY", 0, M),
+    P("M100 100L90 104L86 126L92 142L100 144Z", "LIGHT", 0, M),
+    P("M70 186L70 176H86L88 186Z", "DARK", 0, M),
+    P("M82 46L62 38L80 56Z", "BODY", 0, M),
+    P("M80 47L68 42L80 52Z", "DARK", 0, M),
+    P("M100 34L88 38L80 52L84 70L92 84L100 86Z", "BODY", 0, M),
+    P("M100 66L92 68L88 80L92 86L100 88Z", "LIGHT", 0, M),
+    P("M82 52L97 58L95 62L84 59Z", "DARK", 0, M),
+    P("M84 59L94 61L91 66L86 64Z", "EYE", 0, M),
+    P("M95 80H105L100 86Z", "DARK"),
+]
+
+# Elder bear: a vast bear on all fours, a mossy mountain grown on its back.
+BEASTS["ELDERBEAR"] = [
+    P("M100 22L88 40L78 30L66 52L52 48L42 74H100Z", "DARK", 0, M),
+    P("M88 40L94 50M66 52L74 60M52 48L58 58", "LIGHT", 3, M),
+    P("M100 22L94 30L100 34L106 30Z", "LIGHT"),
+    P("M100 66L66 72L40 88L32 124L36 150L40 186H70L72 160L86 150L100 150Z", "BODY", 0, M),
+    P("M44 92L58 82L72 86L66 104L48 106Z", "DARK", 0, M),
+    P("M40 186L42 176H72L74 186Z", "DARK", 0, M),
+    P("M44 186L41 195M53 186L52 195M62 186L62 195M70 186L72 195", "BONE", 3.5, M),
+    P("M64 90A10 10 0 1 1 84 90A10 10 0 1 1 64 90Z", "BODY", 0, M),
+    P("M100 82L80 86L68 102L70 124L84 138L100 140Z", "BODY", 0, M),
+    P("M100 112L88 114L84 126L90 136L100 138Z", "LIGHT", 0, M),
+    P("M70 102L97 110L95 115L72 108Z", "DARK", 0, M),
+    P("M74 108L92 112L89 117L77 115Z", "EYE", 0, M),
+    P("M94 116H106L100 122Z", "DARK"),
+    P("M86 126Q100 122 114 126L110 136Q100 140 90 136Z", "MAW"),
+    P("M87 126L90 134L93 127Z", "BONE", 0, M),
+]
+
+# Lion: a great lion with a blazing mane, sitting tall.
+BEASTS["LION"] = [
+    P("M150 176Q182 168 180 136Q178 120 188 112", "BODY", 7),
+    P("M190 106L182 102L184 114L194 116Z", "DARK"),
+    P("M100 24L88 36L78 24L72 44L56 36L56 56L38 54L48 72L30 80L48 90L36 106L56 108L50 124L70 120L72 134L100 136Z", "DARK", 0, M),
+    P("M88 36L84 24M56 56L44 50M48 90L36 92M56 108L48 116", "LIGHT", 3, M),
+    P("M100 110L76 116Q60 130 58 156L54 186H84L88 164L100 160Z", "BODY", 0, M),
+    P("M100 124L88 128L86 150L92 160L100 162Z", "LIGHT", 0, M),
+    P("M54 186L56 176H86L90 186Z", "DARK", 0, M),
+    P("M58 186L56 193M66 186L65 193M74 186L74 193M82 186L83 193", "BONE", 2.5, M),
+    P("M100 46L84 48L70 60L68 82L76 100L88 108L100 110Z", "BODY", 0, M),
+    P("M100 78L88 80L82 92L88 104L100 108Z", "LIGHT", 0, M),
+    P("M70 64L97 74L95 79L72 70Z", "DARK", 0, M),
+    P("M74 72L92 77L88 82L77 79Z", "EYE", 0, M),
+    P("M93 84H107L100 92Z", "DARK"),
+    P("M86 96Q100 92 114 96L110 106Q100 112 90 106Z", "MAW"),
+    P("M88 96L91 104L94 97Z", "BONE", 0, M),
+]
+
+# Giant rat: hunched and bristling, huge incisors, a long whip of a tail.
+BEASTS["RAT"] = [
+    P("M128 178Q182 182 178 142Q174 118 190 104", "DARK", 5),
+    P("M100 76L90 66L82 80L70 72L66 90L54 88L58 104L100 108Z", "DARK", 0, M),
+    P("M100 84L76 90L58 110L54 142L58 186H82L84 160L100 156Z", "BODY", 0, M),
+    P("M100 120L90 124L88 148L100 152Z", "LIGHT", 0, M),
+    P("M58 186L60 178H82L84 186Z", "DARK", 0, M),
+    P("M60 186L56 194M68 186L66 194M76 186L76 194", "BONE", 3, M),
+    P("M78 66Q56 50 60 30Q78 32 88 58Z", "BODY", 0, M),
+    P("M76 60Q64 50 66 38Q76 40 82 56Z", "LIGHT", 0, M),
+    P("M100 54L84 58L72 72L76 92L90 110L100 116Z", "BODY", 0, M),
+    P("M74 72L97 80L95 85L76 78Z", "DARK", 0, M),
+    P("M78 78L92 83L88 88L80 86Z", "EYE", 0, M),
+    P("M90 100L66 96M90 104L64 106M92 108L70 116", "LIGHT", 1.5, M),
+    P("M94 108H106L100 116Z", "DARK"),
+    P("M94 116H106V132H94Z", "BONE"),
+    P("M100 116V132", "DARK", 1.5),
+]
+
+# Mantis: a towering praying mantis, scythes raised and wings flared.
+BEASTS["MANTIS"] = [
+    P("M88 96L56 46L40 56L50 88L34 102L70 116Z", "WING", 0, M),
+    P("M88 96L56 46M78 104L44 96", "DARK", 2, M),
+    P("M86 140L60 160L52 190M88 152L70 174L74 192", "DARK", 4, M),
+    P("M100 116L86 126L82 168L100 186Z", "BODY", 0, M),
+    P("M86 136H100M84 150H100M86 164H100", "LIGHT", 2, M),
+    P("M100 66L92 70L88 118L100 122Z", "BODY", 0, M),
+    P("M90 84L66 72L56 42", "BODY", 7, M),
+    P("M58 44L42 28L38 62L46 52L50 68L54 50Z", "BONE", 0, M),
+    P("M46 34L44 42M42 46L40 54", "DARK", 2, M),
+    P("M92 36Q84 16 70 10", "DARK", 2.5, M),
+    P("M100 32L72 42L84 60L100 70Z", "BODY", 0, M),
+    P("M74 42L92 44L86 56Z", "EYE", 0, M),
+    P("M96 64L92 76L100 70Z", "BONE", 0, M),
+]
+
+# Specter: a howling ghost trailing into wisps, with long grasping claws.
+BEASTS["SPECTER"] = [
+    P("M100 30Q78 26 68 46L58 50L64 62L54 78L62 86L54 106L64 112L56 132L66 136L62 156Q66 174 80 184Q90 190 100 196Z", "BODY", 0, M),
+    P("M70 150Q76 172 90 182M82 140Q86 160 96 172", "DARK", 2.5, M),
+    P("M64 94L34 122L26 142L44 138L70 114Z", "BODY", 0, M),
+    P("M28 138L18 152M32 140L26 156M38 139L36 156", "BONE", 2.5, M),
+    P("M80 64Q87 54 96 64Q88 78 80 64Z", "MAW", 0, M),
+    P("M85 63L92 64L89 68Z", "EYE", 0, M),
+    P("M90 86Q100 80 110 86L107 114Q100 122 93 114Z", "MAW"),
+    P("M76 40L70 20L84 36Z", "BODY", 0, M),
+]
+
+# Void lord: a towering shadow god, a great eye in its chest, arms of darkness.
+BEASTS["VOIDLORD"] = [
+    P("M74 104Q40 96 30 66Q24 46 36 36M70 124Q30 128 16 104M72 144Q40 160 24 150", "DARK", 8, M),
+    P("M36 36L30 28M16 104L8 100M24 150L16 156", "LIGHT", 4, M),
+    P("M100 46L74 54L62 94L56 150L42 188H100Z", "BODY", 0, M),
+    P("M100 60L86 66L80 100L84 150L100 160Z", "DARK", 0, M),
+    P("M76 114Q100 92 124 114Q100 136 76 114Z", "BONE"),
+    P("M100 102A12 12 0 1 1 100 126A12 12 0 1 1 100 102Z", "EYE"),
+    P("M100 104V124", "MAW", 4),
+    P("M88 28Q60 18 54 -2Q70 14 92 22Z", "ACCENT", 0, M),
+    P("M100 18L86 24L82 42L100 52Z", "DARK", 0, M),
+    P("M86 34L97 38L95 42L88 40Z", "EYE", 0, M),
+    P("M96 18L100 2L104 18Z", "ACCENT"),
+]
+
+# Rock golem: boulders bound together by a molten core.
+BEASTS["ROCKGOLEM"] = [
+    P("M100 140L82 140L76 186H96L100 164Z", "BODY", 0, M),
+    P("M76 186L78 178H96L98 186Z", "DARK", 0, M),
+    P("M100 70L76 74L64 96L68 130L84 142L100 144Z", "BODY", 0, M),
+    P("M86 90L94 108L84 122L92 136M74 104L80 116", "LIGHT", 2.5, M),
+    P("M100 100L110 112L100 126L90 112Z", "ACCENT"),
+    P("M64 80L46 76L34 94L40 112L60 110L68 96Z", "BODY", 0, M),
+    P("M40 112L30 132L34 156L52 158L60 138L58 114Z", "BODY", 0, M),
+    P("M30 154L26 172L46 180L56 162Z", "DARK", 0, M),
+    P("M48 84L56 92M38 98L46 102", "DARK", 2, M),
+    P("M100 46L86 48L80 62L84 74L100 78Z", "BODY", 0, M),
+    P("M84 58L97 62L95 66L86 63Z", "EYE", 0, M),
+    P("M90 70H100", "LIGHT", 2.5, M),
+]
+
+# Snapping turtle: a spiked, coral-crusted shell and a hooked, gaping beak.
+BEASTS["SNAPPER"] = [
+    P("M64 62L56 40L72 56Z M82 52L80 30L92 48Z", "DARK", 0, M),
+    P("M96 48L100 26L104 48Z", "DARK"),
+    P("M54 70Q46 54 40 50M48 66L36 62M58 64Q56 50 62 44", "LIGHT", 3, M),
+    P("M100 46Q58 48 38 86Q28 112 32 142H100Z", "BODY", 0, M),
+    P("M100 66L80 72L66 96L70 120H100Z", "DARK", 0, M),
+    P("M80 72L88 96L70 120M88 96H100", "LIGHT", 2, M),
+    P("M44 134L34 186H64L68 146Z", "BODY", 0, M),
+    P("M34 186L36 176H64L66 186Z", "DARK", 0, M),
+    P("M38 186L35 194M46 186L45 194M56 186L56 194", "BONE", 3, M),
+    P("M100 102L80 106L70 124L76 148L100 156Z", "BODY", 0, M),
+    P("M72 116L97 124L95 129L74 122Z", "DARK", 0, M),
+    P("M76 122L91 126L88 131L79 129Z", "EYE", 0, M),
+    P("M82 136Q100 130 118 136L112 152Q100 160 88 152Z", "MAW"),
+    P("M100 134L92 138L96 150L100 158Z", "BONE", 0, M),
+]
+
 ROLE_PREVIEW = {
     "BODY": "#d9734a", "LIGHT": "#f3b27c", "DARK": "#5a2418",
     "BONE": "#efe4c8", "MAW": "#3a0d10", "TONGUE": "#c9536b", "WOOD": "#7a5236", "EYE": "#ffe27a", "ACCENT": "#ebc678", "WING": "#f3b27c",
@@ -658,30 +811,31 @@ def preview(out_dir):
 
 # Which beast each evolved species becomes (its first form keeps its original art).
 SPECIES = {
-    # Starters
-    "stormstag": "KIRIN", "thunderhorn": "BEHEMOTH",
+    # Starters: fawn > stag > kirin; baby dragon > drake > wyvern;
+    # sea snake > naga > sea dragon; cub > bear > elder bear.
+    "stormstag": "STAG", "thunderhorn": "KIRIN",
     "blazewyrm": "BASILISK", "infernodrake": "WYVERN",
     "tidewyrm": "NAGA", "maelstrom_serpent": "LUNG",
-    "grovebear": "URSA", "terraursa": "TITAN",
+    "grovebear": "URSA", "terraursa": "ELDERBEAR",
     # Four-stage lines
-    "blazecat": "SABERCAT", "flarepanther": "CERBERUS", "solar_tiger": "MANTICORE",
-    "voltrat": "QUILLBEAST", "thunderhog": "BRUTE", "storm_kirin": "LUNG",
-    "skylark": "EAGLE", "galehawk": "GRIFFIN", "tempest_roc": "ROC",
-    "tidefin": "SHARK", "reefjaw": "ANGLER", "leviathan": "LEVIATHAN",
-    "mirepede": "CENTIPEDE", "stingscor": "SCORPION", "basilisk": "BASILISK",
-    "gloombat": "BATFIEND", "nightstalker": "SPIDER", "abyss_lord": "WRAITH",
-    # Hounds: a dire wolf, then a fenrir
+    "blazecat": "SABERCAT", "flarepanther": "LION", "solar_tiger": "MANTICORE",      # kitten > sabre cat > lion > manticore
+    "voltrat": "RAT", "thunderhog": "QUILLBEAST", "storm_kirin": "BEHEMOTH",          # mouse > rat > quill-hog > boar behemoth
+    "skylark": "EAGLE", "galehawk": "GRIFFIN", "tempest_roc": "ROC",                  # chick > eagle > griffin > roc
+    "tidefin": "SHARK", "reefjaw": "ANGLER", "leviathan": "LEVIATHAN",                # fish > shark > angler > leviathan
+    "mirepede": "CENTIPEDE", "stingscor": "SCORPION", "basilisk": "MANTIS",           # bug > centipede > scorpion > mantis
+    "gloombat": "SPECTER", "nightstalker": "WRAITH", "abyss_lord": "VOIDLORD",        # wisp > ghost > wraith > shadow god
+    # Hounds: pup > warg > fenrir (the fire breed becomes a cerberus)
     "cinder_hound": "DIREWOLF", "volt_hound": "DIREWOLF", "sky_hound": "DIREWOLF", "surf_hound": "DIREWOLF",
     "toxic_hound": "DIREWOLF", "dusk_hound": "DIREWOLF", "thorn_hound": "DIREWOLF",
-    "inferno_fenrir": "FENRIR", "thunder_fenrir": "FENRIR", "tempest_fenrir": "FENRIR", "tsunami_fenrir": "FENRIR",
+    "inferno_fenrir": "CERBERUS", "thunder_fenrir": "FENRIR", "tempest_fenrir": "FENRIR", "tsunami_fenrir": "FENRIR",
     "plague_fenrir": "FENRIR", "void_fenrir": "FENRIR", "gaia_fenrir": "FENRIR",
     # Three-stage lines
-    "sludgeon": "OOZE", "slime_sovereign": "HYDRA",
-    "boulderon": "BRUTE", "magma_colossus": "TITAN",
-    "stormtalon": "GRIFFIN", "thunderbird": "ROC",
-    "coralback": "CRAB", "bastion_tortoise": "FORTRESS",
-    "barkwarden": "THORNKNIGHT", "ancient_treant": "TREANT",
-    "hexfiend": "WARLOCK", "archfiend": "DEMON",
+    "sludgeon": "OOZE", "slime_sovereign": "HYDRA",                                   # slime > ooze > ooze hydra
+    "boulderon": "ROCKGOLEM", "magma_colossus": "TITAN",                              # pebble > rock golem > titan
+    "stormtalon": "GRIFFIN", "thunderbird": "ROC",                                    # chick > griffin > roc
+    "coralback": "SNAPPER", "bastion_tortoise": "FORTRESS",                           # turtle > snapper > fortress
+    "barkwarden": "THORNKNIGHT", "ancient_treant": "TREANT",                          # sapling > tree knight > treant
+    "hexfiend": "WARLOCK", "archfiend": "DEMON",                                      # imp > warlock > demon
 }
 
 import re
@@ -735,7 +889,9 @@ def kotlin():
         "    private fun p(d: String, role: BRole, stroke: Float = 0f, mirrored: String? = null) = BPart(d, role, stroke, mirrored)",
         "",
     ]
-    for name, parts in BEASTS.items():
+    used = [n for n in BEASTS if n in SPECIES.values()]
+    for name in used:
+        parts = BEASTS[name]
         fn = name.lower()
         lines.append(f"    private fun {fn}() = listOf(")
         for d, role, w, mirror in parts:
@@ -751,7 +907,7 @@ def kotlin():
         lines.append("")
     lines.append("    private val designs: Map<String, List<BPart>> by lazy {")
     lines.append("        mapOf(")
-    for name in BEASTS:
+    for name in used:
         lines.append(f'            "{name}" to {name.lower()}(),')
     lines.append("        )")
     lines.append("    }")
@@ -768,7 +924,7 @@ def kotlin():
     lines.append("")
     path = "app/src/main/java/com/monsterquest/app/ui/art/BeastArt.kt"
     open(path, "w").write("\n".join(lines))
-    print("wrote", path, len(BEASTS), "designs,", len(SPECIES), "species")
+    print("wrote", path, len(used), "designs,", len(SPECIES), "species; unused:", [n for n in BEASTS if n not in used])
 
 if __name__ == "__main__":
     if sys.argv[1] == "preview":

@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.1
+
+- **Evolution lines that make sense:** every line now stays the same kind of
+  creature, just bigger and more mythic:
+  - Voltfawn (fawn) → Stormstag (antlered stag) → Thunderhorn (kirin).
+  - Mosscub (cub) → Grovebear (bear) → Terraursa (an elder bear with a
+    mountain on its back).
+  - Emberkit (kitten) → Cinderfang (sabre cat) → Pyremane (great lion) →
+    Sun Manticore (winged lion).
+  - Zapmouse (mouse) → Voltrat (giant rat) → Thunderhog (quill-hog) → Storm
+    Behemoth (tusked boar).
+  - Toxbug (bug) → Mirepede (centipede) → Stingscor (scorpion) → Plague Mantis.
+  - Gloomwisp (wisp) → Gloomshade (ghost) → Nightwraith (wraith) → Abyss Lord
+    (a shadow god with a great eye).
+  - Pebblit (pebble) → Boulderon (rock golem) → Magma Colossus (titan).
+  - Shellsnap (turtle) → Coralback (snapping turtle) → Bastion Tortoise.
+  - Ember Pup → Cinder Warg → Inferno Cerberus (the other pups still become
+    Fenrirs).
+  - Unchanged and already consistent: Cindrake → Blazewyrm (drake) →
+    Infernodrake (wyvern); Bubblefin → Fangfin (shark) → Reefjaw (angler) →
+    Leviathan; Drizzlet → Tidewyrm (naga) → Maelstrom Serpent (sea dragon);
+    Fluffchick and Zipwing → eagle/griffin → roc; Twiglet → Barkwarden →
+    Ancient Treant; Impling → Hexfiend → Archfiend; Goopling → Sludgeon →
+    Ooze Hydra.
+- Renamed to match: Pyremane, Storm Behemoth, Plague Mantis (with Scythe
+  Rend), Gloomshade, Nightwraith (with Shadow Grasp), Inferno Cerberus.
+  Voltrat, Thunderhog and Coralback keep their original names.
+
 ## 1.3.0
 
 - **Evolutions are new creatures.** Second, third and fourth forms no longer

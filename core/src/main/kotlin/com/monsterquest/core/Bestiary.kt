@@ -135,10 +135,10 @@ object Bestiary {
      * never change (saves refer to them), only the names shown.
      */
     private val evolvedNames = mapOf(
-        "blazecat" to "Cinderfang", "flarepanther" to "Pyre Cerberus", "solar_tiger" to "Sun Manticore",
-        "voltrat" to "Voltquill", "thunderhog" to "Stormbrute", "storm_kirin" to "Raijin Dragon",
-        "skylark" to "Razorwing", "tidefin" to "Fangfin", "gloombat" to "Dreadwing",
-        "slime_sovereign" to "Ooze Hydra", "coralback" to "Coralclaw",
+        "blazecat" to "Cinderfang", "flarepanther" to "Pyremane", "solar_tiger" to "Sun Manticore",
+        "storm_kirin" to "Storm Behemoth", "skylark" to "Razorwing", "tidefin" to "Fangfin",
+        "basilisk" to "Plague Mantis", "gloombat" to "Gloomshade", "nightstalker" to "Nightwraith",
+        "slime_sovereign" to "Ooze Hydra", "inferno_fenrir" to "Inferno Cerberus",
         "cinder_hound" to "Cinder Warg", "volt_hound" to "Volt Warg", "sky_hound" to "Sky Warg", "surf_hound" to "Surf Warg",
         "toxic_hound" to "Toxic Warg", "dusk_hound" to "Dusk Warg", "thorn_hound" to "Thorn Warg",
     )
@@ -195,12 +195,12 @@ object Bestiary {
             Member("toxbug", "Toxbug", "Toxic Spit"),
             Member("mirepede", "Mirepede", "Acid Bite"),
             Member("stingscor", "Stingscor", "Venom Sting"),
-            Member("basilisk", "Basilisk", "Petrifying Gaze"),
+            Member("basilisk", "Basilisk", "Scythe Rend"),
         )))
         addAll(line("Gloomwisp line", Element.CORRUPT, StatBlock(38, 11, 16, 10, 15), SkillKind.MAGICAL, listOf(
             Member("gloomwisp", "Gloomwisp", "Hex"),
             Member("gloombat", "Gloombat", "Night Shriek"),
-            Member("nightstalker", "Nightstalker", "Shadow Web"),
+            Member("nightstalker", "Nightstalker", "Shadow Grasp"),
             Member("abyss_lord", "Abyss Lord", "Oblivion"),
         )))
 
