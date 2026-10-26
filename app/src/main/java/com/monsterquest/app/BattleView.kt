@@ -43,6 +43,8 @@ data class BattleView(
     val turnOrder: List<String> = emptyList(),
     /** Fighters on your side (hero + monsters); wild enemies scale with it. */
     val teamSize: Int = 1,
+    /** Who levelled up in this fight (shown once it's over). */
+    val levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
 ) {
     fun fighter(key: String): FighterView? = enemies.find { it.key == key } ?: allies.find { it.key == key }
 
@@ -51,7 +53,12 @@ data class BattleView(
     val isBoss: Boolean get() = encounter != EncounterType.WILD
 
     companion object {
-        fun of(b: Battle, resultText: String?, nextOpponent: String? = null): BattleView {
+        fun of(
+            b: Battle,
+            resultText: String?,
+            nextOpponent: String? = null,
+            levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
+        ): BattleView {
             val cur = b.current
             return BattleView(
                 allies = b.allies.map { FighterView.of(it) },
@@ -75,6 +82,7 @@ data class BattleView(
                 events = b.events.toList(),
                 turnOrder = if (b.outcome == BattleOutcome.ONGOING) b.turnOrder() else emptyList(),
                 teamSize = b.teamSize,
+                levelUps = levelUps,
             )
         }
     }

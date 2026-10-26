@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+
+- **Level-up banners:** after a battle, every fighter who levelled up (your
+  hero included) gets a gold **LEVEL UP!** ribbon over their card, showing
+  their old and new level (**EVOLVED!** if they evolved). Level-ups are no
+  longer crammed into the result text.
+- **Level-up pop-ups, RPG style:** tapping Continue (or Next opponent) steps
+  through a pop-up for each fighter: "Shellsnap grew to Lv 9!", every stat
+  before → after with the gain in green, moves learned, moves it wants to
+  learn when its 4 slots are full, and evolutions. The hero's shows HP and
+  the attribute points to spend.
+
 ## 1.4.0
 
 - **No accidental quitting:** giving up a phone-free session now asks "Give up

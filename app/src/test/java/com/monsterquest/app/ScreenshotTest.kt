@@ -468,6 +468,38 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun evolutionsA() = evolutionSheet("31_evolutions_a", 0)
     @Test fun evolutionsB() = evolutionSheet("32_evolutions_b", 1)
 
+    /** After a win: LEVEL UP ribbons on the fighters, then a pop-up per fighter. */
+    @Test fun levelUps() {
+        val v = vm()
+        v.hunt()
+        val b0 = v.battle!!
+        val pal = b0.allies[1]
+        fun stats(vararg s: Pair<String, Pair<Int, Int>>) = s.map { (l, ba) -> com.monsterquest.core.StatLine(l, ba.first, ba.second) }
+        val ups = listOf(
+            com.monsterquest.core.LevelUp(
+                "hero", "Aaronimus", null, 12, 13,
+                stats("HP" to (202 to 212), "Energy" to (38 to 38), "Attack" to (26 to 26), "Magic" to (26 to 26), "Defense" to (26 to 26), "Speed" to (29 to 29)),
+                notes = listOf("+3 attribute points to spend on the Hero tab."),
+            ),
+            com.monsterquest.core.LevelUp(
+                pal.key, pal.name, pal.speciesId, 20, 21,
+                stats("HP" to (118 to 124), "Attack" to (44 to 46), "Magic" to (22 to 23), "Defense" to (30 to 31), "Speed" to (41 to 43)),
+                learned = listOf("Fire Fang"),
+            ),
+        )
+        val b = b0.copy(outcome = com.monsterquest.core.BattleOutcome.WON, resultText = "Victory! +40 XP, +30 gold.", levelUps = ups, current = null)
+        shot("33_level_up_banners", advanceMs = 1_500) { com.monsterquest.app.ui.BattleScreen(b, onAction = {}, onClose = {}) }
+        check(rule.onAllNodesWithText("LEVEL UP!").fetchSemanticsNodes().size == 2) { "a ribbon over each fighter that levelled" }
+        rule.onNodeWithText("Continue").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("Aaronimus grew to Lv 13!").assertExists()
+        rule.onNodeWithText("Next (1/2)").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("${pal.name} grew to Lv 21!").assertExists()
+        rule.onNodeWithText("Learned Fire Fang!").assertExists()
+        rule.onNodeWithText("OK").performClick()
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

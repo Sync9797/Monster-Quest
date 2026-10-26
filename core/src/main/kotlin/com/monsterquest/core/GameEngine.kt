@@ -4,7 +4,37 @@ import kotlin.random.Random
 
 /** A state change plus a message to show the player. */
 /** A game action's result: the new state, a message, and (for loot) what was received. */
-data class Update(val state: GameState, val message: String, val rewards: List<Reward> = emptyList())
+data class Update(
+    val state: GameState,
+    val message: String,
+    val rewards: List<Reward> = emptyList(),
+    /** Who levelled up (shown as banners and a pop-up after battle, not in [message]). */
+    val levelUps: List<LevelUp> = emptyList(),
+)
+
+/** One stat before and after a level-up. */
+data class StatLine(val label: String, val before: Int, val after: Int) {
+    val gain: Int get() = after - before
+}
+
+/** A fighter that levelled up: new level, stat changes, moves learned and evolution. */
+data class LevelUp(
+    /** The monster's uid, or [Combatant.HERO_KEY]. */
+    val key: String,
+    val name: String,
+    /** The species after levelling (null for the hero). */
+    val speciesId: String?,
+    val fromLevel: Int,
+    val toLevel: Int,
+    val stats: List<StatLine>,
+    val learned: List<String> = emptyList(),
+    /** Moves it could learn but its 4 slots are full (swap on its stat page). */
+    val canLearn: List<String> = emptyList(),
+    /** The species name it evolved from, if it evolved. */
+    val evolvedFrom: String? = null,
+    /** Anything else worth saying (e.g. attribute points to spend). */
+    val notes: List<String> = emptyList(),
+)
 
 /** One thing received, for showing loot with icons. */
 sealed interface Reward {
@@ -361,31 +391,81 @@ object GameEngine {
         )
     }
 
-    private fun evolutionText(before: Monster, after: Monster): String =
-        if (before.speciesId == after.speciesId) "" else " ${before.displayName} evolved into ${after.species.name}!"
 
     /**
      * Adds XP, then reports evolutions and newly learned moves. New moves fill
      * empty slots of a custom loadout; automatic loadouts update themselves.
      */
     fun grow(m: Monster, xp: Int): Pair<Monster, List<String>> {
+        val (after, up) = growDetailed(m, xp)
+        val notes = mutableListOf<String>()
+        if (up?.evolvedFrom != null) notes += "${up.evolvedFrom} evolved into ${after.species.name}!"
+        up?.learned?.forEach { notes += "${after.displayName} learned $it!" }
+        up?.canLearn?.forEach { notes += "${after.displayName} can learn $it. Swap it in from its stat page." }
+        return after to notes
+    }
+
+    private fun monsterStats(m: Monster) = m.stats.let { listOf(it.hp, it.attack, it.magic, it.defense, it.speed) }
+
+    /** Like [grow], but returns what changed as a [LevelUp] (null if it didn't level). */
+    fun growDetailed(m: Monster, xp: Int): Pair<Monster, LevelUp?> {
         val before = m.learnedMoves.map { it.id }.toSet()
         var after = m.gainXp(xp)
-        val notes = mutableListOf<String>()
-        evolutionText(m, after).takeIf { it.isNotBlank() }?.let { notes += it.trim() }
-        val newMoves = after.learnedMoves.filter { it.id !in before }
-        for (mv in newMoves) {
+        if (after.level == m.level) return after to null
+        val learned = mutableListOf<String>()
+        val canLearn = mutableListOf<String>()
+        for (mv in after.learnedMoves.filter { it.id !in before }) {
             val custom = after.moves
             if (custom != null && custom.size < Moves.MAX_MOVES) {
                 after = after.copy(moves = custom + mv.id)
-                notes += "${after.displayName} learned ${mv.name}!"
+                learned += mv.name
             } else if (custom != null) {
-                notes += "${after.displayName} can learn ${mv.name}. Swap it in from its stat page."
+                canLearn += mv.name
             } else {
-                notes += "${after.displayName} learned ${mv.name}!"
+                learned += mv.name
             }
         }
-        return after to notes
+        val labels = listOf("HP", "Attack", "Magic", "Defense", "Speed")
+        val b = monsterStats(m)
+        val a = monsterStats(after)
+        return after to LevelUp(
+            key = m.uid,
+            name = after.displayName,
+            speciesId = after.speciesId,
+            fromLevel = m.level,
+            toLevel = after.level,
+            stats = labels.indices.map { StatLine(labels[it], b[it], a[it]) },
+            learned = learned,
+            canLearn = canLearn,
+            evolvedFrom = if (after.speciesId != m.speciesId) m.species.name else null,
+        )
+    }
+
+    /** The hero's level-up as a [LevelUp], or null if no level was gained. */
+    fun heroLevelUp(before: Hero, gain: XpGain): LevelUp? {
+        if (gain.levelsGained <= 0) return null
+        val h = gain.state.hero
+        val notes = buildList {
+            add("+${gain.levelsGained * STAT_POINTS_PER_LEVEL} attribute points to spend on the Hero tab.")
+            if (gain.upgradesGained > 0) add("Storage upgrade unlocked!")
+            if (!h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) add("Choose your class on the Hero tab to claim a Rare weapon!")
+        }
+        return LevelUp(
+            key = Combatant.HERO_KEY,
+            name = h.name,
+            speciesId = null,
+            fromLevel = before.level,
+            toLevel = h.level,
+            stats = listOf(
+                StatLine("HP", before.maxHp, h.maxHp),
+                StatLine("Energy", before.maxMp, h.maxMp),
+                StatLine("Attack", before.attack, h.attack),
+                StatLine("Magic", before.magic, h.magic),
+                StatLine("Defense", before.defense, h.defense),
+                StatLine("Speed", before.speed, h.speed),
+            ),
+            notes = notes,
+        )
     }
 
     /** Sets a monster's 4 move slots (must be moves it has learned). */
@@ -592,6 +672,7 @@ object GameEngine {
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
         var s = state.copy(inventory = removeItems(state.inventory, r.itemsUsed))
         val msg = StringBuilder()
+        val levelUps = mutableListOf<LevelUp>()
         when (r.outcome) {
             BattleOutcome.WON, BattleOutcome.CAPTURED -> {
                 if (r.outcome == BattleOutcome.WON) {
@@ -600,18 +681,15 @@ object GameEngine {
                 } else {
                     msg.append("${r.enemy.displayName} was tamed! +${r.heroXp} XP.")
                 }
-                // Monster XP
-                val levelled = mutableListOf<String>()
+                // Monster XP: level-ups are shown as banners and a pop-up, not in the message.
                 s = s.copy(
                     monsters = s.monsters.map { m ->
                         val xp = r.monsterXp[m.uid] ?: return@map m
-                        val (after, notes) = grow(m, xp)
-                        if (after.level > m.level) levelled += "${after.displayName} → Lv ${after.level}"
-                        levelled += notes
+                        val (after, up) = growDetailed(m, xp)
+                        up?.let { levelUps += it }
                         after
                     },
                 )
-                if (levelled.isNotEmpty()) msg.append(" ").append(levelled.joinToString(", ")).append("!")
                 // Capture
                 r.captured?.let { c ->
                     if (!s.storageFull) {
@@ -632,9 +710,10 @@ object GameEngine {
                     msg.append(" Found: ").append(r.drops.entries.joinToString { "${it.key.label} x${it.value}" }).append(".")
                     if (lost > 0) msg.append(" (Bag full: $lost item(s) left behind.)")
                 }
+                val heroBefore = s.hero
                 val gain = addHeroXp(s, r.heroXp)
                 s = gain.state
-                msg.append(levelUpText(gain))
+                heroLevelUp(heroBefore, gain)?.let { levelUps.add(0, it) }
                 // Boss shrine progress
                 if (r.shrineId != null && r.encounter == EncounterType.SILVER_BOSS) {
                     val rec = s.shrines[r.shrineId] ?: ShrineRecord()
@@ -697,7 +776,7 @@ object GameEngine {
             )
             lifted.forEach { msg.append(" $it's shadow curse is lifted! Choose a stat to perfect on its stat page.") }
         }
-        return Update(s, msg.toString())
+        return Update(s, msg.toString(), levelUps = levelUps)
     }
 
     // ---- shrines -----------------------------------------------------------

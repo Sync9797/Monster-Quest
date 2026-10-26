@@ -746,10 +746,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         b.act(action)
         var resultText: String? = null
         var nextOpponent: String? = null
+        var levelUps: List<com.monsterquest.core.LevelUp>? = null
         if (b.outcome != BattleOutcome.ONGOING) {
             val u = GameEngine.applyBattleResult(state, b.result(), System.currentTimeMillis())
             set(u.state)
             resultText = u.message
+            levelUps = u.levelUps
             val run = villainRun
             if (run != null) {
                 val next = run.camp.team.getOrNull(run.index + 1)
@@ -766,7 +768,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
-        battle = BattleView.of(b, resultText ?: battle?.resultText, nextOpponent ?: battle?.nextOpponent)
+        battle = BattleView.of(
+            b, resultText ?: battle?.resultText, nextOpponent ?: battle?.nextOpponent,
+            levelUps ?: battle?.levelUps.orEmpty(),
+        )
     }
 
     fun closeBattle() {

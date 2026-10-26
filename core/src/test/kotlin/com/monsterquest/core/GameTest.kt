@@ -1034,6 +1034,31 @@ class GameTest {
     }
 
     @Test
+    fun levelUpsReportStatsMovesAndEvolution() {
+        // A level 13 Emberkit levels to 14 and evolves into Cinderfang.
+        val m = Monster.create(Bestiary.get("emberkit"), 13, Random(3))
+        val (after, up) = GameEngine.growDetailed(m, monsterXpForNext(13))
+        assertNotNull(up)
+        assertEquals(13, up.fromLevel)
+        assertEquals(14, up.toLevel)
+        assertEquals("blazecat", after.speciesId)
+        assertEquals("Emberkit", up.evolvedFrom)
+        assertEquals(listOf("HP", "Attack", "Magic", "Defense", "Speed"), up.stats.map { it.label })
+        assertTrue(up.stats.all { it.gain > 0 })
+        assertEquals(after.stats.hp, up.stats.first().after)
+        // No level, no level-up.
+        assertNull(GameEngine.growDetailed(m, 1).second)
+        // The hero's level-up lists attribute points to spend.
+        val s = started()
+        val gain = GameEngine.addHeroXp(s, heroXpForNext(1))
+        val hero = GameEngine.heroLevelUp(s.hero, gain)
+        assertNotNull(hero)
+        assertEquals(2, hero.toLevel)
+        assertTrue(hero.stats.first { it.label == "HP" }.gain > 0)
+        assertTrue(hero.notes.any { it.contains("attribute points") })
+    }
+
+    @Test
     fun packsAndAmbushes() {
         val s = started()
         val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }

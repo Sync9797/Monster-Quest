@@ -70,6 +70,19 @@ import com.monsterquest.core.ItemKind
 import com.monsterquest.core.Move
 import com.monsterquest.core.Skill
 import com.monsterquest.core.SUPPORT_KINDS
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import com.monsterquest.core.LevelUp
 import com.monsterquest.core.Weather
 
 private sealed interface Menu {
@@ -131,7 +144,7 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
                     ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)
                 }
             } else {
-                ResultPanel(b, onClose, onNext)
+                LevelUpGate(b, onClose, onNext) { close, next -> ResultPanel(b, close, next) }
             }
         }
     }
@@ -290,7 +303,10 @@ private fun AllyRow(b: BattleView) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         rows.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { a -> AllyCard(a, active = a.key == b.current?.key, modifier = Modifier.weight(1f)) }
+                row.forEach { a ->
+                    val up = if (b.outcome != BattleOutcome.ONGOING) b.levelUps.find { it.key == a.key } else null
+                    AllyCard(a, active = a.key == b.current?.key, modifier = Modifier.weight(1f), levelUp = up)
+                }
                 repeat((if (rows.size > 1) 3 else row.size) - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -298,7 +314,141 @@ private fun AllyRow(b: BattleView) {
 }
 
 @Composable
-private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
+private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier, levelUp: LevelUp? = null) {
+    Box(modifier) {
+        AllyCardBody(a, active, Modifier.fillMaxWidth())
+        if (levelUp != null) LevelUpBanner(levelUp, Modifier.align(Alignment.TopCenter))
+    }
+}
+
+/** A gold "LEVEL UP!" ribbon over a fighter's card, popping in and then gently pulsing. */
+@Composable
+private fun LevelUpBanner(up: LevelUp, modifier: Modifier) {
+    val pop = remember(up) { Animatable(0f) }
+    LaunchedEffect(up) { pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 300f)) }
+    val pulse by rememberInfiniteTransition(label = "lvl").animateFloat(
+        1f, 1.08f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "lvlPulse",
+    )
+    Column(
+        modifier
+            .offset(y = (-6).dp)
+            .graphicsLayer {
+                val k = pop.value * pulse
+                scaleX = k
+                scaleY = k
+                alpha = pop.value.coerceIn(0f, 1f)
+            }
+            .clip(RoundedCornerShape(8.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFFF5DA93), Gold)))
+            .border(1.dp, Color(0xFF6B5126), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(if (up.evolvedFrom != null) "EVOLVED!" else "LEVEL UP!", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color(0xFF2A1A08))
+        Text("Lv ${up.fromLevel} → ${up.toLevel}", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2A1A08))
+    }
+}
+
+/**
+ * After a fight, Continue (or Next opponent) first steps through a pop-up for
+ * each fighter that levelled up, like a classic RPG, then carries on.
+ */
+@Composable
+private fun LevelUpGate(
+    b: BattleView,
+    onClose: () -> Unit,
+    onNext: () -> Unit,
+    content: @Composable (close: () -> Unit, next: () -> Unit) -> Unit,
+) {
+    var showing by remember(b.levelUps) { mutableStateOf(-1) }
+    var then by remember(b.levelUps) { mutableStateOf<(() -> Unit)?>(null) }
+    var seen by remember(b.levelUps) { mutableStateOf(false) }
+    fun gated(action: () -> Unit): () -> Unit = {
+        if (!seen && b.levelUps.isNotEmpty()) {
+            then = action
+            showing = 0
+        } else {
+            action()
+        }
+    }
+    content(gated(onClose), gated(onNext))
+    val up = b.levelUps.getOrNull(showing)
+    if (up != null) {
+        LevelUpDialog(up, b.allies.find { it.key == up.key }, showing, b.levelUps.size) {
+            if (showing + 1 < b.levelUps.size) {
+                showing++
+            } else {
+                showing = -1
+                seen = true
+                then?.invoke()
+            }
+        }
+    }
+}
+
+/** One fighter's level-up: new level, every stat before → after, moves learned, evolution. */
+@Composable
+private fun LevelUpDialog(up: LevelUp, fighter: FighterView?, index: Int, total: Int, onNext: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val sp = up.speciesId?.let { Bestiary.get(it) }
+                when {
+                    sp != null -> MonsterArt(sp, Modifier.size(64.dp), shiny = fighter?.shiny == true)
+                    fighter != null -> FighterArt(fighter, Modifier.size(64.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("LEVEL UP!", color = Gold, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    Text("${up.name} grew to Lv ${up.toLevel}!", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            }
+        },
+        text = {
+            Column {
+                if (up.evolvedFrom != null) {
+                    IconText(GameIcon.SPARK, "${up.evolvedFrom} evolved into ${up.speciesId?.let { Bestiary.get(it).name } ?: up.name}!", tint = Gold, textColor = Gold, bold = true, fontSize = 14.sp)
+                    Spacer(Modifier.height(6.dp))
+                }
+                up.stats.forEach { st ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(st.label, modifier = Modifier.weight(1f), fontSize = 14.sp)
+                        Text("${st.before}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("  →  ", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${st.after}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (st.gain > 0) "  +${st.gain}" else "",
+                            fontSize = 14.sp,
+                            color = HpGreen,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.widthIn(min = 44.dp),
+                            textAlign = TextAlign.End,
+                        )
+                    }
+                }
+                up.learned.forEach {
+                    Spacer(Modifier.height(4.dp))
+                    IconText(GameIcon.BOOK, "Learned $it!", tint = MpBlue, textColor = MpBlue, bold = true, fontSize = 14.sp)
+                }
+                up.canLearn.forEach {
+                    Spacer(Modifier.height(4.dp))
+                    Text("Wants to learn $it, but knows 4 moves. Swap it in on its stat page.", fontSize = 13.sp, color = HpYellow)
+                }
+                up.notes.forEach {
+                    Spacer(Modifier.height(4.dp))
+                    Text(it, fontSize = 13.sp, color = Gold)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onNext) { Text(if (index + 1 < total) "Next (${index + 1}/$total)" else "OK") }
+        },
+    )
+}
+
+@Composable
+private fun AllyCardBody(a: FighterView, active: Boolean, modifier: Modifier) {
     val bg = if (active) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
     Column(
         modifier
