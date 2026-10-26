@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.19.1
+
+- **Tasks first:** on the Quests screen, your Tasks (things without a due
+  date) now sit above the scheduled and calendar quests.
+
 ## 1.19.0
 
 - **Orbs locked by level:** Taming Orbs for everyone, Great Orbs from level

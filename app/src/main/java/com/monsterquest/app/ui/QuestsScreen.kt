@@ -217,16 +217,7 @@ fun QuestsScreen(vm: GameViewModel) {
                 )
             }
         }
-        if (scheduled.isNotEmpty()) {
-            item(key = "active_header") { SectionTitle("Scheduled (${scheduled.sumOf { it.tasks.size }})") }
-        }
-        scheduled.forEach { sec ->
-            item(key = "sec_${sec.group}") { GroupHeader(sec.group, sec.tasks.size) }
-            items(sec.tasks, key = { it.id }) { task ->
-                QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
-            }
-        }
-        // Tasks: things without a due date, only shown when there are some.
+        // Tasks first: things without a due date (only shown when there are some), then the calendar.
         if (tasks.isNotEmpty()) {
             item(key = "tasks_header") {
                 Column(Modifier.padding(top = 4.dp)) {
@@ -235,6 +226,15 @@ fun QuestsScreen(vm: GameViewModel) {
                 }
             }
             items(tasks, key = { it.id }) { task ->
+                QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
+            }
+        }
+        if (scheduled.isNotEmpty()) {
+            item(key = "active_header") { SectionTitle("Scheduled (${scheduled.sumOf { it.tasks.size }})") }
+        }
+        scheduled.forEach { sec ->
+            item(key = "sec_${sec.group}") { GroupHeader(sec.group, sec.tasks.size) }
+            items(sec.tasks, key = { it.id }) { task ->
                 QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
         }
