@@ -93,35 +93,85 @@ object GameEngine {
 
     // ---- hero progression --------------------------------------------------
 
-    data class XpGain(val state: GameState, val levelsGained: Int, val upgradesGained: Int)
+    data class XpGain(
+        val state: GameState,
+        val levelsGained: Int,
+        val upgradesGained: Int,
+        /** Items from the level-up boxes, already in the bag. */
+        val boxItems: Map<Item, Int> = emptyMap(),
+    )
+
+    /**
+     * The reward box for reaching [level]: a couple of items that get better
+     * as you level (orbs follow the shop's level locks), with a little extra
+     * every 5 and 10 levels, and a Perfect Orb at level 100.
+     */
+    fun levelBox(level: Int): Map<Item, Int> {
+        val box = mutableMapOf<Item, Int>()
+        fun add(item: Item, n: Int = 1) { box[item] = (box[item] ?: 0) + n }
+        add(
+            when {
+                level < 10 -> Item.TAMING_ORB
+                level < 25 -> Item.GREAT_ORB
+                level < 50 -> Item.MEGA_ORB
+                else -> Item.ULTRA_ORB
+            },
+        )
+        add(if (level < 15) Item.POTION else Item.HI_POTION)
+        if (level % 5 == 0) {
+            add(
+                when {
+                    level < 25 -> Item.ETHER
+                    level % 10 == 0 -> Item.RESTORE_POTION
+                    else -> Item.PHOENIX_DOWN
+                },
+            )
+        }
+        if (level % 10 == 0) add(Item.TREAT)
+        if (level == MAX_HERO_REWARD_LEVEL) add(Item.PERFECT_ORB)
+        return box
+    }
+
+    /** Reaching this level gives a Perfect Orb. */
+    const val MAX_HERO_REWARD_LEVEL = 100
 
     fun addHeroXp(state: GameState, amount: Int): XpGain {
         var hero = state.hero
         var xp = hero.xp + amount
         var levels = 0
         var upgrades = 0
+        val boxes = mutableMapOf<Item, Int>()
         while (xp >= heroXpForNext(hero.level)) {
             xp -= heroXpForNext(hero.level)
             hero = hero.copy(level = hero.level + 1, unspentPoints = hero.unspentPoints + STAT_POINTS_PER_LEVEL)
             levels++
             if (hero.level % UPGRADE_LEVEL_INTERVAL == 0) upgrades++
+            levelBox(hero.level).forEach { (item, n) -> boxes[item] = (boxes[item] ?: 0) + n }
         }
         hero = hero.copy(xp = xp)
+        // Level-up boxes always arrive in full, even past the bag's size (you're never
+        // punished for levelling); an over-full bag just can't take anything else until you make room.
+        val inv = state.inventory.toMutableMap()
+        boxes.forEach { (item, n) -> inv[item] = (inv[item] ?: 0) + n }
         return XpGain(
-            state.copy(hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades),
+            state.copy(hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades, inventory = inv),
             levels,
             upgrades,
+            boxes,
         )
     }
 
     fun levelUpText(gain: XpGain): String = buildString {
         if (gain.levelsGained > 0) append(" LEVEL UP! Now level ${gain.state.hero.level}.")
+        if (gain.boxItems.isNotEmpty()) append(" Level-up box: ${boxText(gain.boxItems)}.")
         if (gain.upgradesGained > 0) append(" Storage upgrade unlocked!")
         val h = gain.state.hero
         if (gain.levelsGained > 0 && !h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) {
             append(" Choose your class on the Hero tab to claim a Rare weapon!")
         }
     }
+
+    fun boxText(items: Map<Item, Int>): String = items.entries.joinToString { (i, n) -> if (n > 1) "${i.label} x$n" else i.label }
 
     /** Pick a class at level 5+. The first choice is free; switching costs gold. */
     fun chooseClass(state: GameState, cls: HeroClass, rng: Random = Random.Default): Update {
@@ -339,6 +389,7 @@ object GameEngine {
 
     fun buy(state: GameState, item: Item, qty: Int = 1): Update {
         if (item.price <= 0) return Update(state, "${item.label} can't be bought.")
+        if (state.hero.level < item.minLevel) return Update(state, "${item.label}s unlock at level ${item.minLevel}.")
         val cost = item.price * qty
         if (state.gold < cost) return Update(state, "Not enough gold.")
         if (state.bagCount + qty > state.bagCapacity) return Update(state, "Bag is full (${state.bagCount}/${state.bagCapacity}).")
@@ -574,6 +625,9 @@ object GameEngine {
             add("+${gain.levelsGained * STAT_POINTS_PER_LEVEL} attribute points to spend on the Hero tab.")
             if (gain.upgradesGained > 0) add("Storage upgrade unlocked!")
             if (!h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) add("Choose your class on the Hero tab to claim a Rare weapon!")
+            if (gain.boxItems.isNotEmpty()) add("Level-up box: ${boxText(gain.boxItems)}.")
+            if (gain.state.bagCount > gain.state.bagCapacity) add("Your bag is over full: use, sell or drop items before picking up more.")
+            Item.entries.filter { it.minLevel in (before.level + 1)..h.level }.forEach { add("${it.label}s are now in the shop!") }
             if (before.level < SUBCLASS_UNLOCK_LEVEL && h.level >= SUBCLASS_UNLOCK_LEVEL) add("Subclasses unlocked! Pick one on the Hero tab.")
             HERO_SKILL_LEVELS.forEachIndexed { i, at ->
                 if (before.level < at && h.level >= at) add("Skill slot ${i + 1} opened! Pick a skill on the Hero tab.")

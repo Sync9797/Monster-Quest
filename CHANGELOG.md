@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.19.0
+
+- **Orbs locked by level:** Taming Orbs for everyone, Great Orbs from level
+  10, the new Mega Orbs (160 gold) from 25 and Ultra Orbs (320 gold) from
+  50. The shop shows a lock with the level until then.
+- **Perfect Orb** (level 75, 2,000 gold): always tames, even a monster at
+  full health (but not a boss you haven't beaten yet). It's never found
+  in the wild; reaching level 100 gives you one.
+- **Level-up boxes:** every level now gives a small box of 2 to 4 items
+  that gets better as you level: orbs that follow the shop's level locks,
+  Potions then Hi-Potions, plus an Ether, Phoenix Down or Restore Potion
+  every 5 levels and a Monster Treat every 10.
+- **Full bag, no punishment:** a level-up box always arrives in full, even
+  if it overfills your bag. You keep everything, but you can't pick up or
+  buy anything else until you've used, sold or dropped enough to make room.
+  The bag shows how many items to clear.
+
 ## 1.18.0
 
 - **Fair quest rewards** (no farming with fake quests):

@@ -132,6 +132,7 @@ private val topics = listOf(
         listOf(
             "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
             "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mud Shot (weak, but each hit lowers the foe's accuracy 10%, stacking), Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
+            "Every level gives a small box of items that gets better as you level. Better orbs unlock in the shop at levels 10 (Great), 25 (Mega), 50 (Ultra) and 75 (Perfect: always tames, 2,000 gold; you also get one at level 100).",
             "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
             "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), or at once with an Ether.",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",

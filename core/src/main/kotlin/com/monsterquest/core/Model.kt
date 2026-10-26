@@ -442,6 +442,8 @@ enum class Item(
     /** Shop price in gold; 0 = not sold. */
     val price: Int,
     val description: String,
+    /** Hero level needed to buy it. */
+    val minLevel: Int = 0,
 ) {
     POTION("Potion", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
     HI_POTION("Hi-Potion", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
@@ -449,8 +451,15 @@ enum class Item(
     PHOENIX_DOWN("Phoenix Down", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
     RESTORE_POTION("Restore Potion", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
     TAMING_ORB("Taming Orb", ItemKind.CAPTURE, 1.0, 30, "Tames a weakened monster."),
-    GREAT_ORB("Great Orb", ItemKind.CAPTURE, 1.5, 80, "Better taming odds."),
+    GREAT_ORB("Great Orb", ItemKind.CAPTURE, 1.5, 80, "Better taming odds.", minLevel = 10),
+    MEGA_ORB("Mega Orb", ItemKind.CAPTURE, 2.0, 160, "Strong taming odds.", minLevel = 25),
+    ULTRA_ORB("Ultra Orb", ItemKind.CAPTURE, 2.6, 320, "Very strong taming odds.", minLevel = 50),
     MASTER_ORB("Master Orb", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
+    PERFECT_ORB(
+        "Perfect Orb", ItemKind.CAPTURE, 100.0, 2_000,
+        "Always tames, even at full health (not bosses you haven't beaten). Never found in the wild; one is the reward for reaching level 100.",
+        minLevel = 75,
+    ),
     TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost."),
     LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day.");
 

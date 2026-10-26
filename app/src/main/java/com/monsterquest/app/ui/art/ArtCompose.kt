@@ -154,7 +154,7 @@ fun Item.icon(): GameIcon = when (this) {
     Item.ETHER -> GameIcon.CRYSTAL
     Item.PHOENIX_DOWN -> GameIcon.FEATHER
     Item.RESTORE_POTION -> GameIcon.RESTORE
-    Item.TAMING_ORB, Item.GREAT_ORB, Item.MASTER_ORB -> GameIcon.ORB
+    Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB -> GameIcon.ORB
     Item.TREAT -> GameIcon.TREAT
     Item.LURE -> GameIcon.LURE
 }
@@ -166,7 +166,10 @@ fun Item.color(): Color = when (this) {
     Item.RESTORE_POTION -> Color(0xFFF28B9B)
     Item.TAMING_ORB -> Color(0xFF9CBFE4)
     Item.GREAT_ORB -> Color(0xFFC3A6F0)
+    Item.MEGA_ORB -> Color(0xFF7FD6C2)
+    Item.ULTRA_ORB -> Color(0xFFF2A65A)
     Item.MASTER_ORB -> Color(0xFFEBC678)
+    Item.PERFECT_ORB -> Color(0xFFFF7BD5)
     Item.TREAT -> Color(0xFFD9A07A)
     Item.LURE -> Color(0xFFF2A198)
 }

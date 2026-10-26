@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EncountersTest {
@@ -315,5 +316,54 @@ class EncountersTest {
         s = GameEngine.syncCalendar(withMonsters(1), listOf(ev)).state
         assertEquals(s.gold, GameEngine.completeTask(s, "e1", t0).state.gold)
         assertTrue(GameEngine.completeTask(s, "e1", t0 + 3_600_000).state.gold > s.gold)
+    }
+
+    @Test
+    fun orbsAreLockedByLevelAndThePerfectOrbAlwaysWorks() {
+        assertEquals(listOf(0, 10, 25, 50, 75), listOf(Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.PERFECT_ORB).map { it.minLevel })
+        assertEquals(2_000, Item.PERFECT_ORB.price)
+        val rich = withMonsters(1).copy(gold = 10_000)
+        assertEquals(0, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 9)), Item.GREAT_ORB).state.count(Item.GREAT_ORB))
+        assertEquals(1, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 10)), Item.GREAT_ORB).state.count(Item.GREAT_ORB))
+        assertEquals(0, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 74)), Item.PERFECT_ORB).state.count(Item.PERFECT_ORB))
+        assertEquals(1, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 75)), Item.PERFECT_ORB).state.count(Item.PERFECT_ORB))
+        // Better orbs, better odds.
+        val odds = listOf(Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB).map { captureChance(0.3, Rarity.RARE, 0, it) }
+        assertEquals(odds.sorted(), odds)
+
+        // A Perfect Orb tames even a monster at full health.
+        val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
+        val b = Battle(Hero(level = 80), emptyList(), foe, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 1, Item.TAMING_ORB to 3), false, rng = Random(2))
+        assertNull(b.captureBlockedReason())
+        assertEquals(listOf(Item.PERFECT_ORB), b.orbs())
+        assertEquals(1.0, b.captureOdds(Item.PERFECT_ORB))
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        assertEquals(BattleOutcome.CAPTURED, b.outcome)
+    }
+
+    @Test
+    fun everyLevelGivesASmallBoxThatGrowsAndLevel100GivesAPerfectOrb() {
+        assertTrue((2..99).all { GameEngine.levelBox(it).values.sum() in 2..4 })
+        assertEquals(5, GameEngine.levelBox(100).values.sum())
+        assertTrue(Item.TAMING_ORB in GameEngine.levelBox(3))
+        assertTrue(Item.MEGA_ORB in GameEngine.levelBox(30))
+        assertTrue(Item.ULTRA_ORB in GameEngine.levelBox(60))
+        assertTrue(Item.PERFECT_ORB in GameEngine.levelBox(100))
+        assertTrue((2..99).none { Item.PERFECT_ORB in GameEngine.levelBox(it) })
+        // Loot never hands one out.
+        val s = withMonsters(1).copy(hero = Hero(level = 90))
+        assertTrue((1..200).none { Item.PERFECT_ORB in GameEngine.rollLoot(s, 6, Random(it)).items })
+
+        // Levelling with a full bag: the box still arrives in full (no punishment)...
+        val full = withMonsters(1).copy(hero = Hero(), inventory = mapOf(Item.POTION to STARTING_BAG_CAPACITY))
+        val gain = GameEngine.addHeroXp(full, heroXpForNext(1))
+        assertEquals(2, gain.state.hero.level)
+        assertTrue(gain.state.bagCount > gain.state.bagCapacity)
+        assertEquals(GameEngine.levelBox(2), gain.boxItems)
+        // ...but nothing more can be bought or picked up until there's room.
+        val rich = gain.state.copy(gold = 1_000)
+        assertEquals(rich, GameEngine.buy(rich, Item.POTION).state)
+        assertEquals(rich.inventory, GameEngine.addItems(rich, mapOf(Item.ETHER to 1)).first.inventory)
     }
 }

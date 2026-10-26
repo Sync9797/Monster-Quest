@@ -632,7 +632,10 @@ class Battle(
     fun battleItems(): List<Item> =
         Item.entries.filter { it.usableInBattle && it.kind != ItemKind.CAPTURE && count(it) > 0 }
 
-    fun orbs(): List<Item> = Item.entries.filter { it.kind == ItemKind.CAPTURE && count(it) > 0 }
+    /** Orbs you can throw now: above half HP only a Perfect Orb works. */
+    fun orbs(): List<Item> = Item.entries.filter {
+        it.kind == ItemKind.CAPTURE && count(it) > 0 && (enemy.hpFraction <= 0.5 || it == Item.PERFECT_ORB)
+    }
 
     /** Null when capture is allowed, otherwise a reason to show the player. */
     fun captureBlockedReason(): String? = when {
@@ -643,12 +646,12 @@ class Battle(
         storageFull -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No orbs left."
         itemsRemainingThisBattle <= 0 -> "Item limit reached for this battle ($MAX_ITEMS_PER_BATTLE)."
-        enemy.hpFraction > 0.5 -> "Too strong to tame. Get it below 50% HP."
+        enemy.hpFraction > 0.5 && count(Item.PERFECT_ORB) <= 0 -> "Too strong to tame. Get it below 50% HP."
         else -> null
     }
 
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
-    fun captureOdds(orb: Item): Double =
+    fun captureOdds(orb: Item): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))

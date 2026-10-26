@@ -56,6 +56,16 @@ fun BagScreen(vm: GameViewModel) {
         LootBoxSection(vm)
         SectionTitle("Bag ${s.bagCount}/${s.bagCapacity}")
         LabeledBar("Space", s.bagCount, s.bagCapacity, if (s.bagFull) HpRed else MpBlue)
+        if (s.bagCount > s.bagCapacity) {
+            // Level-up boxes can overfill the bag; nothing is lost, but nothing more fits until there's room.
+            Text(
+                "Your bag is over full (${s.bagCount}/${s.bagCapacity}). You keep everything, but you can't pick up or buy " +
+                    "anything until you use, sell or drop ${s.bagCount - s.bagCapacity + 1} item(s).",
+                fontSize = 12.sp,
+                color = HpRed,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         Text(
             "You can use up to $MAX_ITEMS_PER_BATTLE items per battle. Bag size grows with upgrades every 5 levels.",
             fontSize = 12.sp,
@@ -189,8 +199,13 @@ fun BagScreen(vm: GameViewModel) {
                         Text(item.label, fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Button(onClick = { vm.buy(item) }, enabled = s.gold >= item.price && !s.bagFull) {
-                        IconText(GameIcon.COIN, "${item.price}")
+                    if (s.hero.level < item.minLevel) {
+                        // Locked until the hero is strong enough.
+                        Button(onClick = {}, enabled = false) { IconText(GameIcon.LOCK, "Lv ${item.minLevel}") }
+                    } else {
+                        Button(onClick = { vm.buy(item) }, enabled = s.gold >= item.price && !s.bagFull) {
+                            IconText(GameIcon.COIN, "%,d".format(item.price))
+                        }
                     }
                 }
             }
