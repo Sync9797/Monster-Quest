@@ -313,7 +313,11 @@ class GameTest {
         // Classic pairs kept.
         assertEquals(1.5, Element.ELECTRIC.multiplierAgainst(Element.WATER))
         assertEquals(1.5, Element.WATER.multiplierAgainst(Element.FIRE))
-        assertEquals(1.5, Element.FIRE.multiplierAgainst(Element.CORRUPT))
+        // Electric shocks fliers, and fliers rise above the earth.
+        assertEquals(1.5, Element.ELECTRIC.multiplierAgainst(Element.FLIGHT))
+        assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.EARTH))
+        assertTrue(Element.FLIGHT.multiplierAgainst(Element.ELECTRIC) < 1.0)
+        assertTrue(Element.EARTH.multiplierAgainst(Element.FLIGHT) < 1.0)
         assertEquals(1.5, Element.GAS.multiplierAgainst(Element.ELECTRIC))
         // Every type has monsters, and Earth has its moves.
         assertTrue(Element.typed.all { e -> Bestiary.wild.count { it.element == e } >= 6 })
@@ -524,7 +528,6 @@ class GameTest {
         val short = (1..2000).count { LootBoxes.roll(15, Random(it)) != BoxRarity.COMMON }
         val long = (1..2000).count { LootBoxes.roll(120, Random(it)) != BoxRarity.COMMON }
         assertTrue(long > short)
-        assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.ELECTRIC))
     }
 
     @Test

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.0
+
+- **New type chart:** Electric now beats Flight, and Flight beats Earth. It's
+  still perfectly balanced, like rock-paper-scissors with seven throws: every
+  type is strong against two, weak to two and neutral to two.
+
+  | Type | Strong against | Weak to |
+  |---|---|---|
+  | Water | Fire, Gas | Earth, Electric |
+  | Fire | Earth, Electric | Water, Corrupt |
+  | Corrupt | Fire, Flight | Earth, Gas |
+  | Gas | Corrupt, Electric | Water, Flight |
+  | Earth | Water, Corrupt | Fire, Flight |
+  | Flight | Earth, Gas | Electric, Corrupt |
+  | Electric | Water, Flight | Fire, Gas |
+
+  The Type chart on the Monsters tab and the Help screen show the new chart.
+
 ## 1.11.1
 
 - **Stronger mythics:** Prism Fairy and Mimic are now as strong as a final

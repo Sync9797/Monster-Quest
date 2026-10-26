@@ -6,14 +6,16 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 // ---------------------------------------------------------------------------
-// Types: a balanced wheel of seven. Every type is strong against exactly two
-// others, weak to exactly two, and neutral to the remaining two:
-//   Water    > Fire, Gas          Earth    > Flight, Water
-//   Fire     > Corrupt, Earth     Flight   > Electric, Fire
-//   Corrupt  > Gas, Flight        Electric > Water, Corrupt
-//   Gas      > Earth, Electric
-// (Placed around a circle as Water, Fire, Corrupt, Gas, Earth, Flight,
-// Electric, each type beats the next one and the one three steps on.)
+// Types: a balanced wheel of seven, like rock-paper-scissors with seven
+// throws. Every type is strong against exactly two others, weak to exactly
+// two, and neutral to the remaining two:
+//   Water    > Fire, Gas          rain douses fire and washes out gas
+//   Fire     > Earth, Electric    burns grass, melts wiring
+//   Corrupt  > Fire, Flight       darkness smothers flame and downs fliers
+//   Gas      > Corrupt, Electric  toxic fumes choke the dark and short out sparks
+//   Earth    > Water, Corrupt     soaks up water, buries the dark
+//   Flight   > Earth, Gas         rises above the ground, blows gas away
+//   Electric > Water, Flight      lightning conducts through water and strikes fliers
 // ---------------------------------------------------------------------------
 
 @Serializable
@@ -33,12 +35,12 @@ enum class Element(val label: String) {
     val beats: List<Element>
         get() = when (this) {
             WATER -> listOf(FIRE, GAS)
-            FIRE -> listOf(CORRUPT, EARTH)
-            CORRUPT -> listOf(GAS, FLIGHT)
-            GAS -> listOf(EARTH, ELECTRIC)
-            EARTH -> listOf(FLIGHT, WATER)
-            FLIGHT -> listOf(ELECTRIC, FIRE)
-            ELECTRIC -> listOf(WATER, CORRUPT)
+            FIRE -> listOf(EARTH, ELECTRIC)
+            CORRUPT -> listOf(FIRE, FLIGHT)
+            GAS -> listOf(CORRUPT, ELECTRIC)
+            EARTH -> listOf(WATER, CORRUPT)
+            FLIGHT -> listOf(EARTH, GAS)
+            ELECTRIC -> listOf(WATER, FLIGHT)
             NEUTRAL -> emptyList()
         }
 
