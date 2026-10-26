@@ -75,6 +75,15 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
         )
     }
 
+    vm.adventureResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissAdventureResult,
+            title = { Text(if (text.startsWith("✅")) "Adventure complete!" else "Adventure failed") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissAdventureResult) { Text("OK") } },
+        )
+    }
+
     vm.boxResult?.let { text ->
         AlertDialog(
             onDismissRequest = vm::dismissBoxResult,

@@ -78,7 +78,7 @@ private sealed interface MapPick {
     data class SpawnPick(val spawn: WildSpawn) : MapPick
 }
 
-private fun hasLocationPermission(context: Context) =
+internal fun hasLocationPermission(context: Context) =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
@@ -305,7 +305,7 @@ private fun rememberMapView(): MapView {
 
 @SuppressLint("MissingPermission")
 @Composable
-private fun TrackLocation(context: Context, onLocation: (Double, Double) -> Unit) {
+internal fun TrackLocation(context: Context, onLocation: (Double, Double) -> Unit) {
     DisposableEffect(Unit) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {

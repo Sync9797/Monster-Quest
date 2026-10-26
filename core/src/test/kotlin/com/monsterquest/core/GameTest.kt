@@ -518,4 +518,52 @@ class GameTest {
         val again = rec.state.copy(monsters = rec.state.monsters.map { it.copy(fainted = true) })
         assertNull(GameEngine.dailyRecovery(again, at(27, 20), utc))
     }
+
+    @Test
+    fun adventures() {
+        val places = (1..60).map { World.shrineFromPlace("$it", "Place $it", 0.0, 0.0, ShrineTier.ITEM) }
+        val few = started()
+        // Locked until you have 5 monsters.
+        val anyOffer = Adventures.offersNear(few, places, at(27), utc).first()
+        assertTrue(Adventures.send(few, anyOffer, few.monsters.map { it.uid }, at(27)).state.adventures.isEmpty())
+
+        val team = (1..6).map { Monster.create(Bestiary.get("ember_pup"), 15, Random(it)) }
+        val s = started().copy(hero = Hero(level = 12), monsters = team)
+        val offers = Adventures.offersNear(s, places, at(27), utc)
+        assertTrue(offers.isNotEmpty() && offers.size <= 6)
+        // Same day, same offers; a different day rotates them.
+        assertEquals(offers, Adventures.offersNear(s, places, at(27, 20), utc))
+        assertNotEquals(offers, Adventures.offersNear(s, places, at(28), utc))
+
+        val adv = offers.first()
+        val uids = team.take(adv.teamSize).map { it.uid }
+        assertEquals(s, Adventures.send(s, adv, team.take(adv.teamSize + 1).map { it.uid }.take(if (adv.teamSize == 5) 4 else adv.teamSize + 1), at(27)).state)
+        val sent = Adventures.send(s, adv, uids, at(27)).state
+        assertEquals(1, sent.adventures.size)
+        // Away monsters sit out battles and aren't offered for other adventures.
+        assertTrue(Adventures.available(sent).none { it.uid in uids })
+        val sentParty = sent.copy(party = uids.take(1))
+        assertEquals(1, GameEngine.newBattle(sentParty, Monster.create(Bestiary.get("zapmouse"), 3, rng), EncounterType.WILD, rng = rng).allies.size)
+        // The taken adventure isn't offered again.
+        assertTrue(Adventures.offersNear(sent, places, at(27), utc).none { it.id == adv.id })
+        // Can't claim early.
+        assertEquals(sent, Adventures.claim(sent, adv.id, at(27), rng, utc).state)
+
+        val done = Adventures.claim(sent, adv.id, at(27) + adv.durationMs, Random(1), utc)
+        assertTrue(done.state.adventures.isEmpty())
+        assertTrue(done.state.gold > sent.gold)
+        // Hero earns no XP from adventures; the monsters do.
+        assertEquals(sent.hero, done.state.hero)
+        assertTrue(done.state.monsters.filter { it.uid in uids }.all { it.xp > 0 || it.level > 15 })
+        assertTrue(adv.id in done.state.adventureLog)
+    }
+
+    @Test
+    fun strongerTeamsSucceedMoreOften() {
+        val adv = Adventure("x", "Park", "Test", 3, 20, 60_000)
+        val weak = (1..3).map { Monster.create(Bestiary.get("ember_pup"), 10, Random(it)) }
+        val strong = (1..3).map { Monster.create(Bestiary.get("ember_pup"), 30, Random(it)) }
+        assertTrue(Adventures.successChance(strong, adv) > Adventures.successChance(weak, adv))
+        assertTrue(Adventures.successChance(weak, adv) < 0.5)
+    }
 }

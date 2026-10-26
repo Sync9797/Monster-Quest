@@ -1,9 +1,10 @@
 package com.monsterquest.app.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.content.ActivityNotFoundException
+import android.content.ContentUris
+import android.content.Context
+import android.content.Intent
+import android.provider.CalendarContract
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,7 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Difficulty
 import com.monsterquest.core.QuestTask
@@ -55,16 +54,6 @@ fun QuestsScreen(vm: GameViewModel) {
     var showAdd by remember { mutableStateOf(false) }
     var showDone by remember { mutableStateOf(false) }
 
-    val hasCalendar = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) ==
-        PackageManager.PERMISSION_GRANTED
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) vm.syncCalendar() else vm.toast("Without calendar access you can still add quests by hand.")
-    }
-    // Quietly refresh from the calendar whenever this tab opens.
-    LaunchedEffect(hasCalendar) {
-        if (hasCalendar) vm.syncCalendar(quiet = true)
-    }
-
     val pending = state.tasks.filter { !it.completed }.sortedWith(compareBy<QuestTask> { it.startMs ?: Long.MAX_VALUE }.thenBy { it.title })
     val done = state.tasks.filter { it.completed }.sortedByDescending { it.completedAtMs }
 
@@ -80,8 +69,8 @@ fun QuestsScreen(vm: GameViewModel) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SmallButton("+ New quest", { showAdd = true }, Modifier.weight(1f))
                     SmallButton(
-                        if (vm.syncingCalendar) "Syncing…" else "📅 Sync calendar",
-                        { if (hasCalendar) vm.syncCalendar() else permissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                        "📅 Calendar",
+                        { if (!openCalendar(context)) vm.toast("No calendar app found.") },
                         Modifier.weight(1f),
                         outlined = true,
                     )
@@ -199,4 +188,25 @@ private fun AddQuestDialog(onDismiss: () -> Unit, onAdd: (String, Difficulty) ->
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** Opens the phone's default calendar app at today. Returns false if there isn't one. */
+fun openCalendar(context: Context): Boolean {
+    val today = CalendarContract.CONTENT_URI.buildUpon()
+        .appendPath("time")
+        .also { ContentUris.appendId(it, System.currentTimeMillis()) }
+        .build()
+    val attempts = listOf(
+        Intent(Intent.ACTION_VIEW, today),
+        Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR),
+    )
+    for (intent in attempts) {
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return true
+        } catch (e: ActivityNotFoundException) {
+            // Try the next way of opening a calendar.
+        }
+    }
+    return false
 }

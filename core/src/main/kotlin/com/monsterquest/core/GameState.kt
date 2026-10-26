@@ -140,6 +140,10 @@ data class GameState(
     val focus: FocusSession? = null,
     /** Loot boxes from phone-free sessions (max [MAX_LOOT_BOXES]); opened by walking. */
     val lootBoxes: List<LootBox> = emptyList(),
+    /** Monsters currently out on adventures. */
+    val adventures: List<ActiveAdventure> = emptyList(),
+    /** Adventure id -> epoch day it was taken, so it isn't offered again. */
+    val adventureLog: Map<String, Long> = emptyMap(),
     /** Last step-counter reading, to work out steps walked since. */
     val lastStepCount: Long? = null,
     val bagCapacity: Int = STARTING_BAG_CAPACITY,

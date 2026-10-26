@@ -199,6 +199,7 @@ object GameEngine {
     fun release(state: GameState, uid: String): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (state.monsters.size <= 1) return Update(state, "You can't release your last monster.")
+        if (uid in Adventures.awayUids(state)) return Update(state, "${m.displayName} is out on an adventure.")
         return Update(
             state.copy(monsters = state.monsters.filterNot { it.uid == uid }, party = state.party - uid),
             "${m.displayName} was released into the wild.",
@@ -322,7 +323,12 @@ object GameEngine {
     }
 
     fun newBattle(state: GameState, enemy: Monster, encounter: EncounterType, shrineId: String? = null, rng: Random = Random.Default) =
-        Battle(state.hero, state.partyMonsters, enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedWeapon)
+        Battle(
+            state.hero,
+            // Monsters out on adventures can't fight.
+            state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
+            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedWeapon,
+        )
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
         var s = state.copy(inventory = removeItems(state.inventory, r.itemsUsed))

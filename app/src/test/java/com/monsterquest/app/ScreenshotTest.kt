@@ -10,11 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
+import com.monsterquest.app.ui.AdventuresTab
 import com.monsterquest.app.ui.AppRoot
 import com.monsterquest.app.ui.FoldInfo
 import com.monsterquest.app.ui.LocalFold
 import com.monsterquest.app.ui.MonsterQuestTheme
 import com.monsterquest.app.ui.Tab
+import com.monsterquest.core.ActiveAdventure
+import com.monsterquest.core.Adventure
 import com.monsterquest.core.Bestiary
 import com.monsterquest.core.BoxRarity
 import com.monsterquest.core.LootBox
@@ -141,6 +144,21 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm()
         v.startFocus(30)
         shot("09_focus") { AppRoot(v) }
+    }
+
+    @Test fun adventures() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val base = sampleState()
+        val now = System.currentTimeMillis()
+        val running = ActiveAdventure(
+            Adventure("demo", "Riverside Park", "Recover a lost relic near Riverside Park", 2, 12, 60 * 60_000L),
+            base.monsters.drop(3).take(2).map { it.uid },
+            now - 20 * 60_000L,
+            0.72,
+        )
+        val v = vm(base.copy(adventures = listOf(running)))
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        shot("10_adventures") { AdventuresTab(v) }
     }
 
     @Test fun battleTabletop() {

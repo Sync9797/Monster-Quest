@@ -6,8 +6,8 @@ your hero.
 
 ## How to play
 
-- **Quests:** add to-dos, or sync your phone's calendar so events become
-  quests. Completing one gives **XP, gold and a hunt token**.
+- **Quests:** add your to-dos. Completing one gives **XP, gold and a hunt
+  token**. The 📅 **Calendar** button opens your phone's calendar app.
 - **📵 Phone-free challenge:** pick 15–120 minutes and lock your phone.
   - Keep it locked until time's up to win a **loot box**. Longer sessions give
     better odds of rare boxes.
@@ -50,6 +50,16 @@ your hero.
     **rain or drought**, guard, dive out of reach, or reverse turn order.
     Stat drops and weather last one battle.
   - Status conditions make monsters easier to tame.
+- **🧭 Adventures** unlock once you have 5 monsters (Monsters → Adventures).
+  - Real places near you post adventures daily, at difficulty ★1–★5.
+  - Send a team of 1–5 monsters (one per star). Higher levels mean better
+    odds.
+  - They fight on their own at 75% strength and bring back gold, items and
+    weapon parts.
+  - Your hero gets no XP, and the team can't battle until it returns, which
+    takes 30 minutes to 8 hours.
+  - A failed adventure pays a little gold, and the weakest team member
+    returns fainted.
 - **Fainting:** a monster knocked out in battle stays down until healed with
   a rare **Restore Potion**. If all your monsters are down, your strongest
   recovers once a day.
@@ -98,6 +108,6 @@ Updates install over the previous version and keep your save.
 - `core/`: the pure-Kotlin game engine (battles, stats, leveling, rewards,
   GPS spawns). It has unit tests and builds without the Android SDK:
   `CORE_ONLY=1 ./gradlew :core:test`.
-- `app/`: the Android app (Jetpack Compose UI, calendar sync, osmdroid map).
+- `app/`: the Android app (Jetpack Compose UI, osmdroid map, step counter, phone-free service).
 
 Map data © OpenStreetMap contributors.

@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
+import com.monsterquest.core.Adventures
 import com.monsterquest.core.Bestiary
 import com.monsterquest.core.Element
 import com.monsterquest.core.GameEngine
@@ -59,6 +60,24 @@ fun rarityColor(r: Rarity) = when (r) {
 
 @Composable
 fun MonstersScreen(vm: GameViewModel) {
+    var adventures by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallButton("🐾 Collection", { adventures = false }, Modifier.weight(1f), outlined = adventures)
+            val away = vm.state.adventures.size
+            SmallButton(
+                "🧭 Adventures" + if (away > 0) " ($away)" else "",
+                { adventures = true },
+                Modifier.weight(1f),
+                outlined = !adventures,
+            )
+        }
+        if (adventures) AdventuresTab(vm) else MonsterCollection(vm)
+    }
+}
+
+@Composable
+private fun MonsterCollection(vm: GameViewModel) {
     val s = vm.state
     var selectedUid by rememberSaveable { mutableStateOf<String?>(null) }
     val selected = s.monsters.find { it.uid == selectedUid }
@@ -103,8 +122,9 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
+        val away = Adventures.awayUids(s)
         items(sorted, key = { it.uid }) { m ->
-            MonsterRow(m, inParty = m.uid in s.party, selected = m.uid == selectedUid) { onSelect(m.uid) }
+            MonsterRow(m, inParty = m.uid in s.party, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column {
@@ -117,7 +137,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
 }
 
 @Composable
-private fun MonsterRow(m: Monster, inParty: Boolean, selected: Boolean, onClick: () -> Unit) {
+private fun MonsterRow(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, onClick: () -> Unit) {
     val sp = m.species
     val st = m.stats
     val border = when {
@@ -142,6 +162,7 @@ private fun MonsterRow(m: Monster, inParty: Boolean, selected: Boolean, onClick:
                     )
                     if (inParty) Text("  ⚔️", fontSize = 12.sp)
                     if (m.fainted) Text("  Fainted", fontSize = 12.sp, color = HpRed)
+                    if (away) Text("  🧭 Away", fontSize = 12.sp, color = MpBlue)
                 }
                 Text("Lv ${m.level} ${sp.name} • ${sp.element.emoji} ${sp.element.label}", fontSize = 12.sp, maxLines = 1)
                 Text(
@@ -196,6 +217,14 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                         enabled = s.count(Item.RESTORE_POTION) > 0,
                     )
                 }
+            }
+            s.adventures.find { m.uid in it.monsterUids }?.let { a ->
+                Text(
+                    "🧭 Away: ${a.adventure.title}. Back in ${formatDuration((a.endMs - System.currentTimeMillis()).coerceAtLeast(0))}.",
+                    fontSize = 13.sp,
+                    color = MpBlue,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
             }
             Spacer(Modifier.height(6.dp))
             LabeledBar("XP", m.xp, m.xpToNext, XpPurple)

@@ -7,11 +7,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.monsterquest.app.data.CalendarReader
 import com.monsterquest.app.data.PlacesRepository
 import com.monsterquest.app.data.SaveRepository
 import com.monsterquest.app.focus.FocusService
 import com.monsterquest.app.focus.FocusStore
+import com.monsterquest.core.Adventure
+import com.monsterquest.core.Adventures
 import com.monsterquest.core.Battle
 import com.monsterquest.core.BattleAction
 import com.monsterquest.core.BattleOutcome
@@ -55,8 +56,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private var placesFetchedAt: Pair<Double, Double>? = null
 
-    var syncingCalendar by mutableStateOf(false)
-        private set
 
     // Saves happen in order on a background thread; rapid changes are conflated.
     private val pendingSave = MutableStateFlow(state)
@@ -112,24 +111,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun addTask(title: String, difficulty: Difficulty) = apply(GameEngine.addTask(state, title, difficulty))
     fun deleteTask(id: String) = apply(GameEngine.deleteTask(state, id))
     fun completeTask(id: String) = apply(GameEngine.completeTask(state, id, System.currentTimeMillis()))
-
-    fun syncCalendar(quiet: Boolean = false) {
-        if (syncingCalendar) return
-        syncingCalendar = true
-        viewModelScope.launch {
-            try {
-                val events = withContext(Dispatchers.IO) { CalendarReader.read(getApplication()) }
-                val u = GameEngine.syncCalendar(state, events)
-                if (quiet) set(u.state) else apply(u)
-            } catch (e: SecurityException) {
-                if (!quiet) message = "Calendar permission is needed to sync."
-            } catch (e: Exception) {
-                if (!quiet) message = "Calendar sync failed: ${e.message}"
-            } finally {
-                syncingCalendar = false
-            }
-        }
-    }
 
     // ---- monsters & items --------------------------------------------------
 
@@ -231,6 +212,32 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (d < 300) set(LootBoxes.addWalk(state, d))
         }
         lastWalkPoint = lat to lon
+    }
+
+    // ---- adventures ---------------------------------------------------------
+
+    /** Result of a returning adventure, shown in a dialog. */
+    var adventureResult by mutableStateOf<String?>(null)
+        private set
+
+    /** Today's adventures at real places near you, closest first. */
+    fun adventureOffers(nowMs: Long): List<Adventure> {
+        val here = location ?: return emptyList()
+        val nearest = shrines.sortedBy { World.distanceMeters(here.first, here.second, it.lat, it.lon) }
+        return Adventures.offersNear(state, nearest, nowMs)
+    }
+
+    fun sendAdventure(adventure: Adventure, uids: List<String>) =
+        apply(Adventures.send(state, adventure, uids, System.currentTimeMillis()))
+
+    fun claimAdventure(id: String) {
+        val u = Adventures.claim(state, id, System.currentTimeMillis())
+        set(u.state)
+        adventureResult = u.message
+    }
+
+    fun dismissAdventureResult() {
+        adventureResult = null
     }
 
     // ---- weapons -----------------------------------------------------------
