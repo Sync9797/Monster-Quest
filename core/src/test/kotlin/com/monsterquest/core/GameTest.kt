@@ -1481,6 +1481,15 @@ class GameTest {
             assertTrue(total(f) < legendaries.minOf { total(it.id) }, "$f should stay below every legendary")
             assertTrue(Bestiary.get(f).rarity != Rarity.LEGENDARY)
         }
+        // Mythics are as strong as a final evolution, but below starters and legendaries.
+        val mythics = listOf("mimic", "prism_fairy")
+        val avgFinal = otherFinals.map { total(it.id) }.average()
+        mythics.forEach { m ->
+            assertTrue(total(m) >= avgFinal - 5, "$m ${total(m)} vs finals $avgFinal")
+            assertTrue(finals.all { total(m) < total(it) }, "$m below the starters")
+            assertTrue(total(m) < legendaries.minOf { total(it.id) })
+            assertEquals(Rarity.EPIC, Bestiary.get(m).rarity)
+        }
         // Starting the game gives a starter, which evolves at 16 and 36.
         val s = GameEngine.chooseStarter(GameState(), "cindrake", Random(1)).state
         assertEquals("cindrake", s.monsters.single().speciesId)

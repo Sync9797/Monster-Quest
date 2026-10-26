@@ -8,9 +8,6 @@ Ideas we've agreed to do later. Newest first.
       Earth 9 (3 lines), against 13 for Fire, Electric and Water. Add a new
       evolution line for each (e.g. a bat or moth line for Flight, a mole or
       stone beetle line for Earth).
-- [ ] **Stronger mythics:** Prism Fairy and Mimic are rare one-stage monsters
-      but only about as strong as a mid-evolution monster. Raise them to roughly
-      a final evolution's strength.
 - [ ] **Hound breed details:** the Gale and Tide breeds are both blue, and
       Venom and Moss both green. Add per-breed features (fins, leaves, toxic
       sacs, feathers) so they're easy to tell apart.
@@ -18,3 +15,8 @@ Ideas we've agreed to do later. Newest first.
       map app. Later, draw the walking route on the game's own map.
 - [ ] **S2 Geometry (with multiplayer):** move spawn, den, villain and shrine
       placement onto S2 cells so players standing together share the same world.
+
+## Done
+
+- [x] **Stronger mythics** (1.11.1): Prism Fairy and Mimic are now as strong as
+      a final evolution, and rarer (Epic, from level 15).

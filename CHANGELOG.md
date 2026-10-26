@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.1
+
+- **Stronger mythics:** Prism Fairy and Mimic are now as strong as a final
+  evolution (stats x1.45, stronger signature attacks), still below the
+  starters and legendaries. To match, they're rarer: Epic rarity (harder to
+  find and to tame) and found from level 15. Ones you already own get the
+  boost too.
+
 ## 1.11.0
 
 - **Tasks:** things without a due date now have their own **Tasks** section

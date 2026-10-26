@@ -112,6 +112,17 @@ object Bestiary {
      */
     const val LEGENDARY_POWER = 1.6
 
+    /**
+     * Mythics are rare one-stage monsters as strong as a final evolution
+     * (but below the starters and legendaries): their stats are boosted by this.
+     */
+    const val MYTHIC_POWER = 1.45
+
+    private fun mythic(b: StatBlock) = StatBlock(
+        (b.hp * MYTHIC_POWER).toInt(), (b.attack * MYTHIC_POWER).toInt(), (b.magic * MYTHIC_POWER).toInt(),
+        (b.defense * MYTHIC_POWER).toInt(), (b.speed * MYTHIC_POWER).toInt(),
+    )
+
     private fun single(
         id: String, name: String, element: Element, rarity: Rarity,
         base: StatBlock, special: String, kind: SkillKind, power: Int, bossOnly: Boolean, minWildLevel: Int = 1,
@@ -247,9 +258,9 @@ object Bestiary {
             Member("archfiend", "Archfiend", "Infernal Pact"),
         )))
 
-        // ---- Mythics: rare single-stage monsters ----
-        add(single("mimic", "Mimic", Element.CORRUPT, Rarity.RARE, StatBlock(66, 24, 24, 24, 10), "Treasure Trap", SkillKind.PHYSICAL, 44, false, minWildLevel = 8))
-        add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.RARE, StatBlock(54, 10, 30, 15, 27), "Prism Beam", SkillKind.MAGICAL, 44, false, minWildLevel = 8))
+        // ---- Mythics: rare single-stage monsters, as strong as a final evolution ----
+        add(single("mimic", "Mimic", Element.CORRUPT, Rarity.EPIC, mythic(StatBlock(66, 24, 24, 24, 10)), "Treasure Trap", SkillKind.PHYSICAL, 52, false, minWildLevel = 15))
+        add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.EPIC, mythic(StatBlock(54, 10, 30, 15, 27)), "Prism Beam", SkillKind.MAGICAL, 52, false, minWildLevel = 15))
 
         // ---- Legendary bosses ----
         add(single("magma_behemoth", "Magma Behemoth", Element.FIRE, Rarity.LEGENDARY, StatBlock(84, 27, 18, 20, 9), "Eruption", SkillKind.PHYSICAL, 60, true))
