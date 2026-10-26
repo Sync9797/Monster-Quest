@@ -395,6 +395,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** The screen is blacked out while the game keeps tracking walking and spawns. */
     var batterySaver by mutableStateOf(false)
 
+    /** The battery saver was turned on by turning the phone upside down (so turning it upright ends it). */
+    var saverByFlip by mutableStateOf(false)
+
     /** The latest monster to appear nearby, shown on the battery saver screen. */
     var lastSpawnAlert by mutableStateOf<String?>(null)
 

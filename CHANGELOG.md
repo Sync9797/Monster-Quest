@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4
+
+- **Battery saver turns on by itself:** on the map, hold the phone upside
+  down for a moment and the screen goes dark; turn it upright to return
+  (press and hold still works too). Uses the phone's gravity sensor. Replaces
+  the Saver button; can be turned off in Settings.
+
 ## 0.2.3
 
 - **Phone calls never fail a phone-free session.** Answering or making a call

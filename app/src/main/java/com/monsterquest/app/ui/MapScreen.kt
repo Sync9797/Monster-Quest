@@ -148,6 +148,10 @@ fun MapScreen(vm: GameViewModel) {
     val villains = vm.villainsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
 
+    // Battery saver: turn the phone upside down (e.g. hanging at your side or in a
+    // pocket) and the screen goes dark; turn it back upright to return.
+    if (vm.state.settings.flipBatterySaver) UpsideDownSaver(vm)
+
     // Buzz when a new monster shows up nearby (also while the battery saver screen is on).
     LaunchedEffect(spawns.map { it.id }, loc) {
         if (loc == null) return@LaunchedEffect
@@ -274,7 +278,6 @@ fun MapScreen(vm: GameViewModel) {
                     OutlinedButton(onClick = {
                         loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
                     }) { IconText(GameIcon.PIN, "Center") }
-                    OutlinedButton(onClick = { vm.batterySaver = true }) { IconText(GameIcon.MOON, "Saver") }
                 }
             }
             Text(

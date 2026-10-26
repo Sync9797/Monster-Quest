@@ -1,6 +1,12 @@
 package com.monsterquest.app.ui
 
 import android.app.Activity
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.SystemClock
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
@@ -106,10 +112,65 @@ fun BatterySaverOverlay(vm: GameViewModel) {
             }
         }
         Text(
-            "Press and hold anywhere to unlock",
+            if (vm.saverByFlip) "Turn your phone upright to return, or press and hold" else "Press and hold anywhere to unlock",
             color = Dim,
             fontSize = 13.sp,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp),
         )
     }
 }
+
+/**
+ * Watches which way the phone faces while the map is open. Holding it upside
+ * down (top pointing at the ground) for a moment turns on the battery saver;
+ * turning it back upright turns it off. Uses the gravity sensor (gyroscope and
+ * accelerometer fused), or the plain accelerometer on phones without one.
+ */
+@Composable
+fun UpsideDownSaver(vm: GameViewModel) {
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_GRAVITY) ?: sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        // After an unlock by press-and-hold, wait until the phone is upright before arming again.
+        var armed = true
+        var wasOn = false
+        var downSince = 0L
+        var upSince = 0L
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                val y = event.values[1] // + when the top of the phone points up, - when it points down
+                val now = SystemClock.elapsedRealtime()
+                val upsideDown = y < UPSIDE_DOWN_Y
+                val upright = y > UPRIGHT_Y
+                downSince = if (upsideDown) (if (downSince == 0L) now else downSince) else 0L
+                upSince = if (upright) (if (upSince == 0L) now else upSince) else 0L
+                // Turned off some other way (press and hold) while we weren't looking.
+                if (wasOn && !vm.batterySaver) armed = false
+                if (vm.batterySaver) {
+                    if (vm.saverByFlip && upright && now - upSince >= HOLD_UP_MS) {
+                        vm.batterySaver = false
+                        vm.saverByFlip = false
+                    }
+                } else {
+                    if (upright) armed = true
+                    if (armed && upsideDown && now - downSince >= HOLD_DOWN_MS) {
+                        vm.batterySaver = true
+                        vm.saverByFlip = true
+                    }
+                }
+                wasOn = vm.batterySaver
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        if (sensor != null) sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+        onDispose { sm.unregisterListener(listener) }
+    }
+}
+
+/** Gravity along the phone's long axis (m/s²) that counts as upside down / upright. */
+private const val UPSIDE_DOWN_Y = -6.5f
+private const val UPRIGHT_Y = -1.5f
+private const val HOLD_DOWN_MS = 800L
+private const val HOLD_UP_MS = 300L

@@ -275,6 +275,7 @@ abstract class ScreenshotBase(private val device: String) {
         v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
         v.lastSpawnAlert = "A wild Zipwing appeared nearby!"
         v.batterySaver = true
+        v.saverByFlip = true
         shot("17_battery_saver") { AppRoot(v, Tab.MAP) }
     }
 

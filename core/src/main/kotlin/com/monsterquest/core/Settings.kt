@@ -26,6 +26,8 @@ data class Settings(
     val reducedEffects: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */
     val batterySaverGps: Boolean = false,
+    /** On the map, turning the phone upside down blacks out the screen to save battery. */
+    val flipBatterySaver: Boolean = true,
     /** Vibrate when a new monster appears nearby. */
     val vibrateOnSpawn: Boolean = true,
     val calendarAutoSync: Boolean = true,

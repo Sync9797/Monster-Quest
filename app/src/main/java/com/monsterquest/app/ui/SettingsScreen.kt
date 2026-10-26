@@ -140,6 +140,11 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
                     prefs.reducedEffects,
                 ) { on -> vm.updateSettings { it.copy(reducedEffects = on) } }
                 ToggleRow(
+                    "Battery saver when upside down",
+                    "On the map, hold your phone upside down (at your side or in a pocket) and the screen goes dark while the game keeps tracking. Turn it upright to return.",
+                    prefs.flipBatterySaver,
+                ) { on -> vm.updateSettings { it.copy(flipBatterySaver = on) } }
+                ToggleRow(
                     "Vibrate for new monsters",
                     "A short buzz when a monster appears within ${com.monsterquest.app.ALERT_RANGE_M.toInt()} m, even on the battery saver screen.",
                     prefs.vibrateOnSpawn,
