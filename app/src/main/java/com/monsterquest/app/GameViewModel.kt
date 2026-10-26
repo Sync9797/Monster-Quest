@@ -1,5 +1,12 @@
 package com.monsterquest.app
 
+import com.monsterquest.app.data.CalendarReader
+import com.monsterquest.core.STEPS_PER_MILE
+import com.monsterquest.core.METERS_PER_MILE
+import com.monsterquest.core.Villains
+import com.monsterquest.core.VillainCamp
+import com.monsterquest.core.Stat
+import com.monsterquest.core.WeaponType
 import android.app.Application
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
@@ -114,6 +121,29 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteTask(id: String) = apply(GameEngine.deleteTask(state, id))
     fun completeTask(id: String) = apply(GameEngine.completeTask(state, id, System.currentTimeMillis()))
 
+    var syncingCalendar by mutableStateOf(false)
+        private set
+
+    /** Pull events from the phone's calendar into quests. */
+    fun syncCalendar(quiet: Boolean = false) {
+        if (syncingCalendar) return
+        syncingCalendar = true
+        viewModelScope.launch {
+            try {
+                val events = withContext(Dispatchers.IO) { CalendarReader.read(getApplication()) }
+                val u = GameEngine.syncCalendar(state, events)
+                if (quiet) set(u.state) else apply(u)
+            } catch (e: SecurityException) {
+                if (!quiet) message = "Calendar permission is needed to sync."
+            } catch (e: Exception) {
+                if (!quiet) message = "Calendar sync failed: ${e.message}"
+            } finally {
+                syncingCalendar = false
+            }
+        }
+    }
+
+
     // ---- monsters & items --------------------------------------------------
 
     // ---- phone-free sessions -----------------------------------------------
@@ -177,7 +207,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private var lastWalkPoint: Pair<Double, Double>? = null
 
-    fun onStepCount(totalSteps: Long) = set(LootBoxes.onStepCount(state, totalSteps))
+    /** Step counter reading: unlocks loot boxes and pays XP/healing every 100 steps. */
+    fun onStepCount(totalSteps: Long) {
+        val u = GameEngine.onStepCount(state, totalSteps)
+        set(u.state)
+        if (u.message.isNotEmpty()) message = u.message
+    }
 
     fun startUnlocking(id: String) = apply(LootBoxes.startUnlocking(state, id))
     fun discardBox(id: String) = apply(LootBoxes.discard(state, id))
@@ -204,7 +239,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         boxBoss = null
     }
 
-    fun forge() = apply(GameEngine.forge(state))
+    fun forge(type: WeaponType) = apply(GameEngine.forge(state, type))
+    fun usePotion(item: Item, target: String) = apply(GameEngine.usePotion(state, item, target))
+    fun perfectStat(uid: String, stat: Stat) = apply(GameEngine.perfectStat(state, uid, stat))
 
     /** GPS fallback for phones without a step counter: count distance moved while the app is open. */
     private fun walkFromGps(lat: Double, lon: Double) {
@@ -214,7 +251,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             val d = World.distanceMeters(last.first, last.second, lat, lon)
             // Ignore GPS jitter and big jumps (e.g. a fix after being in a car or tunnel).
             if (d < 5) return
-            if (d < 300) set(LootBoxes.addWalk(state, d))
+            if (d < 300) {
+                val u = GameEngine.walk(state, (d / METERS_PER_MILE * STEPS_PER_MILE).toInt())
+                set(u.state)
+                if (u.message.isNotEmpty()) message = u.message
+            }
         }
         lastWalkPoint = lat to lon
     }
@@ -250,9 +291,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- weapons -----------------------------------------------------------
 
-    fun equip(index: Int) = apply(GameEngine.equip(state, index))
+    fun equip(id: String) = apply(GameEngine.equip(state, id))
     fun unequip() = apply(GameEngine.unequip(state))
-    fun dropWeapon(index: Int) = apply(GameEngine.dropWeapon(state, index))
+    fun dropWeapon(id: String) = apply(GameEngine.dropWeapon(state, id))
 
     fun restore(uid: String) = apply(GameEngine.restore(state, uid))
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
@@ -348,6 +389,39 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         startBattle(enemy, EncounterType.WILD, null)
     }
 
+    // ---- villains -----------------------------------------------------------
+
+    /** A fight against a villain's team in progress: which monster we're on. */
+    private data class VillainRun(val camp: VillainCamp, val index: Int)
+    private var villainRun: VillainRun? = null
+
+    fun villainsNear(nowMs: Long): List<VillainCamp> {
+        val (lat, lon) = location ?: return emptyList()
+        return Villains.near(state, lat, lon, nowMs)
+    }
+
+    fun challengeVillain(camp: VillainCamp) {
+        val d = distanceTo(camp.lat, camp.lon)
+        if (d == null || d > Villains.RANGE_M) {
+            message = "Get closer to ${camp.leader} (within ${Villains.RANGE_M.toInt()} m)."
+            return
+        }
+        villainRun = VillainRun(camp, 0)
+        startBattle(camp.team.first(), EncounterType.VILLAIN, null)
+    }
+
+    /** After beating one of a villain's monsters, face the next. */
+    fun nextVillainMonster() {
+        val run = villainRun ?: return
+        val next = run.copy(index = run.index + 1)
+        val enemy = run.camp.team.getOrNull(next.index) ?: return
+        villainRun = next
+        startBattle(enemy, EncounterType.VILLAIN, null)
+    }
+
+    fun redeemVillainMonster(index: Int) = apply(Villains.redeem(state, index))
+    fun dismissSpoils() = set(Villains.dismissSpoils(state))
+
     // ---- battle ------------------------------------------------------------
 
     private fun startBattle(enemy: Monster, type: EncounterType, shrineId: String?) {
@@ -361,16 +435,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (b.outcome != BattleOutcome.ONGOING) return
         b.act(action)
         var resultText: String? = null
+        var nextOpponent: String? = null
         if (b.outcome != BattleOutcome.ONGOING) {
             val u = GameEngine.applyBattleResult(state, b.result(), System.currentTimeMillis())
             set(u.state)
             resultText = u.message
+            val run = villainRun
+            if (run != null) {
+                val next = run.camp.team.getOrNull(run.index + 1)
+                if (b.outcome == BattleOutcome.WON && next != null) {
+                    nextOpponent = next.displayName
+                } else if (b.outcome == BattleOutcome.WON) {
+                    val reward = Villains.reward(state, run.camp, System.currentTimeMillis())
+                    set(reward.state)
+                    resultText += " " + reward.message
+                    villainRun = null
+                } else {
+                    resultText += " ${run.camp.leader}'s crew drives you off."
+                    villainRun = null
+                }
+            }
         }
-        battle = BattleView.of(b, resultText ?: battle?.resultText)
+        battle = BattleView.of(b, resultText ?: battle?.resultText, nextOpponent ?: battle?.nextOpponent)
     }
 
     fun closeBattle() {
         activeBattle = null
         battle = null
+        villainRun = null
     }
 }

@@ -1,5 +1,16 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.AlertDialog
+import com.monsterquest.core.WeaponType
+import com.monsterquest.core.ItemKind
+import com.monsterquest.core.HeroClass
+import com.monsterquest.core.Gear
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.color
 import com.monsterquest.app.ui.art.icon
@@ -34,6 +45,7 @@ import com.monsterquest.core.Spells
 @Composable
 fun BagScreen(vm: GameViewModel) {
     val s = vm.state
+    var using by remember { mutableStateOf<Item?>(null) }
     val bag: @Composable () -> Unit = {
         LootBoxSection(vm)
         SectionTitle("Bag ${s.bagCount}/${s.bagCapacity}")
@@ -55,6 +67,7 @@ fun BagScreen(vm: GameViewModel) {
                         Text("${item.label} x${s.count(item)}", fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    if (item.kind == ItemKind.HEAL_HP) SmallButton("Use", { using = item }, outlined = true)
                     TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
                 }
             }
@@ -63,45 +76,34 @@ fun BagScreen(vm: GameViewModel) {
     }
     val gear: @Composable () -> Unit = {
         SectionTitle("Weapons")
-        s.equippedWeapon?.let { w ->
-            GameCard(Modifier.padding(vertical = 3.dp), border = Gold) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    GIcon(w.icon(), Modifier.size(28.dp), w.color())
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("${w.label} (equipped)", fontWeight = FontWeight.SemiBold)
-                        Text(w.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    TextButton(onClick = vm::unequip) { Text("Remove") }
-                }
+        Text(
+            "Any class can use any weapon; your class gets +20% from its own types " +
+                "(Warrior: sword, broadsword • Rogue: dagger, sword • Mage: staff, wand).",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        s.equippedGear?.let { w ->
+            GearCard(w, s.hero.heroClass, equipped = true) {
+                TextButton(onClick = vm::unequip) { Text("Remove") }
             }
         }
-        if (s.weapons.isEmpty() && s.equippedWeapon == null) {
-            Text("No weapons yet. Item shrines sometimes have one, and parts can be forged into one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (s.gear.isEmpty() && s.equippedGear == null) {
+            Text("No weapons yet. Item shrines, villains and boxes drop them, and parts can be forged.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        s.weapons.forEachIndexed { i, w ->
-            GameCard(Modifier.padding(vertical = 3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    GIcon(w.icon(), Modifier.size(28.dp), w.color())
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(w.label, fontWeight = FontWeight.SemiBold)
-                        Text("${w.rarity.label} • ${w.description}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    TextButton(onClick = { vm.dropWeapon(i) }) { Text("Drop") }
-                    SmallButton("Equip", { vm.equip(i) })
-                }
+        s.gear.sortedWith(compareByDescending<Gear> { it.rarity }.thenByDescending { it.level }).forEach { w ->
+            GearCard(w, s.hero.heroClass, equipped = false) {
+                TextButton(onClick = { vm.dropWeapon(w.id) }) { Text("Drop") }
+                SmallButton("Equip", { vm.equip(w.id) })
             }
         }
-        GameCard(Modifier.padding(vertical = 3.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GIcon(GameIcon.PARTS, Modifier.size(28.dp), SilverColor)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Weapon parts ${s.weaponParts}/${GameEngine.PARTS_TO_FORGE}", fontWeight = FontWeight.SemiBold)
-                    Text("From Level 2+ loot boxes. Forge ${GameEngine.PARTS_TO_FORGE} into a weapon.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                SmallButton("Forge", vm::forge, enabled = s.weaponParts >= GameEngine.PARTS_TO_FORGE && !s.bagFull)
+        SectionTitle("Weapon parts")
+        WeaponType.entries.forEach { type ->
+            val n = s.parts[type] ?: 0
+            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                GIcon(type.icon(), Modifier.size(20.dp), SilverColor)
+                Spacer(Modifier.width(8.dp))
+                Text("${type.label} parts $n/${GameEngine.PARTS_TO_FORGE}", modifier = Modifier.weight(1f))
+                SmallButton("Forge", { vm.forge(type) }, enabled = n >= GameEngine.PARTS_TO_FORGE && !s.bagFull, outlined = true)
             }
         }
         val pages = s.spellPages.filterValues { it > 0 }
@@ -161,4 +163,68 @@ fun BagScreen(vm: GameViewModel) {
             }
         },
     )
+    using?.let { item -> PotionTargetDialog(vm, item) { using = null } }
+}
+
+/** One weapon: rarity-colored name, level and type, stats for your class, and its effects. */
+@Composable
+private fun GearCard(w: Gear, cls: HeroClass, equipped: Boolean, actions: @Composable () -> Unit) {
+    GameCard(Modifier.padding(vertical = 3.dp), border = if (equipped) Gold else w.rarity.color().copy(alpha = 0.5f)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GIcon(w.type.icon(), Modifier.size(30.dp), w.rarity.color())
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("${w.rarity.label} ${w.name}" + if (equipped) " (equipped)" else "", fontWeight = FontWeight.SemiBold, color = w.rarity.color())
+                Text(
+                    "Lv ${w.level} ${w.type.label}" + if (w.matches(cls)) " • Class bonus" else "",
+                    fontSize = 12.sp,
+                    color = if (w.matches(cls)) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(w.summary(cls), fontSize = 12.sp)
+                w.effects.forEach { fx ->
+                    Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            actions()
+        }
+    }
+}
+
+/** Pick who drinks a healing potion outside battle. */
+@Composable
+fun PotionTargetDialog(vm: GameViewModel, item: Item, onDone: () -> Unit) {
+    val s = vm.state
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Use ${item.label} on…") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                val heroHp = s.hero.maxHp - s.heroDamage
+                TargetRow("You", "HP $heroHp/${s.hero.maxHp}", s.heroDamage > 0) {
+                    vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY)
+                    onDone()
+                }
+                s.monsters.filter { !it.fainted }.forEach { m ->
+                    TargetRow(m.displayName, "HP ${m.currentHp}/${m.stats.hp}", m.damage > 0) {
+                        vm.usePotion(item, m.uid)
+                        onDone()
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDone) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun TargetRow(name: String, hp: String, hurt: Boolean, onPick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(name, fontWeight = FontWeight.SemiBold)
+            Text(hp, fontSize = 12.sp, color = if (hurt) HpYellow else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SmallButton(if (hurt) "Heal" else "Full HP", onPick, enabled = hurt)
+    }
 }

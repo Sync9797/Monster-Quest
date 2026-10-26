@@ -70,6 +70,8 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     // Weapons
     SWORD(fill("M20 2.5l-9.5 9.5 1.5 1.5L21.5 4V2.5z"), fill("M6.5 12.5l5 5-1.2 1.2-5-5z"), fill("M7 16l1.8 1.8-3.6 3.6-1.8-1.8z")),
     STAFF(line("M5 21L16 8"), fill("M18 3a3.2 3.2 0 1 0 .01 0z")),
+    BROADSWORD(fill("M18 2h4v4L11 17l-4-4z"), fill("M5.5 11.5l7 7-1.5 1.5-7-7z"), fill("M6 17l1.5 1.5-3.5 3.5L2.5 20.5z")),
+    WAND(line("M4 20L14 10"), fill("M17 3l1.2 2.8L21 7l-2.8 1.2L17 11l-1.2-2.8L13 7l2.8-1.2z")),
     SPEAR(line("M6 18L17 7"), fill("M21 3l-2 6-4-4z")),
     BOW(line("M6 3c9 3 9 15 0 18"), line("M6 3v18"), line("M6 12h13M16 9l3 3-3 3")),
     TRIDENT(line("M12 22V7"), line("M7 3v4a5 5 0 0 0 10 0V3M12 2v5")),

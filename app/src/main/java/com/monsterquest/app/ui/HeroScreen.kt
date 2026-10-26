@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.core.GameEngine
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.HeroArt
 import com.monsterquest.app.ui.art.color
@@ -67,7 +68,19 @@ fun HeroScreen(vm: GameViewModel) {
                 }
             }
             Spacer(Modifier.height(8.dp))
+            LabeledBar("HP", h.maxHp - s.heroDamage, h.maxHp, hpColor((h.maxHp - s.heroDamage).toFloat() / h.maxHp))
+            Spacer(Modifier.height(4.dp))
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconText(GameIcon.WALK, "${s.stepsToday} steps today", tint = HpGreen, fontSize = 13.sp)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "Next +${GameEngine.XP_PER_REWARD} XP/HP in ${GameEngine.STEPS_PER_REWARD - s.stepBank} steps",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 StatPill("Max HP", h.maxHp.toString(), Modifier.weight(1f))
@@ -134,12 +147,13 @@ fun HeroScreen(vm: GameViewModel) {
 
         SectionTitle("Weapon")
         GameCard {
-            val w = s.equippedWeapon
+            val w = s.equippedGear
             if (w == null) {
-                Text("Bare-handed. Find weapons at item shrines, or forge them, then equip them from the Bag.")
+                Text("Bare-handed. Find weapons at shrines and villain camps, or forge them, then equip them from the Bag.")
             } else {
-                IconText(w.icon(), w.label, tint = w.color(), bold = true)
-                Text(w.description, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                IconText(w.type.icon(), "${w.rarity.label} ${w.name} (Lv ${w.level})", tint = w.rarity.color(), bold = true)
+                Text(w.summary(h.heroClass), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (w.matches(h.heroClass)) Text("Class bonus active (+20%)", fontSize = 12.sp, color = HpGreen)
             }
         }
 

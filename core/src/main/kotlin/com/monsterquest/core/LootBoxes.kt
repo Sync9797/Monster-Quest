@@ -100,21 +100,8 @@ object LootBoxes {
         )
     }
 
-    /**
-     * A new reading from the phone's step counter (total steps since boot).
-     * Steps since the previous reading count as walking; a lower reading means
-     * the phone rebooted, so the new total counts from zero.
-     */
-    fun onStepCount(state: GameState, totalSteps: Long): GameState {
-        val last = state.lastStepCount
-        val delta = when {
-            last == null -> 0L
-            totalSteps >= last -> totalSteps - last
-            else -> totalSteps
-        }
-        val walked = addWalk(state, delta * METERS_PER_MILE / STEPS_PER_MILE)
-        return walked.copy(lastStepCount = totalSteps)
-    }
+    /** A new reading from the phone's step counter (total steps since boot). See [GameEngine.onStepCount]. */
+    fun onStepCount(state: GameState, totalSteps: Long): GameState = GameEngine.onStepCount(state, totalSteps).state
 
     private val potions = listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN)
 
@@ -153,7 +140,7 @@ object LootBoxes {
             }
         }
         var s = state.copy(lootBoxes = state.lootBoxes.filterNot { it.id == id }, gold = state.gold + gold)
-        val granted = GameEngine.grantLoot(s, GameEngine.Loot(items = items, pages = pages, parts = parts))
+        val granted = GameEngine.grantLoot(s, GameEngine.Loot(items = items, pages = pages, parts = GameEngine.rollParts(parts, rng)))
         s = granted.state
         val text = "Level $level box: +$gold gold, ${granted.message}."
         if (level < 4) return BoxOpening(Update(s, text))

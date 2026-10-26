@@ -31,11 +31,13 @@ data class BattleView(
     val orbs: List<OrbOption>,
     val captureBlocked: String?,
     val resultText: String?,
+    /** Villain fights: the next monster to face after this win. */
+    val nextOpponent: String? = null,
 ) {
     val isBoss: Boolean get() = encounter != EncounterType.WILD
 
     companion object {
-        fun of(b: Battle, resultText: String?): BattleView {
+        fun of(b: Battle, resultText: String?, nextOpponent: String? = null): BattleView {
             val cur = b.current
             return BattleView(
                 allies = b.allies.map { FighterView.of(it) },
@@ -54,6 +56,7 @@ data class BattleView(
                 orbs = b.orbs().map { OrbOption(it, b.count(it), b.captureOdds(it)) },
                 captureBlocked = b.captureBlockedReason(),
                 resultText = resultText,
+                nextOpponent = nextOpponent,
             )
         }
     }
@@ -77,13 +80,14 @@ data class FighterView(
     /** Status and stat-change labels, e.g. "Asleep", "Def ↓1". */
     val tags: List<String>,
     val status: Status?,
+    val cursed: Boolean = false,
 ) {
     val alive: Boolean get() = hp > 0
     val hpFraction: Float get() = hp.toFloat() / maxHp
 
     companion object {
         fun of(c: Combatant) = FighterView(
-            c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status,
+            c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status, c.cursed,
         )
     }
 }

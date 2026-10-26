@@ -295,16 +295,47 @@ class GameTest {
 
     @Test
     fun weaponsEquipAndTypeTheAttack() {
-        var s = GameEngine.grantLoot(started(), GameEngine.Loot(weapons = listOf(Weapon.STORM_SPEAR))).state
-        assertEquals(1, s.weapons.size)
+        val spear = Gear("g1", WeaponType.SWORD, GearRarity.RARE, 10, Element.ELECTRIC)
+        var s = GameEngine.grantLoot(started(), GameEngine.Loot(weapons = listOf(spear))).state
+        assertEquals(1, s.gear.size)
         val before = s.bagCount
-        s = GameEngine.equip(s, 0).state
-        assertEquals(Weapon.STORM_SPEAR, s.equippedWeapon)
+        s = GameEngine.equip(s, "g1").state
+        assertEquals(spear, s.equippedGear)
         assertEquals(before - 1, s.bagCount)
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("bubblefin"), 1, rng), EncounterType.WILD, rng = rng)
         val hero = b.allies.first()
         assertEquals(Element.ELECTRIC, hero.attackElement)
-        assertEquals(s.hero.attack + Weapon.STORM_SPEAR.attack, hero.attack)
+        assertEquals(s.hero.attack + spear.attackBonus(s.hero.heroClass), hero.attack)
+    }
+
+    @Test
+    fun weaponTypesClassesAndRarity() {
+        val warrior = HeroClass.WARRIOR
+        val sword = Gear("a", WeaponType.SWORD, GearRarity.NORMAL, 20)
+        val broad = sword.copy(type = WeaponType.BROADSWORD)
+        val dagger = sword.copy(type = WeaponType.DAGGER)
+        val staff = sword.copy(type = WeaponType.STAFF)
+        // Class match bonus.
+        assertTrue(sword.attackBonus(warrior) > sword.attackBonus(HeroClass.MAGE))
+        assertTrue(staff.magicBonus(HeroClass.MAGE) > staff.magicBonus(warrior))
+        // Broadsword hits harder but slows; staff is magic-heavy.
+        assertTrue(broad.attackBonus(warrior) > sword.attackBonus(warrior))
+        assertTrue(staff.magicBonus(HeroClass.MAGE) > staff.attackBonus(HeroClass.MAGE))
+        val hero = Hero(level = 20, heroClass = warrior)
+        assertTrue(Combatant.fromHero(hero, broad).speed < Combatant.fromHero(hero, sword).speed)
+        // Daggers hit twice; wands restore energy.
+        assertEquals(2, Combatant.fromHero(hero, dagger).hits)
+        assertTrue(Combatant.fromHero(hero, sword.copy(type = WeaponType.WAND)).energyRegen > 0)
+        // Rarity raises power and adds effects.
+        val legendary = sword.copy(rarity = GearRarity.LEGENDARY)
+        assertTrue(legendary.power > sword.power)
+        val rolledLegend = (1..400).map { Armory.roll(40, Random(it)) }.filter { it.rarity == GearRarity.LEGENDARY }
+        assertTrue(rolledLegend.isNotEmpty() && rolledLegend.all { it.effects.size == 3 })
+        // Higher levels: better weapons.
+        val low = (1..400).count { Armory.roll(2, Random(it)).rarity >= GearRarity.EPIC }
+        val high = (1..400).count { Armory.roll(40, Random(it)).rarity >= GearRarity.EPIC }
+        assertTrue(high > low)
+        assertTrue(Armory.roll(40, rng).power > Armory.roll(2, rng).power)
     }
 
     @Test
@@ -395,14 +426,14 @@ class GameTest {
         repeat(20) { seed ->
             val l1 = openBox(BoxRarity.COMMON, seed)
             assertTrue(l1.update.state.gold in 30..60)
-            assertEquals(0, l1.update.state.weaponParts)
+            assertEquals(0, l1.update.state.parts.values.sum())
             assertTrue(l1.update.state.spellPages.isEmpty())
             assertNull(l1.boss)
             val l2 = openBox(BoxRarity.RARE, seed).update.state
-            assertTrue(l2.weaponParts > 0)
+            assertTrue(l2.parts.values.sum() > 0)
             assertTrue(l2.spellPages.isEmpty())
             val l3 = openBox(BoxRarity.EPIC, seed).update.state
-            assertTrue(l3.weaponParts > 0 && l3.spellPages.isNotEmpty())
+            assertTrue(l3.parts.values.sum() > 0 && l3.spellPages.isNotEmpty())
             assertNotNull(openBox(BoxRarity.LEGENDARY, seed).boss)
         }
         val legendaryBosses = (1..1000).count { LootBoxes.boxBoss(10, Random(it)).species.rarity == Rarity.LEGENDARY }
@@ -414,11 +445,102 @@ class GameTest {
 
     @Test
     fun forgingWeapons() {
-        val s = started().copy(weaponParts = GameEngine.PARTS_TO_FORGE + 1)
-        val u = GameEngine.forge(s, rng)
-        assertEquals(1, u.state.weaponParts)
-        assertEquals(1, u.state.weapons.size)
-        assertEquals(u.state, GameEngine.forge(u.state, rng).state)
+        val s = started().copy(parts = mapOf(WeaponType.DAGGER to GameEngine.PARTS_TO_FORGE + 1, WeaponType.STAFF to 2))
+        val u = GameEngine.forge(s, WeaponType.DAGGER, rng)
+        assertEquals(1, u.state.parts[WeaponType.DAGGER])
+        assertEquals(WeaponType.DAGGER, u.state.gear.single().type)
+        assertEquals(u.state, GameEngine.forge(u.state, WeaponType.DAGGER, rng).state)
+        assertEquals(u.state, GameEngine.forge(u.state, WeaponType.STAFF, rng).state)
+    }
+
+    @Test
+    fun oldWeaponsConvert() {
+        val old = started().copy(version = 2, weapons = listOf(Weapon.STORM_SPEAR), equippedWeapon = Weapon.ARCANE_STAFF, weaponParts = 3)
+        val s = GameState.fromJson(old.toJson())
+        assertEquals(WeaponType.BROADSWORD, s.gear.single().type)
+        assertEquals(WeaponType.STAFF, s.equippedGear?.type)
+        assertEquals(3, s.parts[WeaponType.SWORD])
+        assertTrue(s.weapons.isEmpty())
+    }
+
+    @Test
+    fun walkingRewardsAndHeals() {
+        val m = Monster.create(Bestiary.get("emberkit"), 5, rng).copy(damage = 30)
+        var s = started().copy(monsters = listOf(m), party = listOf(m.uid), heroDamage = 40)
+        s = GameEngine.onStepCount(s, 1000, at(27)).state // baseline
+        assertEquals(0L, s.stats.totalSteps)
+        s = GameEngine.onStepCount(s, 1250, at(27)).state // +250 steps = 2 rewards, 50 banked
+        assertEquals(20, s.hero.xp)
+        assertEquals(20, s.heroDamage)
+        assertEquals(10, s.monsters.single().damage)
+        assertEquals(20, s.monsters.single().xp)
+        assertEquals(50, s.stepBank)
+        assertEquals(250, s.stepsToday)
+        s = GameEngine.onStepCount(s, 1300, at(27)).state // banked 50 + 50 = another reward
+        assertEquals(10, s.heroDamage)
+        assertEquals(0, s.monsters.single().damage)
+        assertEquals(0, s.stepBank)
+    }
+
+    @Test
+    fun damageCarriesBetweenBattles() {
+        val s = started()
+        val enemy = Monster.create(Bestiary.get("zapmouse"), 6, rng)
+        val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = rng)
+        var guard = 0
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Attack)
+        val after = GameEngine.applyBattleResult(s, b.result(), 0).state
+        val hurt = after.heroDamage > 0 || after.monsters.any { it.damage > 0 || it.fainted }
+        assertTrue(hurt)
+        // The next battle starts with the same missing HP.
+        val hero = Combatant.fromHero(after.hero, after.equippedGear, after.heroDamage)
+        assertEquals(after.hero.maxHp - after.heroDamage, hero.hp)
+        // Potions heal outside battle.
+        val healed = GameEngine.usePotion(after.copy(heroDamage = 60), Item.POTION, Combatant.HERO_KEY).state
+        assertTrue(healed.heroDamage < 60)
+    }
+
+    @Test
+    fun villainsAndShadowCurse() {
+        val s = started().copy(hero = Hero(level = 10), inventory = mapOf(Item.RESTORE_POTION to 1))
+        val camps = Villains.near(s, 40.7, -74.0, at(27), utc)
+        assertTrue(camps.isNotEmpty())
+        val camp = camps.first()
+        assertTrue(camp.team.all { it.cursed })
+        // Same day, same camps; cursed monsters can't be tamed.
+        assertEquals(camps.map { it.id }, Villains.near(s, 40.7, -74.0, at(27, 20), utc).map { it.id })
+        val b = GameEngine.newBattle(s, camp.team.first(), EncounterType.VILLAIN, rng = rng)
+        b.enemy.hp = 1
+        assertNotNull(b.captureBlockedReason())
+        // The curse: half Defense, +25% Attack.
+        val clean = camp.team.first().copy(cursed = false)
+        assertTrue(camp.team.first().stats.defense < clean.stats.defense)
+        assertTrue(camp.team.first().stats.attack > clean.stats.attack)
+
+        val won = Villains.reward(s, camp, at(27), rng, utc).state
+        assertTrue(won.gold > s.gold)
+        assertEquals(camp.team.size, won.villainSpoils.size)
+        assertTrue(Villains.near(won, 40.7, -74.0, at(27), utc).none { it.id == camp.id })
+        // Redeeming costs a potion; about 75% join.
+        val joins = (1..200).count { Villains.redeem(won, 0, Random(it)).state.monsters.size == won.monsters.size + 1 }
+        assertTrue(joins in 120..180, "about 75%: $joins")
+        val redeemed = (1..50).map { Villains.redeem(won, 0, Random(it)).state }.first { it.monsters.size > won.monsters.size }
+        assertEquals(0, redeemed.count(Item.RESTORE_POTION))
+        assertTrue(redeemed.villainSpoils.isEmpty())
+        val newcomer = redeemed.monsters.last()
+        assertTrue(newcomer.cursed)
+
+        // Fighting lifts the curse; then one stat can be perfected.
+        var t = redeemed.copy(party = listOf(newcomer.uid))
+        repeat(newcomer.cureNeeded) {
+            val r = BattleResult(BattleOutcome.WON, EncounterType.WILD, clean, 0, 0, mapOf(newcomer.uid to 1), emptyMap(), emptyMap(), null, null)
+            t = GameEngine.applyBattleResult(t, r, 0).state
+        }
+        val cured = t.monsters.last()
+        assertTrue(!cured.cursed && cured.cureReady)
+        val perfect = GameEngine.perfectStat(t, cured.uid, Stat.SPEED).state.monsters.last()
+        assertEquals(MAX_IV, perfect.ivs.speed)
+        assertTrue(!perfect.cureReady)
     }
 
     @Test

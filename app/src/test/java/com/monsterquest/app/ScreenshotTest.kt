@@ -36,7 +36,8 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.Monster
 import com.monsterquest.core.QuestTask
 import com.monsterquest.core.TaskSource
-import com.monsterquest.core.Weapon
+import com.monsterquest.core.Armory
+import com.monsterquest.core.WeaponType
 import com.monsterquest.core.World
 import org.junit.Rule
 import org.junit.Test
@@ -85,15 +86,15 @@ abstract class ScreenshotBase(private val device: String) {
             starterChosen = true,
             monsters = monsters,
             party = monsters.take(3).map { it.uid },
-            weapons = listOf(Weapon.IRON_SWORD, Weapon.TIDE_TRIDENT),
+            gear = listOf(Armory.roll(12, Random(3), WeaponType.SWORD, luck = 40), Armory.roll(12, Random(4), WeaponType.STAFF)),
             lootBoxes = listOf(
                 LootBox("b1", BoxRarity.RARE, 0, unlocking = true, walkedMeters = 2_000.0),
                 LootBox("b2", BoxRarity.COMMON, 0, unlocking = true, walkedMeters = BoxRarity.COMMON.meters),
                 LootBox("b3", BoxRarity.LEGENDARY, 0),
             ),
-            equippedWeapon = Weapon.STORM_SPEAR,
+            equippedGear = Armory.roll(12, Random(5), WeaponType.DAGGER, luck = 80),
             spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
-            weaponParts = 3,
+            parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
             inventory = mapOf(Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY),

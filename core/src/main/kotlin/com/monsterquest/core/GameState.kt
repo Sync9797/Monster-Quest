@@ -165,7 +165,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 2,
+    val version: Int = 3,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -176,11 +176,26 @@ data class GameState(
     /** Epoch day of the last free daily recovery (see GameEngine.dailyRecovery). */
     val lastRecoveryDay: Long? = null,
     /** Unequipped weapons (each takes a bag slot). */
+    val gear: List<Gear> = emptyList(),
+    val equippedGear: Gear? = null,
+    /** Weapon parts by type; [GameEngine.PARTS_TO_FORGE] of one type forge that weapon. */
+    val parts: Map<WeaponType, Int> = emptyMap(),
+    /** Damage the hero carries between battles (healed by walking and potions). */
+    val heroDamage: Int = 0,
+    /** Steps not yet turned into a reward (rewards come every 100 steps). */
+    val stepBank: Int = 0,
+    val stepsToday: Int = 0,
+    /** Epoch day [stepsToday] belongs to. */
+    val stepsDay: Long? = null,
+    /** Villain camp id -> epoch day defeated. */
+    val villainsDefeated: Map<String, Long> = emptyMap(),
+    /** Monsters of the last defeated villain team; one can be restored to join you. */
+    val villainSpoils: List<Monster> = emptyList(),
+    // Legacy fields from older saves, converted on load.
     val weapons: List<Weapon> = emptyList(),
     val equippedWeapon: Weapon? = null,
     /** Spell-book pages collected per spell id; [Spells.PAGES_TO_LEARN] teach the spell. */
     val spellPages: Map<String, Int> = emptyMap(),
-    /** Weapon parts; [PARTS_TO_FORGE] forge a new weapon. */
     val weaponParts: Int = 0,
     /** The phone-free session in progress, if any. */
     val focus: FocusSession? = null,
@@ -204,7 +219,7 @@ data class GameState(
     val stats: Lifetime = Lifetime(),
     val starterChosen: Boolean = false,
 ) {
-    val bagCount: Int get() = inventory.values.sum() + weapons.size
+    val bagCount: Int get() = inventory.values.sum() + gear.size
     val bagFull: Boolean get() = bagCount >= bagCapacity
     val storageFull: Boolean get() = monsters.size >= monsterCapacity
     val partyMonsters: List<Monster> get() = party.mapNotNull { uid -> monsters.find { it.uid == uid } }
@@ -219,11 +234,27 @@ data class GameState(
 
     /** Brings older saves up to date (e.g. monsters from the previous roster). */
     fun migrated(): GameState {
-        if (version >= 2) return this
-        return copy(
-            version = 2,
-            monsters = monsters.map { it.copy(speciesId = Bestiary.migrateId(it.speciesId)).evolved() },
-        )
+        var s = this
+        if (s.version < 2) {
+            s = s.copy(
+                version = 2,
+                monsters = s.monsters.map { it.copy(speciesId = Bestiary.migrateId(it.speciesId)).evolved() },
+            )
+        }
+        if (s.version < 3) {
+            // Old fixed weapons become the new weapon types; untyped parts become sword parts.
+            val rng = kotlin.random.Random(s.hero.level)
+            s = s.copy(
+                version = 3,
+                gear = s.gear + s.weapons.map { Armory.fromLegacy(it, s.hero.level, rng) },
+                equippedGear = s.equippedGear ?: s.equippedWeapon?.let { Armory.fromLegacy(it, s.hero.level, rng) },
+                parts = if (s.weaponParts > 0) s.parts + (WeaponType.SWORD to (s.parts[WeaponType.SWORD] ?: 0) + s.weaponParts) else s.parts,
+                weapons = emptyList(),
+                equippedWeapon = null,
+                weaponParts = 0,
+            )
+        }
+        return s
     }
 }
 
@@ -238,4 +269,6 @@ data class Lifetime(
     val focusWins: Int = 0,
     val focusFails: Int = 0,
     val focusMinutes: Int = 0,
+    val totalSteps: Long = 0,
+    val villainsBeaten: Int = 0,
 )

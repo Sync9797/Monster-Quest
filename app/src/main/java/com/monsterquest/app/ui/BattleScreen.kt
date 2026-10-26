@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +76,7 @@ private sealed interface Menu {
 }
 
 @Composable
-fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit) {
+fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit = {}) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     // Return to the main menu whenever the turn passes to someone else.
     LaunchedEffect(b.current?.key, b.round, b.log.size) { menu = Menu.Main }
@@ -99,7 +100,7 @@ fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () ->
                     ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)
                 }
             } else {
-                ResultPanel(b, onClose)
+                ResultPanel(b, onClose, onNext)
             }
         }
     }
@@ -438,7 +439,7 @@ private fun BackButton(onMenu: (Menu) -> Unit) {
 }
 
 @Composable
-private fun ResultPanel(b: BattleView, onClose: () -> Unit) {
+private fun ResultPanel(b: BattleView, onClose: () -> Unit, onNext: () -> Unit) {
     val (title, color) = when (b.outcome) {
         BattleOutcome.WON -> "Victory!" to Gold
         BattleOutcome.CAPTURED -> "Tamed!" to XpPurple
@@ -460,7 +461,14 @@ private fun ResultPanel(b: BattleView, onClose: () -> Unit) {
                 Text(it, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(10.dp))
-            Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("Continue") }
+            val next = b.nextOpponent
+            if (next != null) {
+                // Villain teams are fought back to back; damage carries over.
+                Button(onClick = onNext, modifier = Modifier.fillMaxWidth()) { Text("Next opponent: $next") }
+                TextButton(onClick = onClose) { Text("Retreat") }
+            } else {
+                Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("Continue") }
+            }
         }
     }
 }

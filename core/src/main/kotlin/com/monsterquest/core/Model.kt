@@ -59,6 +59,9 @@ enum class Stat(val label: String) {
     HP("HP"), ATTACK("Attack"), MAGIC("Magic"), DEFENSE("Defense"), SPEED("Speed")
 }
 
+const val SHADOW_DEFENSE = 0.5
+const val SHADOW_ATTACK = 1.25
+
 /** The stats monsters use (Magic is hero-only). */
 val MONSTER_STATS: List<Stat> = listOf(Stat.HP, Stat.ATTACK, Stat.DEFENSE, Stat.SPEED)
 
@@ -169,7 +172,7 @@ object Spells {
 }
 
 // ---------------------------------------------------------------------------
-// Weapons: found at item shrines. The equipped weapon adds to the hero's
+// Legacy weapons from older saves, converted to Gear on load. They added to the hero's
 // Attack/Magic and gives their basic attack its type.
 // ---------------------------------------------------------------------------
 
@@ -230,6 +233,13 @@ data class Monster(
     val moves: List<String>? = null,
     /** Knocked out in battle; only a Restore Potion brings it back. */
     val fainted: Boolean = false,
+    /** Damage carried between battles (healed by walking and potions). */
+    val damage: Int = 0,
+    /** Shadow curse (villain monsters): Defense halved, Attack +25%, until cured by battling. */
+    val cursed: Boolean = false,
+    val cureProgress: Int = 0,
+    /** The curse just lifted: the player picks one stat to perfect. */
+    val cureReady: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name
@@ -247,8 +257,19 @@ data class Monster(
         } else {
             raw * level / 8.0 + 15
         }
-        return floor(value * personality.modifier(stat)).toInt().coerceAtLeast(1)
+        val curse = when {
+            !cursed -> 1.0
+            stat == Stat.DEFENSE -> SHADOW_DEFENSE
+            stat == Stat.ATTACK -> SHADOW_ATTACK
+            else -> 1.0
+        }
+        return floor(value * personality.modifier(stat) * curse).toInt().coerceAtLeast(1)
     }
+
+    val currentHp: Int get() = if (fainted) 0 else (stat(Stat.HP) - damage).coerceAtLeast(1)
+
+    /** Battles needed to lift the shadow curse: more for higher-level, rarer monsters. */
+    val cureNeeded: Int get() = 3 + level / 8 + species.rarity.ordinal
 
     /** Every move this monster knows at its level. */
     val learnedMoves: List<Move> get() = Moves.learned(species, level)

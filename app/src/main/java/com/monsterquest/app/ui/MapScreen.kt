@@ -55,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +74,9 @@ import com.monsterquest.core.Schedule
 import com.monsterquest.core.Shrine
 import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.WildSpawn
+import com.monsterquest.core.VillainCamp
+import com.monsterquest.core.VillainTier
+import com.monsterquest.core.Villains
 import com.monsterquest.core.World
 import kotlinx.coroutines.delay
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -85,6 +89,7 @@ import org.osmdroid.views.overlay.Polygon
 private sealed interface MapPick {
     data class ShrinePick(val shrine: Shrine) : MapPick
     data class SpawnPick(val spawn: WildSpawn) : MapPick
+    data class VillainPick(val camp: VillainCamp) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -134,6 +139,7 @@ fun MapScreen(vm: GameViewModel) {
     val loc = vm.location
     val spawns = vm.spawnsNear(now)
     val shrines = vm.shrines
+    val villains = vm.villainsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
     var centered by remember { mutableStateOf(false) }
 
@@ -206,6 +212,18 @@ fun MapScreen(vm: GameViewModel) {
                                 },
                             )
                         }
+                        villains.forEach { v ->
+                            val ring = if (v.tier == VillainTier.VILLAIN) 0xEEB0303F.toInt() else 0xDD7A4A3A.toInt()
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(v.lat, v.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                    setIcon(markerIcon("villain_${v.tier}", ring) { c, w, h -> drawIconOn(c, w, h, GameIcon.SKULL, 0xFF0D171A.toInt()) })
+                                    title = v.leader
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.VillainPick(v); true }
+                                },
+                            )
+                        }
                         if (loc != null) {
                             mv.overlays.add(
                                 Marker(mv).apply {
@@ -235,7 +253,7 @@ fun MapScreen(vm: GameViewModel) {
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
                         else -> "${shrines.count { it.tier == ShrineTier.ITEM }} item • ${shrines.count { it.tier == ShrineTier.SILVER }} silver • " +
-                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters"
+                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters • ${villains.size} foes"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -262,8 +280,10 @@ fun MapScreen(vm: GameViewModel) {
                 vm = vm,
                 shrines = shrines,
                 spawns = spawns,
+                villains = villains,
                 onShrine = { pick = MapPick.ShrinePick(it) },
                 onSpawn = { pick = MapPick.SpawnPick(it) },
+                onVillain = { pick = MapPick.VillainPick(it) },
             )
         },
     )
@@ -271,6 +291,7 @@ fun MapScreen(vm: GameViewModel) {
     when (val p = pick) {
         is MapPick.ShrinePick -> ShrineDialog(vm, p.shrine, now) { pick = null }
         is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
+        is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
         null -> {}
     }
 }
@@ -443,6 +464,40 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
     )
 }
 
+@Composable
+private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () -> Unit) {
+    val dist = vm.distanceTo(camp.lat, camp.lon)
+    val inRange = dist != null && dist <= Villains.RANGE_M
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { IconText(GameIcon.SKULL, camp.leader, tint = Color(0xFFF28B9B), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
+        text = {
+            Column {
+                Text("${camp.tier.label} of the ${camp.crew} • ${distanceText(dist)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Their monsters carry the shadow curse (Defense -50%, Attack +25%) and can't be tamed. " +
+                        "Beat the whole team in a row for gold and loot, then use a Restore Potion to try to free one.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 6.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    camp.team.forEach { m ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            MonsterArt(m.species, Modifier.size(52.dp))
+                            Text("Lv ${m.level}", fontSize = 11.sp)
+                        }
+                    }
+                }
+                if (!inRange) Text("Walk within ${Villains.RANGE_M.toInt()} m to fight.", modifier = Modifier.padding(top = 6.dp))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { vm.challengeVillain(camp); onDismiss() }, enabled = inRange) { Text("Fight!") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
 private class Entry(
     val dist: Double,
     val art: @Composable () -> Unit,
@@ -470,8 +525,10 @@ private fun NearbyList(
     vm: GameViewModel,
     shrines: List<Shrine>,
     spawns: List<WildSpawn>,
+    villains: List<VillainCamp>,
     onShrine: (Shrine) -> Unit,
     onSpawn: (WildSpawn) -> Unit,
+    onVillain: (VillainCamp) -> Unit,
 ) {
     val entries = shrines.map { sh ->
         val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
@@ -491,6 +548,15 @@ private fun NearbyList(
             "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
             d <= World.SPAWN_RANGE_M,
         ) { onSpawn(sp) }
+    } + villains.map { v ->
+        val d = vm.distanceTo(v.lat, v.lon) ?: Double.MAX_VALUE
+        Entry(
+            d,
+            { GIcon(GameIcon.SKULL, Modifier.size(28.dp), Color(0xFFF28B9B)) },
+            v.leader,
+            "${v.tier.label} • ${v.team.size} cursed monsters • " + distanceText(d.takeIf { it < Double.MAX_VALUE }),
+            d <= Villains.RANGE_M,
+        ) { onVillain(v) }
     }
 
     LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp)) {

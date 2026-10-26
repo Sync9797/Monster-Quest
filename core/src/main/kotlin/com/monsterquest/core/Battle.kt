@@ -15,12 +15,14 @@ enum class EncounterType {
     /** Silver shrine guardian (Tue/Thu): tough and harder to tame, but tameable right away. */
     SILVER_BOSS,
     /** Boss that bursts out of a Legendary loot box; tameable right away. */
-    BOX_BOSS;
+    BOX_BOSS,
+    /** A villain's shadow-cursed monster: can't be tamed. */
+    VILLAIN;
 
     /** Enemy HP multiplier. */
     val hpMultiplier: Double
         get() = when (this) {
-            WILD -> 1.0
+            WILD, VILLAIN -> 1.0
             SILVER_BOSS -> 2.2
             else -> 2.0
         }
@@ -71,6 +73,15 @@ class Combatant(
 
     /** Chance to dodge incoming attacks (Rogue hero). */
     var evasion: Double = 0.0
+
+    // Weapon effects (hero only).
+    var hits: Int = 1
+    var energyRegen: Int = 0
+    var critBonus: Double = 0.0
+    var lifesteal: Double = 0.0
+    var onHitStatus: Status? = null
+    var tameBonus: Double = 0.0
+    var cursed: Boolean = false
     /** Type of the hero's basic Attack (from their weapon). */
     var attackElement: Element = Element.NEUTRAL
     var defending: Boolean = false
@@ -104,6 +115,7 @@ class Combatant(
 
     /** Short labels for the UI, e.g. "Asleep", "Def ↓1". */
     fun tags(): List<String> = buildList {
+        if (cursed) add("Shadow-cursed")
         status?.let { add(it.label) }
         if (scorchTurns > 0) add("Scorched")
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
@@ -119,23 +131,43 @@ class Combatant(
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
 
-        fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
-            HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
-            h.attack + (weapon?.attack ?: 0), h.magic + (weapon?.magic ?: 0),
-            h.defense, h.speed, h.maxMp, h.maxMp, true, emptyList(),
-        ).apply {
-            attackElement = weapon?.element ?: Element.NEUTRAL
-            evasion = h.evasion
-            heroClass = h.heroClass
+        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0): Combatant {
+            val cls = h.heroClass
+            val fx = gear?.effects.orEmpty()
+            val speedPct = (gear?.type?.speedPercent ?: 0) + (if (GearEffect.SWIFT in fx) 10 else 0)
+            val defense = if (GearEffect.GUARDED in fx) (h.defense * 1.1).toInt() else h.defense
+            return Combatant(
+                HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
+                h.attack + (gear?.attackBonus(cls) ?: 0), h.magic + (gear?.magicBonus(cls) ?: 0),
+                defense, (h.speed * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
+            ).apply {
+                attackElement = gear?.element ?: Element.NEUTRAL
+                evasion = h.evasion
+                heroClass = h.heroClass
+                hits = gear?.type?.hits ?: 1
+                energyRegen = (gear?.type?.energyPerTurn ?: 0) + (if (GearEffect.ARCANE in fx) 2 else 0)
+                critBonus = if (GearEffect.KEEN in fx) 0.1 else 0.0
+                lifesteal = if (GearEffect.VAMPIRIC in fx) 0.15 else 0.0
+                onHitStatus = when {
+                    GearEffect.SEARING in fx -> Status.BURN
+                    GearEffect.CRACKLING in fx -> Status.SHOCK
+                    GearEffect.VENOMOUS in fx -> Status.POISON
+                    else -> null
+                }
+                tameBonus = if (GearEffect.LUCKY in fx) 0.1 else 0.0
+            }
         }
 
         fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
             val s = m.stats
             val hp = (s.hp * hpMultiplier).toInt()
             return Combatant(
-                key, m.displayName, m.species.element, m.level, hp, hp,
+                key, m.displayName, m.species.element, m.level, hp, (hp - m.damage).coerceIn(1, hp),
                 s.attack, s.attack, s.defense, s.speed, 0, 0, false, m.activeMoves,
-            ).apply { speciesId = m.speciesId }
+            ).apply {
+                speciesId = m.speciesId
+                cursed = m.cursed
+            }
         }
     }
 }
@@ -154,6 +186,9 @@ data class BattleResult(
     val shrineId: String?,
     /** Party monsters knocked out at the end of the battle; they stay down until restored. */
     val faintedUids: Set<String> = emptySet(),
+    /** Missing HP per surviving ally key ("hero" or a monster uid), carried into the next battle. */
+    val damage: Map<String, Int> = emptyMap(),
+    val heroFell: Boolean = false,
 )
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
@@ -174,10 +209,11 @@ class Battle(
     private val storageFull: Boolean,
     val shrineId: String? = null,
     private val rng: Random = Random.Default,
-    weapon: Weapon? = null,
+    gear: Gear? = null,
+    heroDamage: Int = 0,
 ) {
     private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
-    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, weapon)) + fighters.map { Combatant.fromMonster(it) }
+    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage)) + fighters.map { Combatant.fromMonster(it) }
     val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, encounter.hpMultiplier)
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
@@ -206,7 +242,7 @@ class Battle(
         private set
 
     val isBoss: Boolean get() = encounter != EncounterType.WILD
-    val captureLocked: Boolean get() = encounter == EncounterType.BOSS_CHALLENGE
+    val captureLocked: Boolean get() = encounter == EncounterType.BOSS_CHALLENGE || encounter == EncounterType.VILLAIN
 
     init {
         val intro = when (encounter) {
@@ -215,6 +251,7 @@ class Battle(
             EncounterType.BOSS_TAMING -> "BOSS: ${enemy.name} (Lv ${enemy.level}) remembers you. Weaken it and try to tame it!"
             EncounterType.SILVER_BOSS -> "SILVER GUARDIAN: ${enemy.name} (Lv ${enemy.level}) blocks your path! It's hard to tame, but it has perfect genes."
             EncounterType.BOX_BOSS -> "The loot box bursts open... ${enemy.name} (Lv ${enemy.level}) erupts out of it!"
+            EncounterType.VILLAIN -> "A shadow-cursed ${enemy.name} (Lv ${enemy.level}) attacks! It can't be tamed."
         }
         log += intro
         advance()
@@ -236,6 +273,7 @@ class Battle(
 
     /** Null when capture is allowed, otherwise a reason to show the player. */
     fun captureBlockedReason(): String? = when {
+        encounter == EncounterType.VILLAIN -> "Shadow-bound monsters can't be tamed. Defeat the whole team."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         storageFull -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No orbs left."
@@ -248,7 +286,7 @@ class Battle(
     fun captureOdds(orb: Item): Double =
         (
             captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb) *
-                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0)
+                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))
             ).coerceIn(0.0, 0.95)
 
     // ---- turn handling ------------------------------------------------------
@@ -307,6 +345,7 @@ class Battle(
     private fun beginTurn(c: Combatant): Boolean {
         c.defending = false
         c.protecting = false
+        if (c.energyRegen > 0 && c.mp < c.maxMp) c.mp = minOf(c.maxMp, c.mp + c.energyRegen)
         if (c.scorchTurns > 0) {
             c.scorchTurns--
             hurt(c, c.scorchDamage, "is scorched")
@@ -382,8 +421,13 @@ class Battle(
         when (action) {
             BattleAction.Attack -> {
                 if (actor.isHero) {
-                    if (!rollHit(actor, enemy, 100)) return true
-                    strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks")
+                    // Daggers strike twice.
+                    repeat(actor.hits) {
+                        if (enemy.alive && rollHit(actor, enemy, 100)) {
+                            val dmg = strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks")
+                            afterHeroHit(actor, enemy, dmg)
+                        }
+                    }
                 } else {
                     useMove(actor, enemy, actor.moves.firstOrNull() ?: Moves.get("tackle"))
                 }
@@ -407,7 +451,8 @@ class Battle(
                 } else {
                     actor.mp -= skill.mpCost
                     if (!rollHit(actor, enemy, 100)) return true
-                    strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on")
+                    val dmg = strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on")
+                    afterHeroHit(actor, enemy, dmg)
                 }
             }
             is BattleAction.UseItem -> {
@@ -615,12 +660,25 @@ class Battle(
         }
     }
 
-    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?) {
+    /** Weapon effects after the hero lands a hit: lifesteal and on-hit statuses. */
+    private fun afterHeroHit(a: Combatant, d: Combatant, dmg: Int) {
+        if (a.lifesteal > 0 && dmg > 0 && a.alive) {
+            heal(a, maxOf(1, (dmg * a.lifesteal).roundToInt()), "${a.name}'s weapon drains life")
+        }
+        val s = a.onHitStatus
+        if (s != null && d.alive && d.status == null && rng.nextDouble() < 0.15) {
+            d.status = s
+            d.statusTurns = 4
+            log += "${d.name} is ${s.label.lowercase()}!"
+        }
+    }
+
+    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?): Int {
         val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
         val def = d.defense * d.stageMultiplier(BattleStat.DEFENSE)
         val typeMult = type.multiplierAgainst(d.element)
         val sameType = if (type != Element.NEUTRAL && type == a.element) 1.2 else 1.0
-        val crit = rng.nextDouble() < 0.06
+        val crit = rng.nextDouble() < 0.06 + a.critBonus
         val raw = power * atk / (atk + def) *
             (1 + a.level * 0.08) *
             typeMult * sameType * weather.multiplier(type) *
@@ -638,6 +696,7 @@ class Battle(
         }.joinToString(" ")
         log += (if (verb != null) "${a.name} $verb ${d.name} for $dmg damage. $notes" else "It hits ${d.name} for $dmg damage. $notes").trim()
         if (!d.alive) log += "${d.name} falls!"
+        return dmg
     }
 
     private fun pickTarget(): Combatant? {
@@ -703,8 +762,12 @@ class Battle(
         }
         val captured = if (outcome == BattleOutcome.CAPTURED) enemyMonster.copy(uid = newId(rng), xp = 0) else null
         val fainted = partyUids.filter { combatant(it)?.alive == false }.toSet()
+        // Damage carries over: remember how hurt everyone still standing is.
+        val damage = allies.filter { it.alive }.associate { it.key to (it.maxHp - it.hp) }
+        val heroFell = allies.first().let { !it.alive }
         return BattleResult(
             outcome, encounter, enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
+            damage, heroFell,
         )
     }
 }

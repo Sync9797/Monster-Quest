@@ -277,7 +277,7 @@ object GameEngine {
         if (state.count(Item.RESTORE_POTION) <= 0) return Update(state, "You need a Restore Potion (Shop or loot).")
         return Update(
             state.copy(
-                monsters = state.monsters.map { if (it.uid == uid) it.copy(fainted = false) else it },
+                monsters = state.monsters.map { if (it.uid == uid) it.copy(fainted = false, damage = 0) else it },
                 inventory = removeItems(state.inventory, mapOf(Item.RESTORE_POTION to 1)),
             ),
             "${m.displayName} is back on its feet!",
@@ -295,10 +295,49 @@ object GameEngine {
         val best = state.monsters.maxBy { it.level }
         return Update(
             state.copy(
-                monsters = state.monsters.map { if (it.uid == best.uid) it.copy(fainted = false) else it },
+                monsters = state.monsters.map { if (it.uid == best.uid) it.copy(fainted = false, damage = 0) else it },
                 lastRecoveryDay = today,
             ),
             "${best.displayName} recovered overnight. Restore Potions heal the rest.",
+        )
+    }
+
+    /** The shadow curse lifted: perfect one stat of the player's choice. */
+    fun perfectStat(state: GameState, uid: String, stat: Stat): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        if (!m.cureReady) return Update(state, "${m.displayName} has no stat to perfect.")
+        if (stat !in MONSTER_STATS) return Update(state, "Choose HP, Attack, Defense or Speed.")
+        val iv = m.ivs
+        val perfected = when (stat) {
+            Stat.HP -> iv.copy(hp = MAX_IV)
+            Stat.ATTACK -> iv.copy(attack = MAX_IV, magic = MAX_IV)
+            Stat.DEFENSE -> iv.copy(defense = MAX_IV)
+            Stat.SPEED -> iv.copy(speed = MAX_IV)
+            Stat.MAGIC -> iv
+        }
+        return Update(
+            state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(ivs = perfected, cureReady = false) else it }),
+            "${m.displayName}'s ${stat.label} is now perfect!",
+        )
+    }
+
+    /** Heal the hero ([Combatant.HERO_KEY]) or a monster with a potion outside battle. */
+    fun usePotion(state: GameState, item: Item, target: String): Update {
+        if (item.kind != ItemKind.HEAL_HP) return Update(state, "${item.label} can't be used here.")
+        if (state.count(item) <= 0) return Update(state, "No ${item.label} left.")
+        val spent = state.copy(inventory = removeItems(state.inventory, mapOf(item to 1)))
+        if (target == Combatant.HERO_KEY) {
+            if (state.heroDamage <= 0) return Update(state, "You're already at full health.")
+            val heal = maxOf(50, (state.hero.maxHp * item.power).toInt())
+            return Update(spent.copy(heroDamage = (state.heroDamage - heal).coerceAtLeast(0)), "${item.label}: you recover $heal HP.")
+        }
+        val m = state.monsters.find { it.uid == target } ?: return Update(state, "Monster not found.")
+        if (m.fainted) return Update(state, "${m.displayName} has fainted. Only a Restore Potion can help.")
+        if (m.damage <= 0) return Update(state, "${m.displayName} is already at full health.")
+        val heal = maxOf(50, (m.stat(Stat.HP) * item.power).toInt())
+        return Update(
+            spent.copy(monsters = state.monsters.map { if (it.uid == target) it.copy(damage = (it.damage - heal).coerceAtLeast(0)) else it }),
+            "${item.label}: ${m.displayName} recovers $heal HP.",
         )
     }
 
@@ -345,7 +384,7 @@ object GameEngine {
             state.hero,
             // Monsters out on adventures can't fight.
             state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
-            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedWeapon,
+            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage,
         )
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
@@ -420,11 +459,34 @@ object GameEngine {
             BattleOutcome.FLED -> msg.append("You escaped.")
             BattleOutcome.ONGOING -> {}
         }
+        // Damage carries over to the next battle. A fallen hero limps home at 10% HP.
+        val heroMax = s.hero.maxHp
+        s = s.copy(
+            heroDamage = if (r.heroFell) heroMax - maxOf(1, heroMax / 10) else (r.damage[Combatant.HERO_KEY] ?: s.heroDamage),
+            monsters = s.monsters.map { m -> r.damage[m.uid]?.let { m.copy(damage = it) } ?: m },
+        )
         // Monsters knocked out stay down until a Restore Potion is used.
         if (r.faintedUids.isNotEmpty()) {
             val names = s.monsters.filter { it.uid in r.faintedUids }.map { it.displayName }
-            s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true) else it })
+            s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true, damage = 0) else it })
             msg.append(" ${names.joinToString()} fainted and need${if (names.size == 1) "s" else ""} a Restore Potion.")
+        }
+        // Fighting slowly lifts the shadow curse.
+        if (r.outcome == BattleOutcome.WON || r.outcome == BattleOutcome.CAPTURED) {
+            val lifted = mutableListOf<String>()
+            s = s.copy(
+                monsters = s.monsters.map { m ->
+                    if (!m.cursed || m.uid !in r.monsterXp) return@map m
+                    val progress = m.cureProgress + 1
+                    if (progress >= m.cureNeeded) {
+                        lifted += m.displayName
+                        m.copy(cursed = false, cureProgress = 0, cureReady = true)
+                    } else {
+                        m.copy(cureProgress = progress)
+                    }
+                },
+            )
+            lifted.forEach { msg.append(" $it's shadow curse is lifted! Choose a stat to perfect on its stat page.") }
         }
         return Update(s, msg.toString())
     }
@@ -444,10 +506,10 @@ object GameEngine {
     /** What an item shrine (or a phone-free session) hands out. */
     data class Loot(
         val items: Map<Item, Int> = emptyMap(),
-        val weapons: List<Weapon> = emptyList(),
+        val weapons: List<Gear> = emptyList(),
         /** Spell id -> pages. */
         val pages: Map<String, Int> = emptyMap(),
-        val parts: Int = 0,
+        val parts: Map<WeaponType, Int> = emptyMap(),
     )
 
     /**
@@ -456,13 +518,13 @@ object GameEngine {
      */
     fun rollLoot(state: GameState, rolls: Int, rng: Random): Loot {
         val items = mutableMapOf<Item, Int>()
-        val weapons = mutableListOf<Weapon>()
+        val weapons = mutableListOf<Gear>()
         val pages = mutableMapOf<String, Int>()
         val unknownSpells = Spells.all.filter { it.id !in state.hero.knownSpells }
         repeat(rolls) {
             val r = rng.nextDouble()
             when {
-                r < 0.12 -> weapons += rollWeapon(state.hero.level, rng)
+                r < 0.12 -> weapons += Armory.roll(state.hero.level, rng)
                 r < 0.42 && unknownSpells.isNotEmpty() -> {
                     val sp = unknownSpells.random(rng)
                     pages[sp.id] = (pages[sp.id] ?: 0) + 1
@@ -482,24 +544,9 @@ object GameEngine {
         return Loot(items, weapons, pages)
     }
 
-    fun rollWeapon(heroLevel: Int, rng: Random): Weapon {
-        // Better weapons become more likely as the hero levels up.
-        val weights = Weapon.entries.map { w ->
-            w to when (w.rarity) {
-                Rarity.COMMON -> 50
-                Rarity.UNCOMMON -> 30
-                Rarity.RARE -> 10 + heroLevel
-                Rarity.EPIC -> heroLevel / 3
-                Rarity.LEGENDARY -> 0
-            }
-        }
-        var roll = rng.nextInt(weights.sumOf { it.second })
-        for ((w, wt) in weights) {
-            roll -= wt
-            if (roll < 0) return w
-        }
-        return Weapon.WOODEN_SWORD
-    }
+    /** Some parts of one random weapon type. */
+    fun rollParts(count: Int, rng: Random): Map<WeaponType, Int> =
+        if (count <= 0) emptyMap() else mapOf(Armory.randomPartType(rng) to count)
 
     /** Adds loot to the save (respecting bag space) and describes it. */
     fun grantLoot(state: GameState, loot: Loot): Update {
@@ -511,15 +558,15 @@ object GameEngine {
         var lostWeapons = 0
         for (w in loot.weapons) {
             if (s.bagCount < s.bagCapacity) {
-                s = s.copy(weapons = s.weapons + w)
-                parts += w.label
+                s = s.copy(gear = s.gear + w)
+                parts += "${w.rarity.label} ${w.name}"
             } else {
                 lostWeapons++
             }
         }
-        if (loot.parts > 0) {
-            s = s.copy(weaponParts = s.weaponParts + loot.parts)
-            parts += "Weapon part x${loot.parts}"
+        for ((type, n) in loot.parts) {
+            s = s.copy(parts = s.parts + (type to (s.parts[type] ?: 0) + n))
+            parts += "${type.label} part x$n"
         }
         val learned = mutableListOf<String>()
         for ((spellId, n) in loot.pages) {
@@ -564,34 +611,98 @@ object GameEngine {
 
     const val PARTS_TO_FORGE = 5
 
-    /** Turns [PARTS_TO_FORGE] weapon parts into a random weapon (better odds than shrines). */
-    fun forge(state: GameState, rng: Random = Random.Default): Update {
-        if (state.weaponParts < PARTS_TO_FORGE) return Update(state, "Need $PARTS_TO_FORGE weapon parts to forge.")
+    /** Turns [PARTS_TO_FORGE] parts of one type into a weapon of that type (better odds than shrines). */
+    fun forge(state: GameState, type: WeaponType, rng: Random = Random.Default): Update {
+        val have = state.parts[type] ?: 0
+        if (have < PARTS_TO_FORGE) return Update(state, "Need $PARTS_TO_FORGE ${type.label.lowercase()} parts to forge.")
         if (state.bagFull) return Update(state, "Bag is full.")
-        val w = rollWeapon(state.hero.level + 10, rng)
+        val w = Armory.roll(state.hero.level, rng, type, luck = 10)
         return Update(
-            state.copy(weaponParts = state.weaponParts - PARTS_TO_FORGE, weapons = state.weapons + w),
-            "You forged a ${w.label}! (${w.rarity.label})",
+            state.copy(parts = state.parts + (type to have - PARTS_TO_FORGE), gear = state.gear + w),
+            "You forged a ${w.rarity.label} ${w.name} (Lv ${w.level})!",
         )
     }
 
-    fun equip(state: GameState, index: Int): Update {
-        val w = state.weapons.getOrNull(index) ?: return Update(state, "Weapon not found.")
-        val rest = state.weapons.toMutableList().apply { removeAt(index) }
+    fun equip(state: GameState, id: String): Update {
+        val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found.")
+        val rest = state.gear.filterNot { it.id == id }
         // The previously equipped weapon goes back in the bag (equipping frees a slot, so it fits).
-        val back = state.equippedWeapon?.let { rest + it } ?: rest
-        return Update(state.copy(weapons = back, equippedWeapon = w), "Equipped ${w.label}.")
+        val back = state.equippedGear?.let { rest + it } ?: rest
+        val fit = if (w.matches(state.hero.heroClass)) " Class bonus +${(CLASS_MATCH_BONUS * 100).toInt()}%!" else ""
+        return Update(state.copy(gear = back, equippedGear = w), "Equipped ${w.name}.$fit")
     }
 
     fun unequip(state: GameState): Update {
-        val w = state.equippedWeapon ?: return Update(state, "Nothing equipped.")
+        val w = state.equippedGear ?: return Update(state, "Nothing equipped.")
         if (state.bagFull) return Update(state, "Bag is full.")
-        return Update(state.copy(weapons = state.weapons + w, equippedWeapon = null), "Unequipped ${w.label}.")
+        return Update(state.copy(gear = state.gear + w, equippedGear = null), "Unequipped ${w.name}.")
     }
 
-    fun dropWeapon(state: GameState, index: Int): Update {
-        val w = state.weapons.getOrNull(index) ?: return Update(state, "Weapon not found.")
-        return Update(state.copy(weapons = state.weapons.toMutableList().apply { removeAt(index) }), "Dropped ${w.label}.")
+    fun dropWeapon(state: GameState, id: String): Update {
+        val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found.")
+        return Update(state.copy(gear = state.gear.filterNot { it.id == id }), "Dropped ${w.name}.")
+    }
+
+    // ---- walking -----------------------------------------------------------
+
+    const val STEPS_PER_REWARD = 100
+    const val XP_PER_REWARD = 10
+    const val HP_PER_REWARD = 10
+
+    /**
+     * A new reading from the phone's step counter (total steps since boot).
+     * Steps since the previous reading count as walking; a lower reading means
+     * the phone rebooted, so the new total counts from zero.
+     */
+    fun onStepCount(state: GameState, totalSteps: Long, nowMs: Long = System.currentTimeMillis()): Update {
+        val last = state.lastStepCount
+        val delta = when {
+            last == null -> 0L
+            totalSteps >= last -> totalSteps - last
+            else -> totalSteps
+        }
+        val u = walk(state, delta.toInt(), nowMs)
+        return Update(u.state.copy(lastStepCount = totalSteps), u.message)
+    }
+
+    /**
+     * Walking [steps]: unlocking loot boxes advance, and every
+     * [STEPS_PER_REWARD] steps give the hero and each battle-party monster
+     * [XP_PER_REWARD] XP and heal [HP_PER_REWARD] HP. The message is empty
+     * unless something notable happened (a level-up, evolution or new move).
+     */
+    fun walk(state: GameState, steps: Int, nowMs: Long = System.currentTimeMillis(), zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Update {
+        if (steps <= 0) return Update(state, "")
+        var s = LootBoxes.addWalk(state, steps * METERS_PER_MILE / STEPS_PER_MILE)
+        val day = java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
+        s = s.copy(
+            stepsToday = if (s.stepsDay == day) s.stepsToday + steps else steps,
+            stepsDay = day,
+            stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
+        )
+        val bank = s.stepBank + steps
+        val rewards = bank / STEPS_PER_REWARD
+        s = s.copy(stepBank = bank % STEPS_PER_REWARD)
+        if (rewards == 0) return Update(s, "")
+
+        val xp = rewards * XP_PER_REWARD
+        val hp = rewards * HP_PER_REWARD
+        s = s.copy(heroDamage = (s.heroDamage - hp).coerceAtLeast(0))
+        val gain = addHeroXp(s, xp)
+        s = gain.state
+        val away = Adventures.awayUids(s)
+        val notes = mutableListOf<String>()
+        s = s.copy(
+            monsters = s.monsters.map { m ->
+                if (m.uid !in s.party || m.fainted || m.uid in away) return@map m
+                val (after, n) = grow(m, xp)
+                notes += n
+                if (after.level > m.level) notes += "${after.displayName} reached Lv ${after.level}!"
+                after.copy(damage = (after.damage - hp).coerceAtLeast(0))
+            },
+        )
+        val text = (levelUpText(gain).trim().takeIf { it.isNotEmpty() }?.let { listOf("Walking: $it") } ?: emptyList()) + notes
+        return Update(s, text.joinToString(" "))
     }
 
     // ---- phone-free focus sessions ------------------------------------------

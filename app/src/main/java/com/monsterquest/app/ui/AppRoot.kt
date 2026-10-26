@@ -1,5 +1,12 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.MonsterArt
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -52,7 +59,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     }
     val battle = vm.battle
     if (battle != null) {
-        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle)
+        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster)
         return
     }
 
@@ -65,6 +72,36 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
             snackbar.showSnackbar(msg)
         }
     }
+
+    vm.focusResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissFocusResult,
+            title = { Text(if (vm.focusSucceeded) "Session complete!" else "Session failed") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissFocusResult) { Text("OK") } },
+        )
+    }
+
+    vm.adventureResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissAdventureResult,
+            title = { Text(if (vm.adventureSucceeded) "Adventure complete!" else "Adventure failed") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissAdventureResult) { Text("OK") } },
+        )
+    }
+
+    vm.boxResult?.let { text ->
+        AlertDialog(
+            onDismissRequest = vm::dismissBoxResult,
+            title = { Text(if (vm.boxBoss != null) "A boss emerges!" else "Loot box opened!") },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = vm::dismissBoxResult) { Text(if (vm.boxBoss != null) "Fight!" else "Awesome") } },
+        )
+    }
+
+
+    if (state.villainSpoils.isNotEmpty()) SpoilsDialog(vm)
 
     // The menu stays at the bottom on every screen size, folded or open, so it's
     // always within thumb reach.
@@ -101,4 +138,37 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
             }
         }
     }
+}
+
+/** After beating a villain's team: restore one of their monsters (75% it joins you). */
+@Composable
+private fun SpoilsDialog(vm: GameViewModel) {
+    val s = vm.state
+    val potions = s.count(com.monsterquest.core.Item.RESTORE_POTION)
+    AlertDialog(
+        onDismissRequest = vm::dismissSpoils,
+        title = { Text("Redeem a cursed monster?") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Use a Restore Potion on one of their monsters. There's a 75% chance it joins you, " +
+                        "still carrying the shadow curse until you battle together. You have $potions.",
+                    fontSize = 13.sp,
+                )
+                if (s.storageFull) Text("Your monster storage is full.", color = HpRed, fontSize = 13.sp)
+                s.villainSpoils.forEachIndexed { i, m ->
+                    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MonsterArt(m.species, Modifier.size(48.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(m.displayName, fontWeight = FontWeight.SemiBold)
+                            Text("Lv ${m.level} ${m.species.element.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        SmallButton("Restore", { vm.redeemVillainMonster(i) }, enabled = potions > 0 && !s.storageFull)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = vm::dismissSpoils) { Text("Leave them") } },
+    )
 }

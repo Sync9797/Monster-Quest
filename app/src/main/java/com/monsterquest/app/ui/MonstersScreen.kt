@@ -1,5 +1,11 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import com.monsterquest.app.ui.art.MonsterArt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.color
@@ -112,78 +118,132 @@ private fun MonsterCollection(vm: GameViewModel) {
     )
 }
 
+private enum class SortBy(val label: String) { LEVEL("Level"), TYPE("Type"), NAME("Name"), NEWEST("Newest") }
+
+/** Party slots on top, then a tidy grid of the rest of the collection. */
 @Composable
 private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: String?, onSelect: (String) -> Unit) {
     val s = vm.state
+    var sortBy by rememberSaveable { mutableStateOf(SortBy.LEVEL) }
+    var showChart by remember { mutableStateOf(false) }
+    val away = Adventures.awayUids(s)
+    val bench = s.monsters.filter { it.uid !in s.party }.let { list ->
+        when (sortBy) {
+            SortBy.LEVEL -> list.sortedByDescending { it.level }
+            SortBy.TYPE -> list.sortedWith(compareBy<Monster> { it.species.element }.thenByDescending { it.level })
+            SortBy.NAME -> list.sortedBy { it.displayName }
+            SortBy.NEWEST -> list.reversed()
+        }
+    }
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 300.dp),
+        columns = GridCells.Adaptive(minSize = 104.dp),
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Text(
-                "Storage ${s.monsters.size}/${s.monsterCapacity}  •  Party ${s.party.size}/$MAX_PARTY_SIZE  •  " +
-                    "Restore Potions ${s.count(Item.RESTORE_POTION)}  •  Tap a monster for its stats",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
-        val away = Adventures.awayUids(s)
-        items(sorted, key = { it.uid }) { m ->
-            MonsterRow(m, inParty = m.uid in s.party, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
             Column {
-                SectionTitle("Type chart")
-                TypeChart()
-                Spacer(Modifier.height(24.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Battle party", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { showChart = true }) { Text("Type chart") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (0 until MAX_PARTY_SIZE).forEach { i ->
+                        val m = s.partyMonsters.getOrNull(i)
+                        Box(Modifier.weight(1f)) {
+                            if (m != null) {
+                                MonsterTile(m, inParty = true, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
+                            } else {
+                                EmptySlot()
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Collection", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                    Text("${s.monsters.size}/${s.monsterCapacity}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Bar(s.monsters.size.toFloat() / s.monsterCapacity, if (s.storageFull) HpRed else Mint, Modifier.fillMaxWidth().padding(vertical = 4.dp), heightDp = 4)
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SortBy.entries.forEach { o -> SmallButton(o.label, { sortBy = o }, outlined = o != sortBy) }
+                }
             }
         }
+        if (bench.isEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text("Everyone you own is in the party. Tame more monsters to fill your collection.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        items(bench, key = { it.uid }) { m ->
+            MonsterTile(m, inParty = false, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
+    }
+    if (showChart) {
+        AlertDialog(
+            onDismissRequest = { showChart = false },
+            title = { Text("Type chart") },
+            text = { TypeChart() },
+            confirmButton = { TextButton(onClick = { showChart = false }) { Text("Close") } },
+        )
     }
 }
 
 @Composable
-private fun MonsterRow(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, onClick: () -> Unit) {
+private fun EmptySlot() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, Line, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("Empty slot", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }
+}
+
+/** Compact tile: art, name, level and type, HP, and status badges. */
+@Composable
+private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, onClick: () -> Unit) {
     val sp = m.species
-    val st = m.stats
     val border = when {
         selected -> MpBlue
         m.fainted -> HpRed
+        m.cursed -> XpPurple
         inParty -> Gold
-        else -> null
+        else -> Line
     }
-    GameCard(Modifier.padding(vertical = 4.dp).clickable(onClick = onClick), border = border) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(if (border == Line) 1.dp else 2.dp, border, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted)
+        Text(m.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        m.displayName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (inParty) {
-                        Spacer(Modifier.width(6.dp))
-                        GIcon(GameIcon.FIGHT, Modifier.size(14.dp), Gold)
-                    }
-                    if (m.fainted) Text("  Fainted", fontSize = 12.sp, color = HpRed)
-                    if (away) Text("  Away", fontSize = 12.sp, color = MpBlue)
-                }
-                IconText(sp.element.icon(), "Lv ${m.level} ${sp.name}", tint = sp.element.color(), fontSize = 12.sp, size = 13.dp)
-                Text(
-                    "HP ${st.hp} • Atk ${st.attack} • Def ${st.defense} • Spd ${st.speed}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            GIcon(sp.element.icon(), Modifier.size(11.dp), sp.element.color())
+            Spacer(Modifier.width(3.dp))
+            Text("Lv ${m.level}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Spacer(Modifier.height(4.dp))
+        val hpMax = m.stats.hp
+        Bar(m.currentHp.toFloat() / hpMax, hpColor(m.currentHp.toFloat() / hpMax), Modifier.fillMaxWidth(), heightDp = 4)
+        val badge = when {
+            m.fainted -> "Fainted" to HpRed
+            away -> "Away" to MpBlue
+            m.cureReady -> "Cured!" to Gold
+            m.cursed -> "Cursed" to XpPurple
+            else -> null
+        }
+        badge?.let { (t, c) -> Text(t, fontSize = 10.sp, color = c, modifier = Modifier.padding(top = 2.dp)) }
     }
 }
 
@@ -197,6 +257,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     val other = s.monsters.find { it.uid == compareUid && it.uid != m.uid }
     var editingSlot by remember(m.uid) { mutableStateOf<Int?>(null) }
     var releasing by remember { mutableStateOf(false) }
+    var usingPotion by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -237,8 +298,39 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 )
             }
             Spacer(Modifier.height(6.dp))
+            if (!m.fainted) {
+                LabeledBar("HP", m.currentHp, m.stats.hp, hpColor(m.currentHp.toFloat() / m.stats.hp))
+                if (m.damage > 0) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        Text("Heals 10 HP every 100 steps in your party.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                        SmallButton("Use potion", { usingPotion = true }, outlined = true, enabled = s.count(Item.POTION) + s.count(Item.HI_POTION) > 0)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
             LabeledBar("XP", m.xp, m.xpToNext, XpPurple)
             sp.evolveLevel?.let { lvl -> if (m.level < lvl) Text("Evolves at Lv $lvl", fontSize = 12.sp, color = XpPurple) }
+        }
+
+        if (m.cursed) {
+            Spacer(Modifier.height(8.dp))
+            GameCard(border = XpPurple) {
+                Text("Shadow curse", style = MaterialTheme.typography.titleMedium, color = XpPurple)
+                Text("Defense −50%, Attack +25%. Battling together slowly lifts it.", fontSize = 13.sp)
+                Spacer(Modifier.height(4.dp))
+                LabeledBar("Cure progress (battles won)", m.cureProgress, m.cureNeeded, XpPurple)
+            }
+        }
+        if (m.cureReady) {
+            Spacer(Modifier.height(8.dp))
+            GameCard(border = Gold) {
+                Text("The curse is lifted!", style = MaterialTheme.typography.titleMedium, color = Gold)
+                Text("Choose one stat to make perfect:", fontSize = 13.sp)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MONSTER_STATS.forEach { st -> SmallButton(st.label, { vm.perfectStat(m.uid, st) }, Modifier.weight(1f)) }
+                }
+            }
         }
 
         // ---- Stats + compare ----
@@ -355,6 +447,10 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             },
             confirmButton = { TextButton(onClick = { editingSlot = null }) { Text("Close") } },
         )
+    }
+    if (usingPotion) {
+        val item = if (s.count(Item.HI_POTION) > 0 && m.damage > m.stats.hp / 2) Item.HI_POTION else if (s.count(Item.POTION) > 0) Item.POTION else Item.HI_POTION
+        PotionTargetDialog(vm, item) { usingPotion = false }
     }
     if (releasing) {
         AlertDialog(

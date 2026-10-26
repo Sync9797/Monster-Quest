@@ -123,6 +123,21 @@ fun Item.color(): Color = when (this) {
     Item.TREAT -> Color(0xFFD9A07A)
 }
 
+fun com.monsterquest.core.WeaponType.icon(): GameIcon = when (this) {
+    com.monsterquest.core.WeaponType.SWORD -> GameIcon.SWORD
+    com.monsterquest.core.WeaponType.BROADSWORD -> GameIcon.BROADSWORD
+    com.monsterquest.core.WeaponType.DAGGER -> GameIcon.DAGGER
+    com.monsterquest.core.WeaponType.STAFF -> GameIcon.STAFF
+    com.monsterquest.core.WeaponType.WAND -> GameIcon.WAND
+}
+
+fun com.monsterquest.core.GearRarity.color(): Color = when (this) {
+    com.monsterquest.core.GearRarity.NORMAL -> Color(0xFFD7DDD9)
+    com.monsterquest.core.GearRarity.RARE -> Color(0xFF9CBFE4)
+    com.monsterquest.core.GearRarity.EPIC -> Color(0xFFC3A6F0)
+    com.monsterquest.core.GearRarity.LEGENDARY -> Color(0xFFEBC678)
+}
+
 fun Weapon.icon(): GameIcon = when (this) {
     Weapon.WOODEN_SWORD, Weapon.IRON_SWORD, Weapon.FLAME_BLADE -> GameIcon.SWORD
     Weapon.APPRENTICE_STAFF, Weapon.ARCANE_STAFF -> GameIcon.STAFF
