@@ -164,7 +164,13 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onAllNodesWithText(today)[0].performClick()
         capture("02c_quests_day", 1_000)
         rule.onNodeWithText("Show all").assertExists()
-        rule.onAllNodesWithText(today)[0].performClick()
+        if (app.resources.configuration.screenWidthDp >= 600) {
+            // Side by side, the calendar stays in view: tap the day again.
+            rule.onAllNodesWithText(today)[0].performClick()
+        } else {
+            // On a phone the list scrolled to the day's quests: Show all goes back.
+            rule.onNodeWithText("Show all").performClick()
+        }
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithText("Show all").assertDoesNotExist()
     }
