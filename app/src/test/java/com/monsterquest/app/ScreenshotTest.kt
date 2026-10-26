@@ -418,10 +418,13 @@ abstract class ScreenshotBase(private val device: String) {
         }
         capture("29_fold_a", 1_000)
         repeat(2) {
-            fold = book
+            rule.runOnUiThread { fold = book }
             capture("29_fold_b", 1_000)
-            fold = null
+            // Unfolded: the Nearby list sits beside the map.
+            rule.onNodeWithText("Nearby").assertExists()
+            rule.runOnUiThread { fold = null }
             capture("29_fold_c", 1_000)
+            if (app.resources.configuration.screenWidthDp < 600) rule.onNodeWithText("Nearby").assertDoesNotExist()
         }
         rule.onNodeWithText("Center").assertExists()
     }
