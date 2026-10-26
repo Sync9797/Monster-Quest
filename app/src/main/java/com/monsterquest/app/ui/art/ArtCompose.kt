@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -34,7 +35,8 @@ import com.monsterquest.core.Weather
 
 @Composable
 private fun ArtCanvas(modifier: Modifier, draw: (android.graphics.Canvas, Float, Float) -> Unit) {
-    Canvas(modifier) {
+    // Clip so glows and halos never paint over neighboring UI.
+    Canvas(modifier.clipToBounds()) {
         drawIntoCanvas { draw(it.nativeCanvas, size.width, size.height) }
     }
 }
@@ -191,7 +193,7 @@ fun markerDrawable(context: Context, sizeDp: Int, ring: Int, draw: (android.grap
     val c = android.graphics.Canvas(bmp)
     ArtPainter.circle(c, px / 2f, px / 2f, px / 2f, ring)
     ArtPainter.ringStroke(c, px / 2f, px / 2f, px / 2f - 1.5f, Argb.hex("0d171a"), 2f, 0.6f)
-    val inset = px * 0.14f
+    val inset = px * 0.1f
     c.save()
     c.translate(inset, inset)
     draw(c, px - inset * 2, px - inset * 2)

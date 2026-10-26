@@ -31,6 +31,12 @@ internal object ArtPainter {
         c.scale(s, s)
     }
 
+    /** Like [fit], but for the sub-rectangle ([x], [y], [vbW], [vbH]) of the artwork. */
+    fun fitRegion(c: Canvas, w: Float, h: Float, x: Float, y: Float, vbW: Float, vbH: Float) {
+        fit(c, w, h, vbW, vbH)
+        c.translate(-x, -y)
+    }
+
     fun fill(c: Canvas, d: String, color: Int, alpha: Float = 1f) {
         fillPaint.shader = null
         fillPaint.color = color

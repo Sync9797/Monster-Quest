@@ -294,7 +294,8 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         return
     }
     c.save()
-    ArtPainter.fit(c, w, h, 200f, 200f)
+    // Crop to where the creature actually is, so it fills its frame.
+    ArtPainter.fitRegion(c, w, h, 22f, 28f, 156f, 166f)
     val p0 = palette(sp.element)
     val p = if (dim) TypePalette(Argb.hex("5d6866"), Argb.hex("8a9592"), Argb.hex("2a3331")) else p0
     val shape = shapeFor(sp)
@@ -302,13 +303,13 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
 
     if (final && !dim) {
         // Halo behind evolved final forms.
-        ArtPainter.glow(c, 100f, 104f, 92f, p.light, 0.35f)
-        ArtPainter.ringStroke(c, 100f, 104f, 84f, GOLD, 2f, 0.35f)
+        ArtPainter.glow(c, 100f, 110f, 80f, p.light, 0.35f)
+        ArtPainter.ringStroke(c, 100f, 110f, 74f, GOLD, 2f, 0.35f)
     }
     ArtPainter.fill(c, "M50 188A50 7 0 1 1 150 188A50 7 0 1 1 50 188Z", GROUND, 0.8f)
 
     // Bigger at each stage, anchored at the feet.
-    val scale = if (sp.stages <= 1) 1f else 0.78f + 0.22f * (sp.stage - 1) / (sp.stages - 1)
+    val scale = if (sp.stages <= 1) 1f else 0.84f + 0.16f * (sp.stage - 1) / (sp.stages - 1)
     c.save()
     c.translate(100f, 186f)
     c.scale(scale, scale)
@@ -351,8 +352,8 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     c.restore()
 
     if (final && !dim) {
-        ArtPainter.fill(c, "M30 60l2 5 5 2-5 2-2 5-2-5-5-2 5-2z", GOLD)
-        ArtPainter.fill(c, "M170 40l2 4 4 2-4 2-2 4-2-4-4-2 4-2z", GOLD)
+        ArtPainter.fill(c, "M36 60l2 5 5 2-5 2-2 5-2-5-5-2 5-2z", GOLD)
+        ArtPainter.fill(c, "M162 44l2 4 4 2-4 2-2 4-2-4-4-2 4-2z", GOLD)
         ArtPainter.circle(c, 164f, 150f, 2.5f, GOLD)
     }
     c.restore()
@@ -443,7 +444,7 @@ private fun legendaryIndex(id: String) = when (id) {
 
 private fun drawLegendary(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolean) {
     c.save()
-    ArtPainter.fit(c, w, h, 400f, 260f)
+    ArtPainter.fitRegion(c, w, h, 62f, 10f, 276f, 240f)
     val color = if (dim) Argb.hex("5d6866") else palette(sp.element).base
     if (!dim) {
         ArtPainter.glow(c, 200f, 120f, 116f, color, 0.3f)

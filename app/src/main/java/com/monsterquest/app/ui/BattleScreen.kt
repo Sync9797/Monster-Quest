@@ -345,19 +345,18 @@ private fun ActionPanel(
                     ActionButton(
                         "Items (${b.itemsLeft})",
                         Modifier.weight(1f),
-                        icon = GameIcon.POTION,
                         enabled = b.itemsLeft > 0 && b.items.isNotEmpty(),
                     ) { onMenu(Menu.Items) }
                     ActionButton(
                         "Tame",
                         Modifier.weight(1f),
                         color = if (b.captureBlocked == null) Color(0xFF5B4580) else null,
-                        icon = GameIcon.ORB,
+
                     ) { onMenu(Menu.Tame) }
                     if (!actor.isHero) {
-                        ActionButton("Defend", Modifier.weight(1f), color = Line, icon = GameIcon.SHIELD) { onAction(BattleAction.Defend) }
+                        ActionButton("Guard", Modifier.weight(1f), color = Line) { onAction(BattleAction.Defend) }
                     }
-                    ActionButton("Flee", Modifier.weight(1f), color = Line, icon = GameIcon.RUN) { onAction(BattleAction.Flee) }
+                    ActionButton("Flee", Modifier.weight(1f), color = Line) { onAction(BattleAction.Flee) }
                 }
             }
             Menu.Magic -> {
