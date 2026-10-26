@@ -27,6 +27,12 @@ your hero.
   Defense and Speed**.
   - Equip **weapons** for bonus stats and a typed basic attack.
   - Learn spells by collecting **5 spell-book pages**.
+- **Classes** unlock at level 5. The first pick is free; switching costs 300 gold.
+  - ⚔️ **Warrior:** more Attack and Speed, less Magic.
+  - 🔮 **Mage:** more Magic and Defense, less Attack.
+  - 🗡️ **Rogue:** more Speed, and dodges some attacks.
+
+  The bonus is 3% at level 5 and grows 1.5% per level, to 40% at level 30.
 - **Storage upgrades:** every 5 levels you can choose **+5 bag slots** or
   **+3 monster storage**.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:

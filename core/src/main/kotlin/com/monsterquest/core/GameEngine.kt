@@ -55,6 +55,24 @@ object GameEngine {
     private fun levelUpText(gain: XpGain): String = buildString {
         if (gain.levelsGained > 0) append(" LEVEL UP! Now level ${gain.state.hero.level}.")
         if (gain.upgradesGained > 0) append(" Storage upgrade unlocked!")
+        val h = gain.state.hero
+        if (gain.levelsGained > 0 && h.heroClass == HeroClass.NONE && h.level >= CLASS_UNLOCK_LEVEL) {
+            append(" You can now choose a class on the Hero tab!")
+        }
+    }
+
+    /** Pick a class at level 5+. The first choice is free; switching costs gold. */
+    fun chooseClass(state: GameState, cls: HeroClass): Update {
+        val h = state.hero
+        if (cls == HeroClass.NONE) return Update(state, "Pick a class.")
+        if (h.level < CLASS_UNLOCK_LEVEL) return Update(state, "Classes unlock at level $CLASS_UNLOCK_LEVEL.")
+        if (h.heroClass == cls) return Update(state, "You're already a ${cls.label}.")
+        val cost = if (h.heroClass == HeroClass.NONE) 0 else CLASS_CHANGE_COST
+        if (state.gold < cost) return Update(state, "Changing class costs $cost gold.")
+        return Update(
+            state.copy(hero = h.copy(heroClass = cls), gold = state.gold - cost),
+            "${cls.emoji} You are now a ${cls.label}!" + if (cost > 0) " (−$cost gold)" else "",
+        )
     }
 
     fun allocatePoint(state: GameState, attr: HeroAttribute): Update {

@@ -66,6 +66,8 @@ class Combatant(
     /** Monster moves (empty for the hero, who uses Attack and spells). */
     val moves: List<Move>,
 ) {
+    /** Chance to dodge incoming attacks (Rogue hero). */
+    var evasion: Double = 0.0
     /** Type of the hero's basic Attack (from their weapon). */
     var attackElement: Element = Element.NEUTRAL
     var defending: Boolean = false
@@ -115,10 +117,13 @@ class Combatant(
         const val ENEMY_KEY = "enemy"
 
         fun fromHero(h: Hero, weapon: Weapon? = null) = Combatant(
-            HERO_KEY, h.name, "🧙", Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
+            HERO_KEY, h.name, h.heroClass.emoji, Element.NEUTRAL, h.level, h.maxHp, h.maxHp,
             h.attack + (weapon?.attack ?: 0), h.magic + (weapon?.magic ?: 0),
             h.defense, h.speed, h.maxMp, h.maxMp, true, emptyList(),
-        ).apply { attackElement = weapon?.element ?: Element.NEUTRAL }
+        ).apply {
+            attackElement = weapon?.element ?: Element.NEUTRAL
+            evasion = h.evasion
+        }
 
         fun fromMonster(m: Monster, key: String = m.uid, hpMultiplier: Double = 1.0): Combatant {
             val s = m.stats
@@ -482,6 +487,10 @@ class Battle(
         }
         if (rng.nextDouble() >= chance) {
             log += "${a.name}'s attack misses ${d.name}!"
+            return false
+        }
+        if (d.evasion > 0 && rng.nextDouble() < d.evasion) {
+            log += "${d.name} nimbly dodges!"
             return false
         }
         return true

@@ -32,7 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.BAG_UPGRADE_AMOUNT
+import com.monsterquest.core.CLASS_CHANGE_COST
+import com.monsterquest.core.CLASS_UNLOCK_LEVEL
 import com.monsterquest.core.HeroAttribute
+import com.monsterquest.core.HeroClass
 import com.monsterquest.core.Spells
 import com.monsterquest.core.STORAGE_UPGRADE_AMOUNT
 import com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
@@ -46,11 +49,11 @@ fun HeroScreen(vm: GameViewModel) {
     val profile: @Composable () -> Unit = {
         GameCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🧙", fontSize = 48.sp)
+                Text(h.heroClass.emoji, fontSize = 48.sp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Level ${h.level} Adventurer", color = XpPurple)
+                    Text("Level ${h.level} ${h.heroClass.label}", color = XpPurple)
                 }
                 TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) { Text("✏️") }
             }
@@ -66,6 +69,8 @@ fun HeroScreen(vm: GameViewModel) {
                 StatPill("Spd", h.speed.toString(), Modifier.weight(1f))
             }
         }
+
+        ClassSection(vm)
 
         SectionTitle(if (h.unspentPoints > 0) "Attributes: ${h.unspentPoints} point(s) to spend!" else "Attributes")
         HeroAttribute.entries.forEach { a ->
@@ -194,5 +199,86 @@ fun HeroScreen(vm: GameViewModel) {
             confirmButton = { TextButton(onClick = { vm.renameHero(name); renaming = false }) { Text("Save") } },
             dismissButton = { OutlinedButton(onClick = { renaming = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/** Class choice (unlocked at level 5) and the current class's growing bonus. */
+@Composable
+private fun ClassSection(vm: GameViewModel) {
+    val s = vm.state
+    val h = s.hero
+    var confirm by remember { mutableStateOf<HeroClass?>(null) }
+    SectionTitle("Class")
+    if (h.level < CLASS_UNLOCK_LEVEL) {
+        GameCard {
+            Text("🔒 Choose a class at level $CLASS_UNLOCK_LEVEL: ⚔️ Warrior, 🔮 Mage or 🗡️ Rogue.")
+            Text(
+                "Class bonuses start small and grow every level.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    if (h.heroClass != HeroClass.NONE) {
+        GameCard(border = Gold) {
+            Text("${h.heroClass.emoji} ${h.heroClass.label}", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(classEffects(h.heroClass, h.classBonus), fontSize = 13.sp)
+            Text(
+                "Bonus grows 1.5% per level, up to 40% at level 30.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    } else {
+        Text("Choose your path! The first choice is free.", color = Gold, fontSize = 13.sp)
+    }
+    // Preview what each class would do at the current level.
+    val previewBonus = (3 + (h.level - CLASS_UNLOCK_LEVEL) * 1.5).coerceIn(0.0, 40.0)
+    HeroClass.entries.filter { it != HeroClass.NONE && it != h.heroClass }.forEach { cls ->
+        GameCard(Modifier.padding(vertical = 3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(cls.emoji, fontSize = 28.sp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(cls.label, fontWeight = FontWeight.SemiBold)
+                    Text(classEffects(cls, previewBonus), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                SmallButton(
+                    if (h.heroClass == HeroClass.NONE) "Choose" else "Switch",
+                    { confirm = cls },
+                )
+            }
+        }
+    }
+    if (h.heroClass != HeroClass.NONE) {
+        Text(
+            "Switching class costs $CLASS_CHANGE_COST gold.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    confirm?.let { cls ->
+        val cost = if (h.heroClass == HeroClass.NONE) 0 else CLASS_CHANGE_COST
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text("Become a ${cls.label}?") },
+            text = { Text(classEffects(cls, previewBonus) + if (cost > 0) "\n\nCosts $cost gold." else "") },
+            confirmButton = {
+                TextButton(onClick = { vm.chooseClass(cls); confirm = null }, enabled = s.gold >= cost) { Text("Confirm") }
+            },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+private fun classEffects(cls: HeroClass, bonus: Double): String {
+    val b = "%.1f".format(bonus)
+    val half = "%.1f".format(bonus / 2)
+    return when (cls) {
+        HeroClass.NONE -> ""
+        HeroClass.WARRIOR -> "+$b% Attack, +$b% Speed, −$half% Magic"
+        HeroClass.MAGE -> "+$b% Magic, +$b% Defense, −$half% Attack"
+        HeroClass.ROGUE -> "+$b% Speed, $half% chance to dodge attacks"
     }
 }

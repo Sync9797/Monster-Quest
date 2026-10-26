@@ -25,6 +25,7 @@ import com.monsterquest.core.Difficulty
 import com.monsterquest.core.GameState
 import com.monsterquest.core.Hero
 import com.monsterquest.core.HeroAttribute
+import com.monsterquest.core.HeroClass
 import com.monsterquest.core.Item
 import com.monsterquest.core.Monster
 import com.monsterquest.core.QuestTask
@@ -70,6 +71,7 @@ abstract class ScreenshotBase(private val device: String) {
                 xp = 230,
                 unspentPoints = 4,
                 attributes = HeroAttribute.entries.associateWith { 14 },
+                heroClass = HeroClass.ROGUE,
             ),
             gold = 1234,
             huntTokens = 6,

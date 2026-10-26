@@ -24,6 +24,21 @@ const val UPGRADE_LEVEL_INTERVAL = 5
 const val BAG_UPGRADE_AMOUNT = 5
 const val STORAGE_UPGRADE_AMOUNT = 3
 
+/**
+ * Hero classes, chosen at [CLASS_UNLOCK_LEVEL]. The effect starts small and
+ * grows with level (see [Hero.classBonus]).
+ */
+@Serializable
+enum class HeroClass(val label: String, val emoji: String, val summary: String) {
+    NONE("Adventurer", "🧙", "No class yet"),
+    WARRIOR("Warrior", "⚔️", "Stronger and faster, weaker magic"),
+    MAGE("Mage", "🔮", "Stronger magic and defense, weaker attack"),
+    ROGUE("Rogue", "🗡️", "Faster, and dodges some attacks"),
+}
+
+const val CLASS_UNLOCK_LEVEL = 5
+const val CLASS_CHANGE_COST = 300
+
 @Serializable
 data class Hero(
     val name: String = "Hero",
@@ -32,15 +47,46 @@ data class Hero(
     val unspentPoints: Int = 0,
     val attributes: Map<HeroAttribute, Int> = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE },
     val knownSpells: Set<String> = Spells.starting,
+    val heroClass: HeroClass = HeroClass.NONE,
 ) {
     fun attr(a: HeroAttribute): Int = attributes[a] ?: STARTING_ATTRIBUTE
 
+    /**
+     * Class strength in percent: 3% at level 5, +1.5% per level after, capped
+     * at 40% (level 30). Small at first, noticeable later.
+     */
+    val classBonus: Double
+        get() = if (heroClass == HeroClass.NONE) 0.0 else (3 + (level - CLASS_UNLOCK_LEVEL) * 1.5).coerceIn(0.0, 40.0)
+
+    private fun classMultiplier(a: HeroAttribute): Double {
+        val b = classBonus / 100
+        return 1 + when (heroClass) {
+            HeroClass.NONE -> 0.0
+            HeroClass.WARRIOR -> when (a) {
+                HeroAttribute.ATTACK, HeroAttribute.SPEED -> b
+                HeroAttribute.MAGIC -> -b / 2
+                else -> 0.0
+            }
+            HeroClass.MAGE -> when (a) {
+                HeroAttribute.MAGIC, HeroAttribute.DEFENSE -> b
+                HeroAttribute.ATTACK -> -b / 2
+                else -> 0.0
+            }
+            HeroClass.ROGUE -> if (a == HeroAttribute.SPEED) b else 0.0
+        }
+    }
+
+    private fun stat(a: HeroAttribute) = ((attr(a) + level) * classMultiplier(a)).toInt()
+
     // Effective combat stats; level adds a little to everything so allocating
     // points is a boost rather than the only source of growth.
-    val attack: Int get() = attr(HeroAttribute.ATTACK) + level
-    val magic: Int get() = attr(HeroAttribute.MAGIC) + level
-    val defense: Int get() = attr(HeroAttribute.DEFENSE) + level
-    val speed: Int get() = attr(HeroAttribute.SPEED) + level
+    val attack: Int get() = stat(HeroAttribute.ATTACK)
+    val magic: Int get() = stat(HeroAttribute.MAGIC)
+    val defense: Int get() = stat(HeroAttribute.DEFENSE)
+    val speed: Int get() = stat(HeroAttribute.SPEED)
+
+    /** Chance (0..1) to dodge an enemy attack; Rogues only. */
+    val evasion: Double get() = if (heroClass == HeroClass.ROGUE) classBonus / 200 else 0.0
     val maxHp: Int get() = 40 + level * 10 + attr(HeroAttribute.DEFENSE) * 3
     val maxMp: Int get() = 10 + attr(HeroAttribute.ENERGY) * 2
 

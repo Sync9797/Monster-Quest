@@ -566,4 +566,44 @@ class GameTest {
         assertTrue(Adventures.successChance(strong, adv) > Adventures.successChance(weak, adv))
         assertTrue(Adventures.successChance(weak, adv) < 0.5)
     }
+
+    @Test
+    fun heroClasses() {
+        val base = Hero(level = 4)
+        assertEquals(base, GameEngine.chooseClass(started().copy(hero = base), HeroClass.WARRIOR).state.hero)
+        var s = started().copy(hero = Hero(level = 5), gold = 1000)
+        s = GameEngine.chooseClass(s, HeroClass.WARRIOR).state
+        assertEquals(HeroClass.WARRIOR, s.hero.heroClass)
+        assertEquals(1000, s.gold) // first pick is free
+        s = GameEngine.chooseClass(s, HeroClass.MAGE).state
+        assertEquals(1000 - CLASS_CHANGE_COST, s.gold)
+
+        // Small at level 5, much bigger later.
+        fun gap(level: Int, cls: HeroClass, pick: (Hero) -> Int): Int {
+            val attrs = HeroAttribute.entries.associateWith { 20 }
+            return pick(Hero(level = level, attributes = attrs, heroClass = cls)) - pick(Hero(level = level, attributes = attrs))
+        }
+        assertTrue(gap(5, HeroClass.WARRIOR) { it.attack } in 0..2)
+        assertTrue(gap(30, HeroClass.WARRIOR) { it.attack } >= 15)
+        assertTrue(gap(30, HeroClass.WARRIOR) { it.magic } < 0)
+        assertTrue(gap(30, HeroClass.MAGE) { it.magic } > 0 && gap(30, HeroClass.MAGE) { it.defense } > 0)
+        assertTrue(gap(30, HeroClass.MAGE) { it.attack } < 0)
+        assertTrue(gap(30, HeroClass.ROGUE) { it.speed } > 0)
+        assertEquals(0.0, Hero(level = 30).evasion)
+        assertEquals(0.2, Hero(level = 30, heroClass = HeroClass.ROGUE).evasion, 0.001)
+        assertTrue(Hero(level = 5, heroClass = HeroClass.ROGUE).evasion < 0.02)
+    }
+
+    @Test
+    fun roguesDodge() {
+        val rogue = Hero(level = 60, heroClass = HeroClass.ROGUE, attributes = HeroAttribute.entries.associateWith { 60 })
+        val s = started().copy(hero = rogue, party = emptyList())
+        var dodges = 0
+        repeat(20) { seed ->
+            val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 30, Random(seed)), EncounterType.WILD, rng = Random(seed))
+            repeat(10) { if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+            dodges += b.log.count { it.contains("nimbly dodges") }
+        }
+        assertTrue(dodges > 0)
+    }
 }

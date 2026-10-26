@@ -21,6 +21,7 @@ import com.monsterquest.core.EncounterType
 import com.monsterquest.core.GameEngine
 import com.monsterquest.core.GameState
 import com.monsterquest.core.HeroAttribute
+import com.monsterquest.core.HeroClass
 import com.monsterquest.core.Item
 import com.monsterquest.core.LootBoxes
 import com.monsterquest.core.Monster
@@ -100,6 +101,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun chooseStarter(speciesId: String) = apply(GameEngine.chooseStarter(state, speciesId))
     fun allocate(attr: HeroAttribute) = apply(GameEngine.allocatePoint(state, attr))
+    fun chooseClass(cls: HeroClass) = apply(GameEngine.chooseClass(state, cls))
     fun upgrade(bag: Boolean) = apply(GameEngine.applyUpgrade(state, bag))
     fun renameHero(name: String) {
         val n = name.trim().take(16)
