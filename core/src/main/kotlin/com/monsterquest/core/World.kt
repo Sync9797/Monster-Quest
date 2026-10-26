@@ -228,7 +228,11 @@ object World {
     fun windowOf(spawnId: String): Long? = spawnId.split(":").getOrNull(1)?.toLongOrNull()
 
     /** Chance a map cell holds a monster: more when you've been moving, more again with a lure. */
-    fun cellChance(c: SpawnConditions): Double = 0.16 + 0.16 * c.activity + if (c.lure) 0.1 else 0.0
+    fun cellChance(c: SpawnConditions): Double = 0.26 + 0.08 * c.activity + if (c.lure) 0.1 else 0.0
+
+    /** Monsters also wander close by, not only out on the ring: this much of the near ground has one. */
+    const val NEARBY_SHARE = 0.9
+    const val NEARBY_MIN_M = 70.0
 
     /** The type a shrine's surroundings favor, from the kind of place it stands at. */
     fun shrineElement(s: Shrine): Element? = when (s.name) {
@@ -324,14 +328,17 @@ object World {
             if (r.nextDouble() > chance) continue
             val oLat = (x + r.nextDouble()) * SPAWN_CELL_DEG
             val oLon = (y + r.nextDouble()) * SPAWN_CELL_DEG
-            if (distanceMeters(anchorLat, anchorLon, oLat, oLon) !in SPAWN_INNER_M..SPAWN_OUTER_M) continue
+            // Most appear out on the ring and head your way; some are already wandering nearby.
+            val fromAnchor = distanceMeters(anchorLat, anchorLon, oLat, oLon)
+            val nearby = fromAnchor in NEARBY_MIN_M..SPAWN_INNER_M && r.nextDouble() < NEARBY_SHARE
+            if (fromAnchor !in SPAWN_INNER_M..SPAWN_OUTER_M && !nearby) continue
             val level = GameEngine.wildLevel(heroLevel, r)
             val species = Bestiary.randomWild(r, level, favored, rareBoost)
             // How quickly it closes in (share of the way per minute): most are wary, some curious.
-            val curiosity = 0.008 + r.nextDouble().let { it * it } * 0.055
+            val curiosity = 0.018 + r.nextDouble().let { it * it } * 0.06
             val shiny = rollShiny(r, conditions.lure)
             val pull = (ageMin * curiosity * (if (conditions.lure) 2.5 else 1.0) +
-                conditions.activity * 0.55 + (if (conditions.lure) 0.2 else 0.0)).coerceIn(0.0, 0.93)
+                conditions.activity * 0.45 + (if (conditions.lure) 0.2 else 0.0)).coerceIn(0.0, 0.93)
             out += WildSpawn(
                 id = "s:$window:$x:$y",
                 speciesId = species.id,

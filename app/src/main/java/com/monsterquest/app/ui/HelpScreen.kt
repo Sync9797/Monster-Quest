@@ -65,7 +65,7 @@ private val topics = listOf(
     HelpTopic(
         GameIcon.MAP, "The map: monsters, tracker and shrines",
         listOf(
-            "New monsters appear out at the edge of your range and creep toward you over time. Only the ones within about 200 m stand on the map.",
+            "Monsters wander all around you: some close by, more out at the edge of your range creeping toward you. Only the ones within about 650 ft (200 m) stand on the map; the rest show in the tracker.",
             "The tracker bar at the top (or the Nearby list beside the map on big screens) shows monsters farther out, with their distance (feet and miles, or meters) and the direction to walk. Tap one to see what landmark it is near and whether it is heading your way.",
             "Get within 330 ft (100 m) of a monster to battle it. The phone buzzes when one comes into range.",
             "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",

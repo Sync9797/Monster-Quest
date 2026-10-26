@@ -938,10 +938,15 @@ class GameTest {
         val window = World.spawnWindow(now) * World.SPAWN_WINDOW_MS
         val lat = 40.0
         val lon = -75.0
-        // At the start of a window, nothing is right on top of you: monsters appear out in the ring.
+        // At the start of a window, nothing is right on top of you: most monsters appear out
+        // in the ring, and some are already wandering nearby (but not within 70 m).
         val fresh = World.spawnsNear(lat, lon, window, 10)
         assertTrue(fresh.isNotEmpty())
-        fresh.forEach { assertTrue(World.distanceMeters(lat, lon, it.lat, it.lon) >= World.SPAWN_INNER_M - 1) }
+        val startDist = fresh.map { World.distanceMeters(lat, lon, it.lat, it.lon) }
+        startDist.forEach { assertTrue(it >= World.NEARBY_MIN_M - 1) }
+        assertTrue(startDist.count { it >= World.SPAWN_INNER_M - 1 } > startDist.count { it < World.SPAWN_INNER_M })
+        // Many more monsters are about than there used to be.
+        assertTrue(fresh.size >= 15, "${fresh.size} monsters")
         // Standing still, they drift closer over the window; curious ones reach battle range.
         val late = World.spawnsNear(lat, lon, window + 14 * 60_000L, 10)
         fun avg(l: List<WildSpawn>) = l.map { World.distanceMeters(lat, lon, it.lat, it.lon) }.average()

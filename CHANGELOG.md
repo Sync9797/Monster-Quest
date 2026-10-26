@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.1
+
+- **Many more monsters around you.** Monsters now also wander close by (from
+  about 230 ft out), not only at the far edge of your range, more spawn
+  overall, and they're more curious, drifting toward you faster even when you
+  stand still. On average:
+  - Standing still: about 4 on the map (was under 1), 1–2 close enough to
+    battle.
+  - Strolling: about 9 on the map (was 3–4).
+  - Walking briskly: about 18 on the map, plus the shrine monsters.
+
 ## 1.7.0
 
 - **Quests on big screens:** unfolded phones and tablets show the Quests tab
