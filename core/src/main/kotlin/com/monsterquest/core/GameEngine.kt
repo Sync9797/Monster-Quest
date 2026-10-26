@@ -890,7 +890,7 @@ object GameEngine {
             return Update(state, "You're holding $MAX_LOOT_BOXES loot boxes. Open or discard one first.")
         }
         val session = FocusSession(newId(rng), nowMs, nowMs + minutes * 60_000L, minutes)
-        return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Lock your phone now!")
+        return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Put your phone down and stay in the game.")
     }
 
     fun focusPenalty(state: GameState): Int = maxOf(10, state.gold * GOLD_LOSS_PERCENT / 100).coerceAtMost(state.gold)

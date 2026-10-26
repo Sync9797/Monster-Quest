@@ -58,7 +58,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     }
     val focus = state.focus
     if (focus != null) {
-        FocusOverlay(focus, onGiveUp = vm::giveUpFocus)
+        FocusOverlay(focus, onGiveUp = vm::giveUpFocus, onDone = vm::onFocusTimerDone)
         return
     }
     val battle = vm.battle

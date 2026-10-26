@@ -29,6 +29,7 @@ import com.monsterquest.app.ui.MonsterQuestTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.monsterquest.core.StepSource
+import com.monsterquest.app.focus.FocusService
 import org.osmdroid.config.Configuration
 import java.io.File
 
@@ -49,6 +50,21 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         stopStepCounting()
         super.onPause()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (vm.state.focus != null) FocusService.appReturned(this)
+    }
+
+    /**
+     * Leaving for another app during a phone-free session fails it (after a
+     * short grace). Turning the screen off is fine: the timer keeps going.
+     */
+    override fun onStop() {
+        val screenOn = (getSystemService(POWER_SERVICE) as android.os.PowerManager).isInteractive
+        if (vm.state.focus != null && screenOn && !isChangingConfigurations) FocusService.appLeft(this)
+        super.onStop()
     }
 
     /**

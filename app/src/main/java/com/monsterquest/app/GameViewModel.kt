@@ -179,22 +179,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Called whenever the app comes to the foreground. Opening the app means the
-     * phone was unlocked, so a session that's still running at this point has
-     * failed (unless it only just started, e.g. a permission dialog closed).
+     * Called whenever the app comes to the foreground. A phone-free session
+     * ends here if the service recorded an outcome (the player left the game,
+     * or time ran out); otherwise it keeps running.
      */
     fun onAppResumed() {
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
         GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
         val f = state.focus ?: return
-        val now = System.currentTimeMillis()
-        if (now - f.startMs < 10_000) return
-        val success = when (FocusStore.outcome(getApplication(), f.id)) {
-            FocusStore.Outcome.FAILED -> false
-            FocusStore.Outcome.SUCCESS -> true
-            null -> now >= f.endMs
+        when (FocusStore.outcome(getApplication(), f.id)) {
+            FocusStore.Outcome.FAILED -> endFocus(success = false)
+            FocusStore.Outcome.SUCCESS -> endFocus(success = true)
+            null -> if (System.currentTimeMillis() >= f.endMs) endFocus(success = true)
         }
-        endFocus(success)
+    }
+
+    /** The session's timer ran out while the game was open. */
+    fun onFocusTimerDone() {
+        val f = state.focus ?: return
+        if (System.currentTimeMillis() >= f.endMs) endFocus(success = true)
     }
 
     private fun endFocus(success: Boolean) {

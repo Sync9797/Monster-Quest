@@ -12,10 +12,14 @@ your hero.
 - **Dashboard** (Quests tab, under This week): steps today and this week,
   your quest streak, and a month calendar. Days with a completed quest are
   filled in, days with 5,000+ steps get a dot, and today is ringed in gold.
-- **Phone-free challenge:** pick 15 to 120 minutes and lock your phone.
-  - Keep it locked until time's up to win a **loot box**. Longer sessions give
-    better odds of rare boxes.
-  - Unlocking early, or not locking within a minute, costs gold and a hunt token.
+- **Phone-free challenge:** pick 15 to 120 minutes and put your phone down.
+  - The screen stays on with the timer and dims itself after 15 seconds (tap
+    to brighten), so the phone never locks. Turning the screen off with the
+    power button is fine too.
+  - Stay in Monster Quest until time's up to win a **loot box**. Longer
+    sessions give better odds of rare boxes.
+  - Leaving for another app (and not coming back within 15 seconds) or giving
+    up costs gold and a hunt token.
 - **Loot boxes** open by walking. You can hold **6** and unlock **2 at a time**.
 
   | Level | Walk | Contains |

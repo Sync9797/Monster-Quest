@@ -1,5 +1,12 @@
 package com.monsterquest.app.ui
 
+import android.app.Activity
+import android.view.WindowManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.DisposableEffect
 import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size
@@ -60,7 +67,7 @@ fun FocusCard(vm: GameViewModel) {
             Text("Phone-free challenge", style = MaterialTheme.typography.titleMedium)
         }
         Text(
-            "Start a timer and lock your phone. Keep it locked until time's up to earn rewards.",
+            "Start a timer and put your phone down. The screen stays on with the timer; stay in the game until time's up to earn rewards.",
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -85,7 +92,7 @@ fun FocusCard(vm: GameViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "Unlock early: −${GameEngine.focusPenalty(vm.state)} gold, −1 hunt token",
+            "Leave the game early: −${GameEngine.focusPenalty(vm.state)} gold, −1 hunt token",
             fontSize = 12.sp,
             color = HpRed,
         )
@@ -102,24 +109,51 @@ fun FocusCard(vm: GameViewModel) {
     }
 }
 
-/** Shown while a session runs: a countdown and a reminder to lock the phone. */
+/**
+ * Shown while a session runs: the countdown, with the screen kept on so the
+ * phone never locks. After a few seconds it dims to a dark, low-brightness
+ * timer (tap to brighten). Leaving the game fails the session.
+ */
 @Composable
-fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit) {
+fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit = {}) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var lastTouch by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(session.id) {
         while (true) {
             now = System.currentTimeMillis()
+            if (now >= session.endMs) onDone()
             delay(1_000)
         }
     }
+    val dimmed = now - lastTouch > DIM_AFTER_MS
+    val activity = LocalContext.current as? Activity
+    DisposableEffect(activity) {
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            activity?.window?.let {
+                it.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                it.attributes = it.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE }
+            }
+        }
+    }
+    LaunchedEffect(dimmed) {
+        activity?.window?.let {
+            it.attributes = it.attributes.apply {
+                screenBrightness = if (dimmed) 0.02f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
+        }
+    }
     val left = (session.endMs - now).coerceAtLeast(0)
-    val graceLeft = ((session.startMs + GameEngine.FOCUS_GRACE_MS - now) / 1000).coerceAtLeast(0)
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(
+        Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { lastTouch = System.currentTimeMillis() } },
+        color = if (dimmed) Color.Black else MaterialTheme.colorScheme.background,
+    ) {
         Box(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(Modifier.widthIn(max = 480.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                GIcon(GameIcon.PHONE_OFF, Modifier.size(72.dp), MpBlue)
-                Text("Phone-free session", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Gold)
+                val dim = Color(0xFF4A5557)
+                GIcon(GameIcon.PHONE_OFF, Modifier.size(72.dp), if (dimmed) dim else MpBlue)
+                Text("Phone-free session", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = if (dimmed) dim else Gold)
                 Spacer(Modifier.height(12.dp))
                 val h = left / 3_600_000
                 val m = (left / 60_000) % 60
@@ -128,17 +162,21 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit) {
                     if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
+                    color = if (dimmed) Color(0xFF6B7779) else MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    if (graceLeft > 0) "Lock your phone now! ($graceLeft s)"
-                    else "Unlocking your phone before the timer ends fails the session.",
+                    if (dimmed) "Tap to brighten" else "Put your phone down. The screen stays on and dims; leaving Monster Quest fails the session.",
                     textAlign = TextAlign.Center,
-                    color = if (graceLeft > 0) HpYellow else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (dimmed) dim else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(24.dp))
-                OutlinedButton(onClick = onGiveUp) { Text("Give up (−gold, −1 hunt token)") }
+                if (!dimmed) {
+                    Spacer(Modifier.height(24.dp))
+                    OutlinedButton(onClick = onGiveUp) { Text("Give up (−gold, −1 hunt token)") }
+                }
             }
         }
     }
 }
+
+private const val DIM_AFTER_MS = 15_000L

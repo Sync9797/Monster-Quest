@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- **Phone-free sessions keep the screen on.** The timer stays up and dims
+  itself after 15 seconds (tap to brighten), so the phone never locks and
+  unlocking can't fail you. The session only fails if you leave Monster Quest
+  for another app and don't come back within 15 seconds. Turning the screen
+  off with the power button is fine.
+
 ## 0.2.1
 
 - **Battery saver** (Saver button on the map): the screen goes black at
