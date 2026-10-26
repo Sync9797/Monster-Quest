@@ -27,5 +27,5 @@ fun Skill.spellEffect(): String = when (kind) {
     SkillKind.HEAL -> "heals $power+"
     SkillKind.SHIELD -> "ward $power+"
     SkillKind.FORTIFY -> "Def +$power"
-    else -> "power $power"
+    else -> if (id == com.monsterquest.core.Spells.MUD_SHOT) "power $power, foe accuracy −${com.monsterquest.core.Spells.MUD_SHOT_ACCURACY}%" else "power $power"
 }

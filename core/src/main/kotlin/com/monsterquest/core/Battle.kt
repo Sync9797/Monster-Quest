@@ -175,6 +175,8 @@ class Combatant(
     var scorchVerb: String = "is scorched"
     /** Next move has a 40% chance to miss. */
     var accuracyDown: Boolean = false
+    /** Mud Shot: accuracy lowered for the rest of the battle, in percent (stacks). */
+    var muddiedPct: Int = 0
     /** Next move misses. */
     var missNext: Boolean = false
     var flinch: Boolean = false
@@ -212,6 +214,7 @@ class Combatant(
         if (shield > 0) add("Ward $shield")
         if (mustRecharge) add("Recharging")
         if (accuracyDown || missNext) add("Blinded")
+        if (muddiedPct > 0) add("Acc ↓$muddiedPct%")
     }
 
     companion object {
@@ -881,8 +884,19 @@ class Battle(
                 } else {
                     actor.mp -= skill.mpCost
                     if (floatsOver(actor, enemy, skill.element) || !rollHit(actor, enemy, 100)) return true
-                    val dmg = strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
-                    afterHeroHit(actor, enemy, dmg)
+                    val target = enemy
+                    val dmg = strike(actor, target, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
+                    afterHeroHit(actor, target, dmg)
+                    // Mud Shot: mud in the eyes, stacking.
+                    if (skill.id == Spells.MUD_SHOT && target.alive) {
+                        val cap = Spells.MUD_SHOT_ACCURACY * Spells.MUD_SHOT_STACKS
+                        if (target.muddiedPct >= cap) {
+                            log += "${target.name} can't get any muddier."
+                        } else {
+                            target.muddiedPct = minOf(cap, target.muddiedPct + Spells.MUD_SHOT_ACCURACY)
+                            log += "${target.name}'s accuracy fell! (−${target.muddiedPct}%)"
+                        }
+                    }
                     if (actor.spellDrainPct > 0 && dmg > 0 && actor.alive && actor.hp < actor.maxHp) {
                         heal(actor, maxOf(1, dmg * actor.spellDrainPct / 100), "${actor.name}'s dark magic drains life")
                     }
@@ -991,7 +1005,7 @@ class Battle(
             record(a, d, StrikeStyle.MISS, Element.NEUTRAL)
             return false
         }
-        var chance = accuracy / 100.0
+        var chance = accuracy / 100.0 * (1 - a.muddiedPct / 100.0)
         if (a.accuracyDown) {
             chance *= 0.6
             a.accuracyDown = false

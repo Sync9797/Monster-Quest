@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.0
+
+- **New spell: Mud Shot** (Earth magic). It does little damage (power 12,
+  +4 per rank) for 3 Energy, but each hit lowers the foe's accuracy by 10%
+  for the rest of the battle. It stacks up to 5 times (−50%), and the foe
+  shows "Acc ↓" in battle. Learn it with 5 spell-book pages from item
+  shrines, then rank it up to 5 like the other spells.
+
 ## 1.15.3
 
 - **Sort by potential:** a new "Potential" sort option next to "Newest"

@@ -182,6 +182,11 @@ object Spells {
     const val MAX_RANK = 5
     const val MASTERY_LEVEL = 25
 
+    /** Mud Shot: Earth magic that lowers the foe's accuracy by [MUD_SHOT_ACCURACY]% per hit, up to [MUD_SHOT_STACKS] times. */
+    const val MUD_SHOT = "mud_shot"
+    const val MUD_SHOT_ACCURACY = 10
+    const val MUD_SHOT_STACKS = 5
+
     private fun bolt(id: String, name: String, element: Element, flavor: String) =
         Skill(id, name, element, SkillKind.MAGICAL, 24, mpCost = 4, powerPerRank = 7, description = flavor)
 
@@ -193,6 +198,11 @@ object Spells {
         bolt("venom_bolt", "Venom Bolt", Element.GAS, "A puff of fumes, a weak copy of a Toxbug's cloud."),
         bolt("shadow_bolt", "Shadow Bolt", Element.CORRUPT, "A sliver of the dark that gloomwisps carry."),
         bolt("stone_bolt", "Stone Bolt", Element.EARTH, "A thrown shard, shaped like a Mosscub's rock."),
+        Skill(
+            MUD_SHOT, "Mud Shot", Element.EARTH, SkillKind.MAGICAL, 12, mpCost = 3, powerPerRank = 4,
+            description = "A splat of mud in the foe's eyes: little damage, but its accuracy drops $MUD_SHOT_ACCURACY% " +
+                "(stacks up to ${MUD_SHOT_ACCURACY * MUD_SHOT_STACKS}%).",
+        ),
         Skill(
             "mend", "Mend", Element.NEUTRAL, SkillKind.HEAL, 24, mpCost = 5, powerPerRank = 10,
             description = "Heals one ally or yourself.",

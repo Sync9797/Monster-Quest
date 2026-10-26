@@ -231,4 +231,29 @@ class EncountersTest {
         assertEquals("Brick the Brute", brute.name)
         assertEquals(HeroClass.MAGE, hexer.heroClass)
     }
+
+    @Test
+    fun mudShotStacksAccuracyDownAndRanksUp() {
+        val mud = Spells.byId(Spells.MUD_SHOT)!!
+        assertEquals(Element.EARTH, mud.element)
+        // Weak: well under a bolt, and it ranks up like the others.
+        assertTrue(mud.power < Spells.byId("stone_bolt")!!.power)
+        assertTrue(Spells.ranked(mud, 5, 25).power > Spells.ranked(mud, 1, 25).power)
+        val hero = Hero(level = 20, knownSpells = Spells.starting + Spells.MUD_SHOT, attributes = HeroAttribute.entries.associateWith { 30 })
+        val foe = Monster.create(Bestiary.get("goopling"), 30, rng)
+        val b = Battle(hero, emptyList(), foe, EncounterType.WILD, emptyMap(), false, rng = Random(4))
+        var casts = 0
+        while (b.outcome == BattleOutcome.ONGOING && casts < 8) {
+            val c = b.current ?: break
+            c.mp = c.maxMp
+            c.hp = c.maxHp
+            b.enemy.hp = b.enemy.maxHp
+            b.act(BattleAction.CastSpell(Spells.MUD_SHOT))
+            casts++
+        }
+        val muddied = b.enemy.muddiedPct
+        assertTrue(muddied >= 20, "stacks: $muddied")
+        assertTrue(muddied <= Spells.MUD_SHOT_ACCURACY * Spells.MUD_SHOT_STACKS)
+        assertTrue(b.enemy.tags().any { "Acc" in it })
+    }
 }
