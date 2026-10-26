@@ -10,6 +10,7 @@ import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,15 +87,16 @@ fun BattleScreen(
     onClose: () -> Unit,
     onNext: () -> Unit = {},
     outfit: HeroOutfit? = null,
+    onTarget: (String) -> Unit = {},
 ) {
-    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext) }
+    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget) }
 }
 
 /** What the hero is wearing, so their battle sprite matches their equipment. */
 private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
 
 @Composable
-private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit) {
+private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit, onTarget: (String) -> Unit) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     val fx = rememberBattleFx(b)
     // Return to the main menu whenever the turn passes to someone else.
@@ -104,7 +106,7 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
     // half-folded phone in tabletop posture the controls sit on the lower half.
     val top: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize().clipToBounds()) {
-            EnemyPanel(b)
+            EnemyPanel(b, onTarget)
             Spacer(Modifier.height(8.dp))
             BattleLog(b.log, Modifier.weight(1f))
         }
@@ -155,13 +157,17 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
 }
 
 @Composable
-private fun EnemyPanel(b: BattleView) {
+private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
     val e = b.enemy
     if (b.weather != Weather.CLEAR || b.reversedOrder) {
         Row(Modifier.padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             b.weather.icon()?.let { IconText(it, b.weather.label, tint = MpBlue, textColor = MpBlue, fontSize = 13.sp) }
             if (b.reversedOrder) IconText(GameIcon.WING, "Slowest move first", tint = MpBlue, textColor = MpBlue, fontSize = 13.sp)
         }
+    }
+    if (b.isPack) {
+        PackPanel(b, onTarget)
+        return
     }
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -199,6 +205,43 @@ private fun EnemyPanel(b: BattleView) {
                 Text("${e.hp} / ${e.maxHp} HP", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (e.tags.isNotEmpty()) {
                     Text(e.tags.joinToString("  "), fontSize = 12.sp, color = HpYellow, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** A pack of wild monsters: tap one to aim your attacks, spells and orbs at it. */
+@Composable
+private fun PackPanel(b: BattleView, onTarget: (String) -> Unit) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("PACK OF ${b.enemies.size}", color = BossRed, fontWeight = FontWeight.Black, fontSize = 12.sp)
+            Spacer(Modifier.width(8.dp))
+            val reward = "%.2g".format(com.monsterquest.core.TeamScaling.reward(b.teamSize) * com.monsterquest.core.TeamScaling.packReward(b.enemies.size))
+            Text("Tap a monster to target it • Rewards x$reward", fontSize = 11.sp, color = HpYellow)
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            b.enemies.forEach { f ->
+                val targeted = f.key == b.enemy.key && f.alive
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(if (targeted) 2.dp else 1.dp, if (targeted) Gold else Line, RoundedCornerShape(10.dp))
+                        .clickable(enabled = f.alive) { onTarget(f.key) }
+                        .padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    FighterArt(f, Modifier.size(56.dp).fighterFx(f.key))
+                    Text(f.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (targeted) FontWeight.Bold else FontWeight.Normal)
+                    IconText(f.element.icon(), "Lv ${f.level}", tint = f.element.color(), fontSize = 10.sp, size = 11.dp)
+                    Bar(f.hpFraction, hpColor(f.hpFraction), Modifier.fillMaxWidth(), heightDp = 6)
+                    Text(if (f.alive) "${f.hp}/${f.maxHp}" else "Defeated", fontSize = 10.sp, color = if (f.alive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (targeted) Text("Target", fontSize = 9.sp, color = Gold, fontWeight = FontWeight.Bold)
+                    f.tags.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = HpYellow, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
         }

@@ -309,7 +309,7 @@ fun TurnOrderStrip(b: BattleView, art: @Composable (com.monsterquest.app.Fighter
         Text("Turn order", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 4.dp))
         b.turnOrder.forEachIndexed { i, key ->
             val f = b.fighter(key) ?: return@forEachIndexed
-            val enemy = key == b.enemy.key
+            val enemy = com.monsterquest.core.Combatant.isEnemy(key)
             val ring = when {
                 i == 0 -> Gold
                 enemy -> BossRed.copy(alpha = 0.7f)

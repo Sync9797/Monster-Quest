@@ -59,6 +59,11 @@ data class WildSpawn(
     val expiresAtMs: Long,
     /** Drawn to you by a lure. */
     val lured: Boolean = false,
+    /** Where it first appeared, out on the edge of your range. */
+    val originLat: Double = lat,
+    val originLon: Double = lon,
+    /** Followed you because you walked (a walking reward); waits right beside you. */
+    val follower: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
 }
@@ -75,12 +80,20 @@ object World {
     const val SILVER_COOLDOWN_MS = 20 * 60 * 60_000L
     /** Wild spawns reshuffle every 15 minutes. */
     const val SPAWN_WINDOW_MS = 15 * 60_000L
-    /** Monsters wandering right up to you come and go every 5 minutes. */
-    const val NEARBY_WINDOW_MS = 5 * 60_000L
-    private const val NEARBY_CELL_DEG = 0.0005 // ~55 m, so GPS jitter doesn't reshuffle them
+    /** Monsters closer than this show on the map; farther ones only in the tracker. */
+    const val REVEAL_M = 200.0
+    /** How far the tracker can sense monsters. */
+    const val TRACK_M = 1_000.0
+    /** New monsters appear in a ring this far from where you were when they spawned. */
+    const val SPAWN_INNER_M = 300.0
+    const val SPAWN_OUTER_M = 800.0
+    /** Monsters this close to the one you fight may join in as a pack. */
+    const val PACK_RADIUS_M = 120.0
+    /** Aggressive monsters this close may ambush you. */
+    const val AMBUSH_M = 60.0
+    private const val SPAWN_CELL_RADIUS = 6
 
     private const val SPAWN_CELL_DEG = 0.0015 // ~160 m
-    private const val SPAWN_CELL_RADIUS = 3
     private const val SHRINE_CELL_DEG = 0.004 // ~440 m
     private const val SHRINE_CELL_RADIUS = 3
 
@@ -158,77 +171,97 @@ object World {
     fun windowOf(spawnId: String): Long? = spawnId.split(":").getOrNull(1)?.toLongOrNull()
 
     /** Chance a map cell holds a monster: more when you've been moving, more again with a lure. */
-    fun cellChance(c: SpawnConditions): Double = 0.18 + 0.17 * c.activity + if (c.lure) 0.15 else 0.0
+    fun cellChance(c: SpawnConditions): Double = 0.10 + 0.08 * c.activity + if (c.lure) 0.08 else 0.0
 
     /**
-     * Wild monsters around a location, Pokémon GO style:
-     * - Monsters scattered across the map, reshuffled every 15 minutes. Moving
-     *   around raises how many there are and how rare they get, and walking
-     *   somewhere new reveals fresh ones.
-     * - The time of day favors certain types (fire by day, corrupt at night...).
-     * - Even standing still, a monster wanders up to you most 5-minute windows,
-     *   so the game stays playable at home or at a desk.
-     * - A lure draws extra (and rarer) monsters right to you for 30 minutes.
-     * Deterministic for a place and time window, so the map doesn't reshuffle as you walk.
+     * Wild monsters around you, Pokémon GO style but on the move:
+     * - They appear out in a ring 300–800 m from where you were when they
+     *   spawned ([anchorLat], [anchorLon]), so you head toward them.
+     * - They hear you: each one drifts toward your current position over its
+     *   15-minute window, and much faster while you're walking ([SpawnConditions.activity]).
+     *   Curious ones reach you even if you stand still; lures pull them in fast.
+     * - The time of day favors certain types; moving and lures make rarer ones likelier.
+     * Deterministic for a place and time window, so the map doesn't reshuffle.
      */
-    fun spawnsNear(lat: Double, lon: Double, nowMs: Long, heroLevel: Int, conditions: SpawnConditions = SpawnConditions(12)): List<WildSpawn> {
+    fun spawnsNear(
+        lat: Double,
+        lon: Double,
+        nowMs: Long,
+        heroLevel: Int,
+        conditions: SpawnConditions = SpawnConditions(12),
+        anchorLat: Double = lat,
+        anchorLon: Double = lon,
+    ): List<WildSpawn> {
         val window = spawnWindow(nowMs)
         val expires = (window + 1) * SPAWN_WINDOW_MS
+        val ageMin = (nowMs - window * SPAWN_WINDOW_MS) / 60_000.0
         val favored = conditions.timeOfDay.favored
         val rareBoost = 1.0 + conditions.activity + if (conditions.lure) 0.5 else 0.0
         val chance = cellChance(conditions)
-        val cx = floor(lat / SPAWN_CELL_DEG).toLong()
-        val cy = floor(lon / SPAWN_CELL_DEG).toLong()
+        val cx = floor(anchorLat / SPAWN_CELL_DEG).toLong()
+        val cy = floor(anchorLon / SPAWN_CELL_DEG).toLong()
         val out = mutableListOf<WildSpawn>()
         for (dx in -SPAWN_CELL_RADIUS..SPAWN_CELL_RADIUS) for (dy in -SPAWN_CELL_RADIUS..SPAWN_CELL_RADIUS) {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, window))
             if (r.nextDouble() > chance) continue
+            val oLat = (x + r.nextDouble()) * SPAWN_CELL_DEG
+            val oLon = (y + r.nextDouble()) * SPAWN_CELL_DEG
+            if (distanceMeters(anchorLat, anchorLon, oLat, oLon) !in SPAWN_INNER_M..SPAWN_OUTER_M) continue
             val level = GameEngine.wildLevel(heroLevel, r)
             val species = Bestiary.randomWild(r, level, favored, rareBoost)
+            // How quickly it closes in (share of the way per minute): most are wary, some curious.
+            val curiosity = 0.008 + r.nextDouble().let { it * it } * 0.055
+            val pull = (ageMin * curiosity * (if (conditions.lure) 2.5 else 1.0) +
+                conditions.activity * 0.55 + (if (conditions.lure) 0.2 else 0.0)).coerceIn(0.0, 0.93)
             out += WildSpawn(
                 id = "s:$window:$x:$y",
                 speciesId = species.id,
                 level = level,
-                lat = (x + r.nextDouble()) * SPAWN_CELL_DEG,
-                lon = (y + r.nextDouble()) * SPAWN_CELL_DEG,
+                lat = oLat + (lat - oLat) * pull,
+                lon = oLon + (lon - oLon) * pull,
                 expiresAtMs = expires,
+                lured = conditions.lure && curiosity > 0.03,
+                originLat = oLat,
+                originLon = oLon,
             )
         }
-        out += nearbySpawns(lat, lon, nowMs, heroLevel, conditions)
         return out
     }
 
-    /** Monsters that wander right up to you (always within battle range). */
-    private fun nearbySpawns(lat: Double, lon: Double, nowMs: Long, heroLevel: Int, c: SpawnConditions): List<WildSpawn> {
-        val window = spawnWindow(nowMs)
-        val small = nowMs / NEARBY_WINDOW_MS
-        val expires = (small + 1) * NEARBY_WINDOW_MS
-        val x = floor(lat / NEARBY_CELL_DEG).toLong()
-        val y = floor(lon / NEARBY_CELL_DEG).toLong()
-        val centerLat = (x + 0.5) * NEARBY_CELL_DEG
-        val centerLon = (y + 0.5) * NEARBY_CELL_DEG
-        val r = Random(seed(x, y, small, 11))
-        val count = when {
-            c.lure -> 2 + (if (r.nextDouble() < 0.5) 1 else 0)
-            r.nextDouble() < 0.6 -> 1
-            else -> 0
-        }
-        return (0 until count).map { k ->
-            val level = GameEngine.wildLevel(heroLevel, r)
-            val species = Bestiary.randomWild(r, level, c.timeOfDay.favored, if (c.lure) 2.0 else 1.0)
-            WildSpawn(
-                id = "s:$window:n$small:$x:$y:$k",
-                speciesId = species.id,
-                level = level,
-                lat = centerLat + (r.nextDouble() - 0.5) * NEARBY_CELL_DEG,
-                lon = centerLon + (r.nextDouble() - 0.5) * NEARBY_CELL_DEG,
-                expiresAtMs = expires,
-                lured = c.lure && k > 0,
-            )
-        }
+    /** Compass bearing in degrees (0 = north, 90 = east) from the first point to the second. */
+    fun bearing(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val p1 = Math.toRadians(lat1)
+        val p2 = Math.toRadians(lat2)
+        val dl = Math.toRadians(lon2 - lon1)
+        val y = sin(dl) * cos(p2)
+        val x = cos(p1) * sin(p2) - sin(p1) * cos(p2) * cos(dl)
+        return (Math.toDegrees(kotlin.math.atan2(y, x)) + 360) % 360
     }
+
+    /** "N", "NE", "E", ... for a bearing. */
+    fun compass(bearing: Double): String =
+        listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")[(((bearing + 22.5) % 360) / 45).toInt()]
+
+    private fun hashPercent(id: String, salt: Int) = abs((id.hashCode() * 31 + salt) % 100)
+
+    /**
+     * Monsters near the one you fight that join in. Not every monster teams up:
+     * each nearby one joins about 45% of the time (fixed per monster), up to 3.
+     */
+    fun packFor(target: WildSpawn, others: List<WildSpawn>): List<WildSpawn> =
+        others.asSequence()
+            .filter { it.id != target.id && !it.follower }
+            .filter { distanceMeters(target.lat, target.lon, it.lat, it.lon) <= PACK_RADIUS_M }
+            .filter { hashPercent(it.id, 7) < 45 }
+            .sortedBy { distanceMeters(target.lat, target.lon, it.lat, it.lon) }
+            .take(3)
+            .toList()
+
+    /** Some monsters are aggressive and will attack first when they reach you; more of them at night. */
+    fun isAggressive(spawn: WildSpawn, hour: Int): Boolean =
+        !spawn.follower && hashPercent(spawn.id, 13) < (if (TimeOfDay.of(hour) == TimeOfDay.NIGHT) 40 else 25)
 
     /**
      * Extra item stops ("waystones") filling the gaps between real places, so

@@ -43,6 +43,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -137,13 +142,16 @@ fun MapScreen(vm: GameViewModel) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(20_000)
+            // Monsters creep closer over time, so refresh often.
+            delay(10_000)
             now = System.currentTimeMillis()
         }
     }
 
     val loc = vm.location
-    val spawns = vm.spawnsNear(now)
+    // Only monsters within the reveal distance stand on the map; farther ones show in the tracker.
+    val spawns = vm.visibleSpawns(now)
+    val tracked = vm.trackedSpawns(now)
     val shrines = vm.shrines
     val villains = vm.villainsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
@@ -152,11 +160,16 @@ fun MapScreen(vm: GameViewModel) {
     // pocket) and the screen goes dark; turn it back upright to return.
     if (vm.state.settings.flipBatterySaver) UpsideDownSaver(vm)
 
-    // Buzz when a new monster shows up nearby (also while the battery saver screen is on).
-    LaunchedEffect(spawns.map { it.id }, loc) {
+    // Buzz when a monster comes within battle range (also while the battery saver
+    // screen is on), and let aggressive ones that reach you ambush.
+    LaunchedEffect(spawns.map { it.id to (vm.distanceTo(it.lat, it.lon)?.toInt() ?: 0) / 20 }, loc) {
         if (loc == null) return@LaunchedEffect
         val fresh = vm.newSpawnsNearby(spawns)
-        if (fresh.isNotEmpty() && vm.state.settings.vibrateOnSpawn) Haptics.spawn(context)
+        if (vm.checkAmbush(spawns, System.currentTimeMillis())) {
+            if (vm.state.settings.vibrateOnSpawn) Haptics.ambush(context)
+        } else if (fresh.isNotEmpty() && vm.state.settings.vibrateOnSpawn) {
+            Haptics.spawn(context)
+        }
     }
     var centered by remember { mutableStateOf(false) }
 
@@ -252,6 +265,7 @@ fun MapScreen(vm: GameViewModel) {
                         mv.invalidate()
                     },
                 )
+                TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter))
                 if (loc == null) {
                     Text(
                         "Finding your location…",
@@ -269,7 +283,7 @@ fun MapScreen(vm: GameViewModel) {
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
                         else -> "${shrines.count { it.tier == ShrineTier.ITEM }} item • ${shrines.count { it.tier == ShrineTier.SILVER }} silver • " +
-                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters • ${villains.size} foes"
+                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters near • ${tracked.size} tracked • ${villains.size} foes"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -333,7 +347,8 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
             }
             val pct = (cond.activity * 100).toInt()
             Text(
-                if (pct >= 5) "On the move: +$pct% spawns, rarer monsters" else "Standing still: monsters still wander up to you. Walk for more.",
+                if (pct >= 5) "On the move: monsters hear you and close in fast (+$pct% spawns, rarer)"
+                else "Standing still: curious monsters still find you. Walk to draw them in faster.",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -500,11 +515,22 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
         onDismissRequest = onDismiss,
         title = { Text("Wild ${sp.name}") },
         text = {
+            val pack = vm.packFor(spawn)
             Column {
                 MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally))
                 Text("Level ${spawn.level} • ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
+                if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
                 Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
+                if (pack.isNotEmpty()) {
+                    Text(
+                        "Watch out: ${pack.joinToString { it.species.name }} nearby will join the fight as a pack " +
+                            "(${pack.size + 1} vs your team, bigger rewards).",
+                        color = HpYellow,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
                 if (!inRange) Text("Walk within ${World.SPAWN_RANGE_M.toInt()} m to battle.", modifier = Modifier.padding(top = 6.dp))
             }
         },
@@ -513,6 +539,52 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+/**
+ * Like Pokémon GO's "Nearby": monsters you can sense but not yet see, nearest
+ * first, with footprints for distance (one is close, three is far) and the
+ * direction to walk. Walking draws them toward you.
+ */
+@Composable
+private fun TrackerBar(vm: GameViewModel, tracked: List<WildSpawn>, modifier: Modifier = Modifier) {
+    if (tracked.isEmpty()) return
+    val here = vm.location ?: return
+    Row(
+        modifier
+            .padding(8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GIcon(GameIcon.EYE, Modifier.size(16.dp), Gold)
+        tracked.take(8).forEach { sp ->
+            val d = World.distanceMeters(here.first, here.second, sp.lat, sp.lon)
+            val dir = World.compass(World.bearing(here.first, here.second, sp.lat, sp.lon))
+            val steps = when {
+                d < 400 -> 1
+                d < 700 -> 2
+                else -> 3
+            }
+            val seen = sp.speciesId in vm.state.seen
+            Column(
+                Modifier.clickable {
+                    vm.toast("${if (seen) sp.species.name else "Something"} is about ${(d / 50).toInt() * 50} m to the $dir. Walk that way; it's coming toward you.")
+                },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                MonsterArt(sp.species, Modifier.size(34.dp), silhouette = !seen)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    repeat(steps) { GIcon(GameIcon.PAW, Modifier.size(9.dp), MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(" $dir", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
 }
 
 @Composable

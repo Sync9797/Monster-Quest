@@ -459,13 +459,22 @@ object GameEngine {
         return state.copy(usedSpawns = pruned + spawnId)
     }
 
-    fun newBattle(state: GameState, enemy: Monster, encounter: EncounterType, shrineId: String? = null, rng: Random = Random.Default) =
-        Battle(
-            state.hero,
-            // Monsters out on adventures can't fight.
-            state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
-            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.equippedArmor,
-        )
+    fun newBattle(
+        state: GameState,
+        enemy: Monster,
+        encounter: EncounterType,
+        shrineId: String? = null,
+        rng: Random = Random.Default,
+        pack: List<Monster> = emptyList(),
+        ambush: Boolean = false,
+    ) = Battle(
+        state.hero,
+        // Monsters out on adventures can't fight.
+        state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
+        enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.equippedArmor,
+        extraEnemies = pack,
+        ambush = ambush,
+    )
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
         var s = state.copy(inventory = removeItems(state.inventory, r.itemsUsed))
@@ -775,6 +784,47 @@ object GameEngine {
         return state.activity * Math.pow(0.5, minutes / ACTIVITY_HALF_LIFE_MIN)
     }
 
+    // ---- followers (walking draws monsters to you) ---------------------------
+
+    /** Steps that draw one monster to follow you. */
+    const val FOLLOWER_STEPS = 1_000
+    const val MAX_FOLLOWERS = 3
+    /** Followers wander off after this long. */
+    const val FOLLOWER_TTL_MS = 4 * 60 * 60_000L
+
+    fun activeFollowers(state: GameState, nowMs: Long): List<Follower> =
+        state.followers.filter { nowMs - it.createdMs < FOLLOWER_TTL_MS }
+
+    /** A follower as a battle-ready spawn standing right beside you. */
+    fun followerSpawn(f: Follower, lat: Double, lon: Double, index: Int): WildSpawn {
+        val angle = index * 2.1
+        return WildSpawn(
+            id = "f:${f.id}", speciesId = f.speciesId, level = f.level,
+            lat = lat + 0.00018 * kotlin.math.cos(angle), lon = lon + 0.00022 * kotlin.math.sin(angle),
+            expiresAtMs = f.createdMs + FOLLOWER_TTL_MS, follower = true,
+        )
+    }
+
+    fun removeFollower(state: GameState, spawnId: String): GameState =
+        state.copy(followers = state.followers.filterNot { "f:${it.id}" == spawnId })
+
+    /** Adds followers for every [FOLLOWER_STEPS] walked (up to [MAX_FOLLOWERS] waiting). */
+    private fun drawFollowers(state: GameState, steps: Int, nowMs: Long): Pair<GameState, List<Follower>> {
+        var bank = state.followerStepBank + steps
+        val current = activeFollowers(state, nowMs).toMutableList()
+        val added = mutableListOf<Follower>()
+        val rng = Random(state.stats.totalSteps * 31 + nowMs)
+        while (bank >= FOLLOWER_STEPS) {
+            bank -= FOLLOWER_STEPS
+            if (current.size >= MAX_FOLLOWERS) continue
+            val level = wildLevel(state.hero.level, rng)
+            val f = Follower(newId(rng), Bestiary.randomWild(rng, level, rareBoost = 1.5).id, level, nowMs)
+            current += f
+            added += f
+        }
+        return state.copy(followers = current, followerStepBank = bank) to added
+    }
+
     // ---- lures -------------------------------------------------------------
 
     const val LURE_MS = 30 * 60_000L
@@ -872,10 +922,17 @@ object GameEngine {
             activityAtMs = nowMs,
             stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
         )
+        val (withFollowers, followed) = drawFollowers(s, steps, nowMs)
+        s = withFollowers
+        val followText = when (followed.size) {
+            0 -> ""
+            1 -> "A wild ${followed[0].species.name} followed your footsteps! Find it on the map."
+            else -> "${followed.size} monsters followed your footsteps! Find them on the map."
+        }
         val bank = s.stepBank + steps
         val rewards = bank / STEPS_PER_REWARD
         s = s.copy(stepBank = bank % STEPS_PER_REWARD)
-        if (rewards == 0) return Update(s, "")
+        if (rewards == 0) return Update(s, followText)
 
         val xp = rewards * XP_PER_REWARD
         val hp = rewards * HP_PER_REWARD
@@ -893,7 +950,8 @@ object GameEngine {
                 after.copy(damage = (after.damage - hp).coerceAtLeast(0))
             },
         )
-        val text = (levelUpText(gain).trim().takeIf { it.isNotEmpty() }?.let { listOf("Walking: $it") } ?: emptyList()) + notes
+        val text = (levelUpText(gain).trim().takeIf { it.isNotEmpty() }?.let { listOf("Walking: $it") } ?: emptyList()) + notes +
+            listOfNotNull(followText.takeIf { it.isNotEmpty() })
         return Update(s, text.joinToString(" "))
     }
 

@@ -16,7 +16,10 @@ import com.monsterquest.core.Weather
 /** Immutable snapshot of a [Battle] for the UI (the engine itself is mutable). */
 data class BattleView(
     val allies: List<FighterView>,
+    /** The enemy your attacks aim at. */
     val enemy: FighterView,
+    /** Every enemy (one, or a pack of up to 4). */
+    val enemies: List<FighterView> = listOf(enemy),
     val log: List<String>,
     val current: FighterView?,
     val outcome: BattleOutcome,
@@ -41,7 +44,9 @@ data class BattleView(
     /** Fighters on your side (hero + monsters); wild enemies scale with it. */
     val teamSize: Int = 1,
 ) {
-    fun fighter(key: String): FighterView? = if (key == enemy.key) enemy else allies.find { it.key == key }
+    fun fighter(key: String): FighterView? = enemies.find { it.key == key } ?: allies.find { it.key == key }
+
+    val isPack: Boolean get() = enemies.size > 1
 
     val isBoss: Boolean get() = encounter != EncounterType.WILD
 
@@ -51,6 +56,7 @@ data class BattleView(
             return BattleView(
                 allies = b.allies.map { FighterView.of(it) },
                 enemy = FighterView.of(b.enemy),
+                enemies = b.enemies.map { FighterView.of(it) },
                 log = b.log.toList(),
                 current = cur?.let { FighterView.of(it) },
                 outcome = b.outcome,

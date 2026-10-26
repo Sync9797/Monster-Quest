@@ -16,6 +16,13 @@ object Haptics {
             context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
 
+    /** A long, hard buzz: you've been ambushed. */
+    fun ambush(context: Context) {
+        val v = vibrator(context) ?: return
+        if (!v.hasVibrator()) return
+        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 120, 300, 120, 300), -1)) }
+    }
+
     /** Two quick pulses: a wild monster appeared nearby. */
     fun spawn(context: Context) {
         val v = vibrator(context) ?: return

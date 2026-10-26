@@ -311,6 +311,22 @@ abstract class ScreenshotBase(private val device: String) {
         shot("20_loot_popup", advanceMs = 900) { AppRoot(v, Tab.MAP) }
     }
 
+    @Test fun help() {
+        shot("21_help", content = onBackground { com.monsterquest.app.ui.HelpScreen {} })
+    }
+
+    /** A 4 vs 3 pack ambush. */
+    @Test fun packBattle() {
+        val v = vm()
+        val r = Random(11)
+        v.debugStartBattle(
+            Monster.create(Bestiary.get("impling"), 13, r),
+            listOf(Monster.create(Bestiary.get("goopling"), 12, r), Monster.create(Bestiary.get("zipwing"), 13, r)),
+            ambush = true,
+        )
+        shot("22_pack_battle", advanceMs = 5_000) { AppRoot(v) }
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

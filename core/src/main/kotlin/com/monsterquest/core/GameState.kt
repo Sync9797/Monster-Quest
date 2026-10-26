@@ -157,6 +157,12 @@ data class FocusSession(
 
 val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
 
+/** A wild monster drawn to you by your walking. */
+@Serializable
+data class Follower(val id: String, val speciesId: String, val level: Int, val createdMs: Long) {
+    val species: Species get() = Bestiary.get(speciesId)
+}
+
 // ---------------------------------------------------------------------------
 // Whole save game
 // ---------------------------------------------------------------------------
@@ -187,6 +193,12 @@ data class GameState(
     val armor: List<Armor> = emptyList(),
     val equippedArmor: Armor? = null,
     val settings: Settings = Settings(),
+    /** Monsters that followed you because you walked; they wait beside you until battled. */
+    val followers: List<Follower> = emptyList(),
+    /** Steps toward the next follower. */
+    val followerStepBank: Int = 0,
+    /** Last time a monster ambushed you (ambushes have a cooldown). */
+    val lastAmbushMs: Long = 0,
     /** Last daily step total read from Health Connect, and the day it was for. */
     val healthDay: Long? = null,
     val healthSteps: Long? = null,

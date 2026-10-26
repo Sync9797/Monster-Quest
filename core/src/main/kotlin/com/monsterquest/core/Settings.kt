@@ -37,6 +37,8 @@ data class Settings(
     val batterySaverGps: Boolean = false,
     /** On the map, turning the phone upside down blacks out the screen to save battery. */
     val flipBatterySaver: Boolean = true,
+    /** Aggressive monsters that reach you can start a fight before you're ready. */
+    val ambushes: Boolean = true,
     /** Vibrate when a new monster appears nearby. */
     val vibrateOnSpawn: Boolean = true,
     val calendarAutoSync: Boolean = true,

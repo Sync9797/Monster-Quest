@@ -27,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,10 +48,15 @@ import com.monsterquest.core.StepSource
 
 /** Settings: performance, calendar and where steps come from. */
 @Composable
-fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
+fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () -> Unit) {
     val context = LocalContext.current
     val prefs = vm.state.settings
     LaunchedEffect(Unit) { vm.refreshHealthStatus() }
+    var showHelp by rememberSaveable { mutableStateOf(initialHelp) }
+    if (showHelp) {
+        HelpScreen { showHelp = false }
+        return
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -57,6 +66,19 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
                 IconText(GameIcon.GEAR, "Settings", tint = Gold, textColor = Gold, size = 22.dp, style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onClose) { Text("Done") }
+            }
+
+            GameCard(Modifier.padding(top = 4.dp).clickable { showHelp = true }, border = Gold) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconText(GameIcon.BOOK, "Help: how to play", tint = Gold, textColor = Gold, bold = true)
+                    Spacer(Modifier.weight(1f))
+                    Text("Open", color = Gold, fontSize = 13.sp)
+                }
+                Text(
+                    "Quests, phone-free sessions, walking, the map and tracker, collecting items, battles and packs, taming, boss raids and more.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             // ---- Steps ----
@@ -161,8 +183,13 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
                     prefs.flipBatterySaver,
                 ) { on -> vm.updateSettings { it.copy(flipBatterySaver = on) } }
                 ToggleRow(
+                    "Ambushes",
+                    "Aggressive monsters that reach you on the map can start a fight and strike first. At most one every 10 minutes.",
+                    prefs.ambushes,
+                ) { on -> vm.updateSettings { it.copy(ambushes = on) } }
+                ToggleRow(
                     "Vibrate for new monsters",
-                    "A short buzz when a monster appears within ${com.monsterquest.app.ALERT_RANGE_M.toInt()} m, even on the battery saver screen.",
+                    "A short buzz when a monster comes within battle range (${com.monsterquest.app.ALERT_RANGE_M.toInt()} m), even on the battery saver screen.",
                     prefs.vibrateOnSpawn,
                 ) { on -> vm.updateSettings { it.copy(vibrateOnSpawn = on) } }
                 ToggleRow(

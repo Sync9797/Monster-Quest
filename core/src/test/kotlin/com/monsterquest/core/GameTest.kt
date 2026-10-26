@@ -230,8 +230,10 @@ class GameTest {
     @Test
     fun spawnsAreDeterministic() {
         val a = World.spawnsNear(40.0, -74.0, 1_000_000, 5)
+        // The same monsters exist all window long (they just drift closer over time).
         val b = World.spawnsNear(40.0, -74.0, 1_000_500, 5)
-        assertEquals(a, b)
+        assertEquals(a.map { it.id to it.speciesId }, b.map { it.id to it.speciesId })
+        assertEquals(a, World.spawnsNear(40.0, -74.0, 1_000_000, 5))
         assertTrue(a.isNotEmpty())
         assertTrue(World.proceduralShrines(40.0, -74.0).isNotEmpty())
     }
@@ -804,15 +806,73 @@ class GameTest {
     }
 
     @Test
-    fun alwaysSomethingNearbyWhenStandingStill() {
+    fun monstersSpawnInARingAndCloseIn() {
         val now = 1_700_000_000_000L
-        // Over an hour at one spot, monsters keep wandering up within battle range.
-        val inRange = (0 until 12).flatMap { i ->
-            World.spawnsNear(40.0, -75.0, now + i * World.NEARBY_WINDOW_MS, 10).filter {
-                World.distanceMeters(40.0, -75.0, it.lat, it.lon) <= World.SPAWN_RANGE_M
-            }.map { it.id }
-        }.toSet()
-        assertTrue(inRange.size >= 5, "only ${inRange.size}")
+        val window = World.spawnWindow(now) * World.SPAWN_WINDOW_MS
+        val lat = 40.0
+        val lon = -75.0
+        // At the start of a window, nothing is right on top of you: monsters appear out in the ring.
+        val fresh = World.spawnsNear(lat, lon, window, 10)
+        assertTrue(fresh.isNotEmpty())
+        fresh.forEach { assertTrue(World.distanceMeters(lat, lon, it.lat, it.lon) >= World.SPAWN_INNER_M - 1) }
+        // Standing still, they drift closer over the window; curious ones reach battle range.
+        val late = World.spawnsNear(lat, lon, window + 14 * 60_000L, 10)
+        fun avg(l: List<WildSpawn>) = l.map { World.distanceMeters(lat, lon, it.lat, it.lon) }.average()
+        assertTrue(avg(late) < avg(fresh))
+        // Walking pulls every monster in much faster.
+        val walking = World.spawnsNear(lat, lon, window + 60_000L, 10, SpawnConditions(12, activity = 1.0))
+        assertTrue(avg(walking) < avg(World.spawnsNear(lat, lon, window + 60_000L, 10)) * 0.6)
+        // Over several windows of standing still, some monster reaches you.
+        val reached = (0 until 8).any { w ->
+            World.spawnsNear(lat, lon, window + w * World.SPAWN_WINDOW_MS + 14 * 60_000L, 10).any {
+                World.distanceMeters(lat, lon, it.lat, it.lon) <= World.SPAWN_RANGE_M
+            }
+        }
+        assertTrue(reached)
+    }
+
+    @Test
+    fun walkingDrawsFollowers() {
+        val now = 1_700_000_000_000L
+        var s = started()
+        s = GameEngine.walk(s, 2_500, now).state
+        assertEquals(2, s.followers.size)
+        assertEquals(500, s.followerStepBank)
+        s = GameEngine.walk(s, 5_000, now).state
+        assertEquals(GameEngine.MAX_FOLLOWERS, s.followers.size)
+        assertTrue(GameEngine.activeFollowers(s, now + GameEngine.FOLLOWER_TTL_MS + 1).isEmpty())
+        val spawn = GameEngine.followerSpawn(s.followers.first(), 40.0, -75.0, 0)
+        assertTrue(World.distanceMeters(40.0, -75.0, spawn.lat, spawn.lon) < World.SPAWN_RANGE_M)
+        assertEquals(GameEngine.MAX_FOLLOWERS - 1, GameEngine.removeFollower(s, spawn.id).followers.size)
+    }
+
+    @Test
+    fun packsAndAmbushes() {
+        val s = started()
+        val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }
+        val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1), pack = foes.drop(1), ambush = true)
+        assertEquals(3, b.enemies.size)
+        assertEquals(listOf("enemy", "enemy2", "enemy3"), b.enemies.map { it.key })
+        // In an ambush every monster acts before you in round 1.
+        val firstAllyEvent = b.events.indexOfFirst { !Combatant.isEnemy(it.actorKey) }
+        assertTrue(firstAllyEvent == -1)
+        assertTrue(b.log.any { it.contains("Ambush") })
+        // Targeting: attacks go at the chosen monster.
+        b.selectTarget("enemy3")
+        assertEquals("enemy3", b.enemy.key)
+        var guard = 0
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) {
+            if (b.current != null) b.act(BattleAction.Attack) else break
+        }
+        if (b.outcome == BattleOutcome.WON) {
+            assertTrue(b.enemies.none { it.alive })
+            // Packs pay more than a single monster of the same level.
+            val solo = TeamScaling.reward(b.teamSize)
+            assertTrue(TeamScaling.reward(b.teamSize) * TeamScaling.packReward(3) > solo)
+        }
+        // Each pack member is weaker than a lone monster would be.
+        val single = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1))
+        assertTrue(b.enemies.first().maxHp < single.enemy.maxHp)
     }
 
     @Test

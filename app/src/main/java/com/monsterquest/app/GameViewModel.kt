@@ -49,8 +49,11 @@ import kotlinx.coroutines.withContext
 /** What a shrine just gave you. */
 data class LootPopup(val title: String, val rewards: List<com.monsterquest.core.Reward>, val id: Long = System.nanoTime())
 
-/** How close (meters) a new spawn must be to buzz the phone. */
-const val ALERT_RANGE_M = 200.0
+/** How close (meters) a new spawn must be to buzz the phone: battle range. */
+const val ALERT_RANGE_M = World.SPAWN_RANGE_M
+
+/** At most one ambush this often. */
+const val AMBUSH_COOLDOWN_MS = 10 * 60_000L
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SaveRepository(app)
@@ -380,10 +383,43 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Where you were when this spawn window began: new monsters appear in a ring around it. */
+    private var spawnAnchor: Pair<Double, Double>? = null
+    private var anchorWindow = -1L
+
+    /**
+     * Every wild monster around you right now, at its current (approaching)
+     * position, plus monsters that followed you from walking.
+     */
     fun spawnsNear(nowMs: Long): List<WildSpawn> {
         val (lat, lon) = location ?: return emptyList()
-        return World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs)).filter { it.id !in state.usedSpawns }
+        val window = World.spawnWindow(nowMs)
+        val anchor = spawnAnchor
+        // A new window, or a big jump (a drive), starts a fresh ring around where you are.
+        if (anchor == null || window != anchorWindow ||
+            World.distanceMeters(anchor.first, anchor.second, lat, lon) > World.SPAWN_OUTER_M
+        ) {
+            spawnAnchor = lat to lon
+            anchorWindow = window
+        }
+        val (aLat, aLon) = spawnAnchor ?: (lat to lon)
+        val wild = World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), aLat, aLon)
+            .filter { it.id !in state.usedSpawns }
+        val followers = GameEngine.activeFollowers(state, nowMs).mapIndexed { i, f -> GameEngine.followerSpawn(f, lat, lon, i) }
+        return followers + wild
     }
+
+    /** Monsters close enough to show on the map. */
+    fun visibleSpawns(nowMs: Long): List<WildSpawn> =
+        spawnsNear(nowMs).filter { (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= World.REVEAL_M }
+
+    /** Monsters sensed farther out (shown only in the tracker), nearest first. */
+    fun trackedSpawns(nowMs: Long): List<WildSpawn> =
+        spawnsNear(nowMs)
+            .map { it to (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) }
+            .filter { (_, d) -> d > World.REVEAL_M && d <= World.TRACK_M }
+            .sortedBy { it.second }
+            .map { it.first }
 
     fun spawnConditions(nowMs: Long): SpawnConditions = SpawnConditions(
         hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour,
@@ -421,7 +457,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             spawnsPrimed = true
             return emptyList()
         }
-        fresh.firstOrNull()?.let { lastSpawnAlert = "A wild ${it.species.name} appeared nearby!" }
+        fresh.firstOrNull()?.let { lastSpawnAlert = "A wild ${it.species.name} is in range!" }
         return fresh
     }
 
@@ -477,9 +513,52 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             message = "You need a monster first."
             return
         }
-        // Mark it used now so fleeing can't be abused to re-roll the fight.
-        set(GameEngine.markSpawnUsed(state, spawn.id, System.currentTimeMillis()))
-        startBattle(World.spawnMonster(spawn), EncounterType.WILD, null)
+        engage(spawn, ambush = false)
+    }
+
+    /** The monsters near this one that will fight alongside it. */
+    fun packFor(spawn: WildSpawn, nowMs: Long = System.currentTimeMillis()): List<WildSpawn> =
+        World.packFor(spawn, visibleSpawns(nowMs))
+
+    /** Starts a fight with [spawn] and any pack mates; all of them are used up. */
+    private fun engage(spawn: WildSpawn, ambush: Boolean) {
+        val now = System.currentTimeMillis()
+        val pack = packFor(spawn, now)
+        // Mark them used now so fleeing can't be abused to re-roll the fight.
+        var s = state
+        for (sp in listOf(spawn) + pack) {
+            s = if (sp.follower) GameEngine.removeFollower(s, sp.id) else GameEngine.markSpawnUsed(s, sp.id, now)
+        }
+        if (ambush) s = s.copy(lastAmbushMs = now)
+        set(s)
+        startBattle(World.spawnMonster(spawn), EncounterType.WILD, null, pack.map { World.spawnMonster(it) }, ambush)
+    }
+
+    /**
+     * An aggressive monster that has reached you attacks first (at most every
+     * [AMBUSH_COOLDOWN_MS], and only while the map is open and you're not busy).
+     * Returns true if an ambush started.
+     */
+    fun checkAmbush(spawns: List<WildSpawn>, nowMs: Long): Boolean {
+        if (!state.settings.ambushes || battle != null || batterySaver || state.focus != null) return false
+        if (nowMs - state.lastAmbushMs < AMBUSH_COOLDOWN_MS || state.monsters.isEmpty()) return false
+        val hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour
+        val attacker = spawns.firstOrNull {
+            World.isAggressive(it, hour) && (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= World.AMBUSH_M
+        } ?: return false
+        engage(attacker, ambush = true)
+        return true
+    }
+
+    /** Test hook: start a fight against [enemy] and its [pack]. */
+    @VisibleForTesting
+    fun debugStartBattle(enemy: Monster, pack: List<Monster> = emptyList(), ambush: Boolean = false) =
+        startBattle(enemy, EncounterType.WILD, null, pack, ambush)
+
+    fun selectTarget(key: String) {
+        val b = activeBattle ?: return
+        b.selectTarget(key)
+        battle = battle?.let { BattleView.of(b, it.resultText, it.nextOpponent) }
     }
 
     fun hunt() {
@@ -531,9 +610,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- battle ------------------------------------------------------------
 
-    private fun startBattle(enemy: Monster, type: EncounterType, shrineId: String?) {
-        set(GameEngine.markSeen(state, enemy.speciesId))
-        val b = GameEngine.newBattle(state, enemy, type, shrineId)
+    private fun startBattle(
+        enemy: Monster,
+        type: EncounterType,
+        shrineId: String?,
+        pack: List<Monster> = emptyList(),
+        ambush: Boolean = false,
+    ) {
+        var s = state
+        for (m in listOf(enemy) + pack) s = GameEngine.markSeen(s, m.speciesId)
+        set(s)
+        val b = GameEngine.newBattle(state, enemy, type, shrineId, pack = pack, ambush = ambush)
         activeBattle = b
         battle = BattleView.of(b, null)
     }

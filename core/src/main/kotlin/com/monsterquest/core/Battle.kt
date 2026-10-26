@@ -131,6 +131,11 @@ class Combatant(
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
 
+        /** Keys for a pack's monsters: "enemy", "enemy2", "enemy3", "enemy4". */
+        fun enemyKey(index: Int) = if (index == 0) ENEMY_KEY else "$ENEMY_KEY${index + 1}"
+
+        fun isEnemy(key: String) = key.startsWith(ENEMY_KEY)
+
         fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0, armor: Armor? = null): Combatant {
             val cls = h.heroClass
             val fx = gear?.effects.orEmpty() + armor?.effects.orEmpty()
@@ -234,6 +239,20 @@ object TeamScaling {
      * for less, a full team faces a much stronger one for much more.
      */
     fun reward(teamSize: Int) = pick(rewardByTeam, teamSize)
+
+    // Packs: the team-scaled strength is shared out among the pack, with a
+    // little extra in total (more monsters means more turns against you).
+    private val packHp = listOf(1.0, 0.45, 0.32, 0.25)
+    private val packAttack = listOf(1.0, 0.5, 0.36, 0.28)
+    /** Packs pay more in total than a single monster. */
+    private val packReward = listOf(1.0, 1.4, 1.75, 2.1)
+
+    fun pack(f: Factors, count: Int): Factors {
+        val i = (count - 1).coerceIn(0, 3)
+        return Factors(f.hp * packHp[i], f.attack * packAttack[i], f.defense)
+    }
+
+    fun packReward(count: Int) = packReward[(count - 1).coerceIn(0, 3)]
 }
 
 data class BattleResult(
@@ -276,19 +295,43 @@ class Battle(
     gear: Gear? = null,
     heroDamage: Int = 0,
     armor: Armor? = null,
+    /** Other wild monsters fighting alongside [enemyMonster] as a pack (up to 3). */
+    extraEnemies: List<Monster> = emptyList(),
+    /** The monsters struck first: they act before you in the first round. */
+    val ambush: Boolean = false,
 ) {
     private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
     val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage, armor)) + fighters.map { Combatant.fromMonster(it) }
     /** Fighters on your side: the hero plus the party monsters able to fight. */
     val teamSize: Int = 1 + fighters.size
-    private val scaling = TeamScaling.factors(teamSize, encounter)
-    val enemy: Combatant = Combatant.fromMonster(
-        enemyMonster,
-        Combatant.ENEMY_KEY,
-        hpMultiplier = encounter.hpMultiplier * scaling.hp,
-        attackMultiplier = scaling.attack,
-        defenseMultiplier = scaling.defense,
-    )
+    /** The enemy side: one monster, or a pack of up to 4. */
+    val enemyMonsters: List<Monster> = listOf(enemyMonster) + extraEnemies.take(3)
+    private val scaling = TeamScaling.pack(TeamScaling.factors(teamSize, encounter), enemyMonsters.size)
+    val enemies: List<Combatant> = enemyMonsters.mapIndexed { i, m ->
+        Combatant.fromMonster(
+            m,
+            Combatant.enemyKey(i),
+            hpMultiplier = encounter.hpMultiplier * scaling.hp,
+            attackMultiplier = scaling.attack,
+            defenseMultiplier = scaling.defense,
+        )
+    }
+
+    /** Which enemy your attacks, spells and orbs aim at (the player can switch). */
+    var targetKey: String = Combatant.ENEMY_KEY
+        private set
+
+    /** The enemy being targeted (the next one standing if it falls). */
+    val enemy: Combatant
+        get() = enemies.find { it.key == targetKey && it.alive } ?: enemies.firstOrNull { it.alive } ?: enemies.first()
+
+    fun selectTarget(key: String) {
+        if (enemies.any { it.key == key && it.alive }) targetKey = key
+    }
+
+    private fun monsterFor(key: String): Monster = enemyMonsters[enemies.indexOfFirst { it.key == key }.coerceAtLeast(0)]
+
+    private var capturedKey: String? = null
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
     private val partyUids = fighters.map { it.uid }
@@ -322,7 +365,11 @@ class Battle(
 
     init {
         val intro = when (encounter) {
-            EncounterType.WILD -> "A wild ${enemy.name} (Lv ${enemy.level}) appears!"
+            EncounterType.WILD -> if (enemies.size > 1) {
+                "A pack of ${enemies.size} wild monsters attacks together: ${enemies.joinToString { "${it.name} (Lv ${it.level})" }}!"
+            } else {
+                "A wild ${enemy.name} (Lv ${enemy.level}) appears!"
+            }
             EncounterType.BOSS_CHALLENGE -> "BOSS: ${enemy.name} (Lv ${enemy.level}) guards this shrine! Defeat it to earn the right to tame it."
             EncounterType.BOSS_TAMING -> "BOSS: ${enemy.name} (Lv ${enemy.level}) remembers you. Weaken it and try to tame it!"
             EncounterType.SILVER_BOSS -> "SILVER GUARDIAN: ${enemy.name} (Lv ${enemy.level}) blocks your path! It's hard to tame, but it has perfect genes."
@@ -330,12 +377,15 @@ class Battle(
             EncounterType.VILLAIN -> "A shadow-cursed ${enemy.name} (Lv ${enemy.level}) attacks! It can't be tamed."
         }
         log += intro
-        if (encounter == EncounterType.WILD && teamSize > 1) log += "${enemy.name} grows stronger against your team of $teamSize!"
+        if (ambush) log += "Ambush! The monsters strike before you're ready!"
+        if (encounter == EncounterType.WILD && teamSize > 1 && enemies.size < teamSize) {
+            log += (if (enemies.size > 1) "The pack grows" else "${enemy.name} grows") + " stronger against your team of $teamSize!"
+        }
         advance()
     }
 
     fun combatant(key: String): Combatant? =
-        if (key == Combatant.ENEMY_KEY) enemy else allies.find { it.key == key }
+        if (Combatant.isEnemy(key)) enemies.find { it.key == key } else allies.find { it.key == key }
 
     fun count(item: Item): Int = bag[item] ?: 0
 
@@ -362,7 +412,7 @@ class Battle(
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
     fun captureOdds(orb: Item): Double =
         (
-            captureChance(enemy.hpFraction, enemyMonster.species.rarity, enemy.level - heroLevel, orb) *
+            captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))
             ).coerceIn(0.0, 0.95)
 
@@ -387,8 +437,8 @@ class Battle(
             val canAct = beginTurn(c)
             checkEnd()
             if (!canAct || outcome != BattleOutcome.ONGOING) continue
-            if (key == Combatant.ENEMY_KEY) {
-                enemyTurn()
+            if (Combatant.isEnemy(key)) {
+                enemyTurn(c)
                 checkEnd()
             } else {
                 current = c
@@ -405,10 +455,10 @@ class Battle(
     fun turnOrder(count: Int = 6): List<String> {
         val alive = { k: String -> combatant(k)?.alive == true }
         val now = listOfNotNull(current?.key) + queue.filter(alive)
-        val everyone = (allies + enemy).filter { it.alive }.sortedByDescending { it.effectiveSpeed }
+        val everyone = (allies + enemies).filter { it.alive }.sortedByDescending { it.effectiveSpeed }
         val nextReversed = reversedRounds > 1
         val next = (if (nextReversed) everyone.reversed() else everyone).map { it.key } +
-            (if (isBoss && enemy.alive) listOf(Combatant.ENEMY_KEY) else emptyList())
+            (if (isBoss && enemies.first().alive) listOf(Combatant.ENEMY_KEY) else emptyList())
         return (now + next + next).take(count)
     }
 
@@ -419,10 +469,12 @@ class Battle(
     private fun startRound() {
         round++
         if (reversedRounds > 0) reversedRounds--
-        val everyone = (allies + enemy).filter { it.alive }
+        val everyone = (allies + enemies).filter { it.alive }
         val bySpeed = everyone.sortedByDescending { it.effectiveSpeed + rng.nextDouble() }
-        val order = (if (reversedRounds > 0) bySpeed.reversed() else bySpeed).map { it.key }
-        queue.addAll(order)
+        val ordered = if (reversedRounds > 0) bySpeed.reversed() else bySpeed
+        // An ambush: the monsters all act before you in the first round.
+        val order = if (ambush && round == 1) ordered.sortedBy { !Combatant.isEnemy(it.key) } else ordered
+        queue.addAll(order.map { it.key })
         // Bosses act twice per round.
         if (isBoss) queue.addLast(Combatant.ENEMY_KEY)
     }
@@ -483,7 +535,7 @@ class Battle(
         val dive = c.diving
         if (dive != null) {
             c.diving = null
-            val target = if (c.key == Combatant.ENEMY_KEY) pickTarget() else enemy
+            val target = if (Combatant.isEnemy(c.key)) pickTarget() else enemy
             if (target != null) useMove(c, target, dive, diveStrike = true)
             return false
         }
@@ -502,9 +554,9 @@ class Battle(
 
     private fun checkEnd() {
         if (outcome != BattleOutcome.ONGOING) return
-        if (!enemy.alive) {
+        if (enemies.none { it.alive }) {
             outcome = BattleOutcome.WON
-            log += "${enemy.name} is defeated!"
+            log += if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
         } else if (allies.none { it.alive }) {
             outcome = BattleOutcome.LOST
             log += "Your party has fallen..."
@@ -539,7 +591,7 @@ class Battle(
                 val skill = spellsFor(actor).find { it.id == action.skillId } ?: return false
                 if (actor.mp < skill.mpCost) return false
                 if (skill.kind == SkillKind.HEAL) {
-                    val target = combatant(action.targetKey ?: actor.key)?.takeIf { it.alive && it.key != Combatant.ENEMY_KEY }
+                    val target = combatant(action.targetKey ?: actor.key)?.takeIf { it.alive && !Combatant.isEnemy(it.key) }
                         ?: return false
                     actor.mp -= skill.mpCost
                     heal(target, (skill.power + actor.magic * 1.5).roundToInt(), "${actor.name} casts ${skill.name}")
@@ -551,7 +603,7 @@ class Battle(
                 }
             }
             is BattleAction.UseItem -> {
-                val target = combatant(action.targetKey)?.takeIf { it.key != Combatant.ENEMY_KEY } ?: return false
+                val target = combatant(action.targetKey)?.takeIf { !Combatant.isEnemy(it.key) } ?: return false
                 if (!useItem(action.item)) return false
                 when (action.item.kind) {
                     ItemKind.HEAL_HP -> {
@@ -578,7 +630,9 @@ class Battle(
                 val chance = captureOdds(action.orb)
                 if (rng.nextDouble() < chance) {
                     outcome = BattleOutcome.CAPTURED
+                    capturedKey = enemy.key
                     log += "${actor.name} throws a ${action.orb.label}... ${enemy.name} was tamed!"
+                    if (enemies.count { it.alive } > 1) log += "The rest of the pack scatters!"
                 } else {
                     log += "${actor.name} throws a ${action.orb.label}... ${enemy.name} broke free!"
                 }
@@ -807,7 +861,7 @@ class Battle(
     }
 
     /** Enemy AI: usually its best damaging move, sometimes a useful status move. */
-    private fun enemyTurn() {
+    private fun enemyTurn(enemy: Combatant) {
         val target = pickTarget() ?: return
         val usable = enemy.moves.filter { m ->
             when {
@@ -832,9 +886,9 @@ class Battle(
 
     fun result(): BattleResult {
         check(outcome != BattleOutcome.ONGOING) { "Battle still in progress" }
-        val lvl = enemy.level
+        val lvl = enemies.maxOf { it.level }
         val bossMult = if (isBoss) 3 else 1
-        val rewardMult = if (encounter == EncounterType.WILD) TeamScaling.reward(teamSize) else 1.0
+        val rewardMult = if (encounter == EncounterType.WILD) TeamScaling.reward(teamSize) * TeamScaling.packReward(enemies.size) else 1.0
         val heroXp = when (outcome) {
             BattleOutcome.WON -> lvl * 3 * bossMult
             BattleOutcome.CAPTURED -> lvl * 2 * bossMult
@@ -869,13 +923,13 @@ class Battle(
                 }
             }
         }
-        val captured = if (outcome == BattleOutcome.CAPTURED) enemyMonster.copy(uid = newId(rng), xp = 0) else null
+        val captured = if (outcome == BattleOutcome.CAPTURED) monsterFor(capturedKey ?: Combatant.ENEMY_KEY).copy(uid = newId(rng), xp = 0) else null
         val fainted = partyUids.filter { combatant(it)?.alive == false }.toSet()
         // Damage carries over: remember how hurt everyone still standing is.
         val damage = allies.filter { it.alive }.associate { it.key to (it.maxHp - it.hp) }
         val heroFell = allies.first().let { !it.alive }
         return BattleResult(
-            outcome, encounter, enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
+            outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
             damage, heroFell,
         )
     }

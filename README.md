@@ -129,9 +129,21 @@ your hero.
   fighter whose turn it is pulses, and a **turn order** strip shows who acts
   next.
 - **Taming:** get a monster below 50% HP and throw an orb.
-- **Wild spawns** work like Pokémon GO:
-  - Moving around raises how many monsters appear and how rare they are, and
-    walking somewhere new reveals fresh ones.
+- **Wild spawns** work like Pokémon GO, but the monsters come to you:
+  - New monsters appear out in a ring 300-800 m away and creep toward you.
+    They hear you walking, so moving draws them in much faster; curious ones
+    reach you even if you stand still. Only monsters within about 200 m stand
+    on the map.
+  - The **tracker bar** at the top of the map shows monsters farther out, with
+    footprints for distance and the direction to walk.
+  - **Walking reward:** every 1,000 steps a monster follows your footsteps,
+    even with the phone in your pocket (up to 3 wait beside you).
+  - **Packs:** nearby monsters may team up against you (2 vs 4, 3 vs 3, 4 vs
+    4...). Tap one to target it. Packs are tougher and pay up to 2.1x more.
+  - **Ambushes:** aggressive monsters (more at night) that reach you attack
+    first. At most one every 10 minutes; can be turned off in Settings.
+  - The phone vibrates when a monster comes within battle range.
+  - Moving around also raises how many monsters appear and how rare they are.
   - The time of day changes which types are out: Flight and Water at dawn,
     Fire and Electric by day, Gas and Water at dusk, Corrupt and Gas at night.
   - Even standing still, a monster wanders up to you most 5-minute windows,
@@ -175,7 +187,8 @@ your hero.
 
 ## Settings
 
-Tap the gear left of your level:
+Tap the gear left of your level. **Help** at the top explains how everything
+works.
 - **Step sync:** count steps from the **phone's step counter**, **Samsung
   Health**, **Health Connect** (Google Fit, Fitbit, Garmin and others) or
   **GPS distance**. Samsung Health shares steps through Health Connect: in

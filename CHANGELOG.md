@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+
+The "Hunt" update.
+
+- **Monsters come to you:** new monsters appear out in a ring 300-800 m away
+  and creep toward you over time. They hear you walking: while you move they
+  close in much faster. Curious ones reach you even if you stand still.
+- **Tracker bar** on the map (like Pokémon GO's "Nearby"): monsters you can
+  sense but not yet see, with footprints for distance and the direction to
+  walk. Only monsters within about 200 m stand on the map.
+- **Walking reward:** every 1,000 steps a monster follows your footsteps, even
+  with the phone in your pocket. Up to 3 wait beside you on the map.
+- **Packs:** nearby monsters may team up (2 vs 4, 3 vs 3, 4 vs 4...). Tap a pack
+  member to target it. Packs are tougher and pay up to 2.1x more. Not every
+  monster joins in.
+- **Ambushes:** aggressive monsters (more at night) that reach you attack
+  first, with a hard buzz. At most one every 10 minutes; can be turned off.
+- **Vibration** when a monster comes within battle range.
+- **Help** in Settings: how quests, phone-free sessions, walking, the map,
+  collecting items, battles, taming, boss raids and villains work.
+
 ## 0.3.2
 
 - **120 fps:** the game asks for your screen's highest refresh rate (up to
