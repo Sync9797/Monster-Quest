@@ -70,6 +70,7 @@ import com.monsterquest.core.ItemKind
 import com.monsterquest.core.Move
 import com.monsterquest.core.Skill
 import com.monsterquest.core.SUPPORT_KINDS
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
@@ -133,21 +134,31 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
             BattleLog(b.log, Modifier.weight(1f))
         }
     }
-    val controls: @Composable () -> Unit = {
-        Column {
-            TurnOrderStrip(b) { f, m -> FighterArt(f, m) }
-            AllyRow(b)
-            Spacer(Modifier.height(8.dp))
-            if (b.outcome == BattleOutcome.ONGOING) {
-                val actor = b.current
-                if (actor != null) {
-                    ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)
-                }
-            } else {
-                LevelUpGate(b, onClose, onNext) { close, next -> ResultPanel(b, close, next) }
+    val team: @Composable () -> Unit = {
+        TurnOrderStrip(b) { f, m -> FighterArt(f, m) }
+        AllyRow(b)
+    }
+    val commands: @Composable () -> Unit = {
+        if (b.outcome == BattleOutcome.ONGOING) {
+            val actor = b.current
+            if (actor != null) {
+                ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)
             }
+        } else {
+            LevelUpGate(b, onClose, onNext) { close, next -> ResultPanel(b, close, next) }
         }
     }
+    val controls: @Composable () -> Unit = {
+        Column {
+            team()
+            Spacer(Modifier.height(8.dp))
+            commands()
+        }
+    }
+    // Half-open phone (tabletop): the lower half is short and wide, so put your
+    // team on the left and the moves on the right instead of stacking them.
+    val fold = LocalFold.current
+    val tabletop = fold != null && fold.isSeparating && !fold.isVertical
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         CompositionLocalProvider(LocalBattleFx provides fx) {
@@ -168,7 +179,18 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
                     },
                     first = top,
                     second = {
-                        Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
+                        if (tabletop) {
+                            Row(Modifier.fillMaxSize()) {
+                                Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) { team() }
+                                Spacer(Modifier.width(12.dp))
+                                Column(
+                                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.Center,
+                                ) { commands() }
+                            }
+                        } else {
+                            Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
+                        }
                     },
                 )
                 // Projectiles, slashes and damage numbers fly over everything.

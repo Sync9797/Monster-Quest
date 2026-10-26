@@ -3,6 +3,7 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import android.Manifest
 import android.app.Application
@@ -579,6 +580,8 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm()
         v.hunt()
         shot("08_battle_tabletop", tabletop()) { AppRoot(v) }
+        // The commands must be on screen, not pushed below the bottom edge.
+        rule.onNodeWithText("Flee").assertIsDisplayed()
     }
 }
 

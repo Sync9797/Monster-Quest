@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.1
+
+- **Battles on a half-open fold:** with the phone folded to about 90°
+  (tabletop), the moves used to sit below the bottom edge and needed
+  scrolling. The lower half now shows your team on the left and the moves
+  on the right, each scrolling on its own if needed.
+
 ## 1.12.0
 
 - **New type chart:** Electric now beats Flight, and Flight beats Earth. It's

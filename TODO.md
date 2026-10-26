@@ -18,5 +18,8 @@ Ideas we've agreed to do later. Newest first.
 
 ## Done
 
+- [x] **Battle on a half-open fold** (1.12.1): at a 90° fold the moves were
+      pushed below the bottom edge. In tabletop posture the lower half now has
+      your team on the left and the moves on the right.
 - [x] **Stronger mythics** (1.11.1): Prism Fairy and Mimic are now as strong as
       a final evolution, and rarer (Epic, from level 15).
