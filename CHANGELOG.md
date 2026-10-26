@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.0.0
+
+- **Real places on the map:** tap a shrine to see what it really is. Shrines
+  get themed names by the kind of place (Supply Cache at shops, Provision
+  Shrine at cafes and restaurants, Lore Shrine at libraries, Grove Shrine at
+  parks, Muse Stone at public art, Spring Shrine at fountains, Sanctum at
+  civic buildings) with the real place and street underneath, like
+  "Supply Cache / Barnes & Noble on Wards Road". Bookstores, supermarkets,
+  bakeries, game and toy stores and other shops are now shrines too. When the
+  map data has no street, the phone looks it up. Wild monsters, tracked
+  monsters and villain camps say what they're near and which street they're on.
+- **Walk here:** every shrine, monster and villain you're not in range of has
+  a Walk here button that opens walking directions in your map app (Google
+  Maps, or whichever map app you use).
+- **Hero magic:** the hero no longer borrows monster spells. Heroes study
+  monster magic and copy it: simpler spells that start at 75% strength and
+  reach full strength by level 25.
+  - One basic bolt for each type: Ember, Spark, Tide, Gust, Venom, Shadow and
+    Stone Bolt.
+  - **Mend** heals one ally or yourself. **Ward** puts a shield on one ally or
+    yourself that soaks up damage until it breaks. **Fortify** raises one
+    ally's Defense.
+  - Every spell ranks up to 5 with spell pages and gold (Hero tab), adding
+    power (Fortify gives +2 Defense at rank 3 and +3 at rank 5). Pages now
+    also drop for spells you already know.
+  - Ember Bolt, Mend and Ward are known from the start. Old spells carry over
+    (Inferno and Mega Heal become rank 2 Ember Bolt and Mend), and saved pages
+    move to their new spell.
+
 ## 0.5.5
 
 - **Tracker distances:** each monster in the tracker bar shows how far away it

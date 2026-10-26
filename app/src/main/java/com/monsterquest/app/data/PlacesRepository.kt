@@ -61,6 +61,7 @@ object PlacesRepository {
               nwr($around)["leisure"~"^(park|garden|playground|fitness_station|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
               nwr($around)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction|artwork|viewpoint|picnic_site)$"];
               nwr($around)["historic"~"^(castle|monument|fort|ruins)$"];
+              nwr($around)["shop"~"^(books|supermarket|convenience|bakery|mall|department_store|gift|music|video_games|games|toys|sports|outdoor|florist|garden_centre|art|comic|hobby)$"]["name"];
             );
             out center 500;
         """.trimIndent()
@@ -104,10 +105,16 @@ object PlacesRepository {
                 (amenity != null && amenity in silverAmenity) || (leisure != null && leisure in silverLeisure) -> ShrineTier.SILVER
                 else -> ShrineTier.ITEM
             }
-            val name = tags.str("name") ?: fallbackName(amenity, leisure, tourism, historic)
+            val shop = tags.str("shop")
+            val kind = kindLabel(amenity, leisure, tourism, historic, shop)
             // Skip anything almost on top of an existing shrine to avoid clutter.
             if (all.any { World.distanceMeters(it.lat, it.lon, lat, lon) < 40 }) continue
-            all += World.shrineFromPlace("${o.str("type")}${o.str("id")}", name, lat, lon, tier)
+            all += World.shrineFromPlace(
+                "${o.str("type")}${o.str("id")}", tags.str("name"), lat, lon, tier,
+                kind = kind,
+                street = tags.str("addr:street"),
+                category = category(amenity, leisure, tourism, historic, shop),
+            )
         }
         // Dense downtowns have hundreds of cafes; keep the closest ones of each tier.
         fun closest(tier: ShrineTier, n: Int) =
@@ -117,15 +124,35 @@ object PlacesRepository {
             closest(ShrineTier.GOLD, MAX_GOLD_SHRINES)
     }
 
-    private fun fallbackName(amenity: String?, leisure: String?, tourism: String?, historic: String?): String = when {
-        amenity == "cafe" -> "Cafe Shrine"
-        amenity == "restaurant" || amenity == "fast_food" || amenity == "food_court" -> "Diner Shrine"
-        amenity == "library" -> "Library Shrine"
-        amenity != null -> "Hangout Shrine"
-        leisure != null -> "Park Shrine"
-        tourism != null -> "Landmark Arena"
-        leisure == "park" || leisure == "garden" -> "Park Shrine"
-        historic != null -> "Ancient Arena"
-        else -> "Shrine"
+    private fun category(amenity: String?, leisure: String?, tourism: String?, historic: String?, shop: String?): World.PlaceCategory = when {
+        shop != null -> World.PlaceCategory.SHOP
+        amenity in setOf<String?>("cafe", "restaurant", "fast_food", "ice_cream", "pub", "bar", "food_court", "marketplace") -> World.PlaceCategory.FOOD
+        amenity == "library" || tourism == "museum" -> World.PlaceCategory.KNOWLEDGE
+        amenity == "fountain" -> World.PlaceCategory.WATER
+        tourism == "artwork" || amenity == "arts_centre" || amenity == "theatre" -> World.PlaceCategory.ART
+        leisure != null && leisure in setOf("park", "garden", "playground", "fitness_station") ||
+            tourism == "viewpoint" || tourism == "picnic_site" -> World.PlaceCategory.NATURE
+        amenity in setOf<String?>("post_office", "townhall", "community_centre", "place_of_worship") || historic != null -> World.PlaceCategory.CIVIC
+        else -> World.PlaceCategory.OTHER
+    }
+
+    /** A plain-English label for the kind of place, e.g. "Bookstore" or "Park". */
+    private fun kindLabel(amenity: String?, leisure: String?, tourism: String?, historic: String?, shop: String?): String? {
+        val special = mapOf(
+            "books" to "Bookstore", "supermarket" to "Supermarket", "convenience" to "Convenience store",
+            "bakery" to "Bakery", "mall" to "Shopping mall", "department_store" to "Department store",
+            "gift" to "Gift shop", "music" to "Music store", "video_games" to "Game store", "games" to "Game store",
+            "toys" to "Toy store", "sports" to "Sports store", "outdoor" to "Outdoor store", "florist" to "Florist",
+            "garden_centre" to "Garden centre", "art" to "Art shop", "comic" to "Comic shop", "hobby" to "Hobby shop",
+            "fast_food" to "Fast food", "ice_cream" to "Ice cream", "food_court" to "Food court",
+            "post_office" to "Post office", "townhall" to "Town hall", "community_centre" to "Community centre",
+            "place_of_worship" to "Place of worship", "arts_centre" to "Arts centre", "fitness_station" to "Fitness station",
+            "bowling_alley" to "Bowling alley", "amusement_arcade" to "Arcade", "water_park" to "Water park",
+            "sports_centre" to "Sports centre", "escape_game" to "Escape room", "miniature_golf" to "Mini golf",
+            "theme_park" to "Theme park", "attraction" to "Attraction", "artwork" to "Public art",
+            "picnic_site" to "Picnic site",
+        )
+        val raw = shop ?: amenity ?: leisure ?: tourism ?: historic ?: return null
+        return special[raw] ?: raw.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 }

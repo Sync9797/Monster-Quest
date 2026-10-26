@@ -337,13 +337,69 @@ class GameTest {
     @Test
     fun spellPagesTeachSpells() {
         var s = started()
-        repeat(4) { s = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gale" to 1))).state }
-        assertTrue("gale" !in s.hero.knownSpells)
-        assertEquals(4, s.spellPages["gale"])
-        val u = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gale" to 1)))
-        assertTrue("gale" in u.state.hero.knownSpells)
-        assertNull(u.state.spellPages["gale"])
-        assertTrue(u.message.contains("learned Gale"))
+        repeat(4) { s = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gust_bolt" to 1))).state }
+        assertTrue("gust_bolt" !in s.hero.knownSpells)
+        assertEquals(4, s.spellPages["gust_bolt"])
+        val u = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gust_bolt" to 1)))
+        assertTrue("gust_bolt" in u.state.hero.knownSpells)
+        assertNull(u.state.spellPages["gust_bolt"])
+        assertTrue(u.message.contains("learned Gust Bolt"))
+    }
+
+    @Test
+    fun heroMagicIsItsOwnAndRanksUp() {
+        // One bolt per type, plus heal, shield and defense buff, none of them monster moves.
+        assertEquals(Element.typed.toSet(), Spells.all.filter { it.kind == SkillKind.MAGICAL }.map { it.element }.toSet())
+        assertEquals(setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY), Spells.all.map { it.kind }.toSet() - SkillKind.MAGICAL)
+        assertTrue(Spells.all.none { sp -> Moves.all.any { it.id == sp.id } })
+        // Weaker than monster moves at first; mastery grows with level.
+        val ember = Spells.byId("ember_bolt")!!
+        assertTrue(Spells.ranked(ember, 1, 1).power < Spells.ranked(ember, 1, 25).power)
+        assertEquals(Spells.ranked(ember, 1, 25).power, Spells.ranked(ember, 1, 60).power)
+        assertTrue(Spells.ranked(ember, 5, 25).power > Spells.ranked(ember, 1, 25).power)
+
+        var s = started()
+        assertEquals(1, s.hero.spellRank("ember_bolt"))
+        assertTrue(GameEngine.upgradeSpell(s, "ember_bolt").message.contains("Need"))
+        s = s.copy(gold = 1_000, spellPages = mapOf("ember_bolt" to 4))
+        val u = GameEngine.upgradeSpell(s, "ember_bolt")
+        assertEquals(2, u.state.hero.spellRank("ember_bolt"))
+        assertEquals(850, u.state.gold)
+        assertEquals(1, u.state.spellPages["ember_bolt"])
+        // Maxed spells stop dropping pages.
+        val maxed = s.copy(hero = s.hero.copy(knownSpells = Spells.all.map { it.id }.toSet(), spellRanks = Spells.all.associate { it.id to Spells.MAX_RANK }))
+        assertTrue(GameEngine.pageCandidates(maxed).isEmpty())
+    }
+
+    @Test
+    fun wardAbsorbsAndFortifyRaisesDefense() {
+        val s = started().let { it.copy(hero = it.hero.copy(knownSpells = it.hero.knownSpells + "fortify")) }
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 5, Random(2)), EncounterType.WILD, rng = Random(3))
+        var guard = 0
+        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
+        val pal = b.allies.first { !it.isHero }
+        b.act(BattleAction.CastSpell("ward", pal.key))
+        assertTrue(pal.shield > 0)
+        assertTrue(b.events.any { it.style == StrikeStyle.WARD && it.targetKey == pal.key })
+        guard = 0
+        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
+        b.act(BattleAction.CastSpell("fortify", pal.key))
+        assertEquals(1, pal.stages[BattleStat.DEFENSE])
+    }
+
+    @Test
+    fun oldSpellsBecomeHeroMagic() {
+        val old = started().let {
+            it.copy(
+                version = 6,
+                hero = it.hero.copy(knownSpells = setOf("fire_bolt", "heal", "inferno", "gale")),
+                spellPages = mapOf("tidal_lance" to 3, "judgement" to 2),
+            )
+        }
+        val m = old.migrated()
+        assertEquals(setOf("ember_bolt", "mend", "ward", "gust_bolt"), m.hero.knownSpells)
+        assertEquals(2, m.hero.spellRank("ember_bolt"))
+        assertEquals(mapOf("tide_bolt" to 3, "fortify" to 2), m.spellPages)
     }
 
     @Test

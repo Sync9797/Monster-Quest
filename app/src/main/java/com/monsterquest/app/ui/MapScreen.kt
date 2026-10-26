@@ -49,6 +49,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import com.monsterquest.app.data.StreetLookup
+import com.monsterquest.app.Navigation
+import androidx.compose.runtime.produceState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -435,6 +438,44 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
 }
 
 
+/** The street at a point: the map data's own when it has one, otherwise asked of the phone's geocoder. */
+@Composable
+private fun rememberStreet(lat: Double, lon: Double, known: String? = null): String? {
+    val context = LocalContext.current
+    val street by produceState(known ?: StreetLookup.cached(lat, lon), lat, lon, known) {
+        if (known == null) value = StreetLookup.streetAt(context, lat, lon)
+    }
+    return street
+}
+
+/** A dialog title with the real-world place underneath, e.g. "Barnes & Noble on Wards Road". */
+@Composable
+private fun PlaceTitle(icon: GameIcon, title: String, color: Color, subtitle: String?) {
+    Column {
+        IconText(icon, title, tint = color, size = 20.dp, style = MaterialTheme.typography.titleLarge)
+        if (subtitle != null) {
+            Text(subtitle, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 26.dp, top = 2.dp))
+        }
+    }
+}
+
+/** Opens walking directions to a point in the phone's map app. */
+@Composable
+private fun WalkHereButton(lat: Double, lon: Double, label: String) {
+    val context = LocalContext.current
+    OutlinedButton(onClick = { Navigation.walkTo(context, lat, lon, label) }, modifier = Modifier.padding(top = 8.dp)) {
+        GIcon(GameIcon.WALK, Modifier.size(16.dp), Gold)
+        Spacer(Modifier.width(6.dp))
+        Text("Walk here")
+    }
+}
+
+/** "At Barnes & Noble" / "Near Central Park (40 yd from it)". */
+private fun landmarkText(place: Shrine, gap: Double, imperial: Boolean): String {
+    val where = place.place ?: place.name
+    return if (gap < 40) "At $where" else "Near $where (${formatDistance(gap, imperial)} from it)"
+}
+
 private fun distanceText(m: Double?, imperial: Boolean): String =
     if (m == null) "unknown distance" else "${formatDistance(m, imperial)} away"
 
@@ -446,10 +487,11 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
     val cooldown = GameEngine.shrineCooldownLeft(vm.state, shrine, now)
     val guardian = shrine.bossSpeciesId?.let { Bestiary.get(it) }
     val access = Schedule.access(vm.state, shrine, now)
+    val street = rememberStreet(shrine.lat, shrine.lon, shrine.street)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { IconText(shrine.tier.icon(), shrine.name, tint = shrine.tier.color(), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
+        title = { PlaceTitle(shrine.tier.icon(), shrine.name, shrine.tier.color(), shrine.copy(street = street).subtitle) },
         text = {
             Column {
                 Text("${shrine.tier.label} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -487,6 +529,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
                     )
+                    WalkHereButton(shrine.lat, shrine.lon, shrine.place ?: shrine.name)
                 }
             }
         },
@@ -516,9 +559,18 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
     val dist = vm.distanceTo(spawn.lat, spawn.lon)
     val inRange = dist != null && dist <= World.SPAWN_RANGE_M
     val sp = spawn.species
+    val landmark = vm.landmarkNear(spawn.lat, spawn.lon)
+    val street = rememberStreet(spawn.lat, spawn.lon)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Wild ${sp.name}") },
+        title = {
+            Column {
+                Text("Wild ${sp.name}")
+                val where = landmark?.let { (place, gap) -> landmarkText(place, gap, vm.state.settings.imperialUnits) }
+                    ?: street?.let { "On $it" }
+                if (where != null) Text(where, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
         text = {
             val pack = vm.packFor(spawn)
             Column {
@@ -537,7 +589,10 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                if (!inRange) Text("Walk within ${formatDistance(World.SPAWN_RANGE_M, vm.state.settings.imperialUnits)} to battle.", modifier = Modifier.padding(top = 6.dp))
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(World.SPAWN_RANGE_M, vm.state.settings.imperialUnits)} to battle.", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(spawn.lat, spawn.lon, "Wild ${sp.name}")
+                }
             }
         },
         confirmButton = {
@@ -593,6 +648,7 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
     val dir = here?.let { World.compass(World.bearing(it.first, it.second, spawn.lat, spawn.lon)) }
     val landmark = vm.landmarkNear(spawn.lat, spawn.lon)
     val moving = vm.spawnConditions(System.currentTimeMillis()).activity >= 0.05
+    val street = rememberStreet(spawn.lat, spawn.lon)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (seen) "${sp.name} nearby" else "Something is out there") },
@@ -609,12 +665,11 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
                 }
                 if (landmark != null) {
                     val (place, gap) = landmark
-                    IconText(
-                        place.tier.icon(),
-                        if (gap < 40) "At ${place.name}" else "Near ${place.name} (${formatDistance(gap, imperial)} from it)",
-                        tint = place.tier.color(),
-                        fontSize = 13.sp,
-                    )
+                    IconText(place.tier.icon(), landmarkText(place, gap, imperial), tint = place.tier.color(), fontSize = 13.sp)
+                    val placeStreet = place.street ?: street
+                    if (placeStreet != null) Text("On $placeStreet", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (street != null) {
+                    Text("On $street, away from any landmark.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Text("Not near any landmark: open ground.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -630,6 +685,7 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+                WalkHereButton(spawn.lat, spawn.lon, if (seen) sp.name else "Monster")
             }
         },
         confirmButton = { TextButton(onClick = { onShowArea(); onDismiss() }) { Text("Show area") } },
@@ -641,9 +697,13 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
 private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () -> Unit) {
     val dist = vm.distanceTo(camp.lat, camp.lon)
     val inRange = dist != null && dist <= Villains.RANGE_M
+    val landmark = vm.landmarkNear(camp.lat, camp.lon)
+    val street = rememberStreet(camp.lat, camp.lon)
+    val where = landmark?.let { (place, gap) -> landmarkText(place, gap, vm.state.settings.imperialUnits) }?.let { w -> street?.let { "$w on $it" } ?: w }
+        ?: street?.let { "Camped on $it" }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { IconText(GameIcon.SKULL, camp.leader, tint = Color(0xFFF28B9B), size = 20.dp, style = MaterialTheme.typography.titleLarge) },
+        title = { PlaceTitle(GameIcon.SKULL, camp.leader, Color(0xFFF28B9B), where) },
         text = {
             Column {
                 Text("${camp.tier.label} of the ${camp.crew} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -661,7 +721,10 @@ private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () ->
                         }
                     }
                 }
-                if (!inRange) Text("Walk within ${formatDistance(Villains.RANGE_M, vm.state.settings.imperialUnits)} to fight.", modifier = Modifier.padding(top = 6.dp))
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(Villains.RANGE_M, vm.state.settings.imperialUnits)} to fight.", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(camp.lat, camp.lon, camp.leader)
+                }
             }
         },
         confirmButton = {
@@ -709,7 +772,7 @@ private fun NearbyList(
             d,
             { GIcon(sh.tier.icon(), Modifier.size(28.dp), sh.tier.color()) },
             sh.name,
-            "${sh.tier.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
+            (sh.subtitle ?: sh.tier.label) + " • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SHRINE_RANGE_M,
         ) { onShrine(sh) }
     } + spawns.map { sp ->

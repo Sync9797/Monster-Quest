@@ -77,11 +77,12 @@ object Adventures {
             .filter { hash(it.id, day) % 3 == 0 }
             .map { place ->
                 val h = hash(place.id, day, "adv")
+                val where = place.place ?: place.kind ?: place.name
                 val difficulty = 1 + h % 5
                 Adventure(
                     id = "${place.id}:$day",
-                    placeName = place.name,
-                    title = titles[(h / 5) % titles.size].format(place.name),
+                    placeName = where,
+                    title = titles[(h / 5) % titles.size].format(where),
                     difficulty = difficulty,
                     recommendedLevel = (state.hero.level + (difficulty - 2) * 3).coerceAtLeast(1),
                     durationMs = durationsMin[difficulty - 1] * 60_000L,

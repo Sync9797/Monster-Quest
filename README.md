@@ -35,7 +35,13 @@ your hero.
   10 HP**. Steps come from the phone's step counter (GPS if there isn't one).
 - **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
   Defense and Speed**. HP carries over between battles; heal by walking or
-  with potions. Learn spells by collecting **5 spell-book pages**.
+  with potions.
+- **Hero magic:** the hero copies monster magic, so it's simpler and a little
+  weaker at first (75% strength, full strength by level 25). One bolt for each
+  of the 7 types, plus **Mend** (heal), **Ward** (a shield on one ally or
+  yourself) and **Fortify** (Defense up). Ember Bolt, Mend and Ward are known
+  from the start; learn the rest with **5 spell-book pages**, then rank every
+  spell up to 5 with more pages and gold.
 - **Classes** unlock at level 5:
   - **Warrior:** more Attack and Speed, less Magic.
   - **Mage:** more Magic and Defense, less Attack.
@@ -187,7 +193,11 @@ your hero.
   - The phone **vibrates when a new monster appears** within 200 m (turn it
     off in Settings).
   - **Item shrines** are at cafes, restaurants, parks, playgrounds, public
-    art, fountains, libraries and more. **Waystones** fill the gaps so there's
+    art, fountains, libraries, bookstores and shops and more. Each gets a
+    themed name (Supply Cache, Lore Shrine, Grove Shrine...) with the real
+    place and street underneath, e.g. "Barnes & Noble on Wards Road". Tap
+    **Walk here** on any shrine, monster or villain for walking directions in
+    your map app. **Waystones** fill the gaps so there's
     always a stop within a short walk. They give weapons, armor, spell pages,
     orbs, potions and lures, and are always open.
   - **Silver shrines** are at cinemas, arcades, bowling alleys, sports

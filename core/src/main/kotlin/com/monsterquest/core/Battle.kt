@@ -100,6 +100,8 @@ class Combatant(
     var flinch: Boolean = false
     var mustRecharge: Boolean = false
     var protecting: Boolean = false
+    /** Ward: damage soaked up before HP is touched. */
+    var shield: Int = 0
     var usedProtectLast: Boolean = false
     /** Mid-dive (Dive Bomb turn 1): out of reach until it strikes. */
     var diving: Move? = null
@@ -124,6 +126,7 @@ class Combatant(
         if (scared) add("Scared")
         if (diving != null) add("In the air")
         if (protecting) add("Guarding")
+        if (shield > 0) add("Ward $shield")
         if (mustRecharge) add("Recharging")
         if (accuracyDown || missNext) add("Blinded")
     }
@@ -195,6 +198,8 @@ enum class StrikeStyle {
     BOLT,
     HEAL,
     MISS,
+    /** A protective spell: Ward or Fortify on an ally. */
+    WARD,
 }
 
 /** One thing that happened in battle, for the UI to animate (in [seq] order). */
@@ -284,6 +289,12 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
     return (base * rarity.captureMultiplier * orb.power * levelPenalty).coerceIn(0.03, 0.95)
 }
 
+/** Hero spells aimed at an ally (or the hero) instead of an enemy. */
+val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY)
+
+/** Highest a stat stage can go (stage multipliers are capped at 2x anyway). */
+private const val MAX_STAGES = 6
+
 class Battle(
     hero: Hero,
     party: List<Monster>,
@@ -337,7 +348,7 @@ class Battle(
 
     private var capturedKey: String? = null
     private val heroLevel = hero.level
-    private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }
+    private val heroSkills = hero.spells()
     private val partyUids = fighters.map { it.uid }
 
     private val bag: MutableMap<Item, Int> = inventory.toMutableMap()
@@ -594,11 +605,25 @@ class Battle(
             is BattleAction.CastSpell -> {
                 val skill = spellsFor(actor).find { it.id == action.skillId } ?: return false
                 if (actor.mp < skill.mpCost) return false
-                if (skill.kind == SkillKind.HEAL) {
+                if (skill.kind in SUPPORT_KINDS) {
                     val target = combatant(action.targetKey ?: actor.key)?.takeIf { it.alive && !Combatant.isEnemy(it.key) }
                         ?: return false
                     actor.mp -= skill.mpCost
-                    heal(target, (skill.power + actor.magic * 1.5).roundToInt(), "${actor.name} casts ${skill.name}")
+                    when (skill.kind) {
+                        SkillKind.SHIELD -> {
+                            val amount = (skill.power + actor.magic * 1.2).roundToInt()
+                            target.shield = max(target.shield, amount)
+                            log += "${actor.name} casts ${skill.name}: ${target.name} is shielded (absorbs ${target.shield})."
+                            record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
+                        }
+                        SkillKind.FORTIFY -> {
+                            val now = target.stages[BattleStat.DEFENSE] ?: 0
+                            target.stages[BattleStat.DEFENSE] = minOf(MAX_STAGES, now + skill.power)
+                            log += "${actor.name} casts ${skill.name}: ${target.name}'s Defense rises!"
+                            record(actor, target, StrikeStyle.WARD, Element.NEUTRAL)
+                        }
+                        else -> heal(target, (skill.power + actor.magic * 1.5).roundToInt(), "${actor.name} casts ${skill.name}")
+                    }
                 } else {
                     actor.mp -= skill.mpCost
                     if (!rollHit(actor, enemy, 100)) return true
@@ -848,9 +873,12 @@ class Battle(
             (if (crit) 1.5 else 1.0) *
             (if (d.defending) 0.5 else 1.0)
         val dmg = max(1, raw.roundToInt())
-        d.hp = max(0, d.hp - dmg)
+        val absorbed = minOf(d.shield, dmg)
+        d.shield -= absorbed
+        d.hp = max(0, d.hp - (dmg - absorbed))
         record(a, d, style, type, dmg, crit, typeMult > 1.0)
         val notes = buildList {
+            if (absorbed > 0) add(if (d.shield > 0) "The ward absorbs $absorbed." else "The ward absorbs $absorbed and shatters!")
             if (crit) add("Critical!")
             if (typeMult > 1.0) add("Super effective!")
             if (typeMult < 1.0) add("Not very effective...")

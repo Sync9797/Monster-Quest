@@ -715,14 +715,14 @@ object GameEngine {
 
     /**
      * Rolls item-shrine loot: weapons, spell-book pages, capture orbs and potions.
-     * Pages are only for spells the hero doesn't know yet.
+     * Pages are for spells the hero doesn't know yet or can still rank up.
      */
     fun rollLoot(state: GameState, rolls: Int, rng: Random): Loot {
         val items = mutableMapOf<Item, Int>()
         val weapons = mutableListOf<Gear>()
         val armor = mutableListOf<Armor>()
         val pages = mutableMapOf<String, Int>()
-        val unknownSpells = Spells.all.filter { it.id !in state.hero.knownSpells }
+        val unknownSpells = pageCandidates(state)
         repeat(rolls) {
             val r = rng.nextDouble()
             when {
@@ -746,6 +746,38 @@ object GameEngine {
             }
         }
         return Loot(items, weapons, armor, pages)
+    }
+
+    /**
+     * Spells worth a page: unknown spells count double, known ones only while
+     * they can still be ranked up.
+     */
+    fun pageCandidates(state: GameState): List<Skill> = Spells.all.flatMap { sp ->
+        when (state.hero.spellRank(sp.id)) {
+            0 -> listOf(sp, sp)
+            Spells.MAX_RANK -> emptyList()
+            else -> listOf(sp)
+        }
+    }
+
+    /** Ranks up a known spell with pages and gold. */
+    fun upgradeSpell(state: GameState, spellId: String): Update {
+        val spell = Spells.byId(spellId) ?: return Update(state, "Unknown spell.")
+        val rank = state.hero.spellRank(spellId)
+        if (rank == 0) return Update(state, "Learn ${spell.name} first.")
+        if (rank >= Spells.MAX_RANK) return Update(state, "${spell.name} is already at max rank.")
+        val pages = state.spellPages[spellId] ?: 0
+        val needPages = Spells.pagesToUpgrade(rank)
+        val needGold = Spells.goldToUpgrade(rank)
+        if (pages < needPages) return Update(state, "Need $needPages ${spell.name} pages (you have $pages).")
+        if (state.gold < needGold) return Update(state, "Need $needGold gold.")
+        val left = pages - needPages
+        val s = state.copy(
+            gold = state.gold - needGold,
+            spellPages = if (left > 0) state.spellPages + (spellId to left) else state.spellPages - spellId,
+            hero = state.hero.copy(spellRanks = state.hero.spellRanks + (spellId to rank + 1)),
+        )
+        return Update(s, "${spell.name} is now rank ${rank + 1}!")
     }
 
     /** Some parts of one random weapon type. */
@@ -791,9 +823,10 @@ object GameEngine {
             val total = (s.spellPages[spellId] ?: 0) + n
             parts += "${spell.name} page"
             if (total >= Spells.PAGES_TO_LEARN && spellId !in s.hero.knownSpells) {
+                val left = total - Spells.PAGES_TO_LEARN
                 s = s.copy(
                     hero = s.hero.copy(knownSpells = s.hero.knownSpells + spellId),
-                    spellPages = s.spellPages - spellId,
+                    spellPages = if (left > 0) s.spellPages + (spellId to left) else s.spellPages - spellId,
                 )
                 learned += spell.name
                 rewards += Reward.Pages(spellId, n, learned = true)

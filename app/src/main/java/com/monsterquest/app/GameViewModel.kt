@@ -286,6 +286,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun forge(type: WeaponType) = apply(GameEngine.forge(state, type))
+    fun upgradeSpell(id: String) = apply(GameEngine.upgradeSpell(state, id))
     fun usePotion(item: Item, target: String) = apply(GameEngine.usePotion(state, item, target))
     fun perfectStat(uid: String, stat: Stat) = apply(GameEngine.perfectStat(state, uid, stat))
 

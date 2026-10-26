@@ -52,7 +52,7 @@ private fun look(r: Reward): RewardLook = when (r) {
     is Reward.ArmorDrop -> RewardLook(r.armor.type.icon(), "${r.armor.rarity.label} ${r.armor.name}", r.armor.rarity.color())
     is Reward.Pages -> {
         val spell = Spells.byId(r.spellId)
-        RewardLook(GameIcon.PAGE, (spell?.name ?: "Spell") + if (r.learned) " learned!" else " page", spell?.element?.color() ?: XpPurple)
+        RewardLook(GameIcon.PAGE, (spell?.name ?: "Spell") + if (r.learned) " learned!" else " page", spell?.spellColor() ?: XpPurple)
     }
     is Reward.Parts -> RewardLook(r.type.icon(), "${r.type.label} part" + if (r.count > 1) " x${r.count}" else "", SilverColor)
 }

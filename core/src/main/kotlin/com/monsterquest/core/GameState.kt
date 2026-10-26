@@ -50,11 +50,19 @@ data class Hero(
     val unspentPoints: Int = 0,
     val attributes: Map<HeroAttribute, Int> = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE },
     val knownSpells: Set<String> = Spells.starting,
+    /** Rank of each known spell above 1 (missing means rank 1). */
+    val spellRanks: Map<String, Int> = emptyMap(),
     val heroClass: HeroClass = HeroClass.NONE,
     /** Set once a class (or staying an Adventurer) is picked at level 5. */
     val classChosen: Boolean = false,
 ) {
     fun attr(a: HeroAttribute): Int = attributes[a] ?: STARTING_ATTRIBUTE
+
+    /** A spell's rank: 0 if not known yet, otherwise 1..[Spells.MAX_RANK]. */
+    fun spellRank(id: String): Int = if (id in knownSpells) (spellRanks[id] ?: 1).coerceIn(1, Spells.MAX_RANK) else 0
+
+    /** Known spells at their current rank and the hero's mastery. */
+    fun spells(): List<Skill> = Spells.all.filter { it.id in knownSpells }.map { Spells.ranked(it, spellRank(it.id), level) }
 
     /**
      * Class strength in percent: 3% at level 5, +1.5% per level after, capped
@@ -176,7 +184,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 6,
+    val version: Int = 7,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -331,6 +339,15 @@ data class GameState(
             val starterFamilies = GameEngine.starters.map { Bestiary.get(it).family }.toSet()
             val hasOne = s.monsters.any { it.species.family in starterFamilies }
             s = s.copy(version = 6, starterGiftPending = s.starterChosen && !hasOne)
+        }
+        if (s.version < 7) {
+            // 1.0: the hero's own magic. Old spells and pages turn into their new versions.
+            val known = s.hero.knownSpells.map { Spells.legacy[it] ?: it }.filter { Spells.byId(it) != null }.toSet() + Spells.starting
+            val ranks = s.hero.knownSpells.filter { it in Spells.legacyRank2 }.mapNotNull { Spells.legacy[it] }.associateWith { 2 }
+            val pages = s.spellPages.entries
+                .mapNotNull { (id, n) -> (Spells.legacy[id] ?: id).takeIf { Spells.byId(it) != null }?.let { it to n } }
+                .groupBy({ it.first }, { it.second }).mapValues { it.value.sum() }
+            s = s.copy(version = 7, hero = s.hero.copy(knownSpells = known, spellRanks = ranks), spellPages = pages)
         }
         return s.withJournal()
     }

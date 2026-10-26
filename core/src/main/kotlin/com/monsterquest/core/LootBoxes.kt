@@ -132,7 +132,7 @@ object LootBoxes {
             else -> rng.nextInt(4, 6)
         }
         val pages = mutableMapOf<String, Int>()
-        val unknown = Spells.all.filter { it.id !in state.hero.knownSpells }
+        val unknown = GameEngine.pageCandidates(state)
         if (level >= 3 && unknown.isNotEmpty()) {
             repeat(if (level == 3) rng.nextInt(2, 4) else rng.nextInt(3, 5)) {
                 val sp = unknown.random(rng)

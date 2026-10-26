@@ -74,7 +74,8 @@ private val topics = listOf(
     HelpTopic(
         GameIcon.ITEM_SHRINE, "Collecting items",
         listOf(
-            "Blue crystal beacons are item shrines at real places (cafes, parks, art, fountains) plus Waystones in between.",
+            "Blue crystal beacons are item shrines at real places (cafes, shops, parks, art, fountains) plus Waystones in between. Tap one to see the real place and street, e.g. Supply Cache: Barnes & Noble on Wards Road.",
+            "Tap Walk here on any shrine, monster or villain for walking directions in your map app.",
             "Walk within 60 m and tap one to collect gold, potions, orbs, spell pages, weapons, armor and lures. A pop-up shows what you got.",
             "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; upgrade it every 5 levels or for 1,000 gold.",
         ),
@@ -123,6 +124,8 @@ private val topics = listOf(
         GameIcon.HERO, "Your hero",
         listOf(
             "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
+            "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
+            "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
             "Adventures (Monsters tab, 5+ monsters) send a team to real places for gold and items while you're away.",
         ),

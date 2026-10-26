@@ -2,6 +2,7 @@ package com.monsterquest.core
 
 import kotlinx.serialization.Serializable
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 // ---------------------------------------------------------------------------
@@ -141,7 +142,13 @@ enum class Personality(
 // ---------------------------------------------------------------------------
 
 @Serializable
-enum class SkillKind { PHYSICAL, MAGICAL, HEAL }
+enum class SkillKind {
+    PHYSICAL, MAGICAL, HEAL,
+    /** Hero spell: a barrier on one ally (or the hero) that soaks up damage. */
+    SHIELD,
+    /** Hero spell: raises one ally's Defense. */
+    FORTIFY,
+}
 
 @Serializable
 data class Skill(
@@ -153,29 +160,86 @@ data class Skill(
     /** Energy (MP) cost for hero spells. Monster specials use a cooldown instead. */
     val mpCost: Int = 0,
     val unlockLevel: Int = 1,
+    /** Hero spells: extra power for each rank above 1. */
+    val powerPerRank: Int = 0,
+    val description: String = "",
 )
 
-/** Hero spells. Fire Bolt and Heal are known from the start; the rest are
- * learned by collecting [PAGES_TO_LEARN] spell-book pages from item shrines. */
+/**
+ * Hero magic. Humans can't breathe fire or call lightning; the hero's spells
+ * are scholars' imitations of monster magic. They're simpler and a little
+ * weaker than real monster moves, and get stronger two ways: the hero's
+ * mastery grows with level (full strength at [MASTERY_LEVEL]), and each spell
+ * can be ranked up to [MAX_RANK] with spell-book pages and gold.
+ *
+ * Ember Bolt, Mend and Ward are known from the start; the rest are learned by
+ * collecting [PAGES_TO_LEARN] pages from item shrines.
+ */
 object Spells {
     const val PAGES_TO_LEARN = 5
+    const val MAX_RANK = 5
+    const val MASTERY_LEVEL = 25
+
+    private fun bolt(id: String, name: String, element: Element, flavor: String) =
+        Skill(id, name, element, SkillKind.MAGICAL, 24, mpCost = 4, powerPerRank = 7, description = flavor)
 
     val all = listOf(
-        Skill("fire_bolt", "Fire Bolt", Element.FIRE, SkillKind.MAGICAL, 30, mpCost = 4),
-        Skill("heal", "Heal", Element.NEUTRAL, SkillKind.HEAL, 30, mpCost = 5),
-        Skill("thunderclap", "Thunderclap", Element.ELECTRIC, SkillKind.MAGICAL, 32, mpCost = 5),
-        Skill("tidal_lance", "Tidal Lance", Element.WATER, SkillKind.MAGICAL, 32, mpCost = 5),
-        Skill("gale", "Gale", Element.FLIGHT, SkillKind.MAGICAL, 32, mpCost = 5),
-        Skill("venom_cloud", "Choking Gas", Element.GAS, SkillKind.MAGICAL, 34, mpCost = 6),
-        Skill("shadow_rend", "Shadow Rend", Element.CORRUPT, SkillKind.MAGICAL, 36, mpCost = 6),
-        Skill("mega_heal", "Mega Heal", Element.NEUTRAL, SkillKind.HEAL, 70, mpCost = 10),
-        Skill("inferno", "Inferno", Element.FIRE, SkillKind.MAGICAL, 50, mpCost = 10),
-        Skill("judgement", "Judgement", Element.NEUTRAL, SkillKind.MAGICAL, 60, mpCost = 14),
+        bolt("ember_bolt", "Ember Bolt", Element.FIRE, "A spark copied from a fire-drake's breath."),
+        bolt("spark_bolt", "Spark Bolt", Element.ELECTRIC, "Static gathered the way a Voltfawn does."),
+        bolt("tide_bolt", "Tide Bolt", Element.WATER, "A jet of water, pulled from the air like a Drizzlet."),
+        bolt("gust_bolt", "Gust Bolt", Element.FLIGHT, "A blade of wind learned from watching wings."),
+        bolt("venom_bolt", "Venom Bolt", Element.GAS, "A puff of fumes, a weak copy of a Toxbug's cloud."),
+        bolt("shadow_bolt", "Shadow Bolt", Element.CORRUPT, "A sliver of the dark that gloomwisps carry."),
+        bolt("stone_bolt", "Stone Bolt", Element.EARTH, "A thrown shard, shaped like a Mosscub's rock."),
+        Skill(
+            "mend", "Mend", Element.NEUTRAL, SkillKind.HEAL, 24, mpCost = 5, powerPerRank = 10,
+            description = "Heals one ally or yourself.",
+        ),
+        Skill(
+            "ward", "Ward", Element.NEUTRAL, SkillKind.SHIELD, 20, mpCost = 5, powerPerRank = 10,
+            description = "A barrier on one ally or yourself that soaks up damage until it breaks.",
+        ),
+        Skill(
+            "fortify", "Fortify", Element.NEUTRAL, SkillKind.FORTIFY, 1, mpCost = 4,
+            description = "Raises one ally's Defense for the rest of the battle (more at higher ranks).",
+        ),
     )
 
-    val starting: Set<String> = setOf("fire_bolt", "heal")
+    val starting: Set<String> = setOf("ember_bolt", "mend", "ward")
 
     fun byId(id: String): Skill? = all.find { it.id == id }
+
+    /** How well the hero has copied monster magic: 75% at level 1, 100% at [MASTERY_LEVEL]. */
+    fun mastery(heroLevel: Int): Double =
+        (0.75 + 0.25 * (heroLevel - 1) / (MASTERY_LEVEL - 1).toDouble()).coerceIn(0.75, 1.0)
+
+    /** Defense stages Fortify gives: +1, +2 at rank 3, +3 at rank 5. */
+    fun fortifyStages(rank: Int): Int = 1 + (rank - 1) / 2
+
+    /** The spell as it works for this hero right now: power from rank and mastery. */
+    fun ranked(skill: Skill, rank: Int, heroLevel: Int): Skill {
+        val r = rank.coerceIn(1, MAX_RANK)
+        val power = if (skill.kind == SkillKind.FORTIFY) fortifyStages(r)
+        else ((skill.power + skill.powerPerRank * (r - 1)) * mastery(heroLevel)).roundToInt()
+        return skill.copy(power = power)
+    }
+
+    /** Pages needed to go from [rank] to the next rank. */
+    fun pagesToUpgrade(rank: Int): Int = 3 * rank
+
+    /** Gold needed to go from [rank] to the next rank. */
+    fun goldToUpgrade(rank: Int): Int = 150 * rank
+
+    /** Old (pre-1.0) spell ids and the new spell each became. */
+    val legacy: Map<String, String> = mapOf(
+        "fire_bolt" to "ember_bolt", "inferno" to "ember_bolt",
+        "heal" to "mend", "mega_heal" to "mend",
+        "thunderclap" to "spark_bolt", "tidal_lance" to "tide_bolt", "gale" to "gust_bolt",
+        "venom_cloud" to "venom_bolt", "shadow_rend" to "shadow_bolt", "judgement" to "fortify",
+    )
+
+    /** The old spells that were the strong versions; they carry over as rank 2. */
+    val legacyRank2: Set<String> = setOf("inferno", "mega_heal")
 }
 
 // ---------------------------------------------------------------------------

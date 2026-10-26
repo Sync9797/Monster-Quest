@@ -19,13 +19,27 @@ enum class ShrineTier(val label: String) {
 
 data class Shrine(
     val id: String,
+    /** The in-game name, e.g. "Supply Cache". */
     val name: String,
     val lat: Double,
     val lon: Double,
     val tier: ShrineTier,
     val bossSpeciesId: String? = null,
+    /** The real place it stands at, e.g. "Barnes & Noble" (null for generated waystones). */
+    val place: String? = null,
+    /** What kind of place that is, e.g. "Bookstore". */
+    val kind: String? = null,
+    /** The street it's on, when the map data knows it. */
+    val street: String? = null,
 ) {
     val isBoss: Boolean get() = tier != ShrineTier.ITEM
+
+    /** The second line under the name: "Barnes & Noble on Wards Road", "Bookstore", ... */
+    val subtitle: String?
+        get() {
+            val where = place ?: kind ?: return street?.let { "on $it" }
+            return if (street != null) "$where on $street" else where
+        }
 }
 
 /** Times of day change which monster types are out, like a day/night cycle. */
@@ -145,9 +159,37 @@ object World {
      * picks the tier from the kind of place: everyday spots are item shrines,
      * entertainment venues silver, and major destinations gold.
      */
-    fun shrineFromPlace(placeId: String, name: String, lat: Double, lon: Double, tier: ShrineTier): Shrine {
+    fun shrineFromPlace(
+        placeId: String,
+        place: String?,
+        lat: Double,
+        lon: Double,
+        tier: ShrineTier,
+        kind: String? = null,
+        street: String? = null,
+        category: PlaceCategory = PlaceCategory.OTHER,
+    ): Shrine {
         val id = "osm:$placeId"
-        return Shrine(id, name, lat, lon, tier, guardianFor(id, tier))
+        return Shrine(id, shrineTitle(tier, category), lat, lon, tier, guardianFor(id, tier), place = place, kind = kind, street = street)
+    }
+
+    /** What kind of real place a shrine stands at; picks its in-game name. */
+    enum class PlaceCategory { FOOD, SHOP, KNOWLEDGE, NATURE, ART, WATER, CIVIC, OTHER }
+
+    /** In-game shrine names, by tier and the kind of place. */
+    fun shrineTitle(tier: ShrineTier, category: PlaceCategory): String = when (tier) {
+        ShrineTier.GOLD -> "Ancient Altar"
+        ShrineTier.SILVER -> "Silver Obelisk"
+        ShrineTier.ITEM -> when (category) {
+            PlaceCategory.FOOD -> "Provision Shrine"
+            PlaceCategory.SHOP -> "Supply Cache"
+            PlaceCategory.KNOWLEDGE -> "Lore Shrine"
+            PlaceCategory.NATURE -> "Grove Shrine"
+            PlaceCategory.ART -> "Muse Stone"
+            PlaceCategory.WATER -> "Spring Shrine"
+            PlaceCategory.CIVIC -> "Sanctum"
+            PlaceCategory.OTHER -> "Wayshrine"
+        }
     }
 
     /** Fallback shrines for areas with no mapped places (e.g. rural areas or offline). */

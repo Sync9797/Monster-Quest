@@ -1,6 +1,8 @@
 package com.monsterquest.app
 
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performClick
 import android.Manifest
 import android.app.Application
 import android.graphics.Bitmap
@@ -105,7 +107,7 @@ abstract class ScreenshotBase(private val device: String) {
                 LootBox("b3", BoxRarity.LEGENDARY, 0),
             ),
             equippedGear = Armory.roll(12, Random(5), WeaponType.DAGGER, luck = 80),
-            spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
+            spellPages = mapOf("gust_bolt" to 3, "venom_bolt" to 1, "ember_bolt" to 4),
             parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
             inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
@@ -326,7 +328,7 @@ abstract class ScreenshotBase(private val device: String) {
                 com.monsterquest.core.Reward.Items(Item.TAMING_ORB, 2),
                 com.monsterquest.core.Reward.Items(Item.POTION, 1),
                 com.monsterquest.core.Reward.WeaponDrop(Armory.roll(12, Random(9), WeaponType.STAFF, luck = 60)),
-                com.monsterquest.core.Reward.Pages("gale", 1, learned = false),
+                com.monsterquest.core.Reward.Pages("gust_bolt", 1, learned = false),
             ),
         )
         shot("20_loot_popup", advanceMs = 900) { AppRoot(v, Tab.MAP) }
@@ -354,6 +356,39 @@ abstract class ScreenshotBase(private val device: String) {
             ambush = true,
         )
         shot("22_pack_battle", advanceMs = 5_000) { AppRoot(v) }
+    }
+
+    /** A shrine at a real place: themed name, the place and street underneath, and directions. */
+    @Test fun placeDetails() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        val shop = World.shrineFromPlace(
+            "node1", "Barnes & Noble", 40.7600, -73.9850, com.monsterquest.core.ShrineTier.ITEM,
+            kind = "Bookstore", street = "Wards Road", category = World.PlaceCategory.SHOP,
+        )
+        v.debugSetLocation(40.7580, -73.9855, listOf(shop))
+        shot("25_place_details") { AppRoot(v, Tab.MAP) }
+        // Wide screens list nearby places beside the map; open the shrine from there.
+        val nodes = rule.onAllNodesWithText("Supply Cache")
+        if (nodes.fetchSemanticsNodes().isNotEmpty()) {
+            nodes[0].performClick()
+            rule.mainClock.advanceTimeBy(500)
+            rule.waitForIdle()
+            rule.onNodeWithText("Barnes & Noble on Wards Road").assertExists()
+            rule.onNodeWithText("Walk here").assertExists()
+        }
+    }
+
+    /** Hero magic: ranks, mastery and the upgrade button. */
+    @Test fun heroMagic() {
+        val v = vm()
+        shot("26_hero_magic") { AppRoot(v, Tab.HERO) }
+        rule.onNodeWithText("Ember Bolt", substring = true).assertExists()
+        check(rule.onAllNodesWithText("Rank 2").fetchSemanticsNodes().size == 3) { "Ember Bolt, Mend and Ward can rank up" }
+        // Cast Ward in battle (the shield animation).
+        v.hunt()
+        v.battleAction(com.monsterquest.core.BattleAction.CastSpell("ward", "hero"))
+        capture("27_ward", 400)
     }
 
     @Test fun battleTabletop() {

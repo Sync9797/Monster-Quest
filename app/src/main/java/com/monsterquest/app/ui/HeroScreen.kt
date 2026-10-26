@@ -192,28 +192,53 @@ fun HeroScreen(vm: GameViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        SectionTitle("Spells")
+        SectionTitle("Magic")
         Text(
-            "Collect ${Spells.PAGES_TO_LEARN} pages of a spell book at item shrines to learn it.",
+            "People can't breathe fire like monsters can, so heroes study monster magic and copy it. " +
+                "Your spells start a little weaker than monster moves and grow to full strength by level ${Spells.MASTERY_LEVEL} " +
+                "(now ${(Spells.mastery(h.level) * 100).toInt()}%). Learn a spell with ${Spells.PAGES_TO_LEARN} pages from item shrines, " +
+                "then rank it up to ${Spells.MAX_RANK} with more pages and gold.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spells.all.forEach { sk ->
-            val known = sk.id in h.knownSpells
-            val pages = s.spellPages[sk.id] ?: 0
-            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                GIcon(sk.element.icon(), Modifier.size(16.dp), sk.element.color())
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    sk.name,
-                    modifier = Modifier.weight(1f),
-                    color = if (known) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (known) FontWeight.SemiBold else FontWeight.Normal,
-                )
-                if (known) {
-                    Text("${sk.mpCost} energy", fontSize = 13.sp, color = MpBlue)
-                } else {
-                    IconText(GameIcon.PAGE, "$pages/${Spells.PAGES_TO_LEARN}", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp, fontSize = 13.sp)
+        Spells.all.forEach { base ->
+            val rank = h.spellRank(base.id)
+            val known = rank > 0
+            val sk = Spells.ranked(base, rank.coerceAtLeast(1), h.level)
+            val pages = s.spellPages[base.id] ?: 0
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GIcon(sk.spellIcon(), Modifier.size(18.dp), if (known) sk.spellColor() else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(6.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (known) "${sk.name}  ${"★".repeat(rank)}${"☆".repeat(Spells.MAX_RANK - rank)}" else sk.name,
+                            color = if (known) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (known) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                        Text(
+                            if (known) "${sk.spellEffect()} • ${sk.mpCost} energy • ${sk.description}" else sk.description,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    when {
+                        !known -> IconText(GameIcon.PAGE, "$pages/${Spells.PAGES_TO_LEARN}", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp, fontSize = 13.sp)
+                        rank >= Spells.MAX_RANK -> Text("Max", fontSize = 12.sp, color = Gold)
+                        else -> {
+                            val needPages = Spells.pagesToUpgrade(rank)
+                            val needGold = Spells.goldToUpgrade(rank)
+                            Column(horizontalAlignment = Alignment.End) {
+                                SmallButton(
+                                    "Rank ${rank + 1}",
+                                    { vm.upgradeSpell(base.id) },
+                                    enabled = pages >= needPages && s.gold >= needGold,
+                                    outlined = true,
+                                )
+                                Text("$pages/$needPages pages • $needGold gold", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
                 }
             }
         }

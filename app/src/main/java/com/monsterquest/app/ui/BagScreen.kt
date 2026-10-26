@@ -149,9 +149,13 @@ fun BagScreen(vm: GameViewModel) {
                 Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                     GIcon(GameIcon.PAGE, Modifier.size(18.dp), Gold)
                     Spacer(Modifier.width(6.dp))
-                    GIcon(sp.element.icon(), Modifier.size(16.dp), sp.element.color())
+                    GIcon(sp.spellIcon(), Modifier.size(16.dp), sp.spellColor())
                     Spacer(Modifier.width(6.dp))
-                    Text("${sp.name}: $n/${Spells.PAGES_TO_LEARN} pages")
+                    val rank = s.hero.spellRank(id)
+                    Text(
+                        if (rank == 0) "${sp.name}: $n/${Spells.PAGES_TO_LEARN} pages to learn"
+                        else "${sp.name}: $n pages (rank up on the Hero tab)",
+                    )
                 }
             }
         }

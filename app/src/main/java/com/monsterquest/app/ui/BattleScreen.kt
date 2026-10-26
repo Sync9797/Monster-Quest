@@ -69,7 +69,7 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.ItemKind
 import com.monsterquest.core.Move
 import com.monsterquest.core.Skill
-import com.monsterquest.core.SkillKind
+import com.monsterquest.core.SUPPORT_KINDS
 import com.monsterquest.core.Weather
 
 private sealed interface Menu {
@@ -454,15 +454,15 @@ private fun ActionPanel(
                     val affordable = actor.mp >= sp.mpCost
                     OutlinedButton(
                         onClick = {
-                            if (sp.kind == SkillKind.HEAL) onMenu(Menu.Target(spell = sp))
+                            if (sp.kind in SUPPORT_KINDS) onMenu(Menu.Target(spell = sp))
                             else onAction(BattleAction.CastSpell(sp.id))
                         },
                         enabled = affordable,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        GIcon(sp.element.icon(), Modifier.size(16.dp), sp.element.color())
+                        GIcon(sp.spellIcon(), Modifier.size(16.dp), sp.spellColor())
                         Spacer(Modifier.width(6.dp))
-                        Text("${sp.name}  •  ${sp.mpCost} energy  •  ${if (sp.kind == SkillKind.HEAL) "heal" else "power ${sp.power}"}")
+                        Text("${sp.name}  •  ${sp.mpCost} energy  •  ${sp.spellEffect()}")
                     }
                 }
                 BackButton(onMenu)

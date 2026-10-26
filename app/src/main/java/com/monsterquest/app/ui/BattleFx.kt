@@ -81,6 +81,7 @@ private fun duration(e: BattleEvent) = when (e.style) {
     StrikeStyle.BOLT -> 750
     StrikeStyle.SLASH -> 520
     StrikeStyle.HEAL -> 650
+    StrikeStyle.WARD -> 700
     StrikeStyle.MISS -> 450
 }
 
@@ -120,8 +121,9 @@ fun Modifier.fighterFx(key: String): Modifier = composed {
     val pulse by rememberInfiniteTransition(label = "turn").animateFloat(
         0.35f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "pulse",
     )
-    val attacking = e != null && e.actorKey == key && e.style != StrikeStyle.HEAL
-    val hit = e != null && e.targetKey == key && e.style != StrikeStyle.MISS && e.style != StrikeStyle.HEAL && p >= impactAt(e)
+    val support = e != null && (e.style == StrikeStyle.HEAL || e.style == StrikeStyle.WARD)
+    val attacking = e != null && e.actorKey == key && !support
+    val hit = e != null && e.targetKey == key && e.style != StrikeStyle.MISS && !support && p >= impactAt(e)
     val after = if (e != null) ((p - impactAt(e)) / (1 - impactAt(e))).coerceIn(0f, 1f) else 0f
     val shake = if (hit) (sin(after * 9 * PI) * 7 * (1 - after)).toFloat() else 0f
     val ring = when {
@@ -161,6 +163,7 @@ fun BattleFxOverlay(modifier: Modifier = Modifier) {
             }
             StrikeStyle.SLASH -> drawSlash(color, to, (p / 0.7f).coerceIn(0f, 1f))
             StrikeStyle.HEAL -> drawHeal(to, p)
+            StrikeStyle.WARD -> drawWard(to, p)
             StrikeStyle.MISS -> {}
         }
         // Floating number or "Miss".
@@ -168,6 +171,7 @@ fun BattleFxOverlay(modifier: Modifier = Modifier) {
             val (text, tint, size) = when (e.style) {
                 StrikeStyle.MISS -> Triple("Miss", Color(0xFFB8C1BE), 18f)
                 StrikeStyle.HEAL -> Triple("+${e.amount}", HpGreen, 22f)
+                StrikeStyle.WARD -> Triple(if (e.amount > 0) "Ward ${e.amount}" else "Def up", MpBlue, 20f)
                 else -> Triple((if (e.crit) "CRIT " else "") + "-${e.amount}", if (e.crit || e.superEffective) Gold else Color.White, if (e.crit) 28f else 24f)
             }
             numberPaint.textSize = size.sp.toPx()
@@ -319,6 +323,18 @@ private fun DrawScope.drawHeal(at: Offset, t: Float) {
         drawCircle(HpGreen.copy(alpha = 0.8f * (1 - t)), (3 + i % 3).dp.toPx(), Offset(x, y))
     }
     drawCircle(HpGreen.copy(alpha = 0.25f * (1 - t)), 40.dp.toPx(), at)
+}
+
+/** A shimmering barrier closing around the target: Ward and Fortify. */
+private fun DrawScope.drawWard(at: Offset, t: Float) {
+    val r = (56 - 18 * t).dp.toPx()
+    val alpha = if (t < 0.7f) 0.85f else 0.85f * (1 - t) / 0.3f
+    drawCircle(MpBlue.copy(alpha = alpha), r, at, style = Stroke(width = 3.dp.toPx()))
+    drawCircle(MpBlue.copy(alpha = alpha * 0.25f), r, at)
+    for (i in 0 until 6) {
+        val a = (i / 6f + t * 0.5f) * 2 * PI
+        drawCircle(Color.White.copy(alpha = alpha), 2.5f.dp.toPx(), Offset(at.x + (r * cos(a)).toFloat(), at.y + (r * sin(a)).toFloat()))
+    }
 }
 
 /** Small portraits of who acts next, the current one first. */
