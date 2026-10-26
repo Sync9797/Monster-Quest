@@ -78,6 +78,7 @@ import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_IV
 import com.monsterquest.core.MAX_PARTY_SIZE
+import com.monsterquest.core.MAX_SWAPS
 import com.monsterquest.core.MONSTER_STATS
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Move
@@ -158,7 +159,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
     var sortBy by rememberSaveable { mutableStateOf(SortBy.LEVEL) }
     var showChart by remember { mutableStateOf(false) }
     val away = Adventures.awayUids(s)
-    val bench = s.monsters.filter { it.uid !in s.party }.let { list ->
+    val bench = s.monsters.filter { it.uid !in s.team }.let { list ->
         when (sortBy) {
             SortBy.LEVEL -> list.sortedByDescending { it.level }
             SortBy.TYPE -> list.sortedWith(compareBy<Monster> { it.species.element }.thenByDescending { it.level })
@@ -172,9 +173,10 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
         val uid = drag.uid ?: return
         val slot = drag.hoveredSlot()
         when {
+            slot != null && slot >= MAX_PARTY_SIZE -> vm.setSwapSlot(uid, slot - MAX_PARTY_SIZE)
             slot != null -> vm.setPartySlot(uid, slot)
-            // A party member dropped anywhere else goes back to the bench.
-            uid in s.party -> vm.toggleParty(uid)
+            // A party or swap member dropped anywhere else goes back to the collection.
+            uid in s.team -> vm.toggleParty(uid)
         }
         drag.uid = null
     }
@@ -224,6 +226,38 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                         }
                         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
+                    }
+                    // Swap slots: they come along and can be sent in mid-battle.
+                    Text("Swap", style = MaterialTheme.typography.titleSmall, color = Gold)
+                    Text(
+                        "Sent in during battle with Swap, e.g. when a monster faints. Half XP unless they fight.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                    Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        repeat(MAX_SWAPS) { j ->
+                            val i = MAX_PARTY_SIZE + j
+                            val m = s.swapMonsters.getOrNull(j)
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .onGloballyPositioned { drag.slots[i] = it.boundsInRoot() }
+                                    .border(if (hovered == i) 3.dp else 0.dp, if (hovered == i) Gold else Color.Transparent, RoundedCornerShape(12.dp)),
+                            ) {
+                                if (m != null) {
+                                    MonsterTile(
+                                        m, inParty = true, away = m.uid in away, selected = m.uid == selectedUid,
+                                        modifier = Modifier
+                                            .dragSource(drag, m.uid, ::drop)
+                                            .alpha(if (drag.uid == m.uid) 0.35f else 1f),
+                                    ) { onSelect(m.uid) }
+                                } else {
+                                    EmptySlot(highlight = drag.uid != null)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -611,7 +645,15 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Actions ----
         SectionTitle("Actions")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SmallButton(if (inParty) "Bench" else "To party", { vm.toggleParty(m.uid) }, Modifier.weight(1f))
+            SmallButton(
+                when {
+                    m.uid in s.swaps -> "Off swap"
+                    inParty -> "Bench"
+                    else -> "To party"
+                },
+                { vm.toggleParty(m.uid) },
+                Modifier.weight(1f),
+            )
             SmallButton("Treat +${GameEngine.treatXp(m)} XP", { vm.feedTreat(m.uid) }, Modifier.weight(1f), enabled = s.count(Item.TREAT) > 0, outlined = true)
         }
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -52,6 +52,9 @@ data class LootPopup(val title: String, val rewards: List<com.monsterquest.core.
 /** How close (meters) a new spawn must be to buzz the phone: battle range. */
 const val ALERT_RANGE_M = World.SPAWN_RANGE_M
 
+/** How much farther aggressive monsters notice you with the battery saver on. */
+const val SAVER_AMBUSH_RANGE = 2.0
+
 /** At most one ambush this often. */
 const val AMBUSH_COOLDOWN_MS = 10 * 60_000L
 
@@ -109,29 +112,62 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var secretAmbush by mutableStateOf<List<Monster>?>(null)
         private set
 
+    /** The thug leading a surprise attack (null when it's wild monsters). */
+    var secretThug by mutableStateOf<com.monsterquest.core.Thug?>(null)
+        private set
+
     private fun rollSecretEncounter(steps: Int) {
-        val (bank, hit) = com.monsterquest.core.SecretEncounters.roll(secretBank, steps, kotlin.random.Random.Default)
+        val rng = kotlin.random.Random.Default
+        // With the battery saver on, monsters and thugs notice you more often.
+        val (bank, hit) = com.monsterquest.core.SecretEncounters.roll(secretBank, steps, rng, saver = batterySaver)
         secretBank = bank
         val now = System.currentTimeMillis()
-        if (!hit || !mapVisible || !state.settings.ambushes || battle != null || secretAmbush != null) return
+        if (!hit || !mapVisible || !state.settings.ambushes || battle != null || secretAmbush != null || tooFast(now)) return
         if (state.focus != null || state.monsters.isEmpty() || now - lastBattleEndMs < com.monsterquest.core.SecretEncounters.COOLDOWN_MS) return
+        val fighting = GameEngine.fightingCount(state)
+        if (fighting > 0 && com.monsterquest.core.SecretEncounters.isThug(state.hero.level, rng)) {
+            val (thug, crew) = com.monsterquest.core.Villains.ambusher(state.hero.level, fighting, rng)
+            secretThug = thug
+            secretAmbush = crew
+            return
+        }
         val hour = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour
-        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, kotlin.random.Random.Default)
+        secretThug = null
+        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, rng)
     }
 
-    /** The "Ambushed!" pop-up has shown: the monsters strike first. */
+    /** The "Ambushed!" pop-up has shown: the monsters (or a thug and their crew) strike first. */
     fun startSecretAmbush() {
         val group = secretAmbush ?: return
+        val thug = secretThug
         secretAmbush = null
+        secretThug = null
         if (battle != null) return
         batterySaver = false
-        startBattle(group.first(), EncounterType.WILD, null, group.drop(1), ambush = true)
+        startBattle(group.first(), if (thug != null) EncounterType.THUG else EncounterType.WILD, null, group.drop(1), ambush = true, thug = thug)
     }
 
     /** Test hook: make a surprise attack happen now. */
     @VisibleForTesting
-    fun debugSecretAmbush(group: List<Monster>) {
+    fun debugSecretAmbush(group: List<Monster>, thug: com.monsterquest.core.Thug? = null) {
+        secretThug = thug
         secretAmbush = group
+    }
+
+    // ---- speed guard ---------------------------------------------------------
+
+    private var speed = com.monsterquest.core.SpeedGuard.State()
+
+    /** Shown when you start moving faster than 15 mph: spawns pause, and a reminder not to play while driving. */
+    var drivingWarning by mutableStateOf(false)
+
+    /** Moving too fast (a car or bus): no monsters appear. */
+    fun tooFast(nowMs: Long = System.currentTimeMillis()): Boolean = com.monsterquest.core.SpeedGuard.paused(speed, nowMs)
+
+    @VisibleForTesting
+    fun debugSpeed(lat: Double, lon: Double, nowMs: Long, mps: Float) {
+        speed = com.monsterquest.core.SpeedGuard.update(speed, lat, lon, nowMs, mps)
+        if (speed.justSpedUp) drivingWarning = true
     }
 
     private fun apply(u: Update) {
@@ -469,6 +505,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (u.message.isNotEmpty()) message = u.message
     }
 
+    fun setSwapSlot(uid: String, index: Int) = apply(GameEngine.setSwapSlot(state, uid, index))
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
     fun setPartySlot(uid: String, slot: Int) {
         val u = GameEngine.setPartySlot(state, uid, slot)
@@ -485,9 +522,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- map ---------------------------------------------------------------
 
-    fun onLocation(lat: Double, lon: Double) {
+    fun onLocation(lat: Double, lon: Double, speedMps: Float? = null) {
+        val now = System.currentTimeMillis()
+        speed = com.monsterquest.core.SpeedGuard.update(speed, lat, lon, now, speedMps)
+        if (speed.justSpedUp) drivingWarning = true
         location = lat to lon
-        walkFromGps(lat, lon)
+        // Distance covered in a car isn't walking.
+        if (tooFast(now)) lastWalkPoint = lat to lon else walkFromGps(lat, lon)
         val last = placesFetchedAt
         if (!loadingPlaces && (last == null || World.distanceMeters(last.first, last.second, lat, lon) > 500)) {
             loadingPlaces = true
@@ -510,6 +551,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun spawnsNear(nowMs: Long): List<WildSpawn> {
         val (lat, lon) = location ?: return emptyList()
+        // No monsters at driving speed.
+        if (tooFast(nowMs)) return emptyList()
         val window = World.spawnWindow(nowMs)
         val anchor = spawnAnchor
         // A new window, or a big jump (a drive), starts a fresh ring around where you are.
@@ -675,14 +718,20 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      * Returns true if an ambush started.
      */
     fun checkAmbush(spawns: List<WildSpawn>, nowMs: Long): Boolean {
-        if (!state.settings.ambushes || battle != null || batterySaver || state.focus != null) return false
+        if (!state.settings.ambushes || battle != null || state.focus != null || secretAmbush != null) return false
         // Give the player a moment to look around after opening the map.
         if (nowMs - mapOpenedAtMs < AMBUSH_GRACE_MS) return false
         if (nowMs - state.lastAmbushMs < AMBUSH_COOLDOWN_MS || state.monsters.isEmpty()) return false
         val hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour
+        // With the battery saver on, aggressive monsters notice you from twice as far.
+        val range = if (batterySaver) World.AMBUSH_M * SAVER_AMBUSH_RANGE else World.AMBUSH_M
         val attacker = spawns.firstOrNull {
-            World.isAggressive(it, hour) && (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= World.AMBUSH_M
+            World.isAggressive(it, hour) && (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= range
         } ?: return false
+        if (batterySaver) {
+            batterySaver = false
+            if (state.settings.vibrateOnSpawn) Haptics.secretAmbush(getApplication())
+        }
         engage(attacker, ambush = true)
         return true
     }
@@ -781,11 +830,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         shrineId: String?,
         pack: List<Monster> = emptyList(),
         ambush: Boolean = false,
+        thug: com.monsterquest.core.Thug? = null,
     ) {
         var s = state
         for (m in listOf(enemy) + pack) s = GameEngine.markSeen(s, m.speciesId)
         set(s)
-        val b = GameEngine.newBattle(state, enemy, type, shrineId, pack = pack, ambush = ambush)
+        val b = GameEngine.newBattle(state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug)
         activeBattle = b
         battle = BattleView.of(b, null)
     }

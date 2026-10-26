@@ -578,6 +578,57 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("OK").performClick()
     }
 
+    /** A thug jumps you with one monster for each of yours, and fights alongside them. */
+    @Test fun thugAmbush() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        val count = com.monsterquest.core.GameEngine.fightingCount(v.state)
+        val (thug, crew) = com.monsterquest.core.Villains.ambusher(12, count, Random(8))
+        shot("36_thug_ambush") { AppRoot(v, Tab.MAP) }
+        rule.runOnUiThread { v.debugSecretAmbush(crew, thug) }
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithText("${thug.name} of the ${thug.crew} jumps you!").assertExists()
+        rule.mainClock.advanceTimeBy(2_500)
+        rule.waitForIdle()
+        val b = checkNotNull(v.battle) { "the fight starts on its own" }
+        check(b.enemies.size == count + 1) { "the thug fights too: ${b.enemies.size}" }
+        check(b.enemies.last().thug)
+        capture("37_thug_battle", 1_000)
+    }
+
+    /** Two monsters wait in the swap slots; Swap sends one in. */
+    @Test fun battleSwap() {
+        val base = sampleState()
+        val r = Random(30)
+        val extra = listOf(Monster.create(Bestiary.get("fluffchick"), 14, r), Monster.create(Bestiary.get("shellsnap"), 13, r))
+        val v = vm(base.copy(monsters = base.monsters + extra, swaps = extra.map { it.uid }))
+        v.hunt()
+        shot("38_swap") { AppRoot(v) }
+        rule.onNodeWithText("Swap").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("Send in from the swap slots").assertExists()
+        rule.onNodeWithText(extra[0].displayName, substring = true).performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("${extra[0].displayName} takes whose place?").assertExists()
+        capture("39_swap_pick", 300)
+    }
+
+    @Test fun drivingWarning() {
+        val v = vm()
+        shot("40_driving") { AppRoot(v, Tab.QUESTS) }
+        rule.runOnUiThread {
+            v.debugSpeed(40.0, -74.0, 1_000, 1.2f)
+            v.debugSpeed(40.002, -74.0, 6_000, 14f)
+        }
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.onNodeWithText("Moving too fast").assertExists()
+        check(v.tooFast(6_000))
+    }
+
     /** The secret walking encounter: "Ambushed!" over the map, then the fight starts by itself. */
     @Test fun secretAmbush() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)

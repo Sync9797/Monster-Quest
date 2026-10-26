@@ -23,6 +23,13 @@ data class VillainCamp(
 )
 
 /**
+ * A thug who jumps you while you walk and fights alongside their monsters
+ * (as many as you have fighting, so it's an even match). Their monsters
+ * won't leave them, so they can't be tamed.
+ */
+data class Thug(val name: String, val crew: String, val level: Int)
+
+/**
  * Thugs and villains roam the map, changing daily. Their monsters carry the
  * shadow curse and can't be tamed; beat the whole team to win their loot and
  * a chance to redeem one of their monsters.
@@ -48,6 +55,16 @@ object Villains {
             h = h xor (h ushr 31)
         }
         return h
+    }
+
+    /** A thug for a surprise attack, around the hero's level, with [monsters] monsters of their own. */
+    fun ambusher(heroLevel: Int, monsters: Int, rng: Random): Pair<Thug, List<Monster>> {
+        val level = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(2)
+        val team = List(monsters.coerceIn(1, MAX_PARTY_SIZE)) {
+            val lvl = GameEngine.wildLevel(heroLevel, rng)
+            Monster.create(Bestiary.randomWild(rng, lvl), lvl, rng)
+        }
+        return Thug(thugLeaders.random(rng), thugCrews.random(rng), level) to team
     }
 
     /** Today's thugs and villains around a location (already-beaten ones excluded). */

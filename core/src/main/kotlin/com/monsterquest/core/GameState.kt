@@ -247,6 +247,8 @@ data class GameState(
     val monsters: List<Monster> = emptyList(),
     /** UIDs of monsters that join battles (max [MAX_PARTY_SIZE]). */
     val party: List<String> = emptyList(),
+    /** Monsters in the swap slots (max [MAX_SWAPS]): they can be sent in mid-battle. */
+    val swaps: List<String> = emptyList(),
     val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.TAMING_ORB to 5, Item.RESTORE_POTION to 1),
     /** Epoch day of the last free daily recovery (see GameEngine.dailyRecovery). */
     val lastRecoveryDay: Long? = null,
@@ -347,6 +349,10 @@ data class GameState(
     val bagFull: Boolean get() = bagCount >= bagCapacity
     val storageFull: Boolean get() = monsters.size >= monsterCapacity
     val partyMonsters: List<Monster> get() = party.mapNotNull { uid -> monsters.find { it.uid == uid } }
+    val swapMonsters: List<Monster> get() = swaps.mapNotNull { uid -> monsters.find { it.uid == uid } }
+
+    /** The party plus the swap slots: everyone who comes along to fights. */
+    val team: List<String> get() = party + swaps
     fun count(item: Item): Int = inventory[item] ?: 0
 
     /** Records every owned monster's species as caught (and seen) in the journal. */

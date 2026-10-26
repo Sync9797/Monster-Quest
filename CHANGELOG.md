@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.14.0
+
+- **Battery saver draws more trouble:** with the phone upside down in the
+  battery saver, surprise attacks while walking go from a 25% to a 40%
+  chance every 50 steps, and aggressive monsters notice you from twice as
+  far. An attack buzzes, wakes the screen and starts the fight.
+- **Thugs:** about 1 in 5 surprise attacks (from level 3) is a thug who
+  jumps you with one monster for each monster you have fighting. The thug
+  fights alongside them, so it's an even match. Their monsters can't be
+  tamed, and the pay grows with the size of the crew.
+- **Swap slots:** two more slots under your battle party. Monsters there
+  come along to every fight and can be sent in with the new **Swap**
+  button, which replaces Guard (the hero keeps Defend). Use it when a
+  monster faints, or to swap a tired one out. Swap monsters get half XP
+  unless they actually fight.
+- **A guard move for every type:** only Water had one (Wave Guard). Now
+  every type learns its own at level 12: Flame Shield, Static Barrier,
+  Wind Wall, Toxic Veil, Shadow Veil and Stone Wall.
+- **No playing at driving speed:** above 15 mph, monsters stop appearing
+  and GPS distance stops counting as walking. A pop-up asks you not to
+  play while driving. Monsters come back after a minute at walking pace
+  (or a few minutes after stopping).
+- Added a **move store** idea to the to-do list.
+
 ## 1.13.0
 
 - **Weapon class bonus:** a weapon of your class adds +2, +4, +6 or +8

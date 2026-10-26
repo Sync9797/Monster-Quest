@@ -2,6 +2,10 @@
 
 Ideas we've agreed to do later. Newest first.
 
+- [ ] **Move store:** a store section for buying moves. A move costs candy of
+      a monster whose type matches the move, plus gold, both depending on
+      the move's quality.
+
 - [ ] **Theme preview in Settings:** show a small preview of the Quests screen
       (or a card and a button) for each theme and color option before picking it.
 - [ ] **More Flight and Earth monsters:** Flight has 8 monsters (3 lines) and

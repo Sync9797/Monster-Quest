@@ -157,7 +157,25 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     // Battery saver: black screen on top while the map keeps running underneath.
     if (vm.batterySaver) BatterySaverOverlay(vm)
     vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
+    if (vm.drivingWarning) DrivingWarning { vm.drivingWarning = false }
     }
+}
+
+/** Moving faster than 15 mph: monsters stop appearing, and a reminder to keep your eyes on the road. */
+@Composable
+private fun DrivingWarning(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Moving too fast") },
+        text = {
+            Text(
+                "You're going faster than ${com.monsterquest.core.SpeedGuard.LIMIT_MPH.toInt()} mph, so monsters have stopped " +
+                    "appearing.\n\nPlease don't play while driving. Keep your eyes on the road. If you're a passenger, enjoy " +
+                    "the ride: monsters come back once you're on foot again.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("I'm not driving") } },
+    )
 }
 
 /** A den monster is beaten: a few throws to tame it before it slips away. */

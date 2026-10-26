@@ -10,6 +10,7 @@ import com.monsterquest.app.ui.art.drawVillainOn
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
+import com.monsterquest.app.ui.art.HeroArt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.color
 import com.monsterquest.app.ui.art.icon
@@ -506,11 +507,12 @@ private fun rememberMapView(): MapView {
 
 @SuppressLint("MissingPermission")
 @Composable
-internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLocation: (Double, Double) -> Unit) {
+internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLocation: (Double, Double, Float?) -> Unit) {
     DisposableEffect(batterySaver) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {
-            override fun onLocationChanged(location: Location) = onLocation(location.latitude, location.longitude)
+            override fun onLocationChanged(location: Location) =
+                onLocation(location.latitude, location.longitude, if (location.hasSpeed()) location.speed else null)
 
             @Deprecated("Deprecated in Java")
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -522,7 +524,7 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
         try {
             providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
                 .maxByOrNull { it.time }
-                ?.let { onLocation(it.latitude, it.longitude) }
+                ?.let { onLocation(it.latitude, it.longitude, null) }
             val (interval, distance) = if (batterySaver) 20_000L to 25f else 4_000L to 5f
             providers.forEach { lm.requestLocationUpdates(it, interval, distance, listener, Looper.getMainLooper()) }
         } catch (e: SecurityException) {
@@ -560,6 +562,22 @@ private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.co
         },
         text = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                val thug = vm.secretThug
+                if (thug != null) {
+                    // A thug and their crew: one monster for each of yours.
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
+                        HeroArt(com.monsterquest.core.HeroClass.ROGUE, Modifier.size(96.dp), portrait = false, outfit = THUG_OUTFIT)
+                        group.forEach { m -> MonsterArt(m.species, Modifier.size(64.dp), shiny = m.shiny) }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("${thug.name} of the ${thug.crew} jumps you!", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text(
+                        "Lv ${thug.level} thug • ${group.size} monster${if (group.size == 1) "" else "s"}, one for each of yours • they fight together",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                } else {
                 Row(horizontalArrangement = Arrangement.spacedBy((-18).dp)) {
                     group.forEach { m -> MonsterArt(m.species, Modifier.size(if (group.size == 1) 120.dp else 90.dp), shiny = m.shiny) }
                 }
@@ -576,6 +594,7 @@ private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.co
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                }
                 if (group.any { it.shiny }) Text("Shiny!", color = Gold, fontWeight = FontWeight.Bold)
             }
         },

@@ -123,6 +123,7 @@ private val topics = listOf(
             "Dark banners on the map are thug crews and villains, changing daily. Their monsters carry the shadow curse and can't be tamed.",
             "Beat the whole team in a row for gold, loot and parts. Then use a Restore Potion to try to free one: 75% of the time it joins you.",
             "Battling with a cursed monster slowly lifts the curse; then you choose one stat to make perfect.",
+            "Thugs also jump you while you walk, bringing one monster for each of yours and fighting alongside them. Their monsters can't be tamed.",
         ),
     ),
     HelpTopic(

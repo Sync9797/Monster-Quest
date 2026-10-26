@@ -44,6 +44,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.monsterquest.app.ui.art.HeroOutfit
+import com.monsterquest.core.ArmorType
+import com.monsterquest.core.GearRarity
+import com.monsterquest.core.HeroClass
+import com.monsterquest.core.MAX_PARTY_SIZE
+import com.monsterquest.core.WeaponType
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +98,8 @@ private sealed interface Menu {
     data object Tame : Menu
     /** Pick an ally for a heal spell or item. */
     data class Target(val spell: Skill? = null, val item: Item? = null) : Menu
+    /** Pick who comes in from the swap slots ([inKey] null), then whose place they take. */
+    data class Swap(val inKey: String? = null) : Menu
 }
 
 @Composable
@@ -522,12 +529,16 @@ private fun ActionButton(
     }
 }
 
+internal val THUG_OUTFIT = HeroOutfit(WeaponType.DAGGER, armor = ArmorType.LEATHER, cloak = GearRarity.NORMAL, hood = GearRarity.NORMAL)
+
 /** The hero or a monster, as drawn art. Fallen fighters are grayed out. */
 @Composable
 private fun FighterArt(f: FighterView, modifier: Modifier) {
     val cls = f.heroClass
     val sp = f.speciesId?.let { Bestiary.get(it) }
     when {
+        // A thug: a hooded brawler with a dagger and a ragged cloak.
+        f.thug -> HeroArt(HeroClass.ROGUE, modifier, portrait = false, outfit = THUG_OUTFIT)
         cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
         sp != null -> MonsterArt(sp, modifier, dim = !f.alive, shiny = f.shiny)
     }
@@ -621,9 +632,13 @@ private fun ActionPanel(
                         color = if (b.captureBlocked == null) Color(0xFF5B4580) else null,
 
                     ) { onMenu(Menu.Tame) }
-                    if (!actor.isHero) {
-                        ActionButton("Guard", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Defend) }
-                    }
+                    // Swap: send in a monster from the swap slots.
+                    ActionButton(
+                        "Swap",
+                        Modifier.weight(1f),
+                        enabled = b.swaps.any { it.alive },
+                        color = Color(0xFF3A4E50),
+                    ) { onMenu(Menu.Swap()) }
                     ActionButton("Flee", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Flee) }
                 }
             }
@@ -666,6 +681,36 @@ private fun ActionPanel(
                             GIcon(o.item.icon(), Modifier.size(18.dp), o.item.color())
                             Spacer(Modifier.width(6.dp))
                             Text("${o.item.label} x${o.count}  •  ${(o.odds * 100).toInt()}% chance")
+                        }
+                    }
+                }
+                BackButton(onMenu)
+            }
+            is Menu.Swap -> {
+                val incoming = menu.inKey?.let { k -> b.swaps.find { it.key == k } }
+                if (incoming == null) {
+                    Text("Send in from the swap slots", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    b.swaps.forEach { w ->
+                        OutlinedButton(onClick = { onMenu(Menu.Swap(w.key)) }, enabled = w.alive, modifier = Modifier.fillMaxWidth()) {
+                            FighterArt(w, Modifier.size(24.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("${w.name}  Lv ${w.level}  ${w.hp}/${w.maxHp} HP")
+                        }
+                    }
+                } else {
+                    Text("${incoming.name} takes whose place?", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val mons = b.allies.filter { !it.isHero }
+                    // The fallen first: that's what the swap is for.
+                    mons.sortedBy { it.alive }.forEach { a ->
+                        OutlinedButton(onClick = { onAction(BattleAction.Swap(incoming.key, a.key)) }, modifier = Modifier.fillMaxWidth()) {
+                            FighterArt(a, Modifier.size(24.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (a.alive) "${a.name}  ${a.hp}/${a.maxHp} HP" else "${a.name}  (fainted)")
+                        }
+                    }
+                    if (mons.size < MAX_PARTY_SIZE) {
+                        OutlinedButton(onClick = { onAction(BattleAction.Swap(incoming.key, null)) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Join the fight (free spot)")
                         }
                     }
                 }

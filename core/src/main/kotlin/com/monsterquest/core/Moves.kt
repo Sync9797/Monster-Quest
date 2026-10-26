@@ -162,6 +162,13 @@ object Moves {
         m("splash", "Splash", Element.WATER, 20, desc = "Spray in the eyes: the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0))),
         m("water_shot", "Water Shot", Element.WATER, 60, desc = "A pressurized jet."),
         m("wave_guard", "Wave Guard", Element.WATER, 0, desc = "Blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        // Every type has its own guard move, like Water's Wave Guard.
+        m("flame_shield", "Flame Shield", Element.FIRE, 0, desc = "A wall of fire: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        m("static_barrier", "Static Barrier", Element.ELECTRIC, 0, desc = "A crackling barrier: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        m("wind_wall", "Wind Wall", Element.FLIGHT, 0, desc = "A spinning wall of wind: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        m("toxic_veil", "Toxic Veil", Element.GAS, 0, desc = "A thick veil of fumes: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        m("shadow_veil", "Shadow Veil", Element.CORRUPT, 0, desc = "Melts into the shadows: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
+        m("stone_wall", "Stone Wall", Element.EARTH, 0, desc = "Raises a wall of stone: blocks all damage until your next turn.", fx = *arrayOf(MoveEffect.Protect)),
         m("rain", "Rain", Element.WATER, 0, desc = "Summons rain. Water and Electric +25%, Fire −15%.", fx = *arrayOf(MoveEffect.SetWeather(Weather.RAIN, 1.0))),
         m("hydro_blast", "Hydro Blast", Element.WATER, 100, 85, "A crushing torrent."),
         m("hydro_surprise", "Hydro Surprise", Element.WATER, 100, 85, "25% chance to bring rain.", MoveEffect.SetWeather(Weather.RAIN, 0.25)),
@@ -247,13 +254,13 @@ object Moves {
     /** (level, move id) pairs, per attack type. */
     val learnsets: Map<Element, List<Pair<Int, String>>> = mapOf(
         Element.NEUTRAL to listOf(1 to "tackle", 3 to "quick_strike", 5 to "bite", 9 to "intimidate", 12 to "fury_swipes", 15 to "scare", 20 to "focus", 24 to "headbutt", 29 to "slam", 34 to "sleep_wave"),
-        Element.FIRE to listOf(1 to "spit_fire", 4 to "flame_charge", 7 to "fire_fang", 11 to "ember_barrage", 13 to "fire_wave", 16 to "heat_claws", 18 to "solar_flare", 22 to "drought", 25 to "kindle", 30 to "fire_storm", 34 to "lava_plume", 40 to "blast_burn"),
-        Element.ELECTRIC to listOf(1 to "spark", 3 to "quick_bolt", 5 to "shock", 9 to "thunder_shock", 12 to "spark_storm", 16 to "thunder_wave", 20 to "charge", 22 to "volt_fang", 26 to "thunder_bolt", 38 to "volt_crash", 44 to "zap_cannon"),
+        Element.FIRE to listOf(1 to "spit_fire", 4 to "flame_charge", 7 to "fire_fang", 11 to "ember_barrage", 12 to "flame_shield", 13 to "fire_wave", 16 to "heat_claws", 18 to "solar_flare", 22 to "drought", 25 to "kindle", 30 to "fire_storm", 34 to "lava_plume", 40 to "blast_burn"),
+        Element.ELECTRIC to listOf(1 to "spark", 3 to "quick_bolt", 5 to "shock", 9 to "thunder_shock", 12 to "spark_storm", 12 to "static_barrier", 16 to "thunder_wave", 20 to "charge", 22 to "volt_fang", 26 to "thunder_bolt", 38 to "volt_crash", 44 to "zap_cannon"),
         Element.WATER to listOf(1 to "splash", 4 to "aqua_jet", 8 to "water_shot", 10 to "bubble_barrage", 12 to "wave_guard", 15 to "soak", 18 to "rain", 24 to "tidal_slam", 28 to "hydro_blast", 32 to "cleansing_wave", 36 to "hydro_surprise"),
-        Element.FLIGHT to listOf(1 to "peck", 4 to "aerial_ace", 7 to "gust", 10 to "feather_flurry", 12 to "steel_wing", 15 to "tailwind", 17 to "lullaby", 22 to "wind_tunnel", 25 to "razor_gale", 27 to "flying_kick", 30 to "roost", 32 to "wild_wind", 38 to "dive_bomb"),
-        Element.GAS to listOf(1 to "puff", 3 to "toxic_barrage", 6 to "poison_gas", 9 to "venom_fang", 11 to "gunk_shot", 14 to "spore_cloud", 17 to "toxic_wave", 20 to "corrode", 23 to "smog_screen", 27 to "purify", 30 to "acid_rain", 38 to "miasma_burst"),
-        Element.CORRUPT to listOf(1 to "snarl", 4 to "sucker_punch", 8 to "hex_barrage", 10 to "dark_wave", 16 to "corruptive_bite", 19 to "night_slash", 24 to "nightmare", 27 to "dark_pact", 30 to "shadow_claw", 33 to "soul_drain", 38 to "void_pulse"),
-        Element.EARTH to listOf(1 to "seed_bomb", 3 to "rock_blast", 6 to "mulch", 10 to "sap", 12 to "harden", 15 to "rock_throw", 18 to "thorn_trap", 22 to "mega_sap", 25 to "ground_pound", 28 to "vine_whip", 34 to "earthquake", 38 to "stone_edge", 40 to "leaf_storm"),
+        Element.FLIGHT to listOf(1 to "peck", 4 to "aerial_ace", 7 to "gust", 10 to "feather_flurry", 12 to "steel_wing", 12 to "wind_wall", 15 to "tailwind", 17 to "lullaby", 22 to "wind_tunnel", 25 to "razor_gale", 27 to "flying_kick", 30 to "roost", 32 to "wild_wind", 38 to "dive_bomb"),
+        Element.GAS to listOf(1 to "puff", 3 to "toxic_barrage", 6 to "poison_gas", 9 to "venom_fang", 11 to "gunk_shot", 12 to "toxic_veil", 14 to "spore_cloud", 17 to "toxic_wave", 20 to "corrode", 23 to "smog_screen", 27 to "purify", 30 to "acid_rain", 38 to "miasma_burst"),
+        Element.CORRUPT to listOf(1 to "snarl", 4 to "sucker_punch", 8 to "hex_barrage", 10 to "dark_wave", 12 to "shadow_veil", 16 to "corruptive_bite", 19 to "night_slash", 24 to "nightmare", 27 to "dark_pact", 30 to "shadow_claw", 33 to "soul_drain", 38 to "void_pulse"),
+        Element.EARTH to listOf(1 to "seed_bomb", 3 to "rock_blast", 6 to "mulch", 10 to "sap", 12 to "harden", 12 to "stone_wall", 15 to "rock_throw", 18 to "thorn_trap", 22 to "mega_sap", 25 to "ground_pound", 28 to "vine_whip", 34 to "earthquake", 38 to "stone_edge", 40 to "leaf_storm"),
     )
 
     /**

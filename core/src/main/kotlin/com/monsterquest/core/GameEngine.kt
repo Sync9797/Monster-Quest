@@ -353,6 +353,8 @@ object GameEngine {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         return if (uid !in state.party && uid in Adventures.awayUids(state)) {
             Update(state, "${m.displayName} is out on an adventure.")
+        } else if (uid in state.swaps) {
+            Update(state.copy(swaps = state.swaps - uid), "${m.displayName} left the swap slots.")
         } else if (uid in state.party) {
             Update(state.copy(party = state.party - uid), "${m.displayName} left the battle party.")
         } else if (state.party.size >= MAX_PARTY_SIZE) {
@@ -373,6 +375,20 @@ object GameEngine {
         val party = state.party.filter { p -> state.monsters.any { it.uid == p } }.toMutableList()
         val slot = index.coerceIn(0, MAX_PARTY_SIZE - 1)
         val from = party.indexOf(uid)
+        // From a swap slot: trade places with whoever is in the party slot.
+        val swapAt = state.swaps.indexOf(uid)
+        if (swapAt >= 0) {
+            val swaps = state.swaps.toMutableList()
+            val out = party.getOrNull(slot)
+            if (out != null) {
+                party[slot] = uid
+                swaps[swapAt] = out
+            } else {
+                party += uid
+                swaps.removeAt(swapAt)
+            }
+            return Update(state.copy(party = party, swaps = swaps), "${m.displayName} joined the battle party.")
+        }
         return if (from >= 0) {
             if (slot >= party.size || slot == from) return Update(state.copy(party = party), "")
             val other = party[slot]
@@ -391,6 +407,34 @@ object GameEngine {
         }
     }
 
+    /**
+     * Puts a monster into swap slot [index] (drag and drop): it comes along to
+     * fights and can be sent in mid-battle. A party monster dropped here trades
+     * places with whoever is in the slot.
+     */
+    fun setSwapSlot(state: GameState, uid: String, index: Int): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        if (uid !in state.team && uid in Adventures.awayUids(state)) return Update(state, "${m.displayName} is out on an adventure.")
+        val swaps = state.swaps.filter { p -> state.monsters.any { it.uid == p } }.toMutableList()
+        val party = state.party.toMutableList()
+        val slot = index.coerceIn(0, MAX_SWAPS - 1)
+        val out = swaps.getOrNull(slot)
+        val from = swaps.indexOf(uid)
+        if (from >= 0) {
+            if (out == null || from == slot) return Update(state.copy(swaps = swaps), "")
+            swaps[slot] = uid
+            swaps[from] = out
+            return Update(state.copy(swaps = swaps), "")
+        }
+        val partyAt = party.indexOf(uid)
+        if (out != null) swaps[slot] = uid else swaps += uid
+        if (partyAt >= 0) {
+            if (out != null) party[partyAt] = out else party.removeAt(partyAt)
+        }
+        val note = if (out != null && partyAt < 0) " ${state.monsters.find { it.uid == out }?.displayName ?: "Your monster"} went back to the collection." else ""
+        return Update(state.copy(party = party, swaps = swaps), "${m.displayName} is in a swap slot.$note")
+    }
+
     fun release(state: GameState, uid: String): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (state.monsters.size <= 1) return Update(state, "You can't release your last monster.")
@@ -401,6 +445,7 @@ object GameEngine {
             state.copy(
                 monsters = state.monsters.filterNot { it.uid == uid },
                 party = state.party - uid,
+                swaps = state.swaps - uid,
                 candy = state.candy + (family to (state.candy[family] ?: 0) + gained),
             ),
             "${m.displayName} was released into the wild. +$gained ${candyName(m.species)}.",
@@ -741,6 +786,7 @@ object GameEngine {
         rng: Random = Random.Default,
         pack: List<Monster> = emptyList(),
         ambush: Boolean = false,
+        thug: Thug? = null,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -749,7 +795,15 @@ object GameEngine {
         extraEnemies = pack,
         ambush = ambush,
         offhand = state.offhandGear,
+        swaps = state.swapMonsters.filter { it.uid !in Adventures.awayUids(state) },
+        thug = thug,
     )
+
+    /** Party monsters able to fight right now (a thug brings as many). */
+    fun fightingCount(state: GameState): Int {
+        val away = Adventures.awayUids(state)
+        return state.partyMonsters.count { !it.fainted && it.uid !in away }
+    }
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
         var s = state.copy(inventory = removeItems(state.inventory, r.itemsUsed))
@@ -1350,7 +1404,7 @@ object GameEngine {
         val notes = mutableListOf<String>()
         s = s.copy(
             monsters = s.monsters.map { m ->
-                if (m.uid !in s.party || m.fainted || m.uid in away) return@map m
+                if (m.uid !in s.team || m.fainted || m.uid in away) return@map m
                 val (after, n) = grow(m, xp)
                 notes += n
                 if (after.level > m.level) notes += "${after.displayName} reached Lv ${after.level}!"
