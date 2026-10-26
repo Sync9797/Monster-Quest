@@ -339,6 +339,29 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             }
         }
 
+        // ---- Candy ----
+        val candy = GameEngine.candyOf(s, sp)
+        val cost = GameEngine.candyCost(m.level)
+        GameCard(Modifier.padding(top = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(GameIcon.CANDY, Modifier.size(26.dp), sp.element.color())
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("${GameEngine.candyName(sp)}: $candy", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Release monsters of this line to earn it. Next level costs $cost.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                SmallButton(
+                    "Level up ($cost)",
+                    { vm.candyLevelUp(m.uid) },
+                    enabled = candy >= cost && m.level < com.monsterquest.core.MAX_MONSTER_LEVEL,
+                )
+            }
+        }
+
         // ---- Stats + compare ----
         SectionTitle("Stats")
         Text(
@@ -352,6 +375,24 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Stat points (IVs): fixed at taming, so better monsters come from taming more.
+        GameCard(Modifier.padding(top = 6.dp)) {
+            Text("Stat points", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                MONSTER_STATS.forEach { st ->
+                    val iv = m.ivs[st]
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("$iv/$MAX_IV", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (iv == MAX_IV) Gold else statColor(st))
+                        Text(st.label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+            Text(
+                "Set when tamed. Leveling up and evolving never change them; tame more monsters to find better ones.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Text("Compare with:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -462,7 +503,12 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         AlertDialog(
             onDismissRequest = { releasing = false },
             title = { Text("Release ${m.displayName}?") },
-            text = { Text("It will return to the wild forever. This frees one storage slot.") },
+            text = {
+                Text(
+                    "It will return to the wild forever. This frees one storage slot and gives you " +
+                        "${GameEngine.releaseCandy(m)} ${GameEngine.candyName(sp)}.",
+                )
+            },
             confirmButton = { TextButton(onClick = { vm.release(m.uid); releasing = false }) { Text("Release") } },
             dismissButton = { TextButton(onClick = { releasing = false }) { Text("Keep") } },
         )

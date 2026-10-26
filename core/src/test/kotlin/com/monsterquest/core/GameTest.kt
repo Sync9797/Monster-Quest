@@ -825,4 +825,31 @@ class GameTest {
         val done = GameEngine.completeTask(withTask, withTask.tasks.last().id, now).state
         assertEquals(mapOf(GameEngine.epochDay(now) to 1), done.questDays)
     }
+
+    @Test
+    fun releasingGivesCandyThatLevelsUpWithoutChangingStatPoints() {
+        val s0 = started()
+        val kit = s0.monsters.single()
+        val extra = Monster.create(Bestiary.get("blazecat"), 20, Random(5))
+        val s = s0.copy(monsters = s0.monsters + extra)
+        val released = GameEngine.release(s, extra.uid).state
+        val family = kit.species.family
+        assertEquals(2 + 20 / 15, released.candy[family])
+        assertEquals(0, released.bagCount - s0.bagCount)
+        // Candy is shared by the whole line and cost climbs with level.
+        assertTrue(GameEngine.candyCost(30) > GameEngine.candyCost(5))
+        val leveled = GameEngine.candyLevelUp(released, kit.uid).state
+        val after = leveled.monsters.single()
+        assertEquals(kit.level + 1, after.level)
+        assertEquals(kit.ivs, after.ivs)
+        assertEquals(released.candy[family]!! - GameEngine.candyCost(kit.level), leveled.candy[family])
+        // Not enough candy: nothing happens.
+        val broke = leveled.copy(candy = emptyMap())
+        assertEquals(broke, GameEngine.candyLevelUp(broke, kit.uid).state)
+        // Evolving through candy keeps stat points too.
+        var m = released.copy(candy = mapOf(family to 999))
+        repeat(15) { m = GameEngine.candyLevelUp(m, kit.uid).state }
+        assertEquals("blazecat", m.monsters.single().speciesId)
+        assertEquals(kit.ivs, m.monsters.single().ivs)
+    }
 }

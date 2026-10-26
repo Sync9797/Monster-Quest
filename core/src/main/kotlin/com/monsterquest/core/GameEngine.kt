@@ -232,9 +232,49 @@ object GameEngine {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (state.monsters.size <= 1) return Update(state, "You can't release your last monster.")
         if (uid in Adventures.awayUids(state)) return Update(state, "${m.displayName} is out on an adventure.")
+        val gained = releaseCandy(m)
+        val family = m.species.family
         return Update(
-            state.copy(monsters = state.monsters.filterNot { it.uid == uid }, party = state.party - uid),
-            "${m.displayName} was released into the wild.",
+            state.copy(
+                monsters = state.monsters.filterNot { it.uid == uid },
+                party = state.party - uid,
+                candy = state.candy + (family to (state.candy[family] ?: 0) + gained),
+            ),
+            "${m.displayName} was released into the wild. +$gained ${candyName(m.species)}.",
+        )
+    }
+
+    // ---- candy ----------------------------------------------------------------
+
+    /** Every evolution line has its own candy, named after its first form. */
+    fun candyName(sp: Species): String = "${Bestiary.lineOf(sp).first().name} candy"
+
+    fun candyOf(state: GameState, sp: Species): Int = state.candy[sp.family] ?: 0
+
+    /** Releasing gives more candy for evolved and higher-level monsters. */
+    fun releaseCandy(m: Monster): Int = m.species.stage + m.level / 15
+
+    /** Candy to level up from [level]; it climbs as the monster grows. */
+    fun candyCost(level: Int): Int = 1 + level / 5
+
+    /**
+     * Spend candy to raise a monster one level (it may evolve or learn moves).
+     * Its stat points (IVs) never change: better ones come from taming more monsters.
+     */
+    fun candyLevelUp(state: GameState, uid: String): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        if (m.level >= MAX_MONSTER_LEVEL) return Update(state, "${m.displayName} is already max level.")
+        val cost = candyCost(m.level)
+        val have = candyOf(state, m.species)
+        if (have < cost) return Update(state, "Need $cost ${candyName(m.species)} (you have $have). Release ${m.species.family.removeSuffix(" line")}-line monsters to get more.")
+        val (grown, notes) = grow(m, (m.xpToNext - m.xp).coerceAtLeast(1))
+        val family = m.species.family
+        return Update(
+            state.copy(
+                monsters = state.monsters.map { if (it.uid == uid) grown else it },
+                candy = state.candy + (family to have - cost),
+            ),
+            "${m.displayName} grew to Lv ${grown.level}! (-$cost candy)" + notes.joinToString("") { " $it" },
         )
     }
 

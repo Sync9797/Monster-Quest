@@ -118,6 +118,19 @@ fun BagScreen(vm: GameViewModel) {
                 SmallButton("Wear", { vm.equipArmor(a.id) })
             }
         }
+        val candies = s.candy.filterValues { it > 0 }
+        if (candies.isNotEmpty()) {
+            SectionTitle("Candy")
+            Text("Candy doesn't take bag space. Spend it on a monster's page to level it up.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            candies.forEach { (family, n) ->
+                val first = com.monsterquest.core.Bestiary.all.first { it.family == family }
+                Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GIcon(GameIcon.CANDY, Modifier.size(20.dp), first.element.color())
+                    Spacer(Modifier.width(8.dp))
+                    Text("${GameEngine.candyName(first)} x$n")
+                }
+            }
+        }
         SectionTitle("Weapon parts")
         WeaponType.entries.forEach { type ->
             val n = s.parts[type] ?: 0

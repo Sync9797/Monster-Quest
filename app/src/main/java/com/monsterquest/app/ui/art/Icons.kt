@@ -65,6 +65,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     TREAT(fill("M15 3a6 6 0 0 1 0 12h-1.5l-4 4a2 2 0 1 1-2.5-2.5l4-4V11A6 6 0 0 1 15 3z")),
     CHEST(fill("M3 11h18v10H3z"), fill("M3.5 10Q12 2 20.5 10z"), cut("M3 13.5h18"), cut("M10.5 12h3v4h-3z")),
     PARTS(fill("M12 3l2 2.5 3-.5.5 3L20 10l-1.5 2.5L20 15l-2.5 2-.5 3-3-.5L12 21l-2-2.5-3 .5-.5-3L4 15l1.5-2.5L4 10l2.5-2 .5-3 3 .5z"), cut("M12 9a3 3 0 1 0 .01 0z")),
+    CANDY(fill("M12 7a5 5 0 1 0 .01 0z"), fill("M7.5 10.5L2 7v10l5.5-3.5z"), fill("M16.5 10.5L22 7v10l-5.5-3.5z"), cut("M9.5 10l5 4")),
     PAGE(fill("M6 2h9l4 4v16H6z"), cut("M9 10h7M9 13.5h7M9 17h5")),
 
     // Weapons

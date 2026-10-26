@@ -82,6 +82,50 @@ internal object ArtPainter {
         fillPaint.shader = null
     }
 
+    private val boundsCache = HashMap<String, android.graphics.RectF>()
+
+    fun bounds(d: String): android.graphics.RectF =
+        boundsCache.getOrPut(d) { android.graphics.RectF().also { path(d).computeBounds(it, true) } }
+
+    /** Engraving-style diagonal hatching inside the shape [d], like an old storybook illustration. */
+    fun hatch(c: Canvas, d: String, color: Int, alpha: Float, spacing: Float = 6f) {
+        val b = bounds(d)
+        c.save()
+        c.clipPath(path(d))
+        strokePaint.color = color
+        strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
+        strokePaint.strokeWidth = 1f
+        var x = b.left - b.height()
+        while (x < b.right) {
+            c.drawLine(x, b.bottom, x + b.height(), b.top, strokePaint)
+            x += spacing
+        }
+        c.restore()
+    }
+
+    /** A carved circle of runes on the ground, as an ellipse ([rx], [ry]) around ([cx], [cy]). */
+    fun runeCircle(c: Canvas, cx: Float, cy: Float, rx: Float, ry: Float, color: Int, alpha: Float, glyphs: Int = 12) {
+        strokePaint.color = color
+        strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
+        strokePaint.strokeWidth = 1.4f
+        c.drawOval(cx - rx, cy - ry, cx + rx, cy + ry, strokePaint)
+        strokePaint.strokeWidth = 0.9f
+        c.drawOval(cx - rx * 0.86f, cy - ry * 0.86f, cx + rx * 0.86f, cy + ry * 0.86f, strokePaint)
+        // Small angular glyphs between the two rings.
+        val mid = 0.93f
+        for (i in 0 until glyphs) {
+            val a = Math.PI * 2 * i / glyphs
+            val gx = cx + (rx * mid * Math.cos(a)).toFloat()
+            val gy = cy + (ry * mid * Math.sin(a)).toFloat()
+            val s = 2.2f
+            when (i % 3) {
+                0 -> { c.drawLine(gx, gy - s, gx, gy + s, strokePaint); c.drawLine(gx, gy - s, gx + s, gy, strokePaint) }
+                1 -> { c.drawLine(gx - s, gy + s, gx, gy - s, strokePaint); c.drawLine(gx, gy - s, gx + s, gy + s, strokePaint) }
+                else -> { c.drawLine(gx - s, gy, gx + s, gy, strokePaint); c.drawLine(gx, gy - s, gx, gy + s, strokePaint) }
+            }
+        }
+    }
+
     fun linear(x0: Float, y0: Float, x1: Float, y1: Float, from: Int, to: Int): Shader =
         LinearGradient(x0, y0, x1, y1, from, to, Shader.TileMode.CLAMP)
 }

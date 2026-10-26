@@ -183,6 +183,8 @@ data class GameState(
     /** Unequipped armor (each takes a bag slot). */
     val armor: List<Armor> = emptyList(),
     val equippedArmor: Armor? = null,
+    /** Candy per evolution line (family name -> count). Doesn't use bag space. */
+    val candy: Map<String, Int> = emptyMap(),
     /** Journal: species encountered, and species owned at some point. */
     val seen: Set<String> = emptySet(),
     val caught: Set<String> = emptySet(),

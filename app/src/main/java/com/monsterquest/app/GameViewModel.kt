@@ -307,6 +307,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
     fun release(uid: String) = apply(GameEngine.release(state, uid))
+    fun candyLevelUp(uid: String) = apply(GameEngine.candyLevelUp(state, uid))
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))
     fun feedTreat(uid: String) = apply(GameEngine.feedTreat(state, uid))
     fun buy(item: Item) = apply(GameEngine.buy(state, item))

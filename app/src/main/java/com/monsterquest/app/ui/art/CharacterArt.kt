@@ -27,6 +27,9 @@ internal fun palette(e: Element): TypePalette = when (e) {
 private val GOLD = Argb.hex("ebc678")
 private val EYE = Argb.hex("f9e9af")
 private val GROUND = Argb.hex("071113")
+/** Storybook ink for outlines and engraving. */
+private val INK = Argb.hex("140d0a")
+private val MIST = Argb.hex("cfe0dc")
 
 // ---------------------------------------------------------------------------
 // Hero: the hooded adventurer from Questbound, recolored per class.
@@ -90,13 +93,25 @@ internal fun drawHero(c: Canvas, w: Float, h: Float, cls: HeroClass, portrait: B
     if (outfit.armorRarity == GearRarity.LEGENDARY && outfit.armor != null) {
         ArtPainter.glow(c, 150f, 160f, 80f, trim(outfit.armorRarity), 0.3f)
     }
+    if (portrait) ArtPainter.runeCircle(c, 150f, 250f, 92f, 12f, Argb.hex("bfa164"), 0.5f, glyphs = 16)
     val cape = "M120 118L91 233Q150 257 213 233L181 118Z"
     ArtPainter.fill(c, cape, ArtPainter.linear(91f, 118f, 213f, 245f, look.capeTop, look.capeBottom))
+    ArtPainter.hatch(c, cape, look.capeBottom, 0.35f, 7f)
+    // Cloak folds.
+    ArtPainter.stroke(c, "M128 150L112 230M172 150L190 230M150 190V246", INK, 1.4f, 0.35f)
+    ArtPainter.stroke(c, cape, INK, 2f, 0.75f)
     ArtPainter.fill(c, "M124 154L118 238L141 238L151 186L159 238L182 238L176 154Z", Argb.hex("14272d"))
     ArtPainter.fill(c, "M118 234H143V248H108Q106 239 118 234M159 234H184L194 248H159Z", Argb.hex("9a8061"))
     drawArmor(c, outfit, look)
-    ArtPainter.fill(c, "M120 106Q111 66 151 47Q192 67 181 106L168 122H132Z", look.hood)
+    val hood = "M120 106Q111 66 151 47Q192 67 181 106L168 122H132Z"
+    ArtPainter.fill(c, hood, look.hood)
+    ArtPainter.hatch(c, hood, look.hoodShade, 0.3f, 7f)
+    ArtPainter.stroke(c, hood, INK, 2f, 0.75f)
     ArtPainter.fill(c, "M130 91Q150 64 172 91L164 112H137Z", look.hoodShade)
+    // A leaf-shaped brooch pins the cloak, in the style of old elven craft.
+    ArtPainter.fill(c, "M150 112Q160 117 150 127Q140 117 150 112Z", Argb.hex("8fb58a"))
+    ArtPainter.stroke(c, "M150 113V126", Argb.hex("e6c277"), 1.2f)
+    ArtPainter.stroke(c, "M150 112Q160 117 150 127Q140 117 150 112Z", Argb.hex("e6c277"), 1.2f)
     ArtPainter.stroke(c, "M139 96H147M157 96H165", Argb.hex("edce83"), 3f)
     ArtPainter.fill(c, "M145 58L151 47L158 60L151 70Z", Argb.hex("e6c277"))
     drawWeapon(c, outfit)
@@ -122,6 +137,8 @@ private fun drawArmor(c: Canvas, o: HeroOutfit, look: HeroLook) {
             // Plain traveler's clothes.
             ArtPainter.fill(c, ARMS, look.arms)
             ArtPainter.fill(c, TORSO, look.torso)
+            ArtPainter.stroke(c, TORSO, INK, 1.6f, 0.6f)
+            ArtPainter.stroke(c, ARMS, INK, 1.4f, 0.5f)
             ArtPainter.fill(c, "M124 148H176V158H124Z", Argb.hex("b49b6d"))
             ArtPainter.fill(c, "M142 146H157V160H142Z", Argb.hex("eac774"))
         }
@@ -134,6 +151,8 @@ private fun drawArmor(c: Canvas, o: HeroOutfit, look: HeroLook) {
             }
             ArtPainter.fill(c, ARMS, ArtPainter.linear(106f, 121f, 194f, 177f, hi, lo))
             ArtPainter.fill(c, TORSO, ArtPainter.linear(127f, 112f, 182f, 173f, hi, lo))
+            ArtPainter.stroke(c, TORSO, INK, 1.6f, 0.6f)
+            ArtPainter.stroke(c, ARMS, INK, 1.4f, 0.5f)
             ArtPainter.stroke(c, "M150 116V170M132 128Q150 136 168 128", lo, 2f)
             // Pauldrons.
             ArtPainter.fill(c, "M104 128Q106 110 128 112L132 126Q118 122 104 128Z", hi)
@@ -147,6 +166,8 @@ private fun drawArmor(c: Canvas, o: HeroOutfit, look: HeroLook) {
             val dark = Argb.hex("3d2a1d")
             ArtPainter.fill(c, ARMS, look.arms)
             ArtPainter.fill(c, TORSO, ArtPainter.linear(127f, 112f, 182f, 173f, hide, dark))
+            ArtPainter.stroke(c, TORSO, INK, 1.6f, 0.6f)
+            ArtPainter.stroke(c, ARMS, INK, 1.4f, 0.5f)
             ArtPainter.stroke(c, "M129 116L176 168", dark, 5f)
             ArtPainter.stroke(c, "M129 116L176 168", t, 1.5f, 0.8f)
             // Bracers.
@@ -167,6 +188,8 @@ private fun drawArmor(c: Canvas, o: HeroOutfit, look: HeroLook) {
             ArtPainter.stroke(c, "M150 160V244", t, 2f, 0.7f)
             ArtPainter.fill(c, ARMS, hi)
             ArtPainter.fill(c, TORSO, ArtPainter.linear(127f, 112f, 182f, 173f, hi, lo))
+            ArtPainter.stroke(c, TORSO, INK, 1.6f, 0.6f)
+            ArtPainter.stroke(c, ARMS, INK, 1.4f, 0.5f)
             ArtPainter.stroke(c, "M134 113L150 136L166 113", t, 2.5f)
             ArtPainter.fill(c, "M122 150H178V158H122Z", t)
         }
@@ -542,6 +565,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     if (!dim && sp.stage >= 3) drawSpiritWings(c, p, power, final)
     if (final && !dim) ArtPainter.ringStroke(c, 100f, 110f, 76f, GOLD, 2f, 0.4f)
     ArtPainter.fill(c, "M50 188A50 7 0 1 1 150 188A50 7 0 1 1 50 188Z", GROUND, 0.8f)
+    if (!dim) ArtPainter.runeCircle(c, 100f, 188f, 66f, 10f, GOLD, 0.2f + 0.35f * power)
 
     // Bigger at each stage, anchored at the feet.
     val scale = if (sp.stages <= 1) 1f else 0.84f + 0.16f * (sp.stage - 1) / (sp.stages - 1)
@@ -557,8 +581,19 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
             ArtPainter.stroke(c, part.d, color, part.stroke)
         } else if (part.role == Role.BODY) {
             ArtPainter.fill(c, part.d, bodyShader)
+            // Engraved shading, like an illustration in an old book of legends.
+            ArtPainter.hatch(c, part.d, p.dark, 0.22f)
         } else {
             ArtPainter.fill(c, part.d, color, if (part.role == Role.WING) 0.7f else 1f)
+        }
+        if (part.stroke == 0f && part.role != Role.EYE) ArtPainter.stroke(c, part.d, INK, 1.6f, 0.75f)
+    }
+    // Evolved monsters' eyes burn with an inner light.
+    if (!dim && sp.stage >= 2) {
+        for (part in shape.parts) {
+            if (part.role != Role.EYE || part.stroke > 0f) continue
+            val b = ArtPainter.bounds(part.d)
+            ArtPainter.glow(c, b.centerX(), b.centerY(), maxOf(b.width(), b.height()) * (1.1f + power), p.light, 0.45f)
         }
     }
 
@@ -600,6 +635,11 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         }
     }
     c.restore()
+
+    if (!dim) {
+        // Low mist curling around the feet.
+        ArtPainter.fill(c, "M34 192Q50 180 72 188Q90 178 108 188Q128 178 146 188Q160 182 168 192Z", MIST, 0.08f + 0.06f * power)
+    }
 
     if (final && !dim) {
         ArtPainter.fill(c, "M36 60l2 5 5 2-5 2-2 5-2-5-5-2 5-2z", GOLD)
@@ -772,6 +812,7 @@ private fun drawLegendary(c: Canvas, w: Float, h: Float, sp: Species, dim: Boole
         ArtPainter.ringStroke(c, 200f, 110f, 77f, color, 2f, 0.3f)
     }
     ArtPainter.fill(c, "M120 237A80 10 0 1 1 280 237A80 10 0 1 1 120 237Z", Argb.hex("081315"))
+    if (!dim) ArtPainter.runeCircle(c, 200f, 237f, 104f, 13f, GOLD, 0.55f, glyphs = 18)
     for (part in bossBody(legendaryIndex(sp.id), color)) {
         part.fill?.let { ArtPainter.fill(c, part.d, it, part.alpha) }
         part.stroke?.let { ArtPainter.stroke(c, part.d, it, part.w, part.alpha) }
