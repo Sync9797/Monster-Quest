@@ -1,5 +1,6 @@
 package com.monsterquest.app
 
+import androidx.compose.ui.test.onNodeWithText
 import android.Manifest
 import android.app.Application
 import android.graphics.Bitmap
@@ -333,6 +334,9 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun starterGift() {
         val v = vm(sampleState().copy(starterGiftPending = true))
         shot("24_starter_gift") { AppRoot(v) }
+        // Dialogs open in their own window (not in the screenshot), so check it's showing.
+        rule.onNodeWithText("New starters have arrived!").assertExists()
+        rule.onNodeWithText("Drizzlet").assertExists()
     }
 
     @Test fun help() {
