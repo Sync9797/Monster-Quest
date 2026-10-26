@@ -183,10 +183,8 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
                             Row(Modifier.fillMaxSize()) {
                                 Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) { team() }
                                 Spacer(Modifier.width(12.dp))
-                                Column(
-                                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                                    verticalArrangement = Arrangement.Center,
-                                ) { commands() }
+                                // The action panel scrolls by itself; give it the full height of the half.
+                                Box(Modifier.weight(1f).fillMaxHeight().clipToBounds(), contentAlignment = Alignment.Center) { commands() }
                             }
                         } else {
                             Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
