@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+# One build per branch at a time, in order, so an older run can't overwrite
+# a newer run's release or screenshots.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     # Ubuntu 24.04 runners come with the Android SDK preinstalled.
@@ -91,7 +97,8 @@ jobs:
       # `screenshots` branch for layout review.
       - name: Render screenshots
         continue-on-error: true
-        run: ./gradlew :app:testDebugUnitTest
+        # --rerun: always render, even when Gradle could reuse earlier test results.
+        run: ./gradlew :app:testDebugUnitTest --rerun
 
       - name: Publish screenshots
         if: always() && github.event_name == 'push'
