@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.2
+
+- **Drag to scroll:** while holding a monster to move it into the party,
+  bring it near the top or bottom of the list and the list scrolls that
+  way (faster the closer to the edge). The party slots can now be reached
+  from anywhere in your collection.
+
 ## 1.15.1
 
 - **Class dropdown:** the Hero tab shows just your class. Tap it ("Change

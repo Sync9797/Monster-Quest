@@ -1,5 +1,10 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.monsterquest.core.trait
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -182,14 +187,42 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
     }
     val hovered = if (drag.uid != null) drag.hoveredSlot() else null
 
-    Box(Modifier.fillMaxSize().onGloballyPositioned { listOrigin = it.positionInRoot() }) {
+    // While dragging a monster, hold it near the top or bottom edge and the list scrolls that way
+    // (faster the closer to the edge), so the party slots can be reached from anywhere.
+    val gridState = rememberLazyGridState()
+    var listHeight by remember { mutableStateOf(0f) }
+    val edge = with(LocalDensity.current) { 96.dp.toPx() }
+    val maxStep = with(LocalDensity.current) { 18.dp.toPx() }
+    LaunchedEffect(drag.uid) {
+        if (drag.uid == null) return@LaunchedEffect
+        while (drag.uid != null) {
+            val y = drag.pos.y - listOrigin.y
+            val step = when {
+                y < edge -> -maxStep * ((edge - y) / edge).coerceIn(0f, 1f)
+                y > listHeight - edge -> maxStep * ((y - (listHeight - edge)) / edge).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            if (step != 0f) gridState.scrollBy(step)
+            withFrameNanos { }
+        }
+    }
+
+    Box(
+        Modifier.fillMaxSize().onGloballyPositioned {
+            listOrigin = it.positionInRoot()
+            listHeight = it.size.height.toFloat()
+        },
+    ) {
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Adaptive(minSize = 104.dp),
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
+                // Scrolled out of view: its slots can't be dropped on.
+                DisposableEffect(Unit) { onDispose { drag.slots.clear() } }
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Battle party", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
@@ -340,6 +373,8 @@ private class PartyDrag {
 private fun Modifier.dragSource(drag: PartyDrag, uid: String, onDrop: () -> Unit): Modifier = composed {
     var origin by remember { mutableStateOf(Offset.Zero) }
     val haptics = LocalHapticFeedback.current
+    val pinnable = androidx.compose.ui.layout.LocalPinnableContainer.current
+    var pin by remember { mutableStateOf<androidx.compose.ui.layout.PinnableContainer.PinnedHandle?>(null) }
     // The gesture outlives recompositions, so always call the latest drop handler.
     val latestDrop by rememberUpdatedState(onDrop)
     this
@@ -348,15 +383,26 @@ private fun Modifier.dragSource(drag: PartyDrag, uid: String, onDrop: () -> Unit
             detectDragGesturesAfterLongPress(
                 onDragStart = { offset ->
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    // Keep this tile alive while the list scrolls under the finger.
+                    pin = pinnable?.pin()
                     drag.uid = uid
                     drag.pos = origin + offset
                 },
-                onDrag = { change, amount ->
+                onDrag = { change, _ ->
                     change.consume()
-                    drag.pos += amount
+                    // The tile moves when the list auto-scrolls, so work from where the finger is on screen.
+                    drag.pos = origin + change.position
                 },
-                onDragEnd = { latestDrop() },
-                onDragCancel = { drag.uid = null },
+                onDragEnd = {
+                    latestDrop()
+                    pin?.release()
+                    pin = null
+                },
+                onDragCancel = {
+                    drag.uid = null
+                    pin?.release()
+                    pin = null
+                },
             )
         }
 }
