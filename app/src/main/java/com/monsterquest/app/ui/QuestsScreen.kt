@@ -127,6 +127,11 @@ fun QuestsScreen(vm: GameViewModel) {
                         outlined = true,
                     )
                 }
+                // Anything due within the hour is the first thing you see.
+                if (dueSoon.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    DueSoonBanner(dueSoon, now)
+                }
                 if (!hasCalendar) {
                     Spacer(Modifier.height(10.dp))
                     GameCard(border = MpBlue) {
@@ -148,10 +153,6 @@ fun QuestsScreen(vm: GameViewModel) {
                 DashboardCard(vm)
                 Spacer(Modifier.height(10.dp))
                 FocusCard(vm)
-                if (dueSoon.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    DueSoonBanner(dueSoon, now)
-                }
                 SectionTitle("Active quests (${pending.size})")
             }
         }

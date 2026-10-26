@@ -159,6 +159,11 @@ abstract class ScreenshotBase(private val device: String) {
         shot("02_quests") { AppRoot(v, Tab.QUESTS) }
         // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
         rule.onNodeWithText("2 quests due within the hour").assertExists()
+        // Scroll down to the grouped list.
+        rule.onNode(androidx.compose.ui.test.hasScrollAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("Water the plants"))
+        capture("02b_quest_list", 1_000)
+        rule.onNodeWithText("No due date").assertExists()
     }
     @Test fun hero() { val v = vm(); shot("03_hero") { AppRoot(v, Tab.HERO) } }
     @Test fun monsters() { val v = vm(); shot("04_monsters") { AppRoot(v, Tab.MONSTERS) } }
