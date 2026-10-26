@@ -733,9 +733,11 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         drawLegendary(c, w, h, sp, dim, shiny)
         return
     }
+    // Evolved forms are whole new creatures with their own artwork.
+    val beast = if (sp.stage >= 2) Beasts.forSpecies(sp.id) else null
     c.save()
-    // Crop to where the creature actually is, so it fills its frame.
-    ArtPainter.fitRegion(c, w, h, 22f, 28f, 156f, 166f)
+    // Crop to where the creature actually is, so it fills its frame (beasts spread wider).
+    if (beast != null) ArtPainter.fitRegion(c, w, h, 2f, 0f, 196f, 196f) else ArtPainter.fitRegion(c, w, h, 22f, 28f, 156f, 166f)
     val p0 = palette(sp.element).let { if (shiny) shinyPalette(it) else it }
     val p = if (dim) TypePalette(Argb.hex("5d6866"), Argb.hex("8a9592"), Argb.hex("2a3331")) else p0
     val shape = shapeFor(sp)
@@ -747,17 +749,28 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         ArtPainter.glow(c, 100f, 115f, 60f + 25f * power, p.light, 0.2f + 0.2f * power)
         if (!ArtQuality.reduced) drawAura(c, sp.element, p, power)
     }
-    if (!dim && sp.stage >= 3) drawSpiritWings(c, p, power, final)
+    if (!dim && sp.stage >= 3 && beast == null) drawSpiritWings(c, p, power, final)
     if (final && !dim) ArtPainter.ringStroke(c, 100f, 110f, 76f, GOLD, 2f, 0.4f)
     ArtPainter.fill(c, "M50 188A50 7 0 1 1 150 188A50 7 0 1 1 50 188Z", GROUND, 0.8f)
     if (!dim) ArtPainter.runeCircle(c, 100f, 188f, 66f, 10f, GOLD, 0.2f + 0.35f * power)
 
     // Bigger at each stage, anchored at the feet.
-    val scale = if (sp.stages <= 1) 1f else 0.84f + 0.16f * (sp.stage - 1) / (sp.stages - 1)
+    val scale = when {
+        beast != null -> 0.9f + 0.1f * power
+        sp.stages <= 1 -> 1f
+        else -> 0.84f + 0.16f * (sp.stage - 1) / (sp.stages - 1)
+    }
     c.save()
     c.translate(100f, 186f)
     c.scale(scale, scale)
     c.translate(-100f, -186f)
+    if (beast != null) {
+        drawBeast(c, beast, p, dim, power)
+        c.restore()
+        finishMonster(c, dim, power, final, shiny)
+        c.restore()
+        return
+    }
 
     val bodyShader = ArtPainter.linear(0f, 40f, 0f, 190f, p.base, Argb.darken(p.base, 0.35f))
     for (part in shape.parts) {
@@ -820,7 +833,12 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         }
     }
     c.restore()
+    finishMonster(c, dim, power, final, shiny)
+    c.restore()
+}
 
+/** Mist at the feet, a final form's sparkles, and a shiny's stars. */
+private fun finishMonster(c: Canvas, dim: Boolean, power: Float, final: Boolean, shiny: Boolean) {
     if (!dim && !ArtQuality.reduced) {
         // Low mist curling around the feet.
         ArtPainter.fill(c, "M34 192Q50 180 72 188Q90 178 108 188Q128 178 146 188Q160 182 168 192Z", MIST, 0.08f + 0.06f * power)
@@ -832,7 +850,74 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         ArtPainter.circle(c, 164f, 150f, 2.5f, GOLD)
     }
     if (shiny && !dim) drawShinySparkles(c)
-    c.restore()
+}
+
+private val beastUnions = HashMap<BPart, android.graphics.Path>()
+
+/** A part's shape: mirrored fills are merged with their reflection so no seam shows down the middle. */
+private fun beastPath(part: BPart): android.graphics.Path {
+    val m = part.mirrored ?: return ArtPainter.path(part.d)
+    return beastUnions.getOrPut(part) {
+        android.graphics.Path().apply { op(ArtPainter.path(part.d), ArtPainter.path(m), android.graphics.Path.Op.UNION) }
+    }
+}
+
+private fun beastColor(r: BRole, p: TypePalette, dim: Boolean): Int = when (r) {
+    BRole.BODY -> p.base
+    BRole.LIGHT, BRole.WING -> p.light
+    BRole.DARK -> p.dark
+    BRole.BONE -> if (dim) Argb.hex("9aa3a1") else Argb.hex("efe4c8")
+    BRole.MAW -> Argb.hex("2a0a0c")
+    BRole.EYE -> if (dim) Argb.hex("b8c1be") else Argb.hex("ffd54a")
+    BRole.ACCENT -> if (dim) Argb.hex("9aa3a1") else GOLD
+    BRole.TONGUE -> Argb.hex("c9536b")
+    BRole.WOOD -> if (dim) Argb.hex("4b4f4d") else Argb.hex("6b4a30")
+}
+
+/** Draws an evolved monster's own design (see [Beasts]) in its type's colors. */
+private fun drawBeast(c: Canvas, parts: List<BPart>, p: TypePalette, dim: Boolean, power: Float) {
+    val bodyShader = ArtPainter.linear(0f, 20f, 0f, 190f, p.base, Argb.darken(p.base, 0.4f))
+    val woodShader = ArtPainter.linear(0f, 40f, 0f, 190f, beastColor(BRole.WOOD, p, dim), Argb.darken(beastColor(BRole.WOOD, p, dim), 0.35f))
+    for (part in parts) {
+        val color = beastColor(part.role, p, dim)
+        if (part.stroke > 0f) {
+            ArtPainter.stroke(c, part.d, color, part.stroke)
+            part.mirrored?.let { ArtPainter.stroke(c, it, color, part.stroke) }
+            continue
+        }
+        val shape = beastPath(part)
+        when (part.role) {
+            BRole.BODY -> {
+                ArtPainter.fill(c, shape, bodyShader)
+                ArtPainter.hatch(c, shape, p.dark, 0.22f)
+            }
+            BRole.WOOD -> {
+                ArtPainter.fill(c, shape, woodShader)
+                ArtPainter.hatch(c, shape, Argb.hex("2a1a10"), 0.3f, 4f)
+            }
+            BRole.WING -> {
+                ArtPainter.fill(c, shape, color, 0.72f)
+                ArtPainter.hatch(c, shape, p.dark, 0.18f, 5f)
+            }
+            BRole.EYE -> {
+                // Eyes burn: a glow behind, the brighter the later the form.
+                if (!dim) {
+                    val b = android.graphics.RectF().also { shape.computeBounds(it, true) }
+                    if (part.mirrored != null) {
+                        val w = b.width()
+                        // Two eyes: glow each half separately.
+                        ArtPainter.glow(c, b.left + w * 0.2f, b.centerY(), 9f + 5f * power, p.light, 0.55f)
+                        ArtPainter.glow(c, b.right - w * 0.2f, b.centerY(), 9f + 5f * power, p.light, 0.55f)
+                    } else {
+                        ArtPainter.glow(c, b.centerX(), b.centerY(), 10f + 6f * power, p.light, 0.55f)
+                    }
+                }
+                ArtPainter.fill(c, shape, color)
+            }
+            else -> ArtPainter.fill(c, shape, color)
+        }
+        if (part.role != BRole.EYE) ArtPainter.stroke(c, shape, INK, 1.6f, 0.75f)
+    }
 }
 
 /** Type-themed energy behind evolved monsters; grows with [power] (0..1). */

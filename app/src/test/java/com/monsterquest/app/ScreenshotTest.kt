@@ -442,6 +442,24 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Throw").assertExists()
     }
 
+    /** Every evolution line, first form to last, to review the evolved creatures. */
+    private fun evolutionSheet(name: String, part: Int) {
+        val lines = Bestiary.all.filter { it.stage == 1 && it.stages > 1 }.map { Bestiary.lineOf(it) }
+        val half = lines.chunked((lines.size + 1) / 2)[part]
+        shot(name, content = onBackground {
+            androidx.compose.foundation.layout.Column {
+                half.forEach { line ->
+                    androidx.compose.foundation.layout.Row {
+                        line.forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(66.dp)) }
+                    }
+                }
+            }
+        })
+    }
+
+    @Test fun evolutionsA() = evolutionSheet("31_evolutions_a", 0)
+    @Test fun evolutionsB() = evolutionSheet("32_evolutions_b", 1)
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

@@ -37,8 +37,9 @@ data class Species(
  * - 6 legendary bosses, one per type, found only at boss shrines.
  */
 object Bestiary {
-    private val fourStageMultipliers = listOf(1.0, 1.3, 1.65, 2.0)
-    private val threeStageMultipliers = listOf(1.0, 1.35, 1.7)
+    // Each evolution is a whole new, much stronger creature.
+    private val fourStageMultipliers = listOf(1.0, 1.4, 1.85, 2.35)
+    private val threeStageMultipliers = listOf(1.0, 1.5, 2.0)
     private val fourStageRarity = listOf(Rarity.COMMON, Rarity.UNCOMMON, Rarity.RARE, Rarity.EPIC)
     private val threeStageRarity = listOf(Rarity.COMMON, Rarity.UNCOMMON, Rarity.RARE)
     private val fourStageLevels = listOf(14, 28, 42)
@@ -51,7 +52,7 @@ object Bestiary {
     )
 
     // Starters: three stages, strong growth, always rare.
-    private val starterMultipliers = listOf(1.0, 1.45, 1.95)
+    private val starterMultipliers = listOf(1.0, 1.5, 2.05)
     private val starterRarity = listOf(Rarity.EPIC, Rarity.EPIC, Rarity.EPIC)
     private val starterLevels = listOf(16, 36)
 
@@ -129,7 +130,20 @@ object Bestiary {
         )
     }
 
-    val all: List<Species> = buildList {
+    /**
+     * Names for evolved forms that became entirely new creatures. Species ids
+     * never change (saves refer to them), only the names shown.
+     */
+    private val evolvedNames = mapOf(
+        "blazecat" to "Cinderfang", "flarepanther" to "Pyre Cerberus", "solar_tiger" to "Sun Manticore",
+        "voltrat" to "Voltquill", "thunderhog" to "Stormbrute", "storm_kirin" to "Raijin Dragon",
+        "skylark" to "Razorwing", "tidefin" to "Fangfin", "gloombat" to "Dreadwing",
+        "slime_sovereign" to "Ooze Hydra", "coralback" to "Coralclaw",
+        "cinder_hound" to "Cinder Warg", "volt_hound" to "Volt Warg", "sky_hound" to "Sky Warg", "surf_hound" to "Surf Warg",
+        "toxic_hound" to "Toxic Warg", "dusk_hound" to "Dusk Warg", "thorn_hound" to "Thorn Warg",
+    )
+
+    val all: List<Species> = buildList<Species> {
         // ---- Starters (#1, #4, #7): pseudo-legendary three-stage lines ----
         addAll(line("Voltfawn line", Element.ELECTRIC, StatBlock(44, 15, 17, 13, 18), SkillKind.MAGICAL, listOf(
             Member("voltfawn", "Voltfawn", "Volt Kick"),
@@ -243,7 +257,7 @@ object Bestiary {
         add(single("miasma_hydra", "Miasma Hydra", Element.GAS, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
         add(single("dread_lich", "Dread Lich", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
         add(single("worldroot_colossus", "Worldroot Colossus", Element.EARTH, Rarity.LEGENDARY, StatBlock(88, 26, 16, 24, 8), "Worldsplitter", SkillKind.PHYSICAL, 60, true))
-    }
+    }.map { sp -> evolvedNames[sp.id]?.let { sp.copy(name = it) } ?: sp }
 
     private val byId = all.associateBy { it.id }
 

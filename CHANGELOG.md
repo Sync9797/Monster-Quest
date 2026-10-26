@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.3.0
+
+- **Evolutions are new creatures.** Second, third and fourth forms no longer
+  look like a bigger version of the first: every evolved form is its own
+  fierce creature, with burning eyes, fangs, claws, horns and wings in its
+  type's colors. For example:
+  - Emberkit → Cinderfang (a sabre-toothed cat) → Pyre Cerberus (three
+    heads) → Sun Manticore.
+  - Zapmouse → Voltquill (a quill beast) → Stormbrute → Raijin Dragon.
+  - Bubblefin → Fangfin (a shark) → Reefjaw (an anglerfish) → Leviathan.
+  - Gloomwisp → Dreadwing (a giant bat) → Nightstalker (a spider) → Abyss Lord
+    (a wraith).
+  - Hound pups grow into Wargs, then armored, horned Fenrirs.
+  - Starters: Stormstag is a kirin, Infernodrake a wyvern, Maelstrom Serpent
+    an eastern dragon, Terraursa a stone titan.
+- **New names** for evolved forms that became different creatures (Blazecat
+  is now Cinderfang, Skylark is Razorwing, Gloombat is Dreadwing, Cinder Hound
+  is Cinder Warg, and so on). Your monsters keep their nicknames.
+- **Stronger evolutions:** each evolved form's base stats went up, to x1.4 /
+  x1.85 / x2.35 of the first form in four-stage lines (was x1.3 / x1.65 / x2)
+  and x1.5 / x2 in three-stage lines (was x1.35 / x1.7). Starters are x1.5 /
+  x2.05: still the strongest lines short of the legendaries. Stat points
+  (IVs) are unchanged.
+
 ## 1.2.0
 
 - **Fixed: folding or unfolding the phone crashed the app.** The map tore

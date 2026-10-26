@@ -57,6 +57,44 @@ internal object ArtPainter {
         fillPaint.shader = null
     }
 
+    fun fill(c: Canvas, p: Path, color: Int, alpha: Float = 1f) {
+        fillPaint.shader = null
+        fillPaint.color = color
+        fillPaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
+        c.drawPath(p, fillPaint)
+    }
+
+    fun fill(c: Canvas, p: Path, shader: Shader) {
+        fillPaint.color = 0xFFFFFFFF.toInt()
+        fillPaint.shader = shader
+        c.drawPath(p, fillPaint)
+        fillPaint.shader = null
+    }
+
+    fun stroke(c: Canvas, p: Path, color: Int, width: Float, alpha: Float = 1f) {
+        strokePaint.color = color
+        strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
+        strokePaint.strokeWidth = width
+        c.drawPath(p, strokePaint)
+    }
+
+    /** [hatch] for an already-built path. */
+    fun hatch(c: Canvas, p: Path, color: Int, alpha: Float, spacing: Float = 6f) {
+        if (ArtQuality.reduced) return
+        val b = android.graphics.RectF().also { p.computeBounds(it, true) }
+        c.save()
+        c.clipPath(p)
+        strokePaint.color = color
+        strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
+        strokePaint.strokeWidth = 1f
+        var x = b.left - b.height()
+        while (x < b.right) {
+            c.drawLine(x, b.bottom, x + b.height(), b.top, strokePaint)
+            x += spacing
+        }
+        c.restore()
+    }
+
     fun stroke(c: Canvas, d: String, color: Int, width: Float, alpha: Float = 1f) {
         strokePaint.color = color
         strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()

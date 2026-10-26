@@ -1,0 +1,777 @@
+"""
+Evolved-monster designs ("beasts") for Monster Quest.
+
+Each beast is a list of parts drawn in a 200x200 box, feet on y=188, centered
+on x=100. A part is (path, role, stroke_width, mirror): stroke_width 0 fills
+the path; mirror=True also draws it flipped across x=100, so symmetric
+creatures only need their left half.
+
+Roles are colored from the monster's type palette in the app (BODY, LIGHT,
+DARK) or fixed (BONE, MAW, EYE, ACCENT, WING).
+
+  python3 tools/beasts/beasts.py preview OUT_DIR   # PNG previews (needs cairosvg)
+  python3 tools/beasts/beasts.py kotlin            # regenerate BeastArt.kt
+"""
+import sys
+
+M = True  # mirror
+
+def P(d, role, w=0.0, mirror=False):
+    return (d, role, w, mirror)
+
+BEASTS = {}
+
+# ---------------------------------------------------------------------------
+# Dire wolf: sitting, snarling, a ruff of spiky fur.
+BEASTS["DIREWOLF"] = [
+    P("M150 176Q182 160 178 120Q176 100 188 90Q172 104 166 128Q162 154 136 166Z", "BODY"),
+    P("M100 30L90 44L76 30L72 50L54 42L58 64L38 62L52 80L32 88L52 98L38 114L60 116L58 134L100 142Z", "DARK", 0, M),
+    P("M100 96L78 102Q62 120 60 150L56 186H84L88 162L100 158Z", "BODY", 0, M),
+    P("M100 112L86 118L90 128L82 134L90 142L84 150L92 158L100 164Z", "LIGHT", 0, M),
+    P("M56 186L58 178H86L90 186Z", "DARK", 0, M),
+    P("M60 186L58 193M68 186L67 193M76 186L76 193M84 186L85 193", "BONE", 2.5, M),
+    P("M68 62L54 22L86 50Z", "BODY", 0, M),
+    P("M68 58L60 34L80 52Z", "DARK", 0, M),
+    P("M100 44L84 48L66 58L62 78L70 98L84 112L100 118Z", "BODY", 0, M),
+    P("M100 82L90 84L84 96L88 108L100 112Z", "LIGHT", 0, M),
+    P("M68 68L97 80L95 85L70 76Z", "DARK", 0, M),
+    P("M74 78L92 84L88 90L77 87Z", "EYE", 0, M),
+    P("M93 88H107L100 96Z", "DARK"),
+    P("M86 102Q100 97 114 102L111 113Q100 120 89 113Z", "MAW"),
+    P("M88 102L92 113L95 103Z", "BONE", 0, M),
+    P("M93 114L96 106L98 114Z", "BONE", 0, M),
+    P("M64 70L74 72M62 84L72 84", "DARK", 2, M),
+]
+
+# Sabre cat: crouched to pounce, huge sabre fangs, spikes down the back.
+BEASTS["SABERCAT"] = [
+    P("M146 170Q188 160 182 116Q180 96 168 84Q190 92 192 118Q194 168 150 182Z", "BODY"),
+    P("M182 112L194 104L188 118Z M178 96L188 84L186 100Z", "DARK"),
+    P("M100 70L92 56L86 72L76 60L72 78L60 70L60 90L48 88L54 104L100 112Z", "DARK", 0, M),
+    P("M100 98L70 104Q44 114 40 142L36 186H66L70 162L84 152L100 154Z", "BODY", 0, M),
+    P("M100 128L88 132L84 150L100 154Z", "LIGHT", 0, M),
+    P("M36 186L38 176H68L72 186Z", "DARK", 0, M),
+    P("M40 186L37 194M48 186L47 194M57 186L57 194M66 186L68 194", "BONE", 3, M),
+    P("M66 80L56 56L82 70Z", "BODY", 0, M),
+    P("M67 76L61 62L76 71Z", "DARK", 0, M),
+    P("M100 64L80 66L62 78L58 98L66 114L82 124L100 126Z", "BODY", 0, M),
+    P("M100 98L88 100L82 112L88 122L100 124Z", "LIGHT", 0, M),
+    P("M76 70L84 80M70 74L80 86M92 66L96 78", "DARK", 2.5, M),
+    P("M64 88L97 96L95 101L66 94Z", "DARK", 0, M),
+    P("M70 96L90 101L86 107L74 104Z", "EYE", 0, M),
+    P("M94 106H106L100 112Z", "DARK"),
+    P("M88 116Q100 112 112 116L108 124Q100 128 92 124Z", "MAW"),
+    P("M88 114L93 150L98 116Z", "BONE", 0, M),
+]
+
+# Wyvern: wings spread, long neck, horned head, spade tail.
+BEASTS["WYVERN"] = [
+    P("M88 104L62 70L24 50L30 76L14 86L32 100L18 118L40 122L34 142L58 132L84 132Z", "WING", 0, M),
+    P("M88 104L24 50M62 70L32 100M66 96L40 122M76 116L58 132", "DARK", 2.5, M),
+    P("M112 176Q152 188 170 162Q178 148 186 146", "BODY", 9),
+    P("M180 140L196 140L192 156L182 152Z", "DARK"),
+    P("M100 96L86 100Q70 120 72 150L64 186H88L92 166L100 164Z", "BODY", 0, M),
+    P("M100 106L92 110H100ZM100 118L90 122H100ZM100 130L90 134H100ZM100 142L92 146H100Z", "LIGHT", 0, M),
+    P("M64 186L66 178H88L92 186Z", "DARK", 0, M),
+    P("M66 186L63 193M74 186L73 193M84 186L85 193", "BONE", 2.5, M),
+    P("M100 58L92 62L88 98L100 102Z", "BODY", 0, M),
+    P("M100 66L94 70H100ZM100 78L94 82H100ZM100 90L94 94H100Z", "LIGHT", 0, M),
+    P("M84 40L62 12L72 38Z", "BONE", 0, M),
+    P("M88 34L80 16L92 30Z", "BONE", 0, M),
+    P("M100 26L88 30L78 42L76 56L86 68L100 72Z", "BODY", 0, M),
+    P("M100 20L96 30H104Z", "DARK"),
+    P("M80 46L97 52L95 56L82 52Z", "DARK", 0, M),
+    P("M82 52L94 56L91 61L84 59Z", "EYE", 0, M),
+    P("M88 70Q100 76 112 70L108 78Q100 82 92 78Z", "MAW"),
+    P("M90 70L93 76L95 71Z", "BONE", 0, M),
+    P("M94 64L96 66", "DARK", 2, M),
+]
+
+# Demon: a winged gargoyle crouched to spring, ram horns, claws.
+BEASTS["DEMON"] = [
+    P("M80 86L54 40L20 30L30 54L14 66L34 76L22 94L46 96L44 116L66 104Z", "WING", 0, M),
+    P("M80 86L20 30M54 40L34 76M58 70L46 96", "DARK", 2.5, M),
+    P("M108 170Q150 184 164 160Q170 150 180 152", "DARK", 6),
+    P("M176 144L190 152L176 160Z", "DARK"),
+    P("M100 78L78 82L62 98L64 128L76 146L80 186H96L100 160Z", "BODY", 0, M),
+    P("M100 96L84 98L80 112L86 124L100 126Z", "LIGHT", 0, M),
+    P("M84 132L96 134M84 142L96 144", "DARK", 2, M),
+    P("M64 98L46 128L40 160L56 162L60 138L74 116Z", "BODY", 0, M),
+    P("M40 160L36 172M46 162L44 174M52 162L52 174", "BONE", 3, M),
+    P("M78 186L80 180H98L100 186Z", "DARK", 0, M),
+    P("M100 40L86 44L80 58L84 72L100 80Z", "BODY", 0, M),
+    P("M86 48Q62 34 56 56Q58 70 72 64Q66 56 82 58Z", "BONE", 0, M),
+    P("M82 56L97 62L95 66L84 62Z", "DARK", 0, M),
+    P("M84 62L95 65L92 70L86 68Z", "EYE", 0, M),
+    P("M90 72Q100 78 110 72L106 80Q100 82 94 80Z", "MAW"),
+    P("M91 72L94 79L96 73Z", "BONE", 0, M),
+    P("M100 104L106 112L100 120L94 112Z", "ACCENT"),
+]
+
+# Titan: a hulking stone giant with spiked shoulders and glowing cracks.
+BEASTS["TITAN"] = [
+    P("M100 66L72 70L48 86L42 118L54 140L64 132L68 150L62 186H92L100 160Z", "BODY", 0, M),
+    P("M42 118L30 150L36 172L60 170L64 146L54 140Z", "BODY", 0, M),
+    P("M32 164L28 176M40 168L38 180M50 170L50 182", "BONE", 3, M),
+    P("M60 186L62 176H92L96 186Z", "DARK", 0, M),
+    P("M56 84L36 50L70 76Z", "DARK", 0, M),
+    P("M70 74L62 46L84 70Z", "DARK", 0, M),
+    P("M44 102L30 92L46 112Z", "DARK", 0, M),
+    P("M100 46L86 48L80 62L84 76L100 80Z", "DARK", 0, M),
+    P("M84 60L97 64L95 69L86 66Z", "EYE", 0, M),
+    P("M90 74H100", "EYE", 2, M),
+    P("M74 96L84 110L78 124L88 140M60 104L66 120M80 156L74 170", "LIGHT", 2.5, M),
+    P("M100 98L112 110L100 124L88 110Z", "LIGHT"),
+]
+
+# Behemoth: a hulking horned bull-beast, head low to charge.
+BEASTS["BEHEMOTH"] = [
+    P("M100 70L70 76L46 94L42 130L50 150L56 186H80L82 160L100 156Z", "BODY", 0, M),
+    P("M100 70L92 58L84 72L76 62L70 78L100 84Z", "DARK", 0, M),
+    P("M56 186L58 176H80L84 186Z", "DARK", 0, M),
+    P("M100 84L84 86L70 98L72 122L86 136L100 140Z", "BODY", 0, M),
+    P("M74 94Q36 86 26 52Q40 76 64 80Q58 70 60 60Q70 82 84 88Z", "BONE", 0, M),
+    P("M100 118L90 120L86 130L92 138L100 140Z", "LIGHT", 0, M),
+    P("M74 100L96 108L94 113L76 106Z", "DARK", 0, M),
+    P("M78 106L92 110L89 115L80 112Z", "EYE", 0, M),
+    P("M92 128A3 3 0 1 1 92.1 128Z", "DARK", 4, M),
+    P("M100 136A9 7 0 1 1 100.1 136Z", "ACCENT", 3),
+    P("M86 132L78 150L92 136Z", "BONE", 0, M),
+    P("M58 120L60 140M66 126L68 146", "DARK", 2.5, M),
+]
+
+# Kirin: a stag-dragon with lightning antlers, a flowing mane and a horn.
+BEASTS["KIRIN"] = [
+    P("M126 150Q168 150 176 118Q180 96 192 92Q178 120 166 136Q156 152 128 160Z", "DARK"),
+    P("M100 42L82 50L68 70L76 74L62 92L72 96L60 116L100 122Z", "DARK", 0, M),
+    P("M86 42L72 26L76 12M72 26L60 22L54 8M76 32L62 38L56 30", "LIGHT", 4.5, M),
+    P("M100 90L82 96L74 120L76 142L70 186H84L88 152L100 148Z", "BODY", 0, M),
+    P("M100 100L90 104L86 124L92 140L100 142Z", "LIGHT", 0, M),
+    P("M70 186L70 176H86L88 186Z", "DARK", 0, M),
+    P("M76 120H86M76 128H86M76 136H86", "DARK", 1.5, M),
+    P("M100 34L90 38L82 54L84 76L90 92L100 96Z", "BODY", 0, M),
+    P("M96 36L100 4L104 36Z", "BONE"),
+    P("M100 70L92 72L88 84L92 94L100 96Z", "LIGHT", 0, M),
+    P("M84 54L97 60L95 64L86 61Z", "DARK", 0, M),
+    P("M86 61L95 63L92 68L87 66Z", "EYE", 0, M),
+    P("M90 86Q72 88 60 104Q56 112 50 112", "LIGHT", 2, M),
+    P("M94 92Q100 96 106 92L104 98Q100 100 96 98Z", "MAW"),
+]
+
+# Ursa: a rearing bear with raised claws, rock plates on its shoulders.
+BEASTS["URSA"] = [
+    P("M100 62L76 68L60 86L58 120L64 150L64 186H92L96 164L100 162Z", "BODY", 0, M),
+    P("M100 108L86 112L80 140L88 160L100 162Z", "LIGHT", 0, M),
+    P("M62 90L40 66L30 42L44 36L54 56L74 78Z", "BODY", 0, M),
+    P("M30 42L24 30M36 38L33 26M43 36L43 24", "BONE", 3.5, M),
+    P("M58 84L56 68L72 70L76 82Z M64 100L58 92L70 92Z", "DARK", 0, M),
+    P("M64 186L66 176H92L96 186Z", "DARK", 0, M),
+    P("M68 186L66 193M76 186L76 193M86 186L87 193", "BONE", 2.5, M),
+    P("M80 46L72 34L88 38Z", "BODY", 0, M),
+    P("M100 36L84 40L74 52L76 70L88 82L100 84Z", "BODY", 0, M),
+    P("M100 62L90 64L86 74L90 82L100 84Z", "LIGHT", 0, M),
+    P("M76 52L97 58L95 62L78 58Z", "DARK", 0, M),
+    P("M80 58L93 61L90 66L82 64Z", "EYE", 0, M),
+    P("M94 66H106L100 72Z", "DARK"),
+    P("M88 74Q100 70 112 74L108 84Q100 88 92 84Z", "MAW"),
+    P("M89 74L92 82L95 75Z", "BONE", 0, M),
+]
+
+# Cerberus: three snarling heads on one burly body, a spiked collar.
+BEASTS["CERBERUS"] = [
+    P("M100 70L88 58L80 74L66 64L64 82L50 80L56 96L100 104Z", "DARK", 0, M),
+    P("M100 96L70 100Q50 116 48 146L44 186H74L78 162L100 158Z", "BODY", 0, M),
+    P("M100 120L88 124L86 146L92 158L100 160Z", "LIGHT", 0, M),
+    P("M44 186L46 176H74L78 186Z", "DARK", 0, M),
+    P("M48 186L46 193M56 186L55 193M64 186L64 193M72 186L73 193", "BONE", 2.5, M),
+    P("M50 82L38 56L60 74Z", "BODY", 0, M),
+    P("M60 70L44 78L34 96L40 114L56 118L72 106L76 84Z", "BODY", 0, M),
+    P("M40 100L50 112L58 114L64 104Z", "LIGHT", 0, M),
+    P("M44 86L64 90L62 94L46 92Z", "DARK", 0, M),
+    P("M48 92L60 94L57 99L50 97Z", "EYE", 0, M),
+    P("M44 106Q54 102 64 108L60 116Q52 118 46 114Z", "MAW", 0, M),
+    P("M48 106L51 113L53 107Z", "BONE", 0, M),
+    P("M84 40L74 14L94 32Z", "BODY", 0, M),
+    P("M100 30L86 34L76 48L78 68L88 80L100 82Z", "BODY", 0, M),
+    P("M100 60L90 62L86 72L90 80L100 82Z", "LIGHT", 0, M),
+    P("M78 50L97 56L95 60L80 56Z", "DARK", 0, M),
+    P("M82 56L94 59L91 64L84 62Z", "EYE", 0, M),
+    P("M88 70Q100 66 112 70L108 80Q100 84 92 80Z", "MAW"),
+    P("M89 70L92 78L95 71Z", "BONE", 0, M),
+    P("M66 100Q100 116 134 100", "ACCENT", 6),
+    P("M76 106L72 116L82 109Z M92 110L90 120L98 112Z", "BONE", 0, M),
+]
+
+# Manticore: a maned lion with bat wings and a scorpion tail arched overhead.
+BEASTS["MANTICORE"] = [
+    P("M78 98L50 66L22 60L30 80L18 92L36 100L30 118L56 112L74 120Z", "WING", 0, M),
+    P("M78 98L22 60M50 66L36 100M60 96L56 112", "DARK", 2.5, M),
+    P("M128 164Q182 134 166 76Q154 34 116 26", "DARK", 11),
+    P("M150 152L160 146M166 124L176 122M170 98L180 94M160 64L168 56M140 38L144 28", "BODY", 3),
+    P("M118 18L96 14L112 36Z", "BONE"),
+    P("M100 58L88 46L82 62L68 52L66 70L52 66L54 84L44 90L56 100L50 112L100 120Z", "DARK", 0, M),
+    P("M100 100L70 106Q46 116 42 144L38 186H66L70 162L84 154L100 156Z", "BODY", 0, M),
+    P("M38 186L40 176H68L72 186Z", "DARK", 0, M),
+    P("M42 186L40 193M50 186L49 193M58 186L58 193M66 186L67 193", "BONE", 2.5, M),
+    P("M100 64L84 66L70 78L68 98L76 112L88 118L100 120Z", "BODY", 0, M),
+    P("M100 96L90 98L86 108L90 116L100 118Z", "LIGHT", 0, M),
+    P("M72 80L97 90L95 95L74 86Z", "DARK", 0, M),
+    P("M76 88L92 93L88 98L79 95Z", "EYE", 0, M),
+    P("M86 104Q100 100 114 104L110 116Q100 122 90 116Z", "MAW"),
+    P("M88 104L91 112L93 105Z M95 104L97 111L99 104Z", "BONE", 0, M),
+]
+
+# Quillbeast: a low, hunched beast bristling with a fan of glowing quills.
+BEASTS["QUILLBEAST"] = [
+    P("M100 128L22 104L28 94Z M100 124L28 72L38 66Z M100 120L44 42L54 40Z M100 118L70 22L80 24Z M100 118L96 14L104 14Z", "BONE", 0, M),
+    P("M28 94L22 104L24 92Z M36 66L28 72L32 62Z M52 40L44 42L50 32Z M78 23L70 22L78 14Z", "ACCENT", 0, M),
+    P("M100 96L70 102L52 124L50 150L56 186H80L84 160L100 156Z", "BODY", 0, M),
+    P("M100 132L88 136L86 152L100 156Z", "LIGHT", 0, M),
+    P("M56 186L58 176H80L84 186Z", "DARK", 0, M),
+    P("M58 186L54 194M66 186L64 194M74 186L74 194", "BONE", 3, M),
+    P("M100 80L84 84L72 96L74 114L88 126L100 128Z", "BODY", 0, M),
+    P("M100 110L94 112L92 122L100 128Z", "LIGHT", 0, M),
+    P("M76 98L97 104L95 108L78 103Z", "DARK", 0, M),
+    P("M80 104L92 107L89 112L82 110Z", "EYE", 0, M),
+    P("M96 122H104L100 127Z", "DARK"),
+    P("M94 128L95 140L99 128Z", "BONE", 0, M),
+]
+
+# Brute: a hulking ape-beast on its knuckles, crystals on its back.
+BEASTS["BRUTE"] = [
+    P("M70 74L60 50L78 66Z M84 66L80 44L92 62Z", "LIGHT", 0, M),
+    P("M100 64L72 70L58 90L64 128L76 150L80 186H96L100 166Z", "BODY", 0, M),
+    P("M66 80L40 94L26 140L28 186H54L50 150L60 118Z", "BODY", 0, M),
+    P("M24 172L22 188H56L54 172Z", "DARK", 0, M),
+    P("M100 98L86 102L82 126L90 140L100 142Z", "LIGHT", 0, M),
+    P("M86 112H98M84 124H98", "DARK", 2, M),
+    P("M80 186L82 178H98L100 186Z", "DARK", 0, M),
+    P("M100 62L88 64L80 78L86 94L100 98Z", "BODY", 0, M),
+    P("M80 70L98 76L97 80L82 76Z", "DARK", 0, M),
+    P("M84 76L95 79L92 84L86 82Z", "EYE", 0, M),
+    P("M90 88Q100 86 110 88L108 96Q100 98 92 96Z", "MAW"),
+    P("M91 96L93 86L96 96Z", "BONE", 0, M),
+]
+
+# Lung: an eastern dragon coiled upright, whiskers and a flowing mane.
+LUNG_COIL = "M100 78Q136 84 144 108Q150 134 112 140Q66 146 60 164Q58 184 110 182Q152 180 174 158"
+BEASTS["LUNG"] = [
+    P(LUNG_COIL, "DARK", 27),
+    P(LUNG_COIL, "BODY", 22),
+    P("M100 86Q128 92 136 110Q140 128 110 132Q74 136 68 160Q68 174 110 174Q146 172 166 154", "LIGHT", 5),
+    P("M128 88L136 76L140 92Z M146 112L160 106L150 122Z M120 142L124 154L112 146Z M64 152L50 150L60 162Z M142 178L150 190L132 182Z", "DARK"),
+    P("M174 158L194 140L188 160L198 168L178 166Z", "LIGHT"),
+    P("M134 116L152 112L156 120", "BODY", 6),
+    P("M152 112L160 106M154 116L164 114M155 120L162 124", "BONE", 2.5),
+    P("M100 34L84 42L70 58L76 64L64 80L74 84L68 98L100 100Z", "DARK", 0, M),
+    P("M88 36L72 18L78 8M74 22L64 18", "BONE", 4, M),
+    P("M100 30L88 34L80 48L82 66L90 80L100 82Z", "BODY", 0, M),
+    P("M100 62L92 64L88 74L92 80L100 82Z", "LIGHT", 0, M),
+    P("M82 48L97 54L95 58L84 55Z", "DARK", 0, M),
+    P("M84 55L94 57L91 62L86 60Z", "EYE", 0, M),
+    P("M90 76Q66 76 50 92Q42 102 34 100", "LIGHT", 2.2, M),
+    P("M92 80Q100 86 108 80L106 88Q100 90 94 88Z", "MAW"),
+    P("M93 80L95 86L97 81Z", "BONE", 0, M),
+]
+
+# Razor eagle: a standing raptor, bladed wings half raised.
+BEASTS["EAGLE"] = [
+    P("M80 96L50 60L30 26L36 56L20 52L34 80L16 84L38 104L24 116L52 118L72 124Z", "WING", 0, M),
+    P("M36 56L46 78M34 80L48 96M38 104L56 112", "BONE", 2.5, M),
+    P("M100 150L90 184L96 182L100 190Z", "DARK", 0, M),
+    P("M100 70L82 78L72 104L74 140L84 162L100 166Z", "BODY", 0, M),
+    P("M100 92L90 96L86 110L92 114L86 122L92 128L88 138L94 144L100 146Z", "LIGHT", 0, M),
+    P("M90 160L88 178", "DARK", 5, M),
+    P("M88 178L78 188M88 178L88 192M88 178L96 189", "BONE", 3, M),
+    P("M88 40L66 26L84 48Z M86 50L64 46L82 58Z", "DARK", 0, M),
+    P("M100 34L88 38L80 52L82 66L92 74L100 76Z", "BODY", 0, M),
+    P("M80 50L97 58L95 62L82 56Z", "DARK", 0, M),
+    P("M83 56L94 60L91 65L85 63Z", "EYE", 0, M),
+    P("M93 60L100 56L107 60L106 74L100 84L94 74Z", "ACCENT"),
+    P("M100 74L100 84", "DARK", 1.5),
+]
+
+# Griffin: an eagle's head and wings on a lion's body, crouched to strike.
+BEASTS["GRIFFIN"] = [
+    P("M80 102L56 70L16 56L24 74L6 80L22 94L6 104L28 112L18 126L44 126L40 140L66 128Z", "WING", 0, M),
+    P("M56 70L24 74M60 86L22 94M64 100L28 112M68 114L44 126", "DARK", 2, M),
+    P("M138 168Q176 160 176 128Q176 112 190 106L184 122Q186 160 144 178Z", "BODY"),
+    P("M100 100L70 106Q48 116 44 144L40 186H68L72 162L86 154L100 156Z", "BODY", 0, M),
+    P("M100 82L84 84L72 96L70 112L80 116L76 124L100 126Z", "LIGHT", 0, M),
+    P("M40 186L42 178H70L74 186Z", "DARK", 0, M),
+    P("M44 186L38 194M52 186L50 195M62 186L63 195M70 186L74 194", "BONE", 3, M),
+    P("M86 54L66 36L84 60Z M84 64L62 60L80 72Z", "DARK", 0, M),
+    P("M100 46L86 50L78 64L80 80L90 90L100 92Z", "BODY", 0, M),
+    P("M78 64L97 72L95 76L80 70Z", "DARK", 0, M),
+    P("M82 70L93 74L90 79L84 77Z", "EYE", 0, M),
+    P("M92 76L100 72L108 76L107 92L100 104L93 92Z", "ACCENT"),
+    P("M95 86L100 98L105 86Z", "MAW"),
+]
+
+# Roc: a vast storm bird, wings flung up to fill the sky.
+BEASTS["ROC"] = [
+    P("M88 92L60 58L18 16L26 46L4 50L24 68L4 82L28 90L12 104L40 106L30 122L60 114L78 120Z", "WING", 0, M),
+    P("M60 58L26 46M64 74L24 68M68 88L28 90M72 100L40 106M76 110L60 114", "DARK", 2, M),
+    P("M18 16L26 46L4 50", "LIGHT", 2, M),
+    P("M100 146L82 186L92 184L100 194Z", "DARK", 0, M),
+    P("M100 66L86 72L78 98L82 136L90 154L100 156Z", "BODY", 0, M),
+    P("M100 88L92 92L90 104L94 108L90 118L96 124L92 134L100 140Z", "LIGHT", 0, M),
+    P("M92 150L90 164", "DARK", 5, M),
+    P("M90 164L80 174M90 164L90 178M90 164L98 175", "BONE", 3, M),
+    P("M90 40L58 18L84 46Z M88 50L56 40L82 58Z M94 34L84 10L98 30Z", "DARK", 0, M),
+    P("M100 32L88 36L82 48L84 62L92 70L100 72Z", "BODY", 0, M),
+    P("M82 48L97 55L95 59L84 54Z", "DARK", 0, M),
+    P("M85 54L94 57L91 62L87 60Z", "EYE", 0, M),
+    P("M93 58L100 54L107 58L105 70L100 80L95 70Z", "ACCENT"),
+]
+
+# Shark: a great finned predator bursting from the water, jaws agape.
+BEASTS["SHARK"] = [
+    P("M24 188Q40 170 56 182Q70 166 84 180Q92 172 100 178V190H24Z", "LIGHT", 0, M),
+    P("M100 22L84 40L72 78L70 128L76 168L100 182Z", "BODY", 0, M),
+    P("M100 40L94 44L90 60H100Z", "DARK", 0, M),
+    P("M74 118L30 146L42 152L76 140Z", "BODY", 0, M),
+    P("M72 70L84 76M70 80L82 86M70 90L80 94", "DARK", 2, M),
+    P("M100 140L86 144L82 166L100 176Z", "LIGHT", 0, M),
+    P("M76 66L92 74L88 80L78 75Z", "EYE", 0, M),
+    P("M80 92Q100 84 120 92L116 132Q100 142 84 132Z", "MAW"),
+    P("M80 92L84 102L88 92Z M88 90L91 100L94 89Z M94 88L97 98L100 88Z", "BONE", 0, M),
+    P("M84 132L87 122L90 134Z M90 136L93 126L96 137Z", "BONE", 0, M),
+]
+
+# Angler: a deep-sea horror, a glowing lure over a mouthful of needle teeth.
+BEASTS["ANGLER"] = [
+    P("M100 62Q98 22 128 16Q152 14 152 38", "DARK", 4),
+    P("M143 48A9 9 0 1 1 161 48A9 9 0 1 1 143 48Z", "ACCENT"),
+    P("M150 186L166 194L170 176Z", "DARK"),
+    P("M48 110L22 94L30 116L18 128L46 132Z", "DARK", 0, M),
+    P("M100 58Q60 58 44 96Q34 130 56 160Q76 182 100 182Z", "BODY", 0, M),
+    P("M100 162L80 164L70 172L100 182Z", "LIGHT", 0, M),
+    P("M66 70L74 62L80 72Z M82 62L90 54L94 66Z", "DARK", 0, M),
+    P("M72 86L92 94L88 100L74 95Z", "EYE", 0, M),
+    P("M54 118Q100 106 146 118L138 158Q100 174 62 158Z", "MAW"),
+    P("M60 120L64 142L68 119Z M74 116L78 146L82 116Z M88 114L91 140L94 114Z", "BONE", 0, M),
+    P("M66 158L70 138L74 160Z M82 164L86 138L90 165Z M96 166L98 146L100 166Z", "BONE", 0, M),
+]
+
+# Leviathan: a sea serpent rearing from the waves among its own coils.
+BEASTS["LEVIATHAN"] = [
+    P("M22 184Q30 146 50 146Q68 146 74 184", "DARK", 18, M),
+    P("M22 184Q30 146 50 146Q68 146 74 184", "BODY", 13, M),
+    P("M40 150L46 136L54 148Z", "DARK", 0, M),
+    P("M14 190Q30 174 46 184Q62 172 78 184Q90 176 100 182V194H14Z", "LIGHT", 0, M),
+    P("M100 70L86 80L80 130L78 186H100Z", "BODY", 0, M),
+    P("M100 90L92 94H100ZM100 104L90 108H100ZM100 118L90 122H100ZM100 132L88 136H100ZM100 146L88 150H100Z", "LIGHT", 0, M),
+    P("M64 44L36 28L46 48L30 56L48 62L36 72L64 64Z", "WING", 0, M),
+    P("M100 24L82 28L64 42L62 60L76 76L100 82Z", "BODY", 0, M),
+    P("M100 20L94 6L100 12L106 6Z", "DARK"),
+    P("M66 48L96 58L94 62L68 56Z", "DARK", 0, M),
+    P("M72 56L90 61L86 66L76 64Z", "EYE", 0, M),
+    P("M78 70Q100 64 122 70L116 82Q100 90 84 82Z", "MAW"),
+    P("M80 70L84 80L87 69Z M88 68L91 77L94 67Z", "BONE", 0, M),
+]
+
+# Centipede: a towering many-legged horror rearing up, huge mandibles.
+_seg = [(176, 30, 12), (156, 28, 11), (136, 26, 11), (117, 24, 10), (99, 22, 10), (83, 20, 9)]
+_cent = []
+for y, rx, ry in _seg:
+    _cent.append(P(f"M{100 - rx + 4} {y}L{100 - rx - 18} {y - 8}L{100 - rx - 26} {y + 6}", "DARK", 4, M))
+for y, rx, ry in _seg:
+    _cent.append(P(f"M{100 - rx} {y}A{rx} {ry} 0 1 1 {100 + rx} {y}A{rx} {ry} 0 1 1 {100 - rx} {y}Z", "BODY"))
+    _cent.append(P(f"M{100 - rx + 8} {y - 2}H{100 + rx - 8}", "LIGHT", 2))
+BEASTS["CENTIPEDE"] = _cent + [
+    P("M92 52Q80 28 62 22", "DARK", 3, M),
+    P("M100 48L86 52L80 64L86 76L100 80Z", "BODY", 0, M),
+    P("M88 72Q66 76 70 98L82 84Z", "BONE", 0, M),
+    P("M86 58L97 62L95 66L88 64Z", "EYE", 0, M),
+    P("M92 76Q100 80 108 76L106 82Q100 84 94 82Z", "MAW"),
+]
+
+# Scorpion: armored, pincers raised, its tail arched to strike.
+BEASTS["SCORPION"] = [
+    P("M90 108A10 10 0 1 1 110 108A10 10 0 1 1 90 108Z M91 88A9 9 0 1 1 109 88A9 9 0 1 1 91 88Z M92 70A8 8 0 1 1 108 70A8 8 0 1 1 92 70Z M93 54A7 7 0 1 1 107 54A7 7 0 1 1 93 54Z", "BODY"),
+    P("M100 22L90 38L100 50L110 38Z", "BONE"),
+    P("M100 36L97 40H103Z", "MAW"),
+    P("M74 150L48 138L34 158M76 160L48 162L38 184M80 168L60 180L56 192", "DARK", 5, M),
+    P("M100 118L78 124L66 150L76 174L100 180Z", "BODY", 0, M),
+    P("M100 132L88 136L84 156L92 170L100 172Z", "LIGHT", 0, M),
+    P("M80 130L56 110L40 90", "BODY", 10, M),
+    P("M40 92L18 70L30 64L42 78L46 56L58 64L50 90Z", "BODY", 0, M),
+    P("M30 66L42 78M46 58L50 72", "BONE", 2.5, M),
+    P("M86 128L96 132L94 136L88 134Z", "EYE", 0, M),
+    P("M94 148L88 160M106 148L112 160", "BONE", 3),
+]
+
+# Dread bat: a giant bat, wings spread, ears like blades, bared fangs.
+BEASTS["BATFIEND"] = [
+    P("M84 96L60 58L30 44L22 64L6 70L16 90L2 106L24 110L20 132L44 126L56 144L72 124L86 126Z", "WING", 0, M),
+    P("M84 96L30 44M66 82L16 90M70 98L24 110M74 110L44 126M78 116L56 144", "DARK", 2.5, M),
+    P("M100 80L84 86L78 110L82 140L92 158L100 160Z", "BODY", 0, M),
+    P("M100 96L92 100L90 120L94 140L100 142Z", "LIGHT", 0, M),
+    P("M90 156L86 174", "DARK", 5, M),
+    P("M86 174L78 184M86 174L86 186M86 174L93 183", "BONE", 2.5, M),
+    P("M86 56L68 10L96 46Z", "BODY", 0, M),
+    P("M84 48L74 22L92 44Z", "DARK", 0, M),
+    P("M100 42L86 46L78 60L82 76L100 84Z", "BODY", 0, M),
+    P("M80 58L97 64L95 68L82 64Z", "DARK", 0, M),
+    P("M83 64L94 67L91 72L86 70Z", "EYE", 0, M),
+    P("M94 70L100 62L106 70L100 74Z", "DARK"),
+    P("M88 76Q100 72 112 76L108 86Q100 90 92 86Z", "MAW"),
+    P("M89 76L92 88L95 77Z", "BONE", 0, M),
+]
+
+# Spider: eight jointed legs, a cluster of burning eyes, dripping fangs.
+BEASTS["SPIDER"] = [
+    P("M100 22Q58 24 54 64Q54 98 100 104Z", "BODY", 0, M),
+    P("M100 44L90 58L100 72Z", "ACCENT", 0, M),
+    P("M82 110L46 64L18 92M78 118L34 96L10 134M78 126L36 136L18 178M82 134L52 160L44 192", "DARK", 7, M),
+    P("M82 110L46 64L18 92M78 118L34 96L10 134M78 126L36 136L18 178M82 134L52 160L44 192", "BODY", 3.5, M),
+    P("M100 94L82 98L72 118L78 142L100 150Z", "BODY", 0, M),
+    P("M100 126L92 128L90 140L100 146Z", "LIGHT", 0, M),
+    P("M88 108A4 4 0 1 1 96 108A4 4 0 1 1 88 108Z M78 114A3.5 3.5 0 1 1 85 114A3.5 3.5 0 1 1 78 114Z M89 119A3 3 0 1 1 95 119A3 3 0 1 1 89 119Z M81 124A2.5 2.5 0 1 1 86 124A2.5 2.5 0 1 1 81 124Z", "EYE", 0, M),
+    P("M92 140L88 162L98 146Z", "BONE", 0, M),
+]
+
+# Wraith: a hooded void with burning eyes, skeletal claws and a spiked crown.
+BEASTS["WRAITH"] = [
+    P("M100 38L78 48L64 80L56 130L42 186L58 174L64 190L76 172L84 192L92 176L100 190Z", "BODY", 0, M),
+    P("M100 90L88 96L84 130L90 170L100 178Z", "DARK", 0, M),
+    P("M70 92L42 68L34 76L60 106Z", "BODY", 0, M),
+    P("M40 72L24 56M37 76L18 68M43 69L34 50M44 80L30 86", "BONE", 2.5, M),
+    P("M100 18L80 28L70 54L72 80L100 88Z", "DARK", 0, M),
+    P("M86 26L80 6L92 22Z", "ACCENT", 0, M),
+    P("M96 20L100 0L104 20Z", "ACCENT"),
+    P("M100 42L88 48L84 64L92 76L100 78Z", "MAW", 0, M),
+    P("M87 56L97 60L94 65L89 63Z", "EYE", 0, M),
+    P("M100 112L108 124L100 136L92 124Z", "LIGHT"),
+]
+
+# Fenrir: a colossal armored wolf with horns, roaring, broken chains on its legs.
+BEASTS["FENRIR"] = [
+    P("M100 26L88 40L74 22L70 44L50 32L54 56L30 54L46 74L24 84L48 94L36 112L100 120Z", "DARK", 0, M),
+    P("M100 88L70 92Q48 104 44 136L40 186H68L72 160L86 150L100 152Z", "BODY", 0, M),
+    P("M100 116L88 120L86 140L92 150L100 152Z", "LIGHT", 0, M),
+    P("M46 110L58 96L78 100L72 120L52 124Z", "DARK", 0, M),
+    P("M46 110L58 96L78 100", "ACCENT", 2.5, M),
+    P("M40 186L42 176H70L74 186Z", "DARK", 0, M),
+    P("M44 186L41 194M52 186L51 194M60 186L60 194M68 186L70 194", "BONE", 3, M),
+    P("M40 166Q56 160 70 168M34 160A4 3 0 1 1 34.1 160", "ACCENT", 3, M),
+    P("M70 46Q44 34 36 10Q52 30 76 40Z", "BONE", 0, M),
+    P("M100 32L80 36L62 50L58 74L68 96L84 108L100 112Z", "BODY", 0, M),
+    P("M100 74L88 76L82 90L88 104L100 108Z", "LIGHT", 0, M),
+    P("M62 58L98 70L96 76L64 64Z", "DARK", 0, M),
+    P("M68 66L90 73L86 79L72 75Z", "EYE", 0, M),
+    P("M93 80H107L100 88Z", "DARK"),
+    P("M82 92Q100 86 118 92L114 110Q100 118 86 110Z", "MAW"),
+    P("M84 92L88 106L92 93Z M92 112L95 102L98 112Z", "BONE", 0, M),
+]
+
+# Ooze: a towering mound of sludge with a gaping maw and too many eyes.
+BEASTS["OOZE"] = [
+    P("M48 122L22 104L16 118L42 140Z", "BODY", 0, M),
+    P("M100 28Q72 28 64 58Q46 80 48 120Q40 150 28 186H100Z", "BODY", 0, M),
+    P("M70 50Q66 64 70 72Q74 64 72 52Z M52 98Q48 112 52 120Q56 110 54 100Z", "LIGHT", 0, M),
+    P("M58 150A6 6 0 1 1 58.1 150Z M76 166A4 4 0 1 1 76.1 166Z", "LIGHT", 5, M),
+    P("M66 94Q100 84 134 94L126 140Q100 156 74 140Z", "MAW"),
+    P("M70 96L74 110L79 94Z M84 92L88 108L92 91Z M96 90L100 106L104 90Z", "BONE", 0, M),
+    P("M76 140L80 128L84 143Z M92 146L96 132L100 147Z", "BONE", 0, M),
+    P("M70 66A8 6 0 1 1 86 66A8 6 0 1 1 70 66Z M112 58A9 7 0 1 1 130 58A9 7 0 1 1 112 58Z M94 48A6 5 0 1 1 106 48A6 5 0 1 1 94 48Z", "EYE"),
+    P("M78 66H79M121 58H122M100 48H101", "DARK", 3),
+    P("M118 160L140 168L136 174L116 166Z", "BONE"),
+]
+
+# Hydra: three slime serpents rising from one pool, the middle one crowned.
+_neck_l = "M70 172Q48 132 48 100"
+_neck_c = "M100 172Q106 124 100 74"
+BEASTS["HYDRA"] = [
+    P(_neck_l, "DARK", 19, M), P(_neck_l, "BODY", 14, M),
+    P(_neck_c, "DARK", 21), P(_neck_c, "BODY", 16),
+    P("M100 146Q58 142 32 158Q18 176 24 188H100Z", "BODY", 0, M),
+    P("M44 160Q42 172 46 178Q50 170 48 160Z M72 150Q70 160 74 166Q78 158 76 150Z", "LIGHT", 0, M),
+    P("M48 72L32 78L26 94L34 106L50 108L60 96L62 80Z", "BODY", 0, M),
+    P("M34 84L50 88L48 92L36 90Z", "DARK", 0, M),
+    P("M36 90L46 92L44 96L38 95Z", "EYE", 0, M),
+    P("M32 100Q44 96 56 102L52 108Q44 110 36 106Z", "MAW", 0, M),
+    P("M100 40L86 44L80 58L84 72L100 76Z", "BODY", 0, M),
+    P("M86 42L88 30L95 38L100 26L105 38L112 30L114 42Z", "ACCENT"),
+    P("M82 54L97 59L95 63L84 60Z", "DARK", 0, M),
+    P("M85 60L94 62L91 67L87 65Z", "EYE", 0, M),
+    P("M90 68Q100 64 110 68L106 76Q100 78 94 76Z", "MAW"),
+    P("M91 68L93 74L95 69Z", "BONE", 0, M),
+]
+
+# Coral crab: an armored crab grown over with coral, huge crushing claws.
+BEASTS["CRAB"] = [
+    P("M64 150L38 154L28 174M68 158L48 170L44 190M74 162L62 180L64 194", "DARK", 5, M),
+    P("M60 104L52 78L62 86L64 68L72 90L78 74L82 96Z", "LIGHT", 0, M),
+    P("M100 96L66 100L44 118L42 140L56 156L80 162L100 164Z", "BODY", 0, M),
+    P("M100 112L84 116L80 136L88 150L100 152Z", "LIGHT", 0, M),
+    P("M60 118L72 126M54 132L68 136", "DARK", 2, M),
+    P("M50 132L30 116L26 100", "BODY", 11, M),
+    P("M28 106L6 78L22 66L34 84L42 58L56 68L46 102Z", "BODY", 0, M),
+    P("M22 68L34 84M42 60L48 78", "BONE", 2.5, M),
+    P("M90 100L86 80", "DARK", 4, M),
+    P("M80 76A6 6 0 1 1 92 76A6 6 0 1 1 80 76Z", "EYE", 0, M),
+    P("M90 154Q100 158 110 154L106 162Q100 164 94 162Z", "MAW"),
+    P("M90 154L88 166M110 154L112 166", "BONE", 3),
+]
+
+# Fortress tortoise: a shell like a castle, towers and battlements of stone.
+BEASTS["FORTRESS"] = [
+    P("M60 58L54 30L70 50Z M80 46L78 18L92 42Z", "BONE", 0, M),
+    P("M94 40L100 6L106 40Z", "BONE"),
+    P("M100 38Q52 40 32 88Q22 118 26 150H100Z", "BODY", 0, M),
+    P("M100 58L76 64L60 90L64 120H100Z", "DARK", 0, M),
+    P("M100 64L80 70L68 92L72 114H100Z", "LIGHT", 0, M),
+    P("M80 70L88 92L72 114M88 92H100", "DARK", 2, M),
+    P("M44 100L34 108M40 124L30 128", "DARK", 2, M),
+    P("M44 140L34 186H64L68 150Z", "BODY", 0, M),
+    P("M34 186L36 178H64L66 186Z", "DARK", 0, M),
+    P("M38 186L35 193M46 186L45 193M56 186L56 193", "BONE", 3, M),
+    P("M100 112L84 116L76 132L80 150L100 156Z", "BODY", 0, M),
+    P("M76 124L98 128L96 133L78 130Z", "DARK", 0, M),
+    P("M80 130L92 133L89 138L82 136Z", "EYE", 0, M),
+    P("M86 144L92 150L96 144L100 152L104 144L108 150L114 144L110 156H90Z", "BONE"),
+]
+
+# Naga: a hooded serpent rearing over its coils, fangs bared.
+BEASTS["NAGA"] = [
+    P("M44 178Q100 150 156 178Q100 198 44 178Z", "BODY"),
+    P("M54 178Q100 160 146 178", "LIGHT", 3),
+    P("M100 30L76 36L50 60L42 96L52 130L84 142L100 122Z", "DARK", 0, M),
+    P("M66 82A7 9 0 1 1 66.1 82Z M62 110A6 7 0 1 1 62.1 110Z", "LIGHT", 8, M),
+    P("M100 70L86 80L84 150L76 178H100Z", "BODY", 0, M),
+    P("M100 84L92 88H100ZM100 98L90 102H100ZM100 112L90 116H100ZM100 126L90 130H100ZM100 140L88 144H100ZM100 154L86 158H100Z", "LIGHT", 0, M),
+    P("M100 34L88 38L82 52L86 66L100 70Z", "BODY", 0, M),
+    P("M84 48L97 54L95 58L86 55Z", "DARK", 0, M),
+    P("M86 55L95 57L92 62L88 60Z", "EYE", 0, M),
+    P("M92 66L94 82L97 67Z", "BONE", 0, M),
+    P("M100 70V84M100 84L96 90M100 84L104 90", "TONGUE", 2),
+]
+
+# Ancient treant: a gnarled giant of a tree, hollow eyes and a jagged maw.
+BEASTS["TREANT"] = [
+    P("M100 4L84 14L70 6L62 22L44 18L44 38L26 42L36 58L22 72L44 78H100Z", "BODY", 0, M),
+    P("M66 26L74 36M48 50L60 54M84 18L88 30", "LIGHT", 2.5, M),
+    P("M74 96L44 104L22 90", "WOOD", 9, M),
+    P("M22 90L10 78M22 90L8 94M28 94L20 82", "WOOD", 3.5, M),
+    P("M30 106A10 8 0 1 1 50 106A10 8 0 1 1 30 106Z", "BODY", 0, M),
+    P("M100 60L80 64L70 100L72 150L58 186H100Z", "WOOD", 0, M),
+    P("M84 70L80 92M76 126L82 150M90 156L88 178", "DARK", 2, M),
+    P("M58 186L42 194M68 186L60 195M78 186L76 195", "WOOD", 4.5, M),
+    P("M76 88L96 96L93 106L78 100Z", "MAW", 0, M),
+    P("M80 94L92 98L89 103L82 101Z", "EYE", 0, M),
+    P("M78 118H122L116 142L108 132L100 144L92 132L84 142Z", "MAW"),
+    P("M82 118L85 126L88 118Z M94 118L97 128L100 118Z", "BONE", 0, M),
+]
+
+# Thorn knight: armor of living bark and thorns, a thorned spear in hand.
+BEASTS["THORNKNIGHT"] = [
+    P("M144 190V40", "WOOD", 5),
+    P("M138 46L144 18L150 46Z", "BONE"),
+    P("M144 70L136 64M144 90L152 84M144 110L136 104", "BONE", 2.5),
+    P("M100 140L86 142L80 186H96L100 160Z", "WOOD", 0, M),
+    P("M78 186L80 178H98L100 186Z", "DARK", 0, M),
+    P("M100 78L78 82L70 110L76 142H100Z", "WOOD", 0, M),
+    P("M100 92L90 96L88 116L94 130H100Z", "BODY", 0, M),
+    P("M84 90L80 104M80 118L86 132", "DARK", 2, M),
+    P("M56 100L50 140L62 142L66 108Z", "WOOD", 0, M),
+    P("M50 138L48 150L60 152L62 140Z", "DARK", 0, M),
+    P("M78 82L54 78L48 100L72 104Z", "BODY", 0, M),
+    P("M58 80L50 66L64 78Z M70 80L66 64L76 78Z M50 92L38 88L50 98Z", "BONE", 0, M),
+    P("M100 38L84 44L80 66L86 78H100Z", "WOOD", 0, M),
+    P("M84 44L80 26L90 40Z M92 40L92 22L98 38Z", "BONE", 0, M),
+    P("M84 58H100", "EYE", 3.5, M),
+    P("M88 70H100", "DARK", 2, M),
+]
+
+# Warlock: a horned fiend in robes, hex-fire burning in both raised hands.
+BEASTS["WARLOCK"] = [
+    P("M82 72L58 48L36 46L44 60L32 70L50 76L42 90L66 84Z", "WING", 0, M),
+    P("M110 176Q146 188 158 166Q164 154 176 156", "DARK", 5),
+    P("M172 148L186 156L172 164Z", "DARK"),
+    P("M100 60L78 66L68 100L62 150L52 170L60 174L58 184L72 178L76 188L86 180L92 188L100 182Z", "BODY", 0, M),
+    P("M100 66L90 70L86 110L90 150L100 156Z", "DARK", 0, M),
+    P("M78 66L68 100L62 150", "ACCENT", 2, M),
+    P("M70 80L46 70L38 54", "BODY", 8, M),
+    P("M22 46A12 12 0 1 1 46 46A12 12 0 1 1 22 46Z", "LIGHT", 0, M),
+    P("M28 40L40 52M40 40L28 52", "DARK", 2, M),
+    P("M38 56L34 62M42 56L42 64", "BONE", 2, M),
+    P("M86 32Q62 14 66 -2Q76 16 92 26Z", "BONE", 0, M),
+    P("M100 24L86 28L80 42L84 56L100 62Z", "BODY", 0, M),
+    P("M82 40L97 46L95 50L84 46Z", "DARK", 0, M),
+    P("M85 46L94 48L91 53L87 51Z", "EYE", 0, M),
+    P("M88 54Q100 62 112 54L108 60Q100 64 92 60Z", "MAW"),
+    P("M90 55L92 61L94 56Z", "BONE", 0, M),
+    P("M100 96L106 106L100 116L94 106Z", "ACCENT"),
+]
+
+# Basilisk: a crowned lizard-king, low and splayed, with a petrifying stare.
+BEASTS["BASILISK"] = [
+    P("M130 160Q170 166 182 140Q188 124 196 120", "BODY", 9),
+    P("M150 160L156 148L162 160Z M170 150L178 140L180 154Z", "DARK"),
+    P("M84 84L58 58L56 80L38 74L48 96L34 104L66 110Z", "WING", 0, M),
+    P("M58 58L74 92M38 74L66 100M34 104L66 108", "DARK", 2, M),
+    P("M58 58L56 46L64 54Z M38 74L30 66L42 70Z", "ACCENT", 0, M),
+    P("M100 106L70 110L48 124L44 152L100 162Z", "BODY", 0, M),
+    P("M100 126L86 130L84 150L100 156Z", "LIGHT", 0, M),
+    P("M50 132L24 150L18 176L38 178L46 158L62 148Z", "BODY", 0, M),
+    P("M18 176L12 186M24 178L20 188M32 178L32 188", "BONE", 3, M),
+    P("M100 98L94 90L88 100L82 94L80 106Z", "DARK", 0, M),
+    P("M100 74L84 78L72 94L76 114L100 122Z", "BODY", 0, M),
+    P("M88 70L84 56L94 66L100 50L106 66L116 56L112 70Z", "ACCENT"),
+    P("M74 92L97 100L94 107L78 102Z", "EYE", 0, M),
+    P("M80 98L90 100", "MAW", 2.5, M),
+    P("M84 112Q100 106 116 112L112 120Q100 126 88 120Z", "MAW"),
+    P("M86 112L89 120L92 112Z", "BONE", 0, M),
+    P("M108 122L110 134L113 124Z", "LIGHT"),
+]
+
+ROLE_PREVIEW = {
+    "BODY": "#d9734a", "LIGHT": "#f3b27c", "DARK": "#5a2418",
+    "BONE": "#efe4c8", "MAW": "#3a0d10", "TONGUE": "#c9536b", "WOOD": "#7a5236", "EYE": "#ffe27a", "ACCENT": "#ebc678", "WING": "#f3b27c",
+}
+
+def svg(parts, pal=ROLE_PREVIEW):
+    out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="400" height="400">',
+           '<rect width="200" height="200" fill="#12201f"/>',
+           '<ellipse cx="100" cy="188" rx="50" ry="7" fill="#071113"/>']
+    for d, role, w, mirror in parts:
+        col = pal[role]
+        if w > 0:
+            attr = f'fill="none" stroke="{col}" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"'
+        else:
+            op = ' fill-opacity="0.7"' if role == "WING" else ""
+            attr = f'fill="{col}"{op} stroke="#140d0a" stroke-width="1.6" stroke-opacity="0.75" stroke-linejoin="round"'
+        out.append(f'<path d="{d}" {attr}/>')
+        if mirror:
+            out.append(f'<path transform="translate(200 0) scale(-1 1)" d="{d}" {attr}/>')
+    out.append("</svg>")
+    return "\n".join(out)
+
+def preview(out_dir):
+    import cairosvg, os
+    os.makedirs(out_dir, exist_ok=True)
+    for name, parts in BEASTS.items():
+        cairosvg.svg2png(bytestring=svg(parts).encode(), write_to=f"{out_dir}/{name}.png")
+    print(len(BEASTS), "previews in", out_dir)
+
+# Which beast each evolved species becomes (its first form keeps its original art).
+SPECIES = {
+    # Starters
+    "stormstag": "KIRIN", "thunderhorn": "BEHEMOTH",
+    "blazewyrm": "BASILISK", "infernodrake": "WYVERN",
+    "tidewyrm": "NAGA", "maelstrom_serpent": "LUNG",
+    "grovebear": "URSA", "terraursa": "TITAN",
+    # Four-stage lines
+    "blazecat": "SABERCAT", "flarepanther": "CERBERUS", "solar_tiger": "MANTICORE",
+    "voltrat": "QUILLBEAST", "thunderhog": "BRUTE", "storm_kirin": "LUNG",
+    "skylark": "EAGLE", "galehawk": "GRIFFIN", "tempest_roc": "ROC",
+    "tidefin": "SHARK", "reefjaw": "ANGLER", "leviathan": "LEVIATHAN",
+    "mirepede": "CENTIPEDE", "stingscor": "SCORPION", "basilisk": "BASILISK",
+    "gloombat": "BATFIEND", "nightstalker": "SPIDER", "abyss_lord": "WRAITH",
+    # Hounds: a dire wolf, then a fenrir
+    "cinder_hound": "DIREWOLF", "volt_hound": "DIREWOLF", "sky_hound": "DIREWOLF", "surf_hound": "DIREWOLF",
+    "toxic_hound": "DIREWOLF", "dusk_hound": "DIREWOLF", "thorn_hound": "DIREWOLF",
+    "inferno_fenrir": "FENRIR", "thunder_fenrir": "FENRIR", "tempest_fenrir": "FENRIR", "tsunami_fenrir": "FENRIR",
+    "plague_fenrir": "FENRIR", "void_fenrir": "FENRIR", "gaia_fenrir": "FENRIR",
+    # Three-stage lines
+    "sludgeon": "OOZE", "slime_sovereign": "HYDRA",
+    "boulderon": "BRUTE", "magma_colossus": "TITAN",
+    "stormtalon": "GRIFFIN", "thunderbird": "ROC",
+    "coralback": "CRAB", "bastion_tortoise": "FORTRESS",
+    "barkwarden": "THORNKNIGHT", "ancient_treant": "TREANT",
+    "hexfiend": "WARLOCK", "archfiend": "DEMON",
+}
+
+import re
+
+def _num(v):
+    v = round(v, 2)
+    return str(int(v)) if v == int(v) else str(v)
+
+def mirror_path(d):
+    """Flip absolute SVG path data across x=100."""
+    toks = re.findall(r"[A-Za-z]|-?\d*\.?\d+", d)
+    out, i, cmd = [], 0, None
+    arity = {"M": 2, "L": 2, "H": 1, "V": 1, "Q": 4, "C": 6, "A": 7, "Z": 0}
+    while i < len(toks):
+        t = toks[i]
+        if t.isalpha():
+            assert t.isupper(), f"relative command in {d}"
+            cmd = t
+            out.append(t)
+            i += 1
+            if cmd == "Z":
+                continue
+        n = arity[cmd]
+        args = [float(x) for x in toks[i:i + n]]
+        i += n
+        if cmd == "H":
+            args = [200 - args[0]]
+        elif cmd == "V":
+            pass
+        elif cmd == "A":
+            args[4] = 1 - args[4]  # sweep flips in a mirror
+            args[5] = 200 - args[5]
+        else:
+            args = [200 - a if k % 2 == 0 else a for k, a in enumerate(args)]
+        out.append(" ".join(_num(a) for a in args))
+    return " ".join(out)
+
+def kotlin():
+    lines = [
+        "package com.monsterquest.app.ui.art",
+        "",
+        "// Generated by tools/beasts/beasts.py — edit the designs there and regenerate.",
+        "",
+        "internal enum class BRole { BODY, LIGHT, DARK, BONE, MAW, EYE, ACCENT, WING, TONGUE, WOOD }",
+        "",
+        "/** One shape of a beast: [d] filled (or stroked at [stroke]); [mirrored] is its reflection, drawn too. */",
+        "internal class BPart(val d: String, val role: BRole, val stroke: Float = 0f, val mirrored: String? = null)",
+        "",
+        "/** The evolved forms' artwork: fierce new creatures, one design per species. */",
+        "internal object Beasts {",
+        "    private fun p(d: String, role: BRole, stroke: Float = 0f, mirrored: String? = null) = BPart(d, role, stroke, mirrored)",
+        "",
+    ]
+    for name, parts in BEASTS.items():
+        fn = name.lower()
+        lines.append(f"    private fun {fn}() = listOf(")
+        for d, role, w, mirror in parts:
+            args = [f'"{d}"', f"BRole.{role}"]
+            if w:
+                args.append(f"{w}f")
+            if mirror:
+                if not w:
+                    args.append("0f")
+                args.append(f'"{mirror_path(d)}"')
+            lines.append(f"        p({', '.join(args)}),")
+        lines.append("    )")
+        lines.append("")
+    lines.append("    private val designs: Map<String, List<BPart>> by lazy {")
+    lines.append("        mapOf(")
+    for name in BEASTS:
+        lines.append(f'            "{name}" to {name.lower()}(),')
+    lines.append("        )")
+    lines.append("    }")
+    lines.append("")
+    lines.append("    private val bySpecies = mapOf(")
+    for sid, b in SPECIES.items():
+        assert b in BEASTS, b
+        lines.append(f'        "{sid}" to "{b}",')
+    lines.append("    )")
+    lines.append("")
+    lines.append("    /** The design for an evolved species, or null to use its line's original art. */")
+    lines.append("    fun forSpecies(id: String): List<BPart>? = bySpecies[id]?.let { designs[it] }")
+    lines.append("}")
+    lines.append("")
+    path = "app/src/main/java/com/monsterquest/app/ui/art/BeastArt.kt"
+    open(path, "w").write("\n".join(lines))
+    print("wrote", path, len(BEASTS), "designs,", len(SPECIES), "species")
+
+if __name__ == "__main__":
+    if sys.argv[1] == "preview":
+        preview(sys.argv[2])
+    elif sys.argv[1] == "kotlin":
+        kotlin()
