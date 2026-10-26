@@ -419,10 +419,14 @@ abstract class ScreenshotBase(private val device: String) {
         capture("29_fold_a", 1_000)
         repeat(2) {
             rule.runOnUiThread { fold = book }
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            rule.waitForIdle()
             capture("29_fold_b", 1_000)
             // Unfolded: the Nearby list sits beside the map.
             rule.onNodeWithText("Nearby").assertExists()
             rule.runOnUiThread { fold = null }
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            rule.waitForIdle()
             capture("29_fold_c", 1_000)
             if (app.resources.configuration.screenWidthDp < 600) rule.onNodeWithText("Nearby").assertDoesNotExist()
         }
