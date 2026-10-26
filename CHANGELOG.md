@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- **Battery saver** (Saver button on the map): the screen goes black at
+  minimum brightness while the game keeps counting your walk and watching for
+  monsters. Press and hold anywhere to unlock.
+- **The phone vibrates when a new monster appears** within 200 m, on the map
+  or the battery saver screen. Turn it off in Settings.
+
 ## 0.2.0
 
 The "Polish" update.
