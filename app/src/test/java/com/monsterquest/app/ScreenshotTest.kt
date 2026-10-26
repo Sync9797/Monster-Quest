@@ -12,6 +12,12 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.monsterquest.app.ui.AdventuresTab
 import com.monsterquest.app.ui.AppRoot
+import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.MonsterArt
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import com.monsterquest.app.ui.FoldInfo
 import com.monsterquest.app.ui.LocalFold
 import com.monsterquest.app.ui.MonsterQuestTheme
@@ -161,6 +167,26 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm(base.copy(adventures = listOf(running)))
         v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
         shot("10_adventures") { AdventuresTab(v) }
+    }
+
+    /** Every monster's artwork, for reviewing the designs. */
+    @Test fun bestiary() {
+        shot("11_bestiary") {
+            androidx.compose.foundation.layout.Column(
+                androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF0D171A)),
+            ) {
+                Bestiary.all.chunked(6).forEach { row ->
+                    androidx.compose.foundation.layout.Row {
+                        row.forEach { sp ->
+                            MonsterArt(sp, androidx.compose.ui.Modifier.size(56.dp))
+                        }
+                    }
+                }
+                androidx.compose.foundation.layout.Row {
+                    com.monsterquest.core.HeroClass.entries.forEach { HeroArt(it, androidx.compose.ui.Modifier.size(80.dp)) }
+                }
+            }
+        }
     }
 
     @Test fun battleTabletop() {
