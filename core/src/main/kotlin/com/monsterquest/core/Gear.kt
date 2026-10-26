@@ -83,6 +83,7 @@ data class Gear(
                 Element.WATER -> "Tide "
                 Element.GAS -> "Venom "
                 Element.CORRUPT -> "Shadow "
+                Element.EARTH -> "Thorn "
                 Element.NEUTRAL -> ""
             }
             return "$adjective${type.label}"

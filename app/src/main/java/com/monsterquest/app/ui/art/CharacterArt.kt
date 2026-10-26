@@ -21,6 +21,7 @@ internal fun palette(e: Element): TypePalette = when (e) {
     Element.WATER -> TypePalette(Argb.hex("4f8fc9"), Argb.hex("a9d3f2"), Argb.hex("173653"))
     Element.GAS -> TypePalette(Argb.hex("8fae5a"), Argb.hex("cfe3a2"), Argb.hex("33421c"))
     Element.CORRUPT -> TypePalette(Argb.hex("8a6bb8"), Argb.hex("cdb8ec"), Argb.hex("2d2142"))
+    Element.EARTH -> TypePalette(Argb.hex("7a9a4a"), Argb.hex("cfe09a"), Argb.hex("2e3d1c"))
     Element.NEUTRAL -> TypePalette(Argb.hex("9aa9a5"), Argb.hex("dfe6e3"), Argb.hex("2f3a38"))
 }
 
@@ -571,6 +572,53 @@ private val SERPENT = Shape(
     118f, 80f, 22f,
 )
 
+// Earth: a mossy bear (the fourth starter) and a walking tree.
+private val BEAR = Shape(
+    listOf(
+        f("M62 66A13 13 0 1 1 88 66A13 13 0 1 1 62 66Z", Role.BODY),
+        f("M112 66A13 13 0 1 1 138 66A13 13 0 1 1 112 66Z", Role.BODY),
+        f("M69 66A6 6 0 1 1 81 66A6 6 0 1 1 69 66Z", Role.LIGHT),
+        f("M119 66A6 6 0 1 1 131 66A6 6 0 1 1 119 66Z", Role.LIGHT),
+        f("M54 184Q46 128 100 116Q154 128 146 184Z", Role.BODY),
+        f("M74 184Q74 146 100 140Q126 146 126 184Z", Role.LIGHT),
+        f("M58 142Q66 126 82 128Q72 138 62 148Z", Role.LIGHT),
+        f("M142 142Q134 126 118 128Q128 138 138 148Z", Role.LIGHT),
+        f("M52 160Q44 176 58 184L72 178Q64 168 66 156Z", Role.DARK),
+        f("M148 160Q156 176 142 184L128 178Q136 168 134 156Z", Role.DARK),
+        f("M70 186A12 7 0 1 1 94 186A12 7 0 1 1 70 186Z", Role.DARK),
+        f("M106 186A12 7 0 1 1 130 186A12 7 0 1 1 106 186Z", Role.DARK),
+        f("M62 92A38 34 0 1 1 138 92A38 34 0 1 1 62 92Z", Role.BODY),
+        f("M84 102A16 13 0 1 1 116 102A16 13 0 1 1 84 102Z", Role.LIGHT),
+        f("M94 96Q100 92 106 96Q104 102 100 103Q96 102 94 96Z", Role.DARK),
+        s("M100 103V108M94 110Q100 113 106 110", Role.DARK, 2f),
+        f("M78 84A4.5 4.5 0 1 1 87 84A4.5 4.5 0 1 1 78 84Z", Role.EYE),
+        f("M113 84A4.5 4.5 0 1 1 122 84A4.5 4.5 0 1 1 113 84Z", Role.EYE),
+        s("M100 60V54", Role.WOOD, 2f),
+        f("M100 56Q94 42 104 36Q110 48 100 56Z", Role.LIGHT),
+    ),
+    100f, 92f, 36f,
+)
+
+private val TREE = Shape(
+    listOf(
+        f("M66 186Q70 172 84 170L88 186Z", Role.WOOD),
+        f("M134 186Q130 172 116 170L112 186Z", Role.WOOD),
+        s("M92 186Q94 176 100 172Q106 176 108 186", Role.WOOD, 4f),
+        f("M76 176Q74 128 82 110H118Q126 128 124 176Z", Role.WOOD),
+        s("M88 120Q86 140 90 168M112 122Q114 146 108 170", Role.DARK, 2f),
+        s("M80 130Q60 122 48 104M120 130Q140 122 152 104", Role.WOOD, 7f),
+        f("M34 100A15 11 0 1 1 64 100A15 11 0 1 1 34 100Z", Role.BODY),
+        f("M136 100A15 11 0 1 1 166 100A15 11 0 1 1 136 100Z", Role.BODY),
+        f("M52 82Q48 50 76 44Q86 26 104 30Q124 26 132 46Q156 52 150 80Q146 96 124 96H76Q54 96 52 82Z", Role.BODY),
+        f("M70 60Q80 50 92 56Q84 66 72 66Z", Role.LIGHT),
+        f("M112 50Q124 44 132 54Q122 60 112 58Z", Role.LIGHT),
+        f("M88 132A4 5 0 1 1 96 132A4 5 0 1 1 88 132Z", Role.EYE),
+        f("M104 132A4 5 0 1 1 112 132A4 5 0 1 1 104 132Z", Role.EYE),
+        s("M93 148Q100 152 107 148", Role.DARK, 2.5f),
+    ),
+    100f, 64f, 34f,
+)
+
 private fun shapeFor(sp: Species): Shape = when {
     sp.id == "mimic" -> MIMIC
     sp.id == "prism_fairy" -> FAIRY
@@ -581,6 +629,8 @@ private fun shapeFor(sp: Species): Shape = when {
     sp.family.startsWith("Bubblefin") -> FISH
     sp.family.startsWith("Toxbug") -> BUG
     sp.family.startsWith("Gloomwisp") -> WISP
+    sp.family.startsWith("Mosscub") -> BEAR
+    sp.family.startsWith("Twiglet") -> TREE
     sp.family.startsWith("Voltfawn") -> STAG
     sp.family.startsWith("Cindrake") -> DRAKE
     sp.family.startsWith("Drizzlet") -> SERPENT
@@ -694,7 +744,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     val hy = shape.headY
     val r = shape.headR
     // Stage 3+: horns (birds and fish rely on their crest, gem and halo instead).
-    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC && shape !== BIRD && shape !== FISH && shape !== THUNDERBIRD && shape !== SLIME) {
+    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC && shape !== BIRD && shape !== FISH && shape !== THUNDERBIRD && shape !== SLIME && shape !== TREE) {
         val horn = { side: Float ->
             val bx = hx + side * r * 0.45f
             val by = hy - r * 0.75f
@@ -715,7 +765,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     // Final forms: a crown of light (or a halo for winged, finned and spirit shapes).
     if (final && !dim && shape !== MIMIC) {
         val top = hy - r * 1.05f
-        if (sp.stage >= 3 && shape !== FAIRY && shape !== BIRD && shape !== FISH && shape !== WISP && shape !== THUNDERBIRD && shape !== SLIME) {
+        if (sp.stage >= 3 && shape !== FAIRY && shape !== BIRD && shape !== FISH && shape !== WISP && shape !== THUNDERBIRD && shape !== SLIME && shape !== TREE) {
             ArtPainter.glow(c, hx, top - 18f, 22f, GOLD, 0.35f)
             ArtPainter.ringStroke(c, hx, top - 22f, 7f, GOLD, 2f, 0.9f)
         } else {
@@ -790,6 +840,18 @@ private fun drawAura(c: Canvas, e: Element, p: TypePalette, power: Float) {
             listOf(36f to 84f, 164f to 84f, 100f to 40f).forEach { (x, y) ->
                 ArtPainter.fill(c, "M$x ${y - 6}L${x + 4} ${y}L$x ${y + 6}L${x - 4} ${y}Z", p.light, a + 0.2f)
             }
+        }
+        Element.EARTH -> {
+            // Leaves drifting up and stones circling.
+            listOf(Triple(40f, 110f, 20f), Triple(160f, 104f, -25f), Triple(56f, 64f, 40f), Triple(146f, 58f, -40f), Triple(100f, 36f, 10f)).forEach { (x, y, rot) ->
+                c.save()
+                c.rotate(rot, x, y)
+                ArtPainter.fill(c, "M${x - 9} ${y}Q$x ${y - 9} ${x + 9} ${y}Q$x ${y + 9} ${x - 9} ${y}Z", p.light, a + 0.15f)
+                ArtPainter.stroke(c, "M${x - 8} ${y}H${x + 8}", p.dark, 1f, a)
+                c.restore()
+            }
+            ArtPainter.fill(c, "M30 160L38 150L46 158L40 166Z", p.dark, a + 0.2f)
+            ArtPainter.fill(c, "M160 156L170 150L174 162L164 166Z", p.dark, a + 0.2f)
         }
         Element.NEUTRAL -> {
             ArtPainter.stroke(c, "M100 30V46M100 194V180M30 120H44M170 120H156M50 70L60 80M150 70L140 80", p.light, 2.5f, a)

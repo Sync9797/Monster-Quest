@@ -30,7 +30,7 @@ data class Shrine(
 
 /** Times of day change which monster types are out, like a day/night cycle. */
 enum class TimeOfDay(val label: String, val hours: IntRange, val favored: Set<Element>) {
-    DAWN("Dawn", 5..9, setOf(Element.FLIGHT, Element.WATER)),
+    DAWN("Dawn", 5..9, setOf(Element.FLIGHT, Element.EARTH)),
     DAY("Day", 10..16, setOf(Element.FIRE, Element.ELECTRIC)),
     DUSK("Dusk", 17..20, setOf(Element.GAS, Element.WATER)),
     NIGHT("Night", 21..28, setOf(Element.CORRUPT, Element.GAS));

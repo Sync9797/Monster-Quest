@@ -136,6 +136,7 @@ fun Element.icon(): GameIcon = when (this) {
     Element.WATER -> GameIcon.DROP
     Element.GAS -> GameIcon.GAS
     Element.CORRUPT -> GameIcon.MOON
+    Element.EARTH -> GameIcon.LEAF
     Element.NEUTRAL -> GameIcon.RING
 }
 

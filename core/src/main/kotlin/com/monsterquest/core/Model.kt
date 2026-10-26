@@ -5,10 +5,14 @@ import kotlin.math.floor
 import kotlin.random.Random
 
 // ---------------------------------------------------------------------------
-// Types: a rock-paper-scissors cycle. Each type beats exactly one other and
-// loses to exactly one other:
-//   Electric > Water > Fire > Corrupt > Flight > Gas > Electric
-// (Flight blows Gas away; Gas corrodes and shorts out Electric.)
+// Types: a balanced wheel of seven. Every type is strong against exactly two
+// others, weak to exactly two, and neutral to the remaining two:
+//   Water    > Fire, Gas          Earth    > Flight, Water
+//   Fire     > Corrupt, Earth     Flight   > Electric, Fire
+//   Corrupt  > Gas, Flight        Electric > Water, Corrupt
+//   Gas      > Earth, Electric
+// (Placed around a circle as Water, Fire, Corrupt, Gas, Earth, Flight,
+// Electric, each type beats the next one and the one three steps on.)
 // ---------------------------------------------------------------------------
 
 @Serializable
@@ -20,28 +24,31 @@ enum class Element(val label: String) {
     FLIGHT("Flight"),
     WATER("Water"),
     GAS("Gas"),
-    CORRUPT("Corrupt");
+    CORRUPT("Corrupt"),
+    /** Earth and grass: stone, roots and leaves. */
+    EARTH("Earth");
 
-    /** The one type this type deals double-ish damage to. */
-    val beats: Element?
+    /** The two types this type deals extra damage to. */
+    val beats: List<Element>
         get() = when (this) {
-            ELECTRIC -> WATER
-            WATER -> FIRE
-            FIRE -> CORRUPT
-            CORRUPT -> FLIGHT
-            FLIGHT -> GAS
-            GAS -> ELECTRIC
-            NEUTRAL -> null
+            WATER -> listOf(FIRE, GAS)
+            FIRE -> listOf(CORRUPT, EARTH)
+            CORRUPT -> listOf(GAS, FLIGHT)
+            GAS -> listOf(EARTH, ELECTRIC)
+            EARTH -> listOf(FLIGHT, WATER)
+            FLIGHT -> listOf(ELECTRIC, FIRE)
+            ELECTRIC -> listOf(WATER, CORRUPT)
+            NEUTRAL -> emptyList()
         }
 
-    /** The one type that beats this type. */
-    val weakTo: Element?
-        get() = entries.firstOrNull { it.beats == this }
+    /** The two types that beat this type. */
+    val weakTo: List<Element>
+        get() = entries.filter { this in it.beats }
 
     /** Damage multiplier when an attack of this type hits [defender]. */
     fun multiplierAgainst(defender: Element): Double = when {
-        beats == defender -> 1.5
-        defender.beats == this -> 0.67
+        defender in beats -> 1.5
+        this in defender.beats -> 0.67
         else -> 1.0
     }
 

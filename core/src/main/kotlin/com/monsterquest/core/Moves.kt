@@ -62,6 +62,8 @@ sealed interface MoveEffect {
     data object ReverseOrder : MoveEffect
     /** Turn 1: fly out of reach (only Thunder Bolt can hit). Turn 2: strike. */
     data object TwoTurnDive : MoveEffect
+    /** The user heals [percent]% of its max HP. */
+    data class HealSelf(val percent: Int) : MoveEffect
 }
 
 data class Move(
@@ -147,6 +149,16 @@ object Moves {
         m("nightmare", "Nightmare", Element.CORRUPT, 0, desc = "80% chance of sleep; 20 damage every turn asleep.", fx = *arrayOf(MoveEffect.Nightmare(0.8, 20))),
         m("shadow_claw", "Shadow Claw", Element.CORRUPT, 90, desc = "Claws from the dark."),
         m("void_pulse", "Void Pulse", Element.CORRUPT, 110, 85, "A pulse from the void."),
+
+        // ---- Earth ----
+        m("seed_bomb", "Seed Bomb", Element.EARTH, 40, desc = "A burst of hard seeds."),
+        m("mulch", "Mulch", Element.EARTH, 0, desc = "Burrows into rich soil and heals 10% of its HP.", fx = *arrayOf(MoveEffect.HealSelf(10))),
+        m("sap", "Sap", Element.EARTH, 40, desc = "Drains the foe and heals 10% of its HP.", fx = *arrayOf(MoveEffect.HealSelf(10))),
+        m("rock_throw", "Rock Throw", Element.EARTH, 60, desc = "Hurls a heavy stone."),
+        m("mega_sap", "Mega Sap", Element.EARTH, 60, desc = "Drains the foe and heals 25% of its HP.", fx = *arrayOf(MoveEffect.HealSelf(25))),
+        m("vine_whip", "Vine Whip", Element.EARTH, 80, desc = "Lashes with thorny vines."),
+        m("earthquake", "Earthquake", Element.EARTH, 100, 90, "The ground splits beneath the foe."),
+        m("leaf_storm", "Leaf Storm", Element.EARTH, 120, 90, "A storm of razor leaves. The user must rest next turn.", MoveEffect.Recharge),
     )
 
     private val byId = all.associateBy { it.id }
@@ -163,6 +175,7 @@ object Moves {
         Element.FLIGHT to listOf(1 to "peck", 7 to "gust", 12 to "steel_wing", 17 to "lullaby", 22 to "wind_tunnel", 27 to "flying_kick", 32 to "wild_wind", 38 to "dive_bomb"),
         Element.GAS to listOf(1 to "puff", 6 to "poison_gas", 11 to "gunk_shot", 17 to "toxic_wave", 23 to "smog_screen", 30 to "acid_rain", 38 to "miasma_burst"),
         Element.CORRUPT to listOf(1 to "snarl", 10 to "dark_wave", 16 to "corruptive_bite", 24 to "nightmare", 30 to "shadow_claw", 38 to "void_pulse"),
+        Element.EARTH to listOf(1 to "seed_bomb", 6 to "mulch", 10 to "sap", 15 to "rock_throw", 22 to "mega_sap", 28 to "vine_whip", 34 to "earthquake", 40 to "leaf_storm"),
     )
 
     /** Moves a monster of [species] knows at [level], with the level each was learned. */

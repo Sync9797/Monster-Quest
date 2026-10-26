@@ -27,8 +27,8 @@ data class Species(
 )
 
 /**
- * All 74 monsters:
- * - 3 starter lines (#1, #4, #7): pseudo-legendary three-stage lines, the
+ * All 83 monsters:
+ * - 4 starter lines (#1, #4, #7, #10): pseudo-legendary three-stage lines, the
  *   strongest monsters short of the legendaries. Very rare in the wild.
  * - 6 four-stage lines (3 evolutions), one per type.
  * - 6 three-stage hound lines (2 evolutions): one breed per type.
@@ -146,6 +146,11 @@ object Bestiary {
             Member("tidewyrm", "Tidewyrm", "Tide Coil"),
             Member("maelstrom_serpent", "Maelstrom Serpent", "Maelstrom Fang"),
         ), starter = true))
+        addAll(line("Mosscub line", Element.EARTH, StatBlock(52, 17, 12, 17, 11), SkillKind.PHYSICAL, listOf(
+            Member("mosscub", "Mosscub", "Moss Swipe"),
+            Member("grovebear", "Grovebear", "Grove Maul"),
+            Member("terraursa", "Terraursa", "Tectonic Roar"),
+        ), starter = true))
 
         // ---- Four-stage lines (3 evolutions) ----
         addAll(line("Emberkit line", Element.FIRE, StatBlock(40, 15, 10, 9, 15), SkillKind.PHYSICAL, listOf(
@@ -192,6 +197,7 @@ object Bestiary {
         addAll(hounds("Tide", Element.WATER, listOf("Tide Pup", "Surf Hound", "Tsunami Fenrir"), listOf("Splash Bite", "Surf Fang", "Tsunami Howl")))
         addAll(hounds("Venom", Element.GAS, listOf("Venom Pup", "Toxic Hound", "Plague Fenrir"), listOf("Venom Bite", "Toxic Fang", "Plague Howl")))
         addAll(hounds("Shadow", Element.CORRUPT, listOf("Shadow Pup", "Dusk Hound", "Void Fenrir"), listOf("Shadow Bite", "Dusk Fang", "Void Howl")))
+        addAll(hounds("Moss", Element.EARTH, listOf("Moss Pup", "Thorn Hound", "Gaia Fenrir"), listOf("Moss Bite", "Thorn Fang", "Gaia Howl")))
 
         // ---- More three-stage lines ----
         addAll(line("Goopling line", Element.GAS, StatBlock(46, 10, 13, 13, 8), SkillKind.MAGICAL, listOf(
@@ -213,6 +219,11 @@ object Bestiary {
             Member("shellsnap", "Shellsnap", "Shell Ram"),
             Member("coralback", "Coralback", "Coral Crush"),
             Member("bastion_tortoise", "Bastion Tortoise", "Bastion Surge"),
+        )))
+        addAll(line("Twiglet line", Element.EARTH, StatBlock(50, 15, 12, 17, 6), SkillKind.PHYSICAL, listOf(
+            Member("twiglet", "Twiglet", "Twig Jab"),
+            Member("barkwarden", "Barkwarden", "Bark Slam"),
+            Member("ancient_treant", "Ancient Treant", "Root Quake"),
         )))
         addAll(line("Impling line", Element.CORRUPT, StatBlock(36, 12, 16, 9, 16), SkillKind.MAGICAL, listOf(
             Member("impling", "Impling", "Imp Claw"),

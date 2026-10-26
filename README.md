@@ -68,15 +68,27 @@ your hero.
   3 monsters fight in each battle). Every 5 levels a free upgrade adds **+5
   bag slots and +5 monster storage**, or pay **1,000 gold** to add **+50**
   to either.
-- **Types** work like rock-paper-scissors. Each beats exactly one other:
-  Electric > Water > Fire > Corrupt > Flight > Gas > Electric.
-- **74 monsters:**
-  - **3 starter lines** (#1 Voltfawn, Electric; #4 Cindrake, Fire; #7
-    Drizzlet, Water): pick one when you start. Each evolves twice (at 16 and
+- **Types:** seven, and every type is strong against two and weak to two:
+
+  | Type | Strong vs | Weak to |
+  |---|---|---|
+  | Water | Fire, Gas | Earth, Electric |
+  | Fire | Corrupt, Earth | Water, Flight |
+  | Corrupt | Gas, Flight | Fire, Electric |
+  | Gas | Earth, Electric | Water, Corrupt |
+  | Earth (stone and grass) | Flight, Water | Fire, Gas |
+  | Flight | Electric, Fire | Corrupt, Earth |
+  | Electric | Water, Corrupt | Gas, Flight |
+
+- **83 monsters:**
+  - **4 starter lines** (#1 Voltfawn, Electric; #4 Cindrake, Fire; #7
+    Drizzlet, Water; #10 Mosscub, Earth): pick one when you start. Each evolves twice (at 16 and
     36) into a pseudo-legendary, stronger than every other monster except the
     legendaries. They're very rare in the wild.
   - 6 four-stage lines (3 evolutions)
-  - 6 hound breeds with three stages (2 evolutions)
+  - 7 hound breeds with three stages (2 evolutions), one per type
+  - **Earth** also has the Twiglet tree line (Twiglet, Barkwarden, Ancient
+    Treant)
   - 5 more three-stage lines: **Goopling** (Gas slime), **Pebblit** (Fire rock
     golem), **Zipwing** (Electric thunderbird), **Shellsnap** (Water shell
     turtle) and **Impling** (Corrupt imp)

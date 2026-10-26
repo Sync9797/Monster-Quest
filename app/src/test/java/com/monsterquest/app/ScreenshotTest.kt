@@ -283,7 +283,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun newMonsters() {
         shot("15_new_monsters", content = onBackground {
             androidx.compose.foundation.layout.Column {
-                listOf("goopling", "pebblit", "zipwing", "shellsnap", "impling").forEach { id ->
+                listOf("goopling", "pebblit", "zipwing", "shellsnap", "impling", "twiglet", "moss_pup").forEach { id ->
                     androidx.compose.foundation.layout.Row {
                         Bestiary.lineOf(Bestiary.get(id)).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(104.dp)) }
                     }

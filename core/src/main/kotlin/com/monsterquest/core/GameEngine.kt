@@ -29,8 +29,8 @@ data class CalendarEvent(
 
 object GameEngine {
 
-    /** The three starters: #1 Voltfawn, #4 Cindrake, #7 Drizzlet. */
-    val starters = listOf("voltfawn", "cindrake", "drizzlet")
+    /** The starters: #1 Voltfawn, #4 Cindrake, #7 Drizzlet, #10 Mosscub. */
+    val starters = listOf("voltfawn", "cindrake", "drizzlet", "mosscub")
 
     fun chooseStarter(state: GameState, speciesId: String, rng: Random = Random.Default): Update {
         if (state.starterChosen) return Update(state, "Starter already chosen.")

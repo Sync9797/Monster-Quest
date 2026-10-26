@@ -799,6 +799,9 @@ class Battle(
                     log += "${a.name} raises a Wave Guard!"
                 }
                 MoveEffect.Recharge -> a.mustRecharge = true
+                is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
+                    heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
+                }
                 is MoveEffect.Recoil -> if (rng.nextDouble() < fx.chance) hurt(a, scaled(fx.base, a.level), "is hurt by recoil")
                 is MoveEffect.PowerUp -> {
                     a.powerUp += fx.percent

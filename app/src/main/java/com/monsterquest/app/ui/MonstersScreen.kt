@@ -562,7 +562,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Type & evolution ----
         SectionTitle("Type")
         Text(
-            "Strong vs ${sp.element.beats?.label ?: "nothing"} • Weak to ${sp.element.weakTo?.label ?: "nothing"}",
+            "Strong vs ${sp.element.beats.joinToString(" & ") { it.label }} • Weak to ${sp.element.weakTo.joinToString(" & ") { it.label }}",
             fontSize = 13.sp,
         )
         val line = Bestiary.lineOf(sp)
@@ -728,15 +728,17 @@ private fun MoveCard(mv: Move?, ownType: Element, onClick: () -> Unit) {
 fun TypeChart() {
     GameCard {
         Element.typed.forEach { t ->
-            val b = t.beats ?: return@forEach
             Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconText(t.icon(), t.label, tint = t.color(), fontSize = 13.sp, size = 14.dp)
-                Text("  beats  ", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                IconText(b.icon(), b.label, tint = b.color(), fontSize = 13.sp, size = 14.dp)
+                Box(Modifier.width(92.dp)) { IconText(t.icon(), t.label, tint = t.color(), fontSize = 13.sp, size = 14.dp) }
+                Text("beats ", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                t.beats.forEachIndexed { i, b ->
+                    if (i > 0) Text(" & ", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconText(b.icon(), b.label, tint = b.color(), fontSize = 13.sp, size = 14.dp)
+                }
             }
         }
         Text(
-            "Super effective hits deal ×1.5; hitting a type that beats yours deals ×0.67. " +
+            "Every type beats two types and is weak to two. Super effective hits deal ×1.5; hitting a type that beats yours deals ×0.67. " +
                 "Moves matching the monster's own type get +20%. Normal moves are neutral against everything.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

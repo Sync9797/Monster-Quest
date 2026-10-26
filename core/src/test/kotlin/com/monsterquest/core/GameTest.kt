@@ -253,14 +253,14 @@ class GameTest {
     }
 
     @Test
-    fun sixtyFiveMonstersWithEvolutionLines() {
-        assertEquals(74, Bestiary.all.size)
-        assertEquals(74, Bestiary.all.map { it.id }.toSet().size)
+    fun allMonstersWithEvolutionLines() {
+        assertEquals(83, Bestiary.all.size)
+        assertEquals(83, Bestiary.all.map { it.id }.toSet().size)
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
-        assertEquals(14, lines.values.count { it.size == 3 })
-        // Starters are #1, #4 and #7, each a three-stage line.
-        assertEquals(GameEngine.starters, listOf(Bestiary.all[0].id, Bestiary.all[3].id, Bestiary.all[6].id))
+        assertEquals(17, lines.values.count { it.size == 3 })
+        // Starters are #1, #4, #7 and #10, each a three-stage line.
+        assertEquals(GameEngine.starters, listOf(Bestiary.all[0].id, Bestiary.all[3].id, Bestiary.all[6].id, Bestiary.all[9].id))
         GameEngine.starters.forEach { assertEquals(3, Bestiary.lineOf(Bestiary.get(it)).size) }
         // The newer lines evolve like the hounds.
         assertEquals("sludgeon", Monster.create(Bestiary.get("goopling"), 16, rng).speciesId)
@@ -288,16 +288,45 @@ class GameTest {
     }
 
     @Test
-    fun rockPaperScissorsTypes() {
+    fun typesAreBalanced() {
+        assertEquals(7, Element.typed.size)
         for (t in Element.typed) {
-            val beats = t.beats!!
-            assertEquals(1.5, t.multiplierAgainst(beats))
-            assertTrue(beats.multiplierAgainst(t) < 1.0)
-            assertEquals(t, beats.weakTo)
+            // Every type: strong vs exactly 2, weak to exactly 2, neutral to the other 2 (and itself).
+            assertEquals(2, t.beats.size, "$t beats")
+            assertEquals(2, t.weakTo.size, "$t weak to")
+            assertTrue(t.beats.none { it in t.weakTo })
+            for (b in t.beats) {
+                assertEquals(1.5, t.multiplierAgainst(b))
+                assertTrue(b.multiplierAgainst(t) < 1.0)
+            }
+            assertEquals(2, Element.typed.count { t.multiplierAgainst(it) == 1.0 && it != t })
         }
+        // Earth: grass and stone. Strong vs Water, weak to Fire.
+        assertEquals(1.5, Element.EARTH.multiplierAgainst(Element.WATER))
+        assertEquals(1.5, Element.FIRE.multiplierAgainst(Element.EARTH))
+        // Classic pairs kept.
         assertEquals(1.5, Element.ELECTRIC.multiplierAgainst(Element.WATER))
+        assertEquals(1.5, Element.WATER.multiplierAgainst(Element.FIRE))
+        assertEquals(1.5, Element.FIRE.multiplierAgainst(Element.CORRUPT))
         assertEquals(1.5, Element.GAS.multiplierAgainst(Element.ELECTRIC))
-        assertEquals(1.0, Element.FIRE.multiplierAgainst(Element.ELECTRIC))
+        // Every type has monsters, and Earth has its moves.
+        assertTrue(Element.typed.all { e -> Bestiary.wild.count { it.element == e } >= 6 })
+        assertEquals(8, Moves.learnsets.getValue(Element.EARTH).size)
+    }
+
+    @Test
+    fun earthMovesHealAndRecharge() {
+        val treant = Monster.create(Bestiary.get("ancient_treant"), 45, Random(1)).copy(moves = listOf("mega_sap", "mulch", "leaf_storm"))
+        val s = started().let { it.copy(monsters = listOf(treant), party = listOf(treant.uid)) }
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 10, Random(2)), EncounterType.WILD, rng = Random(3))
+        val me = b.allies.first { it.key == treant.uid }
+        me.hp = me.maxHp / 2
+        var guard = 0
+        while (b.current?.key != treant.uid && guard++ < 20) b.act(BattleAction.Defend)
+        val before = me.hp
+        b.act(BattleAction.UseMove("mulch"))
+        assertTrue(me.hp > before)
+        assertTrue(b.log.any { it.contains("restores itself") })
     }
 
     @Test
@@ -432,7 +461,7 @@ class GameTest {
         val short = (1..2000).count { LootBoxes.roll(15, Random(it)) != BoxRarity.COMMON }
         val long = (1..2000).count { LootBoxes.roll(120, Random(it)) != BoxRarity.COMMON }
         assertTrue(long > short)
-        assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.GAS))
+        assertEquals(1.5, Element.FLIGHT.multiplierAgainst(Element.ELECTRIC))
     }
 
     @Test
@@ -1092,7 +1121,7 @@ class GameTest {
     fun startersArePseudoLegendary() {
         // Monsters fight with HP, Attack (their better of Attack/Magic), Defense and Speed.
         fun total(id: String) = Bestiary.get(id).base.let { it.hp + maxOf(it.attack, it.magic) + it.defense + it.speed }
-        val finals = listOf("thunderhorn", "infernodrake", "maelstrom_serpent")
+        val finals = listOf("thunderhorn", "infernodrake", "maelstrom_serpent", "terraursa")
         val otherFinals = Bestiary.all.filter { !it.bossOnly && it.evolvesTo == null && it.stages > 1 && it.id !in finals }
         val legendaries = Bestiary.all.filter { it.bossOnly }
         finals.forEach { f ->

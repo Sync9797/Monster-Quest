@@ -48,6 +48,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     DROP(fill("M12 2c4 6 7 9 7 13a7 7 0 0 1-14 0c0-4 3-7 7-13z")),
     GAS(fill("M7 19a4.5 4.5 0 0 1-.6-9 5.5 5.5 0 0 1 10.6-1A4.5 4.5 0 0 1 17 19z"), cut("M8 15c2-2 5-2 8 0")),
     MOON(fill("M15 3a9 9 0 1 0 6 15A7 7 0 0 1 15 3z")),
+    LEAF(fill("M5 19C5 10 11 4 20 4c0 9-6 15-15 15z"), cut("M6 18L15 9")),
     RING(line("M12 5a7 7 0 1 0 .01 0z")),
     RAIN(fill("M7 13a4 4 0 0 1-.5-8 5 5 0 0 1 9.5-1A4 4 0 0 1 17 13z"), line("M8 16l-1 3M12 16l-1 3M16 16l-1 3")),
     SUN(fill("M12 7.5a4.5 4.5 0 1 0 .01 0z"), line("M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8")),

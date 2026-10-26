@@ -251,6 +251,30 @@ private fun DrawScope.drawBolt(element: Element, color: Color, from: Offset, to:
                 drawCircle(color, r * 0.3f, head + Offset(cos(a) * r * 2f, sin(a) * r * 2f))
             }
         }
+        Element.EARTH -> {
+            // A spinning rock trailed by leaves.
+            for (i in 1..5) {
+                val leaf = lerp(from, to, (eased - i * 0.07f).coerceAtLeast(0f))
+                val a = t * 12 + i
+                drawOval(
+                    Color(0xFFCFE09A).copy(alpha = 0.75f - i * 0.12f),
+                    topLeft = leaf + Offset(cos(a) * 6.dp.toPx() - 5.dp.toPx(), sin(a) * 6.dp.toPx() - 3.dp.toPx()),
+                    size = androidx.compose.ui.geometry.Size(10.dp.toPx(), 6.dp.toPx()),
+                )
+            }
+            val rock = Path().apply {
+                val spin = t * 8
+                for (k in 0 until 6) {
+                    val ang = spin + k * PI.toFloat() / 3
+                    val rad = r * (if (k % 2 == 0) 1.1f else 0.85f)
+                    val pt = head + Offset(cos(ang) * rad, sin(ang) * rad)
+                    if (k == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+                }
+                close()
+            }
+            drawPath(rock, Color(0xFF7A6A4E))
+            drawPath(rock, Color(0xFF2E3D1C), style = Stroke(2.dp.toPx()))
+        }
         Element.NEUTRAL -> {
             drawCircle(color.copy(alpha = 0.45f), r * 1.8f, head)
             drawCircle(color, r * 0.9f, head)

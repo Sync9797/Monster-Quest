@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.2
+
+- **New Earth type** (stone and grass). To keep types balanced there are now
+  seven, and every type is strong against two and weak to two (see the Type
+  chart). Earth beats Flight and Water, and is weak to Fire and Gas. Classic
+  pairs stay (Electric > Water > Fire > Corrupt, Gas > Electric); Flight no
+  longer beats Gas.
+- **Earth moves:** Seed Bomb (40), Mulch (heals 10%), Sap (40, heals 10%),
+  Rock Throw (60), Mega Sap (60, heals 25%), Vine Whip (80), Earthquake (100)
+  and Leaf Storm (120, must rest next turn).
+- **Earth monsters:** a fourth starter, #10 Mosscub > Grovebear > Terraursa
+  (pseudo-legendary); the Twiglet tree line (Twiglet > Barkwarden > Ancient
+  Treant); and the Moss hound breed. 83 monsters in all.
+- Earth monsters are a little more common at dawn.
+
 ## 0.5.1
 
 - **Existing players get a new starter too:** if you started before 0.5, the

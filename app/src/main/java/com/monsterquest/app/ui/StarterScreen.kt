@@ -74,7 +74,7 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                                     fontSize = 13.sp,
                                 )
                                 Text(
-                                    "Strong vs ${sp.element.beats?.label} • Weak to ${sp.element.weakTo?.label}",
+                                    "Strong vs ${sp.element.beats.joinToString(" & ") { it.label }} • Weak to ${sp.element.weakTo.joinToString(" & ") { it.label }}",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
