@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.0
+
+- **Due dates:** give a to-do a due date and time: quick picks (in 1 hour,
+  this evening, tomorrow 9 AM), any date and time, or none. Calendar quests
+  are due when the event starts.
+- **Priority:** Low, Normal or High, separate from difficulty (which still
+  sets the reward). High-priority quests get a red "!" and stripe.
+- **An organized list:** active quests are grouped like a planner: Overdue,
+  Happening now, Due within the hour, Later today, Tomorrow, This week, Later
+  and No due date. Within each group the highest priority comes first, then
+  the soonest due.
+- **Due within the hour:** those quests glow amber with a live "in 25 min"
+  countdown, get their own group at the top, and a banner lists them. Overdue
+  quests turn red.
+- **Edit quests:** tap a to-do to change its name, priority, due date or
+  difficulty (calendar quests: priority).
+
 ## 1.5.0
 
 - **Level-up banners:** after a battle, every fighter who levelled up (your

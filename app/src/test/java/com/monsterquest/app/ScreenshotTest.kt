@@ -114,8 +114,9 @@ abstract class ScreenshotBase(private val device: String) {
             parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
             inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
-                QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY),
-                QuestTask("b", "Finish quarterly report", Difficulty.HARD),
+                QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY, dueMs = now + 20 * 60_000),
+                QuestTask("b", "Finish quarterly report", Difficulty.HARD, dueMs = now + 26 * 3_600_000L, priority = com.monsterquest.core.Priority.HIGH),
+                QuestTask("e", "Water the plants", Difficulty.EASY, priority = com.monsterquest.core.Priority.LOW),
                 QuestTask("c", "Dentist appointment", Difficulty.NORMAL, TaskSource.CALENDAR, now + 3_600_000, now + 5_400_000, "Personal"),
                 QuestTask("d", "Gym", Difficulty.NORMAL, completedAtMs = now - 1000),
             ),
@@ -153,7 +154,13 @@ abstract class ScreenshotBase(private val device: String) {
     }
 
     @Test fun starter() { val v = vm(GameState()); shot("01_starter") { AppRoot(v) } }
-    @Test fun quests() { val v = vm(); shot("02_quests") { AppRoot(v, Tab.QUESTS) } }
+    @Test fun quests() {
+        val v = vm()
+        shot("02_quests") { AppRoot(v, Tab.QUESTS) }
+        // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
+        rule.onNodeWithText("2 quests due within the hour").assertExists()
+        rule.onNodeWithText("Due within the hour").assertExists()
+    }
     @Test fun hero() { val v = vm(); shot("03_hero") { AppRoot(v, Tab.HERO) } }
     @Test fun monsters() { val v = vm(); shot("04_monsters") { AppRoot(v, Tab.MONSTERS) } }
     @Test fun bag() { val v = vm(); shot("05_bag") { AppRoot(v, Tab.BAG) } }

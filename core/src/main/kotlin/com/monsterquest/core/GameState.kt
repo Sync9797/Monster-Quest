@@ -122,6 +122,10 @@ enum class Difficulty(val label: String, val xp: Int, val gold: Int) {
 @Serializable
 enum class TaskSource { MANUAL, CALENDAR }
 
+/** How urgent a quest is (separate from [Difficulty], which sets the reward). */
+@Serializable
+enum class Priority(val label: String) { LOW("Low"), NORMAL("Normal"), HIGH("High") }
+
 @Serializable
 data class QuestTask(
     val id: String,
@@ -135,8 +139,14 @@ data class QuestTask(
     val completedAtMs: Long? = null,
     /** When a manual quest was added (calendar quests use [startMs]). */
     val createdAtMs: Long? = null,
+    /** When a to-do is due (calendar quests are due when they start). */
+    val dueMs: Long? = null,
+    val priority: Priority = Priority.NORMAL,
 ) {
     val completed: Boolean get() = completedAtMs != null
+
+    /** The time this quest is due by: its due date, or a calendar event's start. */
+    val dueAt: Long? get() = dueMs ?: startMs
 }
 
 // ---------------------------------------------------------------------------

@@ -139,7 +139,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- quests ------------------------------------------------------------
 
-    fun addTask(title: String, difficulty: Difficulty) = apply(GameEngine.addTask(state, title, difficulty))
+    fun addTask(title: String, difficulty: Difficulty, dueMs: Long? = null, priority: com.monsterquest.core.Priority = com.monsterquest.core.Priority.NORMAL) =
+        apply(GameEngine.addTask(state, title, difficulty, dueMs = dueMs, priority = priority))
+    fun editTask(id: String, title: String, difficulty: Difficulty, dueMs: Long?, priority: com.monsterquest.core.Priority) =
+        apply(GameEngine.editTask(state, id, title, difficulty, dueMs, priority))
     fun deleteTask(id: String) = apply(GameEngine.deleteTask(state, id))
     fun completeTask(id: String) = apply(GameEngine.completeTask(state, id, System.currentTimeMillis()))
 

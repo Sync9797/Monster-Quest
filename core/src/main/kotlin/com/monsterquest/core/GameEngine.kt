@@ -190,11 +190,23 @@ object GameEngine {
         difficulty: Difficulty,
         rng: Random = Random.Default,
         nowMs: Long = System.currentTimeMillis(),
+        dueMs: Long? = null,
+        priority: Priority = Priority.NORMAL,
     ): Update {
         val t = title.trim()
         if (t.isEmpty()) return Update(state, "Quest needs a name.")
-        val task = QuestTask(id = newId(rng), title = t, difficulty = difficulty, createdAtMs = nowMs)
+        val task = QuestTask(id = newId(rng), title = t, difficulty = difficulty, createdAtMs = nowMs, dueMs = dueMs, priority = priority)
         return Update(state.copy(tasks = state.tasks + task), "Quest added: $t")
+    }
+
+    /** Changes a to-do's name, difficulty, due date and priority (calendar quests: priority only). */
+    fun editTask(state: GameState, id: String, title: String, difficulty: Difficulty, dueMs: Long?, priority: Priority): Update {
+        val task = state.tasks.find { it.id == id } ?: return Update(state, "Quest not found.")
+        val t = title.trim()
+        if (t.isEmpty()) return Update(state, "Quest needs a name.")
+        val updated = if (task.source == TaskSource.CALENDAR) task.copy(priority = priority)
+        else task.copy(title = t, difficulty = difficulty, dueMs = dueMs, priority = priority)
+        return Update(state.copy(tasks = state.tasks.map { if (it.id == id) updated else it }), "Quest updated.")
     }
 
     fun deleteTask(state: GameState, id: String): Update =
@@ -233,6 +245,8 @@ object GameEngine {
     fun syncCalendar(state: GameState, events: List<CalendarEvent>): Update {
         val completedKeys = state.tasks.filter { it.source == TaskSource.CALENDAR && it.completed }.map { it.id }.toSet()
         val kept = state.tasks.filter { it.source == TaskSource.MANUAL || it.completed }
+        // Priorities set on calendar quests survive a re-sync.
+        val priorities = state.tasks.filter { it.source == TaskSource.CALENDAR }.associate { it.id to it.priority }
         val fresh = events.filter { it.key !in completedKeys }.map {
             QuestTask(
                 id = it.key,
@@ -242,6 +256,7 @@ object GameEngine {
                 startMs = it.startMs,
                 endMs = it.endMs,
                 calendarName = it.calendarName,
+                priority = priorities[it.key] ?: Priority.NORMAL,
             )
         }
         return Update(state.copy(tasks = kept + fresh), "Synced ${fresh.size} calendar quest(s).")

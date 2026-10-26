@@ -49,6 +49,26 @@ import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Difficulty
 import com.monsterquest.core.QuestTask
+import kotlinx.coroutines.delay
+import com.monsterquest.core.Priority
+import com.monsterquest.core.Planner
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
+import android.app.TimePickerDialog
+import android.app.DatePickerDialog
 import com.monsterquest.core.TaskSource
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,6 +80,15 @@ fun QuestsScreen(vm: GameViewModel) {
     val context = LocalContext.current
     val state = vm.state
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<QuestTask?>(null) }
+    // Tick so "due in" times and the within-the-hour highlight stay current.
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            now = System.currentTimeMillis()
+        }
+    }
     var showDone by remember { mutableStateOf(false) }
 
     // Events from the phone's calendar become quests automatically.
@@ -74,7 +103,9 @@ fun QuestsScreen(vm: GameViewModel) {
         if (hasCalendar && state.settings.calendarAutoSync) vm.syncCalendar(quiet = true)
     }
 
-    val pending = state.tasks.filter { !it.completed }.sortedWith(compareBy<QuestTask> { it.startMs ?: Long.MAX_VALUE }.thenBy { it.title })
+    val pending = state.tasks.filter { !it.completed }
+    val sections = Planner.sections(state.tasks, now)
+    val dueSoon = pending.filter { Planner.isDueSoon(it, now) }
     val done = state.tasks.filter { it.completed }.sortedByDescending { it.completedAtMs }
 
     // One column on phones; more side by side when unfolded.
@@ -117,6 +148,10 @@ fun QuestsScreen(vm: GameViewModel) {
                 DashboardCard(vm)
                 Spacer(Modifier.height(10.dp))
                 FocusCard(vm)
+                if (dueSoon.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    DueSoonBanner(dueSoon, now)
+                }
                 SectionTitle("Active quests (${pending.size})")
             }
         }
@@ -128,8 +163,18 @@ fun QuestsScreen(vm: GameViewModel) {
                 )
             }
         }
-        items(pending, key = { it.id }) { task ->
-            QuestRow(task, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
+        sections.forEach { sec ->
+            item(key = "sec_${sec.group}", span = { GridItemSpan(maxLineSpan) }) {
+                GroupHeader(sec.group, sec.tasks.size)
+            }
+            items(sec.tasks, key = { it.id }) { task ->
+                QuestRow(
+                    task, now,
+                    onClick = { editing = task },
+                    onComplete = { vm.completeTask(task.id) },
+                    onDelete = { vm.deleteTask(task.id) },
+                )
+            }
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -150,30 +195,123 @@ fun QuestsScreen(vm: GameViewModel) {
         }
     }
 
-    if (showAdd) AddQuestDialog(onDismiss = { showAdd = false }, onAdd = { t, d -> vm.addTask(t, d); showAdd = false })
+    if (showAdd) {
+        QuestEditor(null, onDismiss = { showAdd = false }) { t, d, due, p -> vm.addTask(t, d, due, p); showAdd = false }
+    }
+    editing?.let { task ->
+        QuestEditor(task, onDismiss = { editing = null }) { t, d, due, p -> vm.editTask(task.id, t, d, due, p); editing = null }
+    }
 }
 
 private val timeFmt = SimpleDateFormat("EEE h:mm a", Locale.getDefault())
 
-private fun whenText(task: QuestTask): String? {
-    val start = task.startMs ?: return null
+private fun whenText(start: Long): String {
     val today = Calendar.getInstance()
     val cal = Calendar.getInstance().apply { timeInMillis = start }
     val sameDay = today.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
         today.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR)
-    val prefix = if (sameDay) "Today " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(start))
-    else timeFmt.format(Date(start))
-    return prefix
+    val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+    val nextDay = tomorrow.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+        tomorrow.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR)
+    val clock = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(start))
+    return when {
+        sameDay -> "today $clock"
+        nextDay -> "tomorrow $clock"
+        else -> timeFmt.format(Date(start))
+    }
+}
+
+private fun Priority.color(): Color = when (this) {
+    Priority.HIGH -> HpRed
+    Priority.NORMAL -> Gold
+    Priority.LOW -> Color(0xFF7D8A87)
+}
+
+private fun groupColor(g: Planner.Group): Color? = when (g) {
+    Planner.Group.OVERDUE -> HpRed
+    Planner.Group.SOON, Planner.Group.HAPPENING -> HpYellow
+    else -> null
 }
 
 @Composable
-private fun QuestRow(task: QuestTask, onComplete: () -> Unit, onDelete: () -> Unit) {
-    GameCard(Modifier.padding(vertical = 4.dp)) {
+private fun GroupHeader(g: Planner.Group, count: Int) {
+    val color = groupColor(g) ?: Gold
+    Row(Modifier.padding(top = 10.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (g == Planner.Group.SOON || g == Planner.Group.OVERDUE) {
+            GIcon(GameIcon.HOURGLASS, Modifier.size(16.dp), color)
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(g.label, color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text("  $count", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+    }
+}
+
+/** Top-of-list reminder for anything due within the hour. */
+@Composable
+private fun DueSoonBanner(tasks: List<QuestTask>, now: Long) {
+    GameCard(border = HpYellow) {
+        IconText(
+            GameIcon.HOURGLASS,
+            if (tasks.size == 1) "1 quest due within the hour" else "${tasks.size} quests due within the hour",
+            tint = HpYellow, textColor = HpYellow, bold = true,
+        )
+        tasks.sortedBy { it.dueAt }.take(4).forEach { t ->
+            Text("• ${t.title} (${Planner.relative(t.dueAt ?: now, now)})", fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+    }
+}
+
+private fun dueText(task: QuestTask, now: Long): String? {
+    val due = task.dueAt ?: return null
+    val label = whenText(due)
+    return when {
+        Planner.isOverdue(task, now) -> "Overdue • was due $label"
+        task.source == TaskSource.CALENDAR && due <= now -> "Happening now • ends ${task.endMs?.let { whenText(it) } ?: ""}".trim()
+        else -> (if (task.source == TaskSource.CALENDAR) "Starts $label" else "Due $label") + " • " + Planner.relative(due, now)
+    }
+}
+
+@Composable
+private fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplete: () -> Unit, onDelete: () -> Unit) {
+    val soon = Planner.isDueSoon(task, now) || (task.source == TaskSource.CALENDAR && Planner.groupOf(task, now) == Planner.Group.HAPPENING)
+    val overdue = Planner.isOverdue(task, now)
+    // Due within the hour: an amber card that gently pulses. Overdue: red.
+    val pulse by rememberInfiniteTransition(label = "due").animateFloat(
+        0.45f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "duePulse",
+    )
+    val border = when {
+        overdue -> HpRed
+        soon -> HpYellow.copy(alpha = pulse)
+        else -> null
+    }
+    GameCard(Modifier.padding(vertical = 4.dp).clickable(onClick = onClick), border = border) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Priority stripe.
+            Box(Modifier.width(4.dp).height(44.dp).clip(RoundedCornerShape(2.dp)).background(task.priority.color()))
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(task.title, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (task.priority == Priority.HIGH) {
+                        Text("!", color = HpRed, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(task.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                dueText(task, now)?.let {
+                    Text(
+                        it,
+                        fontSize = 12.sp,
+                        fontWeight = if (soon || overdue) FontWeight.Bold else FontWeight.Normal,
+                        color = when {
+                            overdue -> HpRed
+                            soon -> HpYellow
+                            else -> MpBlue
+                        },
+                    )
+                }
                 val sub = buildList {
-                    if (task.source == TaskSource.CALENDAR) add(whenText(task) ?: "Calendar")
+                    if (task.source == TaskSource.CALENDAR) add(task.calendarName ?: "Calendar")
+                    if (task.priority != Priority.NORMAL) add("${task.priority.label} priority")
                     add(task.difficulty.label)
                     add("+${task.difficulty.xp} XP")
                     add("+${task.difficulty.gold} gold")
@@ -190,39 +328,105 @@ private fun QuestRow(task: QuestTask, onComplete: () -> Unit, onDelete: () -> Un
     }
 }
 
+/** Quick due-date choices: in an hour, this evening, tomorrow morning. */
+private fun quickDue(kind: Int, now: Long): Long {
+    val c = Calendar.getInstance().apply { timeInMillis = now; set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+    when (kind) {
+        0 -> return now + 3_600_000L
+        1 -> {
+            c.set(Calendar.MINUTE, 0)
+            c.set(Calendar.HOUR_OF_DAY, if (c.get(Calendar.HOUR_OF_DAY) < 17) 18 else 21)
+        }
+        else -> {
+            c.add(Calendar.DAY_OF_YEAR, 1)
+            c.set(Calendar.HOUR_OF_DAY, 9)
+            c.set(Calendar.MINUTE, 0)
+        }
+    }
+    return c.timeInMillis
+}
+
+/** Add a to-do, or edit one: name, priority, difficulty and due date. Calendar quests can only change priority. */
 @Composable
-private fun AddQuestDialog(onDismiss: () -> Unit, onAdd: (String, Difficulty) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
+private fun QuestEditor(
+    task: QuestTask?,
+    onDismiss: () -> Unit,
+    onSave: (String, Difficulty, Long?, Priority) -> Unit,
+) {
+    val context = LocalContext.current
+    val calendar = task?.source == TaskSource.CALENDAR
+    var title by remember { mutableStateOf(task?.title ?: "") }
+    var difficulty by remember { mutableStateOf(task?.difficulty ?: Difficulty.NORMAL) }
+    var priority by remember { mutableStateOf(task?.priority ?: Priority.NORMAL) }
+    var due by remember { mutableStateOf(task?.dueMs) }
+    val now = System.currentTimeMillis()
+    fun pickDateTime() {
+        val c = Calendar.getInstance().apply { timeInMillis = due ?: quickDue(1, now) }
+        DatePickerDialog(context, { _, y, m, d ->
+            TimePickerDialog(context, { _, hh, mm ->
+                due = Calendar.getInstance().apply { set(y, m, d, hh, mm, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+            }, c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), android.text.format.DateFormat.is24HourFormat(context)).show()
+        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New to-do") },
+        title = { Text(if (task == null) "New to-do" else if (calendar) "Calendar quest" else "Edit to-do") },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("What do you need to do?") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text("Difficulty", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (calendar) {
+                    Text(task!!.title, fontWeight = FontWeight.SemiBold)
+                    task.dueAt?.let { Text("Starts ${whenText(it)}", fontSize = 13.sp, color = MpBlue) }
+                    Text("Time and name come from your calendar; you can set its priority.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("What do you need to do?") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Text("Priority", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Difficulty.entries.forEach { d ->
-                        SmallButton(d.label, { difficulty = d }, Modifier.weight(1f), outlined = d != difficulty)
+                    Priority.entries.reversed().forEach { p ->
+                        SmallButton(p.label, { priority = p }, Modifier.weight(1f), outlined = p != priority)
                     }
                 }
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    "Reward: +${difficulty.xp} XP, +${difficulty.gold} gold, +1 hunt token",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (!calendar) {
+                    Text("Due", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    Text(
+                        due?.let { "${whenText(it)} (${Planner.relative(it, now)})" } ?: "No due date",
+                        color = if (due != null) MpBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        SmallButton("1 hour", { due = quickDue(0, now) }, Modifier.weight(1f), outlined = true)
+                        SmallButton(if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) < 17) "6 PM" else "9 PM", { due = quickDue(1, now) }, Modifier.weight(1f), outlined = true)
+                        SmallButton("Tmrw 9 AM", { due = quickDue(2, now) }, Modifier.weight(1f), outlined = true)
+                    }
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        SmallButton("Pick date & time", ::pickDateTime, Modifier.weight(2f), outlined = true)
+                        SmallButton("None", { due = null }, Modifier.weight(1f), outlined = true)
+                    }
+                    Text("Difficulty", modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Difficulty.entries.forEach { d ->
+                            SmallButton(d.label, { difficulty = d }, Modifier.weight(1f), outlined = d != difficulty)
+                        }
+                    }
+                    Text(
+                        "Reward: +${difficulty.xp} XP, +${difficulty.gold} gold, +1 hunt token",
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onAdd(title, difficulty) }, enabled = title.isNotBlank()) { Text("Add") }
+            TextButton(onClick = { onSave(title, difficulty, due, priority) }, enabled = calendar || title.isNotBlank()) {
+                Text(if (task == null) "Add" else "Save")
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

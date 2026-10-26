@@ -37,6 +37,8 @@ private val topics = listOf(
         GameIcon.QUESTS, "Quests: get work done",
         listOf(
             "Your phone's calendar events become quests automatically. Use + To-do for anything else.",
+            "Give to-dos a due date and a priority (tap one to edit it). The list is grouped like a planner: overdue, due within the hour, later today, tomorrow, this week and later, most important first.",
+            "Anything due within the hour glows amber with a countdown and is listed in a banner at the top; overdue quests turn red.",
             "Completing a quest gives XP, gold and a hunt token (spend tokens on the Hero tab to find a monster anywhere).",
             "Finishing your weekday quests opens the Silver (Tue/Thu) and Gold (weekend) shrines.",
             "The dashboard under This week shows your steps, streak and a calendar of days you got things done.",

@@ -1059,6 +1059,44 @@ class GameTest {
     }
 
     @Test
+    fun plannerGroupsByDueDateAndPriority() {
+        val zone = java.time.ZoneOffset.UTC
+        val now = java.time.LocalDateTime.of(2026, 10, 26, 12, 0).toInstant(zone).toEpochMilli()
+        val h = 3_600_000L
+        var s = started()
+        fun add(title: String, due: Long?, p: Priority = Priority.NORMAL) {
+            s = GameEngine.addTask(s, title, Difficulty.NORMAL, Random(title.hashCode()), now, dueMs = due, priority = p).state
+        }
+        add("late", now - h)
+        add("soon", now + 20 * 60_000)
+        add("tonight low", now + 6 * h, Priority.LOW)
+        add("tonight high", now + 8 * h, Priority.HIGH)
+        add("tomorrow", now + 24 * h)
+        add("next week", now + 10 * 24 * h)
+        add("whenever", null)
+        val sections = Planner.sections(s.tasks, now, zone)
+        assertEquals(
+            listOf(Planner.Group.OVERDUE, Planner.Group.SOON, Planner.Group.TODAY, Planner.Group.TOMORROW, Planner.Group.LATER, Planner.Group.NO_DATE),
+            sections.map { it.group },
+        )
+        // Higher priority first within a group, even if it's due later.
+        assertEquals(listOf("tonight high", "tonight low"), sections.first { it.group == Planner.Group.TODAY }.tasks.map { it.title })
+        val soon = s.tasks.first { it.title == "soon" }
+        assertTrue(Planner.isDueSoon(soon, now))
+        assertFalse(Planner.isDueSoon(s.tasks.first { it.title == "tomorrow" }, now))
+        assertTrue(Planner.isOverdue(s.tasks.first { it.title == "late" }, now))
+        assertEquals("in 20 min", Planner.relative(soon.dueAt!!, now))
+        // Editing changes the due date and priority.
+        val edited = GameEngine.editTask(s, soon.id, "soon!", Difficulty.HARD, now + 2 * h, Priority.HIGH).state.tasks.first { it.id == soon.id }
+        assertEquals("soon!", edited.title)
+        assertEquals(Priority.HIGH, edited.priority)
+        assertEquals(Planner.Group.TODAY, Planner.groupOf(edited, now, zone))
+        // A calendar event in progress isn't overdue until it ends.
+        val meeting = QuestTask("cal", "Meeting", source = TaskSource.CALENDAR, startMs = now - 10 * 60_000, endMs = now + 50 * 60_000)
+        assertEquals(Planner.Group.HAPPENING, Planner.groupOf(meeting, now, zone))
+    }
+
+    @Test
     fun packsAndAmbushes() {
         val s = started()
         val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }
