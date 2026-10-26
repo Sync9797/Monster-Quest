@@ -123,7 +123,7 @@ private val topics = listOf(
             "Dark banners on the map are thug crews and villains, changing daily. Their monsters carry the shadow curse and can't be tamed.",
             "Beat the whole team in a row for gold, loot and parts. Then use a Restore Potion to try to free one: 75% of the time it joins you.",
             "Battling with a cursed monster slowly lifts the curse; then you choose one stat to make perfect.",
-            "Thugs also jump you while you walk, bringing one monster for each of yours and fighting alongside them. Their monsters can't be tamed.",
+            "Thugs also jump you while you walk, bringing one monster for each of yours and fighting alongside them: Brutes hit hard, Hexers cast dark magic and Cutthroats are quick and dodge. Their monsters can't be tamed.",
         ),
     ),
     HelpTopic(
@@ -132,6 +132,7 @@ private val topics = listOf(
             "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
             "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
             "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
+            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), or at once with an Ether.",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
             "A weapon of your class also adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off until you've fought 10 battles with that particular weapon.",
             "At level 15 pick a subclass: three per class, each with its own perks. Switching costs gold.",

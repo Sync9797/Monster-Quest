@@ -10,7 +10,7 @@ import com.monsterquest.app.ui.art.drawVillainOn
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
-import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.ThugArt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.color
 import com.monsterquest.app.ui.art.icon
@@ -566,13 +566,13 @@ private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.co
                 if (thug != null) {
                     // A thug and their crew: one monster for each of yours.
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
-                        HeroArt(com.monsterquest.core.HeroClass.ROGUE, Modifier.size(96.dp), portrait = false, outfit = THUG_OUTFIT)
+                        ThugArt(thug.cls, Modifier.size(96.dp))
                         group.forEach { m -> MonsterArt(m.species, Modifier.size(64.dp), shiny = m.shiny) }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("${thug.name} of the ${thug.crew} jumps you!", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    Text("${thug.title} of the ${thug.crew} jumps you!", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                     Text(
-                        "Lv ${thug.level} thug • ${group.size} monster${if (group.size == 1) "" else "s"}, one for each of yours • they fight together",
+                        "Lv ${thug.level} ${thug.kind.lowercase()} • ${group.size} monster${if (group.size == 1) "" else "s"}, one for each of yours • they fight together",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,

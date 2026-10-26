@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.15.0
+
+- **Energy carries over:** your Energy no longer refills after each
+  battle. It comes back slowly over time (all of it in 6 hours), faster by
+  walking (2 for every 100 steps), or all at once with an Ether, which now
+  works from the bag too. The Hero tab shows an Energy bar.
+- **Thugs look evil, and each kind is different:**
+  - **Brute** (warrior): horned iron helm, spiked shoulders, a spiked club.
+    Tough and hard-hitting, but slow.
+  - **Hexer** (mage): a tall crooked hood with nothing inside but glowing
+    eyes, a rune-scrawled robe and a skull staff. Casts Corrupt magic, but
+    is frail.
+  - **Cutthroat** (rogue): masked, with a blood-red sash and twin curved
+    daggers. Fast, dodges, and fights dirty.
+
+  All of them have glowing red eyes.
+
 ## 1.14.2
 
 - **Quest buttons:** "+ To-do" is gone. Things with a date go on your

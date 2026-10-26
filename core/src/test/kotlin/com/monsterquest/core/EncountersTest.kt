@@ -183,4 +183,52 @@ class EncountersTest {
             assertTrue(b.log.any { "hover breaks" in it })
         }
     }
+
+    @Test
+    fun energyCarriesOverAndRecoversWithTimeAndWalking() {
+        var s = withMonsters(1).copy(inventory = mapOf(Item.ETHER to 1))
+        val max = s.hero.maxMp
+        // Cast a spell, then win: the Energy spent stays spent.
+        val foe = Monster.create(Bestiary.get("emberkit"), 3, rng)
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1))
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+        b.act(BattleAction.CastSpell("ember_bolt"))
+        b.enemies.forEach { it.hp = 0 }
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        s = GameEngine.applyBattleResult(s, b.result(), 0).state
+        assertTrue(s.heroEnergyUsed > 0)
+        val used = s.heroEnergyUsed
+        // The next fight starts with that much less.
+        val next = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1))
+        assertEquals(max - used, next.allies.first().mp)
+
+        // Over time: all of it back in 6 hours (a little at a time).
+        var t = GameEngine.regenEnergy(s.copy(energyRegenMs = 1_000), 1_000)
+        t = GameEngine.regenEnergy(t, 1_000 + GameEngine.ENERGY_FULL_MS / max * 2)
+        assertEquals(used - 2, t.heroEnergyUsed)
+        t = GameEngine.regenEnergy(t, 1_000 + GameEngine.ENERGY_FULL_MS)
+        assertEquals(0, t.heroEnergyUsed)
+
+        // Walking is faster: 2 Energy every 100 steps.
+        val walked = GameEngine.walk(s, 100).state
+        assertEquals(used - GameEngine.ENERGY_PER_REWARD, walked.heroEnergyUsed)
+
+        // An Ether works outside battle too.
+        val ether = GameEngine.usePotion(s, Item.ETHER, Combatant.HERO_KEY).state
+        assertEquals(0, ether.heroEnergyUsed)
+        assertEquals(0, ether.count(Item.ETHER))
+    }
+
+    @Test
+    fun thugsFightTheirOwnWay() {
+        val brute = Combatant.fromThug(Thug("Brick", "Rats", 20, HeroClass.WARRIOR), "e")
+        val hexer = Combatant.fromThug(Thug("Vex", "Rats", 20, HeroClass.MAGE), "e")
+        val cut = Combatant.fromThug(Thug("Sly", "Rats", 20, HeroClass.ROGUE), "e")
+        assertTrue(brute.maxHp > cut.maxHp && cut.maxHp > hexer.maxHp)
+        assertTrue(hexer.speed > brute.speed && cut.speed > hexer.speed)
+        assertEquals(Element.CORRUPT, hexer.element)
+        assertTrue(cut.evasion > 0)
+        assertEquals("Brick the Brute", brute.name)
+        assertEquals(HeroClass.MAGE, hexer.heroClass)
+    }
 }

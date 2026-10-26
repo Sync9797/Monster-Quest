@@ -231,6 +231,8 @@ class Combatant(
             armor: List<Armor> = emptyList(),
             /** Second weapon (Kleptomaniac): part of its power counts. */
             offhand: Gear? = null,
+            /** Energy already spent before this battle (it doesn't come back between fights). */
+            energyUsed: Int = 0,
         ): Combatant {
             val cls = h.heroClass
             val perks = h.perks
@@ -252,7 +254,8 @@ class Combatant(
             return Combatant(
                 HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
                 attack.toInt().coerceAtLeast(1), magic.toInt().coerceAtLeast(1),
-                defense, ((h.speed + classStats) * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
+                defense, ((h.speed + classStats) * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp,
+                (h.maxMp - energyUsed).coerceIn(0, h.maxMp), true, emptyList(),
             ).apply {
                 attackElement = gear?.element ?: Element.NEUTRAL
                 evasion = h.evasion + armor.sumOf { it.type.evasionPercent } / 100.0 + perks.dodgePct / 100.0
@@ -280,16 +283,25 @@ class Combatant(
             }
         }
 
-        /** A thug: a scrappy fighter about as tough as a monster of their level, with dirty tricks. */
+        /**
+         * A thug: about as tough as a monster of their level, fighting their own way.
+         * Brutes hit hard and take a beating but are slow; Hexers cast dark magic
+         * but are frail; Cutthroats are quick, dodge, and fight dirty.
+         */
         fun fromThug(t: Thug, key: String): Combatant {
-            val hp = 50 + t.level * 9
+            val lv = t.level
+            data class Build(val hp: Int, val atk: Int, val def: Int, val spd: Int, val element: Element, val moves: List<String>, val dodge: Double)
+            val b = when (t.cls) {
+                HeroClass.WARRIOR -> Build(70 + lv * 12, 18 + lv * 2, 15 + lv * 2, 8 + lv * 3 / 4, Element.NEUTRAL, listOf("headbutt", "ground_pound", "intimidate", "bite"), 0.0)
+                HeroClass.MAGE -> Build(45 + lv * 8, 18 + lv * 5 / 2, 10 + lv, 12 + lv, Element.CORRUPT, listOf("hex_barrage", "dark_wave", "nightmare", "soul_drain"), 0.0)
+                else -> Build(50 + lv * 9, 16 + lv * 2, 12 + lv * 3 / 2, 14 + lv * 5 / 4, Element.NEUTRAL, listOf("sucker_punch", "night_slash", "fury_swipes", "scare"), 0.1)
+            }
             return Combatant(
-                key, "${t.name} (thug)", Element.NEUTRAL, t.level, hp, hp,
-                16 + t.level * 2, 0, 12 + t.level * 3 / 2, 12 + t.level, 0, 0, false,
-                listOf("sucker_punch", "fury_swipes", "quick_strike", "scare").map { Moves.get(it) },
+                key, t.title, b.element, lv, b.hp, b.hp, b.atk, 0, b.def, b.spd, 0, 0, false, b.moves.map { Moves.get(it) },
             ).apply {
                 thug = true
-                heroClass = HeroClass.ROGUE
+                heroClass = t.cls
+                evasion = b.dodge
             }
         }
 
@@ -409,6 +421,8 @@ data class BattleResult(
     /** Missing HP per surviving ally key ("hero" or a monster uid), carried into the next battle. */
     val damage: Map<String, Int> = emptyMap(),
     val heroFell: Boolean = false,
+    /** Energy the hero has spent by the end of the battle. */
+    val heroEnergyUsed: Int = 0,
 )
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
@@ -454,6 +468,8 @@ class Battle(
     offhand: Gear? = null,
     /** Monsters in the swap slots: they can be sent in during the fight. */
     swaps: List<Monster> = emptyList(),
+    /** Energy the hero has already spent. */
+    heroEnergyUsed: Int = 0,
     /** A thug fighting alongside the enemy monsters. */
     val thug: Thug? = null,
 ) {
@@ -466,7 +482,7 @@ class Battle(
         Combatant.fromMonster(m, hpMultiplier = teamBoost, attackMultiplier = teamBoost, defenseMultiplier = teamBoost, speedMultiplier = teamBoost)
 
     private val team: MutableList<Combatant> =
-        (listOf(Combatant.fromHero(hero, gear, heroDamage, armor, offhand)) + fighters.map { ally(it) }).toMutableList()
+        (listOf(Combatant.fromHero(hero, gear, heroDamage, armor, offhand, heroEnergyUsed)) + fighters.map { ally(it) }).toMutableList()
 
     /** Your side as it stands: the hero, then the monsters fighting (swaps change who's here). */
     val allies: List<Combatant> get() = team
@@ -559,7 +575,7 @@ class Battle(
             EncounterType.BOX_BOSS -> "The loot box bursts open... ${enemy.name} (Lv ${enemy.level}) erupts out of it!"
             EncounterType.VILLAIN -> "A shadow-cursed ${enemy.name} (Lv ${enemy.level}) attacks! It can't be tamed."
             EncounterType.DEN -> "A fierce ${enemy.name} (Lv ${enemy.level}) charges out of its den! Beat it, then try to tame it."
-            EncounterType.THUG -> "${thug?.name ?: "A thug"} of the ${thug?.crew ?: "streets"} jumps you with " +
+            EncounterType.THUG -> "${thug?.title ?: "A thug"} of the ${thug?.crew ?: "streets"} jumps you with " +
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
         }
         log += intro
@@ -1369,7 +1385,7 @@ class Battle(
         val heroFell = allies.first().let { !it.alive }
         return BattleResult(
             outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
-            damage, heroFell,
+            damage, heroFell, allies.first().let { it.maxMp - it.mp },
         )
     }
 }

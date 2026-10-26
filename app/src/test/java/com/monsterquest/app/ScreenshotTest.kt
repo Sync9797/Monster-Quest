@@ -26,6 +26,8 @@ import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import com.monsterquest.app.ui.FoldInfo
@@ -595,13 +597,27 @@ abstract class ScreenshotBase(private val device: String) {
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(500)
-        rule.onNodeWithText("${thug.name} of the ${thug.crew} jumps you!").assertExists()
+        rule.onNodeWithText("${thug.title} of the ${thug.crew} jumps you!").assertExists()
         rule.mainClock.advanceTimeBy(2_500)
         rule.waitForIdle()
         val b = checkNotNull(v.battle) { "the fight starts on its own" }
         check(b.enemies.size == count + 1) { "the thug fights too: ${b.enemies.size}" }
         check(b.enemies.last().thug)
         capture("37_thug_battle", 1_000)
+    }
+
+    /** The three kinds of thug: Brute, Hexer and Cutthroat. */
+    @Test fun thugLooks() {
+        shot("41_thugs") {
+            androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxSize().background(androidx.compose.material3.MaterialTheme.colorScheme.background),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                listOf(com.monsterquest.core.HeroClass.WARRIOR, com.monsterquest.core.HeroClass.MAGE, com.monsterquest.core.HeroClass.ROGUE).forEach {
+                    com.monsterquest.app.ui.art.ThugArt(it, Modifier.weight(1f).aspectRatio(1f))
+                }
+            }
+        }
     }
 
     /** Two monsters wait in the swap slots; Swap sends one in. */

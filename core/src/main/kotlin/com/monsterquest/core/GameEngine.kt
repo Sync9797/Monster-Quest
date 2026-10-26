@@ -646,7 +646,26 @@ object GameEngine {
      * monster [REGEN_PERCENT_PER_HOUR]% of max HP. Knocked-out monsters
      * recover too and wake up at [WAKE_PERCENT]% (a Restore Potion is instant).
      */
-    fun regenerate(state: GameState, nowMs: Long): Update {
+    /** Energy fully recovers over this long at rest (walking is faster). */
+    const val ENERGY_FULL_MS = 6 * HOUR_MS
+    /** Energy back for every [STEPS_PER_REWARD] steps walked. */
+    const val ENERGY_PER_REWARD = 2
+
+    /** Energy comes back a point at a time: all of it over [ENERGY_FULL_MS]. */
+    fun regenEnergy(state: GameState, nowMs: Long): GameState {
+        val max = state.hero.maxMp.coerceAtLeast(1)
+        if (state.heroEnergyUsed <= 0 || state.energyRegenMs <= 0L || nowMs < state.energyRegenMs) return state.copy(energyRegenMs = nowMs)
+        val perPoint = ENERGY_FULL_MS / max
+        val points = ((nowMs - state.energyRegenMs) / perPoint).toInt()
+        if (points <= 0) return state
+        return state.copy(
+            heroEnergyUsed = (state.heroEnergyUsed - points).coerceAtLeast(0),
+            energyRegenMs = state.energyRegenMs + points * perPoint,
+        )
+    }
+
+    fun regenerate(state0: GameState, nowMs: Long): Update {
+        val state = regenEnergy(state0, nowMs)
         if (state.lastRegenMs <= 0L || nowMs < state.lastRegenMs) return Update(state.copy(lastRegenMs = nowMs), "")
         val hours = ((nowMs - state.lastRegenMs) / HOUR_MS).toInt()
         if (hours <= 0) return Update(state, "")
@@ -719,9 +738,15 @@ object GameEngine {
 
     /** Heal the hero ([Combatant.HERO_KEY]) or a monster with a potion outside battle. */
     fun usePotion(state: GameState, item: Item, target: String): Update {
-        if (item.kind != ItemKind.HEAL_HP) return Update(state, "${item.label} can't be used here.")
         if (state.count(item) <= 0) return Update(state, "No ${item.label} left.")
         val spent = state.copy(inventory = removeItems(state.inventory, mapOf(item to 1)))
+        // An Ether outside battle restores the hero's Energy.
+        if (item.kind == ItemKind.HEAL_MP) {
+            if (state.heroEnergyUsed <= 0) return Update(state, "Your Energy is already full.")
+            val back = minOf(state.heroEnergyUsed, item.power.toInt())
+            return Update(spent.copy(heroEnergyUsed = state.heroEnergyUsed - back), "${item.label}: you recover $back Energy.")
+        }
+        if (item.kind != ItemKind.HEAL_HP) return Update(state, "${item.label} can't be used here.")
         if (target == Combatant.HERO_KEY) {
             if (state.heroDamage <= 0) return Update(state, "You're already at full health.")
             val heal = maxOf(50, (state.hero.maxHp * item.power).toInt())
@@ -796,6 +821,7 @@ object GameEngine {
         ambush = ambush,
         offhand = state.offhandGear,
         swaps = state.swapMonsters.filter { it.uid !in Adventures.awayUids(state) },
+        heroEnergyUsed = state.heroEnergyUsed,
         thug = thug,
     )
 
@@ -889,6 +915,8 @@ object GameEngine {
         val heroMax = s.hero.maxHp
         s = s.copy(
             heroDamage = if (r.heroFell) heroMax - maxOf(1, heroMax / 10) else (r.damage[Combatant.HERO_KEY] ?: s.heroDamage),
+            // Energy doesn't come back after a fight; it recovers over time and by walking.
+            heroEnergyUsed = r.heroEnergyUsed.coerceIn(0, s.hero.maxMp),
             monsters = s.monsters.map { m -> r.damage[m.uid]?.let { m.copy(damage = it) } ?: m },
         )
         // Monsters knocked out stay down until a Restore Potion is used.
@@ -1397,7 +1425,10 @@ object GameEngine {
 
         val xp = rewards * XP_PER_REWARD
         val hp = rewards * HP_PER_REWARD
-        s = s.copy(heroDamage = (s.heroDamage - hp).coerceAtLeast(0))
+        s = s.copy(
+            heroDamage = (s.heroDamage - hp).coerceAtLeast(0),
+            heroEnergyUsed = (s.heroEnergyUsed - rewards * ENERGY_PER_REWARD).coerceAtLeast(0),
+        )
         val gain = addHeroXp(s, xp)
         s = gain.state
         val away = Adventures.awayUids(s)

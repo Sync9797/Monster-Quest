@@ -74,6 +74,9 @@ fun BagScreen(vm: GameViewModel) {
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (item.kind == ItemKind.HEAL_HP) SmallButton("Use", { using = item }, outlined = true)
+                    if (item.kind == ItemKind.HEAL_MP) {
+                        SmallButton("Use", { vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY) }, outlined = true, enabled = s.heroEnergyUsed > 0)
+                    }
                     if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
                     TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
                 }

@@ -71,6 +71,12 @@ fun HeroArt(cls: HeroClass, modifier: Modifier, portrait: Boolean = true, outfit
     ArtCanvas(modifier, "hero:$cls:$portrait:$outfit") { c, w, h -> drawHero(c, w, h, cls, portrait, outfit) }
 }
 
+/** An evil thug; the look depends on their class (Brute, Hexer or Cutthroat). */
+@Composable
+fun ThugArt(cls: HeroClass, modifier: Modifier) {
+    ArtCanvas(modifier, "thug:$cls") { c, w, h -> drawThug(c, w, h, cls) }
+}
+
 /** A monster's artwork. [dim] grays it out (fainted); [silhouette] shows only its shadow (not yet seen). */
 @Composable
 fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silhouette: Boolean = false, shiny: Boolean = false) {

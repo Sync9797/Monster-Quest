@@ -299,6 +299,10 @@ data class GameState(
     val parts: Map<WeaponType, Int> = emptyMap(),
     /** Damage the hero carries between battles (healed by walking and potions). */
     val heroDamage: Int = 0,
+    /** Energy the hero has spent and not yet recovered (back slowly over time, faster by walking, or with an Ether). */
+    val heroEnergyUsed: Int = 0,
+    /** Up to when Energy recovery over time has been counted. */
+    val energyRegenMs: Long = 0,
     /** Steps not yet turned into a reward (rewards come every 100 steps). */
     val stepBank: Int = 0,
     val stepsToday: Int = 0,
@@ -354,6 +358,9 @@ data class GameState(
     /** The party plus the swap slots: everyone who comes along to fights. */
     val team: List<String> get() = party + swaps
     fun count(item: Item): Int = inventory[item] ?: 0
+
+    /** The hero's Energy right now. */
+    val heroEnergy: Int get() = (hero.maxMp - heroEnergyUsed).coerceIn(0, hero.maxMp)
 
     /** Records every owned monster's species as caught (and seen) in the journal. */
     fun withJournal(): GameState {

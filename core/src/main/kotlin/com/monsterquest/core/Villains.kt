@@ -27,7 +27,18 @@ data class VillainCamp(
  * (as many as you have fighting, so it's an even match). Their monsters
  * won't leave them, so they can't be tamed.
  */
-data class Thug(val name: String, val crew: String, val level: Int)
+data class Thug(val name: String, val crew: String, val level: Int, val cls: HeroClass = HeroClass.ROGUE) {
+    /** What kind of thug: a Brute (warrior), a Hexer (mage) or a Cutthroat (rogue). */
+    val kind: String
+        get() = when (cls) {
+            HeroClass.WARRIOR -> "Brute"
+            HeroClass.MAGE -> "Hexer"
+            else -> "Cutthroat"
+        }
+
+    /** e.g. "Brick the Brute". */
+    val title: String get() = "$name the $kind"
+}
 
 /**
  * Thugs and villains roam the map, changing daily. Their monsters carry the
@@ -64,7 +75,8 @@ object Villains {
             val lvl = GameEngine.wildLevel(heroLevel, rng)
             Monster.create(Bestiary.randomWild(rng, lvl), lvl, rng)
         }
-        return Thug(thugLeaders.random(rng), thugCrews.random(rng), level) to team
+        val cls = listOf(HeroClass.WARRIOR, HeroClass.MAGE, HeroClass.ROGUE).random(rng)
+        return Thug(thugLeaders.random(rng), thugCrews.random(rng), level, cls) to team
     }
 
     /** Today's thugs and villains around a location (already-beaten ones excluded). */

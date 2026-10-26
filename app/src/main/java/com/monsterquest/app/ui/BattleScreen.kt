@@ -44,11 +44,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.monsterquest.app.ui.art.HeroOutfit
-import com.monsterquest.core.ArmorType
-import com.monsterquest.core.GearRarity
+import com.monsterquest.app.ui.art.ThugArt
 import com.monsterquest.core.HeroClass
 import com.monsterquest.core.MAX_PARTY_SIZE
-import com.monsterquest.core.WeaponType
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -529,16 +527,14 @@ private fun ActionButton(
     }
 }
 
-internal val THUG_OUTFIT = HeroOutfit(WeaponType.DAGGER, armor = ArmorType.LEATHER, cloak = GearRarity.NORMAL, hood = GearRarity.NORMAL)
-
 /** The hero or a monster, as drawn art. Fallen fighters are grayed out. */
 @Composable
 private fun FighterArt(f: FighterView, modifier: Modifier) {
     val cls = f.heroClass
     val sp = f.speciesId?.let { Bestiary.get(it) }
     when {
-        // A thug: a hooded brawler with a dagger and a ragged cloak.
-        f.thug -> HeroArt(HeroClass.ROGUE, modifier, portrait = false, outfit = THUG_OUTFIT)
+        // A thug: an evil look of their own for each class.
+        f.thug -> ThugArt(cls ?: HeroClass.ROGUE, modifier)
         cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
         sp != null -> MonsterArt(sp, modifier, dim = !f.alive, shiny = f.shiny)
     }

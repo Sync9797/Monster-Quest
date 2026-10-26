@@ -88,6 +88,9 @@ fun HeroScreen(vm: GameViewModel) {
             Spacer(Modifier.height(8.dp))
             LabeledBar("HP", h.maxHp - s.heroDamage, h.maxHp, hpColor((h.maxHp - s.heroDamage).toFloat() / h.maxHp))
             Spacer(Modifier.height(4.dp))
+            // Energy doesn't refill after battle: it comes back over time, faster by walking.
+            LabeledBar("Energy", s.heroEnergy, h.maxMp, MpBlue)
+            Spacer(Modifier.height(4.dp))
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
