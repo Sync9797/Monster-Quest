@@ -47,7 +47,7 @@ class GameTest {
         // Older saves with 6 slots move up to the new 20.
         val old = GameState.fromJson(GameState(version = 4, monsterCapacity = 9).toJson())
         assertEquals(23, old.monsterCapacity)
-        assertEquals(3, MAX_PARTY_SIZE)
+        assertEquals(5, MAX_PARTY_SIZE)
         assertEquals(1, s.pendingUpgrades)
     }
 
@@ -75,7 +75,7 @@ class GameTest {
     @Test
     fun partyLimitEnforced() {
         var s = started()
-        repeat(4) { s = s.copy(monsters = s.monsters + Monster.create(Bestiary.get("zapmouse"), 3, rng)) }
+        repeat(MAX_PARTY_SIZE + 1) { s = s.copy(monsters = s.monsters + Monster.create(Bestiary.get("zapmouse"), 3, rng)) }
         s.monsters.forEach { s = GameEngine.toggleParty(s, it.uid).state }
         assertEquals(MAX_PARTY_SIZE, s.party.size)
     }
@@ -1198,6 +1198,11 @@ class GameTest {
         // Rewards follow the enemy's strength: less alone, much more with a full team.
         assertTrue(TeamScaling.reward(1) < 1.0)
         assertTrue(TeamScaling.reward(4) > TeamScaling.reward(3) && TeamScaling.reward(3) > TeamScaling.reward(2))
+        // Teams of 5 and 6 face tougher monsters for more, and bosses scale up past 4 too.
+        assertTrue(TeamScaling.reward(6) > TeamScaling.reward(5) && TeamScaling.reward(5) > TeamScaling.reward(4))
+        assertTrue(TeamScaling.hp(6) > TeamScaling.hp(5) && TeamScaling.hp(5) > TeamScaling.hp(4))
+        assertEquals(1.0, TeamScaling.bossReward(3))
+        assertTrue(TeamScaling.bossReward(6) > TeamScaling.bossReward(5) && TeamScaling.bossReward(5) > 1.0)
         fun xpFor(n: Int): Int {
             val b = battle(n, EncounterType.WILD)
             var guard = 0
@@ -1238,7 +1243,7 @@ class GameTest {
         // A party member onto another slot: they swap.
         s = GameEngine.setPartySlot(s, ms[2].uid, 0).state
         assertEquals(listOf(ms[2].uid, ms[1].uid, ms[3].uid), s.party)
-        assertEquals(MAX_PARTY_SIZE, s.party.size)
+        assertEquals(3, s.party.size)
     }
 
     @Test

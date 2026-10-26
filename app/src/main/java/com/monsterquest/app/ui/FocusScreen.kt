@@ -35,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -116,7 +119,7 @@ fun FocusCard(vm: GameViewModel) {
  * timer (tap to brighten). Leaving the game fails the session.
  */
 @Composable
-fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit = {}) {
+fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit = {}, penaltyGold: Int? = null) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lastTouch by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(session.id) {
@@ -126,7 +129,8 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
             delay(1_000)
         }
     }
-    val dimmed = now - lastTouch > DIM_AFTER_MS
+    var confirmGiveUp by remember { mutableStateOf(false) }
+    val dimmed = !confirmGiveUp && now - lastTouch > DIM_AFTER_MS
     // Back would leave the game and fail the session; just brighten the screen instead.
     BackHandler { lastTouch = System.currentTimeMillis() }
     val activity = LocalContext.current as? Activity
@@ -148,6 +152,14 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
     }
     val left = (session.endMs - now).coerceAtLeast(0)
 
+    if (confirmGiveUp) {
+        GiveUpDialog(
+            left,
+            penaltyGold,
+            onKeepGoing = { confirmGiveUp = false; lastTouch = System.currentTimeMillis() },
+            onGiveUp = { confirmGiveUp = false; onGiveUp() },
+        )
+    }
     Surface(
         Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { lastTouch = System.currentTimeMillis() } },
         color = if (dimmed) Color.Black else MaterialTheme.colorScheme.background,
@@ -175,7 +187,7 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
                 )
                 if (!dimmed) {
                     Spacer(Modifier.height(24.dp))
-                    OutlinedButton(onClick = onGiveUp) { Text("Give up (−gold, −1 hunt token)") }
+                    OutlinedButton(onClick = { confirmGiveUp = true }) { Text("Give up (−gold, −1 hunt token)") }
                 }
             }
         }
@@ -183,3 +195,21 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
 }
 
 private const val DIM_AFTER_MS = 15_000L
+
+/** No accidental quitting: giving up a session has to be confirmed. */
+@Composable
+private fun GiveUpDialog(left: Long, penaltyGold: Int?, onKeepGoing: () -> Unit, onGiveUp: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onKeepGoing,
+        title = { Text("Give up this session?") },
+        text = {
+            Text(
+                "Only ${formatDuration(left)} to go. Giving up costs " +
+                    (penaltyGold?.let { "$it gold" } ?: "some gold") +
+                    " and a hunt token, and you won't win the loot box.",
+            )
+        },
+        confirmButton = { Button(onClick = onKeepGoing) { Text("Keep going") } },
+        dismissButton = { TextButton(onClick = onGiveUp) { Text("Give up", color = HpRed) } },
+    )
+}

@@ -102,7 +102,7 @@ abstract class ScreenshotBase(private val device: String) {
             pendingUpgrades = 1,
             starterChosen = true,
             monsters = monsters,
-            party = monsters.take(3).map { it.uid },
+            party = monsters.map { it.uid },
             gear = listOf(Armory.roll(12, Random(3), WeaponType.SWORD, luck = 40), Armory.roll(12, Random(4), WeaponType.STAFF)),
             lootBoxes = listOf(
                 LootBox("b1", BoxRarity.RARE, 0, unlocking = true, walkedMeters = 2_000.0),
@@ -175,6 +175,14 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm()
         v.startFocus(30)
         shot("09_focus") { AppRoot(v) }
+        // Giving up asks first, so it can't happen by accident.
+        rule.onNodeWithText("Give up (−gold, −1 hunt token)").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("Give up this session?").assertExists()
+        rule.onNodeWithText("Keep going").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("Give up this session?").assertDoesNotExist()
+        check(v.state.focus != null) { "Keep going must not end the session" }
     }
 
     @Test fun adventures() {

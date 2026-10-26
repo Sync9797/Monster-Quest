@@ -61,7 +61,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     }
     val focus = state.focus
     if (focus != null) {
-        FocusOverlay(focus, onGiveUp = vm::giveUpFocus, onDone = vm::onFocusTimerDone)
+        FocusOverlay(focus, onGiveUp = vm::giveUpFocus, onDone = vm::onFocusTimerDone, penaltyGold = com.monsterquest.core.GameEngine.focusPenalty(state))
         return
     }
     val battle = vm.battle

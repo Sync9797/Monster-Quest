@@ -141,17 +141,17 @@ your hero.
   up after about 2 hours, or a **Restore Potion** brings it back instantly at
   full HP. If all your monsters are down, your strongest also recovers once a
   day.
-- **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
+- **Battles:** turn-based, ordered by Speed. You fight alongside up to **5 party
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.
   - **Wild monsters scale with your team:** bring more fighters and they get
-    more HP, Attack and Defense (about 4x HP and 2x Attack against a full
-    team of 4, weaker against a lone hero). Rewards follow the monster's
-    strength: XP, gold and monster XP are x0.6 alone, x1.25 with 2, x2 with 3
-    and x2.75 with a full team, and teams of 3 or 4 earn bonus drops (with a
-    small chance of a Restore Potion).
-  - **Bosses and villains** are built for a full team and get easier when you
-    bring fewer fighters.
+    more HP, Attack and Defense (about 7x HP and 2.5x Attack against a full
+    team of 6, weaker against a lone hero). Rewards follow the monster's
+    strength: XP, gold and monster XP are x0.6 alone, x1.25 with 2, x2 with 3,
+    x2.75 with 4, x3.4 with 5 and x4 with a full team of 6, and teams of 3 or
+    more earn bonus drops (with a small chance of a Restore Potion).
+  - **Bosses and villains** are built for a team of 4: they get easier with
+    fewer fighters, and tougher with 5 or 6, paying up to 1.45x more.
 - **Battle animations:** spells and typed moves throw a bolt of their type,
   and swords and Normal moves slash. The attacker is ringed in gold, the
   fighter whose turn it is pulses, and a **turn order** strip shows who acts

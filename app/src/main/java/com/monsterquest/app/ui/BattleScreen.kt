@@ -285,9 +285,14 @@ private fun BattleLog(log: List<String>, modifier: Modifier) {
 
 @Composable
 private fun AllyRow(b: BattleView) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        b.allies.forEach { a ->
-            AllyCard(a, active = a.key == b.current?.key, modifier = Modifier.weight(1f))
+    // Up to 4 fighters share one row; a bigger team (up to 6) splits into rows of 3.
+    val rows = if (b.allies.size <= 4) listOf(b.allies) else b.allies.chunked(3)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rows.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { a -> AllyCard(a, active = a.key == b.current?.key, modifier = Modifier.weight(1f)) }
+                repeat((if (rows.size > 1) 3 else row.size) - row.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
     }
 }

@@ -197,8 +197,10 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        (0 until MAX_PARTY_SIZE).forEach { i ->
+                    // Five slots: three on top, two below (so each tile stays a usable size).
+                    (0 until MAX_PARTY_SIZE).chunked(3).forEach { row ->
+                    Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { i ->
                             val m = s.partyMonsters.getOrNull(i)
                             Box(
                                 Modifier
@@ -218,6 +220,8 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                                 }
                             }
                         }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

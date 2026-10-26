@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0
+
+- **No accidental quitting:** giving up a phone-free session now asks "Give up
+  this session?" first, showing how long is left and what it costs. Keep going
+  is the main button.
+- **Party of 5:** up to 5 monsters fight beside your hero (6 fighters). The
+  party slots on the Monsters tab sit in two rows (3 + 2), and in battle a
+  big team shows in rows of 3.
+- **Rewards for bigger teams:** wild monsters keep scaling with your team and
+  pay more for it: x0.6 alone, x1.25 with 2, x2 with 3, x2.75 with 4, **x3.4
+  with 5 and x4 with 6** (they get about 5.6x / 7x HP and 2.3x / 2.55x
+  Attack). Teams of 3 or more get bonus drops more often (up to 75%).
+- **Bosses, villains and dens** are still built for a team of 4. With 5 or 6
+  fighters they now scale up and pay up to 1.24x / 1.45x more.
+
 ## 1.3.3
 
 - **Hound lines start as wolf cubs:** pricked ears, fluffy cheeks and chest

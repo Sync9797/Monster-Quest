@@ -177,7 +177,7 @@ data class Follower(val id: String, val speciesId: String, val level: Int, val c
 
 const val STARTING_BAG_CAPACITY = 20
 const val STARTING_MONSTER_CAPACITY = 20
-const val MAX_PARTY_SIZE = 3
+const val MAX_PARTY_SIZE = 5
 const val MAX_ITEMS_PER_BATTLE = 3
 const val MAX_HUNT_TOKENS = 10
 const val GOLD_LOSS_PERCENT = 10

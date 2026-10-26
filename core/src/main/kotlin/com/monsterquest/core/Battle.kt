@@ -220,10 +220,10 @@ data class BattleEvent(
 )
 
 /**
- * Enemies grow with the size of your team (the hero plus up to 3 monsters),
- * so a full team of 4 faces a real fight while a lone hero isn't overwhelmed.
- * Bosses and villains are already built for a full team: they keep their
- * strength against 4 and get easier against smaller teams.
+ * Enemies grow with the size of your team (the hero plus up to 5 monsters),
+ * so a full team of 6 faces a real fight while a lone hero isn't overwhelmed.
+ * Bosses, dens' rivals and villains are built for a team of 4: they get easier
+ * against smaller teams and tougher (and pay more) against 5 or 6.
  */
 object TeamScaling {
     data class Factors(val hp: Double, val attack: Double, val defense: Double)
@@ -235,16 +235,19 @@ object TeamScaling {
             Factors(hp(teamSize) / hp(4), attack(teamSize) / attack(4), defense(teamSize) / defense(4))
         }
 
-    private val hpByTeam = listOf(0.35, 1.2, 2.6, 4.2)
-    private val attackByTeam = listOf(0.45, 1.1, 1.6, 2.0)
-    private val defenseByTeam = listOf(1.0, 1.0, 1.1, 1.2)
+    private val hpByTeam = listOf(0.35, 1.2, 2.6, 4.2, 5.6, 7.0)
+    private val attackByTeam = listOf(0.45, 1.1, 1.6, 2.0, 2.3, 2.55)
+    private val defenseByTeam = listOf(1.0, 1.0, 1.1, 1.2, 1.25, 1.3)
 
     private fun pick(table: List<Double>, teamSize: Int) = table[(teamSize - 1).coerceIn(0, table.size - 1)]
 
     fun hp(teamSize: Int) = pick(hpByTeam, teamSize)
     fun attack(teamSize: Int) = pick(attackByTeam, teamSize)
     fun defense(teamSize: Int) = pick(defenseByTeam, teamSize)
-    private val rewardByTeam = listOf(0.6, 1.25, 2.0, 2.75)
+    private val rewardByTeam = listOf(0.6, 1.25, 2.0, 2.75, 3.4, 4.0)
+
+    /** Bosses and villains pay more when they had to scale up for a team bigger than 4. */
+    fun bossReward(teamSize: Int) = (reward(teamSize) / reward(4)).coerceAtLeast(1.0)
 
     /**
      * Rewards follow the enemy's strength: a lone hero faces a weaker monster
@@ -934,7 +937,7 @@ class Battle(
         val rewardMult = when (encounter) {
             EncounterType.WILD -> TeamScaling.reward(teamSize) * TeamScaling.packReward(enemies.size)
             EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
-            else -> 1.0
+            else -> TeamScaling.bossReward(teamSize)
         }
         val heroXp = when (outcome) {
             BattleOutcome.WON -> lvl * 3 * bossMult
@@ -963,7 +966,7 @@ class Battle(
                 if (rng.nextDouble() < (0.25 * rewardMult).coerceAtMost(0.9)) {
                     drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER).random(rng)] = 1
                 }
-                if (teamSize >= 3 && rng.nextDouble() < 0.2 * (teamSize - 2)) {
+                if (teamSize >= 3 && rng.nextDouble() < (0.2 * (teamSize - 2)).coerceAtMost(0.75)) {
                     val bonus = if (rng.nextDouble() < 0.04 * (teamSize - 1)) Item.RESTORE_POTION
                     else listOf(Item.HI_POTION, Item.GREAT_ORB, Item.PHOENIX_DOWN).random(rng)
                     drops[bonus] = (drops[bonus] ?: 0) + 1
