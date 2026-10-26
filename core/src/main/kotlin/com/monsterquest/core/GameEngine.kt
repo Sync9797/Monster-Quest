@@ -581,7 +581,7 @@ object GameEngine {
         state.hero,
         // Monsters out on adventures can't fight.
         state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
-        enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.equippedArmor,
+        enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.wornArmor,
         extraEnemies = pack,
         ambush = ambush,
     )
@@ -893,15 +893,20 @@ object GameEngine {
     fun equipArmor(state: GameState, id: String): Update {
         val a = state.armor.find { it.id == id } ?: return Update(state, "Armor not found.")
         val rest = state.armor.filterNot { it.id == id }
-        val back = state.equippedArmor?.let { rest + it } ?: rest
+        val slot = a.type.slot
+        val back = state.worn(slot)?.let { rest + it } ?: rest
         val fit = if (a.matches(state.hero.heroClass)) " Class bonus +${(CLASS_MATCH_BONUS * 100).toInt()}%!" else ""
-        return Update(state.copy(armor = back, equippedArmor = a), "Put on ${a.name}.$fit")
+        val s = if (slot == ArmorSlot.BODY) state.copy(armor = back, equippedArmor = a)
+        else state.copy(armor = back, equippedPieces = state.equippedPieces + (slot to a))
+        return Update(s, "Put on ${a.name}.$fit")
     }
 
-    fun unequipArmor(state: GameState): Update {
-        val a = state.equippedArmor ?: return Update(state, "No armor on.")
+    fun unequipArmor(state: GameState, slot: ArmorSlot = ArmorSlot.BODY): Update {
+        val a = state.worn(slot) ?: return Update(state, "Nothing worn there.")
         if (state.bagFull) return Update(state, "Bag is full.")
-        return Update(state.copy(armor = state.armor + a, equippedArmor = null), "Took off ${a.name}.")
+        val s = if (slot == ArmorSlot.BODY) state.copy(armor = state.armor + a, equippedArmor = null)
+        else state.copy(armor = state.armor + a, equippedPieces = state.equippedPieces - slot)
+        return Update(s, "Took off ${a.name}.")
     }
 
     fun dropArmor(state: GameState, id: String): Update {

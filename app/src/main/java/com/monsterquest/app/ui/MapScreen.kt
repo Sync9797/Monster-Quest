@@ -49,6 +49,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import com.monsterquest.app.ui.art.drawFocusPin
 import com.monsterquest.app.data.StreetLookup
 import com.monsterquest.app.Navigation
 import androidx.compose.runtime.produceState
@@ -100,6 +101,20 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+
+/** Nothing farther than this (10 miles) shows in the Nearby list. */
+private const val MAX_NEARBY_M = 16_093.0
+
+/** A spot picked from the Nearby list: the map pans there and a card offers directions. */
+private class MapFocus(
+    val lat: Double,
+    val lon: Double,
+    val title: String,
+    val sub: String,
+    /** Drop a temporary pin (monsters, which may not be drawn on the map yet). */
+    val pin: Boolean,
+    val details: () -> Unit,
+)
 
 private sealed interface MapPick {
     data class ShrinePick(val shrine: Shrine) : MapPick
@@ -161,6 +176,14 @@ fun MapScreen(vm: GameViewModel) {
     val shrines = vm.shrines
     val villains = vm.villainsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
+    var focus by remember { mutableStateOf<MapFocus?>(null) }
+    // The pin and card are temporary: they clear themselves after a few minutes.
+    LaunchedEffect(focus) {
+        if (focus != null) {
+            delay(5 * 60_000L)
+            focus = null
+        }
+    }
 
     // Battery saver: turn the phone upside down (e.g. hanging at your side or in a
     // pocket) and the screen goes dark; turn it back upright to return.
@@ -184,7 +207,8 @@ fun MapScreen(vm: GameViewModel) {
     fun sprite(key: String, wDp: Int, hDp: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
         icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw) }
 
-    val mapPane: @Composable () -> Unit = {
+    // Phones show the tracker bar over the map; big screens list those monsters in Nearby instead.
+    val mapPane: @Composable (Boolean) -> Unit = { showTracker ->
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                 AndroidView(
@@ -265,16 +289,27 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(loc.first, loc.second)
                                     setAnchor(Marker.ANCHOR_CENTER, 0.86f)
-                                    val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor)
+                                    val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor, vm.state.equippedPieces)
                                     setIcon(sprite("player_${vm.state.hero.heroClass}_$outfit", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit) })
                                     setOnMarkerClickListener { _, _ -> true }
+                                },
+                            )
+                        }
+                        focus?.takeIf { it.pin }?.let { f ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(f.lat, f.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 1f)
+                                    setIcon(sprite("focus_pin", 30, 40) { c, w, h -> drawFocusPin(c, w, h) })
+                                    setOnMarkerClickListener { _, _ -> f.details(); true }
                                 },
                             )
                         }
                         mv.invalidate()
                     },
                 )
-                TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
+                if (showTracker) TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
+                focus?.let { f -> FocusCard(vm, f, Modifier.align(Alignment.BottomCenter)) { focus = null } }
                 if (loc == null) {
                     Text(
                         "Finding your location…",
@@ -312,19 +347,39 @@ fun MapScreen(vm: GameViewModel) {
         }
     }
 
+    fun focusOn(f: MapFocus) {
+        focus = f
+        mapView.controller.animateTo(GeoPoint(f.lat, f.lon))
+    }
+    val imperial = vm.state.settings.imperialUnits
     AdaptivePanes(
         firstWeight = 0.62f,
-        compact = mapPane,
-        first = mapPane,
+        compact = { mapPane(true) },
+        first = { mapPane(false) },
         second = {
             NearbyList(
                 vm = vm,
                 shrines = shrines,
-                spawns = spawns,
+                spawns = spawns + tracked,
                 villains = villains,
-                onShrine = { pick = MapPick.ShrinePick(it) },
-                onSpawn = { pick = MapPick.SpawnPick(it) },
-                onVillain = { pick = MapPick.VillainPick(it) },
+                onShrine = { sh ->
+                    focusOn(MapFocus(sh.lat, sh.lon, sh.name, sh.subtitle ?: sh.tier.label, pin = false) { pick = MapPick.ShrinePick(sh) })
+                },
+                onSpawn = { sp ->
+                    val seen = sp.speciesId in vm.state.seen
+                    val near = sp in spawns
+                    focusOn(
+                        MapFocus(
+                            sp.lat, sp.lon,
+                            if (seen) "Wild ${sp.species.name}" else "Unknown monster",
+                            "Lv ${sp.level} • " + distanceText(vm.distanceTo(sp.lat, sp.lon), imperial),
+                            pin = true,
+                        ) { pick = if (near) MapPick.SpawnPick(sp) else MapPick.TrackedPick(sp) },
+                    )
+                },
+                onVillain = { v ->
+                    focusOn(MapFocus(v.lat, v.lon, v.leader, "${v.tier.label} of the ${v.crew}", pin = false) { pick = MapPick.VillainPick(v) })
+                },
             )
         },
     )
@@ -473,7 +528,39 @@ private fun WalkHereButton(lat: Double, lon: Double, label: String) {
     }
 }
 
-/** "At Barnes & Noble" / "Near Central Park (40 yd from it)". */
+/** Where a Nearby pick is: the map has panned there; walk there or see more. */
+@Composable
+private fun FocusCard(vm: GameViewModel, f: MapFocus, modifier: Modifier, onClose: () -> Unit) {
+    val dist = vm.distanceTo(f.lat, f.lon)
+    val here = vm.location
+    val dir = here?.let { World.compass(World.bearing(it.first, it.second, f.lat, f.lon)) }
+    Column(
+        modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+            .border(1.dp, Gold, RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(f.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(f.sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (dist != null && dir != null) {
+                    Text("${formatDistance(dist, vm.state.settings.imperialUnits)} to the $dir", fontSize = 12.sp, color = Gold)
+                }
+            }
+            TextButton(onClick = onClose) { Text("Close") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            WalkHereButton(f.lat, f.lon, f.title)
+            OutlinedButton(onClick = f.details, modifier = Modifier.padding(top = 8.dp)) { Text("Details") }
+        }
+    }
+}
+
+/** "At Barnes & Noble" / "Near Central Park (120 ft from it)". */
 private fun landmarkText(place: Shrine, gap: Double, imperial: Boolean): String {
     val where = place.place ?: place.name
     return if (gap < 40) "At $where" else "Near $where (${formatDistance(gap, imperial)} from it)"
@@ -780,10 +867,11 @@ private fun NearbyList(
         ) { onShrine(sh) }
     } + spawns.map { sp ->
         val d = vm.distanceTo(sp.lat, sp.lon) ?: Double.MAX_VALUE
+        val seen = sp.speciesId in vm.state.seen
         Entry(
             d,
-            { MonsterArt(sp.species, Modifier.size(40.dp)) },
-            "Wild ${sp.species.name}",
+            { MonsterArt(sp.species, Modifier.size(40.dp), silhouette = !seen) },
+            if (seen) "Wild ${sp.species.name}" else "Unknown monster",
             "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SPAWN_RANGE_M,
         ) { onSpawn(sp) }
@@ -800,10 +888,10 @@ private fun NearbyList(
 
     LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp)) {
         item { SectionTitle("Nearby") }
-        if (entries.isEmpty()) {
+        if (entries.none { it.dist <= MAX_NEARBY_M }) {
             item { Text("Nothing found nearby yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        items(entries.sortedBy { it.dist }.take(40)) { e ->
+        items(entries.filter { it.dist <= MAX_NEARBY_M }.sortedBy { it.dist }.take(40)) { e ->
             GameCard(Modifier.padding(vertical = 3.dp).clickable(onClick = e.onClick), border = if (e.inRange) Gold else null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     e.art()

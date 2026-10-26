@@ -240,6 +240,10 @@ abstract class ScreenshotBase(private val device: String) {
             HeroClass.ROGUE to HeroOutfit(WeaponType.DAGGER, com.monsterquest.core.GearRarity.EPIC, com.monsterquest.core.Element.GAS, com.monsterquest.core.ArmorType.LEATHER, com.monsterquest.core.GearRarity.RARE),
             HeroClass.MAGE to HeroOutfit(WeaponType.STAFF, armor = com.monsterquest.core.ArmorType.ROBE, armorRarity = com.monsterquest.core.GearRarity.EPIC),
             HeroClass.MAGE to HeroOutfit(WeaponType.WAND, legendary, com.monsterquest.core.Element.ELECTRIC, com.monsterquest.core.ArmorType.ROBE, legendary),
+            // Hoods, cloaks, pants and boots.
+            HeroClass.ROGUE to HeroOutfit(WeaponType.DAGGER, armor = com.monsterquest.core.ArmorType.LEATHER, hood = com.monsterquest.core.GearRarity.EPIC, cloak = legendary, pants = com.monsterquest.core.GearRarity.RARE, boots = com.monsterquest.core.GearRarity.NORMAL),
+            HeroClass.NONE to HeroOutfit(WeaponType.SWORD, hood = com.monsterquest.core.GearRarity.NORMAL, cloak = com.monsterquest.core.GearRarity.RARE, boots = legendary),
+            HeroClass.WARRIOR to HeroOutfit(WeaponType.BROADSWORD, armor = com.monsterquest.core.ArmorType.PLATE, pants = legendary, boots = com.monsterquest.core.GearRarity.EPIC),
         )
         shot("14_outfits", content = onBackground {
             androidx.compose.foundation.layout.Column {
@@ -371,11 +375,16 @@ abstract class ScreenshotBase(private val device: String) {
         // Wide screens list nearby places beside the map; open the shrine from there.
         val nodes = rule.onAllNodesWithText("Supply Cache")
         if (nodes.fetchSemanticsNodes().isNotEmpty()) {
+            // Tapping pans the map there and shows a card with directions.
             nodes[0].performClick()
             rule.mainClock.advanceTimeBy(500)
             rule.waitForIdle()
-            rule.onNodeWithText("Barnes & Noble on Wards Road").assertExists()
+            capture("28_nearby_focus", 400)
             rule.onNodeWithText("Walk here").assertExists()
+            rule.onNodeWithText("Details").performClick()
+            rule.mainClock.advanceTimeBy(500)
+            rule.waitForIdle()
+            rule.onNodeWithText("Barnes & Noble on Wards Road").assertExists()
         }
     }
 

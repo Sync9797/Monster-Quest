@@ -52,6 +52,8 @@ enum class GearEffect(val label: String, val description: String) {
     CRACKLING("Crackling", "15% chance to shock on hit"),
     VENOMOUS("Venomous", "15% chance to poison on hit"),
     LUCKY("Lucky", "+10% taming odds"),
+    MIGHTY("Mighty", "+10% Attack"),
+    FOCUSED("Focused", "+10% Magic"),
 }
 
 /** A weapon. Better rarity and level mean more power and more effects. */
@@ -100,6 +102,10 @@ data class Gear(
     }.joinToString(" • ")
 }
 
+/** Where a piece of armor is worn. The hero wears one piece in each slot. */
+@Serializable
+enum class ArmorSlot(val label: String) { BODY("Body"), HEAD("Head"), BACK("Back"), LEGS("Legs"), FEET("Feet") }
+
 /** Armor types. Like weapons, the matching class gets [CLASS_MATCH_BONUS] more out of it. */
 @Serializable
 enum class ArmorType(
@@ -112,14 +118,37 @@ enum class ArmorType(
     /** Chance to dodge attacks, in percent. */
     val evasionPercent: Int,
     val description: String,
+    val slot: ArmorSlot = ArmorSlot.BODY,
+    /** Share of the armor's power added to Attack. */
+    val attackShare: Double = 0.0,
+    /** The extra buff every Rare or better piece of this kind comes with. */
+    val signature: GearEffect = GearEffect.GUARDED,
 ) {
-    PLATE("Plate", setOf(HeroClass.WARRIOR), 1.5, 0.0, -10, 0, "Heavy protection, but slows you down"),
-    LEATHER("Leather", setOf(HeroClass.ROGUE), 0.9, 0.0, 5, 5, "Light and quick; harder to hit"),
-    ROBE("Robe", setOf(HeroClass.MAGE), 0.5, 0.7, 0, 0, "Little protection, but adds Magic"),
+    PLATE("Plate", setOf(HeroClass.WARRIOR), 1.5, 0.0, -10, 0, "Heavy protection, but slows you down", signature = GearEffect.GUARDED),
+    LEATHER("Leather", setOf(HeroClass.ROGUE), 0.9, 0.0, 5, 5, "Light and quick; harder to hit", signature = GearEffect.SWIFT),
+    ROBE("Robe", setOf(HeroClass.MAGE), 0.5, 0.7, 0, 0, "Little protection, but adds Magic", signature = GearEffect.FOCUSED),
+    HOOD(
+        "Hood", setOf(HeroClass.MAGE, HeroClass.ROGUE), 0.3, 0.4, 0, 2, "Sharpens your focus: Magic and a little dodge",
+        ArmorSlot.HEAD, signature = GearEffect.FOCUSED,
+    ),
+    CLOAK(
+        "Cloak", setOf(HeroClass.ROGUE, HeroClass.NONE), 0.4, 0.1, 0, 4, "Billows and hides you: harder to hit",
+        ArmorSlot.BACK, signature = GearEffect.SWIFT,
+    ),
+    PANTS(
+        "Pants", setOf(HeroClass.WARRIOR, HeroClass.NONE), 0.7, 0.0, 0, 0, "Sturdy legs: Defense and some Attack",
+        ArmorSlot.LEGS, attackShare = 0.3, signature = GearEffect.MIGHTY,
+    ),
+    BOOTS(
+        "Boots", HeroClass.entries.toSet(), 0.3, 0.0, 12, 0, "Quick feet: more Speed",
+        ArmorSlot.FEET, signature = GearEffect.SWIFT,
+    ),
 }
 
 /** Effects armor can roll (the on-hit ones only make sense on weapons). */
-val ARMOR_EFFECTS = listOf(GearEffect.GUARDED, GearEffect.SWIFT, GearEffect.ARCANE, GearEffect.LUCKY, GearEffect.VAMPIRIC)
+val ARMOR_EFFECTS = listOf(
+    GearEffect.GUARDED, GearEffect.SWIFT, GearEffect.ARCANE, GearEffect.LUCKY, GearEffect.VAMPIRIC, GearEffect.MIGHTY, GearEffect.FOCUSED,
+)
 
 @Serializable
 data class Armor(
@@ -137,16 +166,22 @@ data class Armor(
 
     fun defenseBonus(cls: HeroClass): Int = (power * type.defenseShare * classMultiplier(cls)).roundToInt()
     fun magicBonus(cls: HeroClass): Int = (power * type.magicShare * classMultiplier(cls)).roundToInt()
+    fun attackBonus(cls: HeroClass): Int = (power * type.attackShare * classMultiplier(cls)).roundToInt()
 
     val name: String
         get() = when (type) {
             ArmorType.PLATE -> listOf("Iron Plate", "Knight's Plate", "Dragonscale Plate", "Aegis of Kings")
             ArmorType.LEATHER -> listOf("Leather Vest", "Shadow Leathers", "Nightstalker Garb", "Phantom Mantle")
             ArmorType.ROBE -> listOf("Cloth Robe", "Runed Robe", "Starweave Robe", "Archmage Vestments")
+            ArmorType.HOOD -> listOf("Wool Hood", "Seer's Hood", "Moonveil Cowl", "Crown of Whispers")
+            ArmorType.CLOAK -> listOf("Travel Cloak", "Elven Cloak", "Shadowweave Cloak", "Mantle of the Wind")
+            ArmorType.PANTS -> listOf("Linen Pants", "Ranger Breeches", "Warden Greaves", "Titanguard Legplates")
+            ArmorType.BOOTS -> listOf("Walking Boots", "Swiftfoot Boots", "Stormstride Boots", "Boots of the Far Road")
         }[rarity.ordinal]
 
     fun summary(cls: HeroClass): String = buildList {
         defenseBonus(cls).takeIf { it > 0 }?.let { add("+$it Defense") }
+        attackBonus(cls).takeIf { it > 0 }?.let { add("+$it Attack") }
         magicBonus(cls).takeIf { it > 0 }?.let { add("+$it Magic") }
         if (type.speedPercent != 0) add("${if (type.speedPercent > 0) "+" else ""}${type.speedPercent}% Speed")
         if (type.evasionPercent > 0) add("${type.evasionPercent}% dodge")
@@ -173,7 +208,11 @@ object Armory {
     fun rollArmor(heroLevel: Int, rng: Random, type: ArmorType? = null, luck: Int = 0, minimum: GearRarity = GearRarity.NORMAL): Armor {
         val lvl = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(1)
         val rarity = rollRarity(lvl, rng, luck, minimum)
-        return Armor(newId(rng), type ?: ArmorType.entries.random(rng), rarity, lvl, ARMOR_EFFECTS.shuffled(rng).take(rarity.effectCount))
+        val t = type ?: ArmorType.entries.random(rng)
+        // Rare and better always carry the piece's signature buff, then random extras.
+        val effects = if (rarity.effectCount == 0) emptyList()
+        else listOf(t.signature) + (ARMOR_EFFECTS - t.signature).shuffled(rng).take(rarity.effectCount - 1)
+        return Armor(newId(rng), t, rarity, lvl, effects)
     }
 
     /**

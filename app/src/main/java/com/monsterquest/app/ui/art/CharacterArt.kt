@@ -2,6 +2,7 @@ package com.monsterquest.app.ui.art
 
 import android.graphics.Canvas
 import com.monsterquest.core.Armor
+import com.monsterquest.core.ArmorSlot
 import com.monsterquest.core.ArmorType
 import com.monsterquest.core.Element
 import com.monsterquest.core.Gear
@@ -54,11 +55,20 @@ data class HeroOutfit(
     val weaponElement: Element = Element.NEUTRAL,
     val armor: ArmorType? = null,
     val armorRarity: GearRarity = GearRarity.NORMAL,
+    /** Rarity of each worn piece (null when that slot is empty). */
+    val hood: GearRarity? = null,
+    val cloak: GearRarity? = null,
+    val pants: GearRarity? = null,
+    val boots: GearRarity? = null,
 ) {
     companion object {
-        fun of(gear: Gear?, armor: Armor?) = HeroOutfit(
+        fun of(gear: Gear?, armor: Armor?, pieces: Map<ArmorSlot, Armor> = emptyMap()) = HeroOutfit(
             gear?.type, gear?.rarity ?: GearRarity.NORMAL, gear?.element ?: Element.NEUTRAL,
             armor?.type, armor?.rarity ?: GearRarity.NORMAL,
+            hood = pieces[ArmorSlot.HEAD]?.rarity,
+            cloak = pieces[ArmorSlot.BACK]?.rarity,
+            pants = pieces[ArmorSlot.LEGS]?.rarity,
+            boots = pieces[ArmorSlot.FEET]?.rarity,
         )
 
         /** The typical look of a class, for previews. */
@@ -80,6 +90,14 @@ private fun trim(r: GearRarity): Int = when (r) {
 
 private const val SKIN_HAND = "b29b79"
 
+/** Cloth colors for hoods, cloaks, pants and boots by rarity: (light, dark). */
+private fun cloth(r: GearRarity): Pair<Int, Int> = when (r) {
+    GearRarity.NORMAL -> Argb.hex("7a6a55") to Argb.hex("2e271e")
+    GearRarity.RARE -> Argb.hex("3f6a96") to Argb.hex("14243a")
+    GearRarity.EPIC -> Argb.hex("6a4f9c") to Argb.hex("221838")
+    GearRarity.LEGENDARY -> Argb.hex("a83a32") to Argb.hex("3a0f0c")
+}
+
 /** Draws the hero into [w]x[h] wearing [outfit]. [portrait] adds the halo, rings and sparkles. */
 internal fun drawHero(c: Canvas, w: Float, h: Float, cls: HeroClass, portrait: Boolean, outfit: HeroOutfit = HeroOutfit.classic(cls)) {
     c.save()
@@ -96,18 +114,45 @@ internal fun drawHero(c: Canvas, w: Float, h: Float, cls: HeroClass, portrait: B
     }
     if (portrait) ArtPainter.runeCircle(c, 150f, 250f, 92f, 12f, Argb.hex("bfa164"), 0.5f, glyphs = 16)
     val cape = "M120 118L91 233Q150 257 213 233L181 118Z"
-    ArtPainter.fill(c, cape, ArtPainter.linear(91f, 118f, 213f, 245f, look.capeTop, look.capeBottom))
-    ArtPainter.hatch(c, cape, look.capeBottom, 0.35f, 7f)
+    val (capeTop, capeBottom) = outfit.cloak?.let { cloth(it) } ?: (look.capeTop to look.capeBottom)
+    if (outfit.cloak != null && outfit.cloak >= GearRarity.EPIC) ArtPainter.glow(c, 150f, 200f, 70f, trim(outfit.cloak), 0.25f)
+    ArtPainter.fill(c, cape, ArtPainter.linear(91f, 118f, 213f, 245f, capeTop, capeBottom))
+    ArtPainter.hatch(c, cape, capeBottom, 0.35f, 7f)
     // Cloak folds.
     ArtPainter.stroke(c, "M128 150L112 230M172 150L190 230M150 190V246", INK, 1.4f, 0.35f)
     ArtPainter.stroke(c, cape, INK, 2f, 0.75f)
-    ArtPainter.fill(c, "M124 154L118 238L141 238L151 186L159 238L182 238L176 154Z", Argb.hex("14272d"))
-    ArtPainter.fill(c, "M118 234H143V248H108Q106 239 118 234M159 234H184L194 248H159Z", Argb.hex("9a8061"))
+    // A trimmed hem shows the cloak's rarity.
+    outfit.cloak?.let { ArtPainter.stroke(c, "M93 228Q150 252 211 228", trim(it), 3f, 0.9f) }
+    val legs = "M124 154L118 238L141 238L151 186L159 238L182 238L176 154Z"
+    val pants = outfit.pants
+    if (pants == null) {
+        ArtPainter.fill(c, legs, Argb.hex("14272d"))
+    } else {
+        val (hi, lo) = cloth(pants)
+        ArtPainter.fill(c, legs, ArtPainter.linear(120f, 154f, 180f, 238f, hi, lo))
+        ArtPainter.stroke(c, legs, INK, 1.4f, 0.6f)
+        // Knee guards.
+        ArtPainter.fill(c, "M124 200H140V210H123Z", trim(pants))
+        ArtPainter.fill(c, "M161 200H177L178 210H162Z", trim(pants))
+    }
+    val feet = "M118 234H143V248H108Q106 239 118 234M159 234H184L194 248H159Z"
+    val boots = outfit.boots
+    if (boots == null) {
+        ArtPainter.fill(c, feet, Argb.hex("9a8061"))
+    } else {
+        val (hi, lo) = cloth(boots)
+        ArtPainter.fill(c, "M119 222H142V248H108Q106 238 119 234ZM159 222H183V234L194 248H159Z", ArtPainter.linear(110f, 222f, 190f, 248f, hi, lo))
+        ArtPainter.stroke(c, "M119 224H142M159 224H183", trim(boots), 2.5f)
+        ArtPainter.stroke(c, "M119 222H142V248H108Q106 238 119 234ZM159 222H183V234L194 248H159Z", INK, 1.4f, 0.6f)
+    }
     drawArmor(c, outfit, look)
     val hood = "M120 106Q111 66 151 47Q192 67 181 106L168 122H132Z"
-    ArtPainter.fill(c, hood, look.hood)
+    val hoodColor = outfit.hood?.let { cloth(it).first } ?: look.hood
+    ArtPainter.fill(c, hood, hoodColor)
     ArtPainter.hatch(c, hood, look.hoodShade, 0.3f, 7f)
     ArtPainter.stroke(c, hood, INK, 2f, 0.75f)
+    // A worn hood gets a trimmed edge in its rarity color.
+    outfit.hood?.let { ArtPainter.stroke(c, "M124 104Q116 70 151 51Q186 70 177 104", trim(it), 2.5f, 0.9f) }
     ArtPainter.fill(c, "M130 91Q150 64 172 91L164 112H137Z", look.hoodShade)
     // A leaf-shaped brooch pins the cloak, in the style of old elven craft.
     ArtPainter.fill(c, "M150 112Q160 117 150 127Q140 117 150 112Z", Argb.hex("8fb58a"))
@@ -222,13 +267,15 @@ private fun drawWeapon(c: Canvas, o: HeroOutfit) {
         }
         WeaponType.DAGGER -> {
             // A pair: one in each hand (daggers strike twice).
-            for (dx in listOf(0f, -76f)) {
+            // The grip sits inside the fist (hands are drawn on top), guard just above it.
+            for (dx in listOf(0f, -71f)) {
                 c.save()
                 c.translate(dx, 0f)
-                ArtPainter.fill(c, "M189 140L195 128L201 140L198 176H192Z", bladeHi)
-                ArtPainter.fill(c, "M189 140L195 128V176H192Z", bladeLo)
-                ArtPainter.fill(c, "M181 176H209V182H181Z", guard)
-                ArtPainter.fill(c, "M192 182H198V198H192Z", wood)
+                ArtPainter.fill(c, "M184 118L190 104L196 118L193 160H187Z", bladeHi)
+                ArtPainter.fill(c, "M184 118L190 104V160H187Z", bladeLo)
+                ArtPainter.fill(c, "M177 158H203V164H177Z", guard)
+                ArtPainter.fill(c, "M187 164H193V186H187Z", wood)
+                ArtPainter.circle(c, 190f, 188f, 3.5f, guard)
                 c.restore()
             }
         }

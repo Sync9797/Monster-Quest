@@ -199,7 +199,10 @@ data class GameState(
     val equippedGear: Gear? = null,
     /** Unequipped armor (each takes a bag slot). */
     val armor: List<Armor> = emptyList(),
+    /** Body armor (plate, leather or robe). */
     val equippedArmor: Armor? = null,
+    /** Hood, cloak, pants and boots, one per slot. */
+    val equippedPieces: Map<ArmorSlot, Armor> = emptyMap(),
     val settings: Settings = Settings(),
     /** Players from before the new starters get to pick one for free. */
     val starterGiftPending: Boolean = false,
@@ -273,6 +276,11 @@ data class GameState(
     val stats: Lifetime = Lifetime(),
     val starterChosen: Boolean = false,
 ) {
+    /** Everything the hero has on: body armor plus the other pieces. */
+    val wornArmor: List<Armor> get() = listOfNotNull(equippedArmor) + equippedPieces.values
+
+    fun worn(slot: ArmorSlot): Armor? = if (slot == ArmorSlot.BODY) equippedArmor else equippedPieces[slot]
+
     val bagCount: Int get() = inventory.values.sum() + gear.size + armor.size
     val bagFull: Boolean get() = bagCount >= bagCapacity
     val storageFull: Boolean get() = monsters.size >= monsterCapacity

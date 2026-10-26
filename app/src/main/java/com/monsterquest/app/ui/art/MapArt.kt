@@ -136,3 +136,13 @@ fun drawPlayerOn(c: Canvas, w: Float, h: Float, cls: com.monsterquest.core.HeroC
     )
     drawHero(c, w, h, cls, portrait = false, outfit = outfit)
 }
+
+/** A temporary map pin marking where a monster picked from the Nearby list is. */
+fun drawFocusPin(c: Canvas, w: Float, h: Float) {
+    c.save()
+    ArtPainter.fit(c, w, h, 24f, 32f)
+    ArtPainter.fill(c, "M12 31C12 31 3 19 3 12A9 9 0 1 1 21 12C21 19 12 31 12 31Z", Argb.hex("e0574a"))
+    ArtPainter.stroke(c, "M12 31C12 31 3 19 3 12A9 9 0 1 1 21 12C21 19 12 31 12 31Z", Argb.hex("140d0a"), 1.2f, 0.8f)
+    ArtPainter.circle(c, 12f, 12f, 3.5f, Argb.hex("ffffff"))
+    c.restore()
+}

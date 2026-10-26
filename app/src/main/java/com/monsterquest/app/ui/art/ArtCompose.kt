@@ -184,6 +184,10 @@ fun com.monsterquest.core.ArmorType.icon(): GameIcon = when (this) {
     com.monsterquest.core.ArmorType.PLATE -> GameIcon.PLATE
     com.monsterquest.core.ArmorType.LEATHER -> GameIcon.LEATHER
     com.monsterquest.core.ArmorType.ROBE -> GameIcon.ROBE
+    com.monsterquest.core.ArmorType.HOOD -> GameIcon.HOOD
+    com.monsterquest.core.ArmorType.CLOAK -> GameIcon.CLOAK
+    com.monsterquest.core.ArmorType.PANTS -> GameIcon.PANTS
+    com.monsterquest.core.ArmorType.BOOTS -> GameIcon.BOOTS
 }
 
 fun BoxRarity.color(): Color = when (this) {

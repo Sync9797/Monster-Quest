@@ -132,7 +132,7 @@ fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modi
 }
 
 /**
- * A distance for people: feet up close, then yards, then miles (or meters and
+ * A distance for people: feet up close, then miles (or meters and
  * kilometers), rounded so it doesn't flicker as GPS wobbles.
  */
 fun formatDistance(meters: Double, imperial: Boolean): String {
@@ -140,12 +140,13 @@ fun formatDistance(meters: Double, imperial: Boolean): String {
         return if (meters < 1000) "${((meters / 10).roundToInt() * 10).coerceAtLeast(10)} m"
         else String.format(java.util.Locale.US, "%.1f km", meters / 1000)
     }
+    // Feet up close, then miles (a tenth of a mile is 528 ft).
     val feet = meters * 3.28084
-    val yards = meters * 1.09361
+    val miles = feet / 5280
     return when {
-        feet < 300 -> "${((feet / 10).roundToInt() * 10).coerceAtLeast(10)} ft"
-        yards < 1760 -> "${(yards / 10).roundToInt() * 10} yd"
-        else -> String.format(java.util.Locale.US, "%.1f mi", yards / 1760)
+        feet < 1000 -> "${((feet / 10).roundToInt() * 10).coerceAtLeast(10)} ft"
+        miles < 10 -> String.format(java.util.Locale.US, "%.1f mi", miles)
+        else -> "${miles.roundToInt()} mi"
     }
 }
 

@@ -140,19 +140,21 @@ class Combatant(
 
         fun isEnemy(key: String) = key.startsWith(ENEMY_KEY)
 
-        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0, armor: Armor? = null): Combatant {
+        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0, armor: List<Armor> = emptyList()): Combatant {
             val cls = h.heroClass
-            val fx = gear?.effects.orEmpty() + armor?.effects.orEmpty()
-            val speedPct = (gear?.type?.speedPercent ?: 0) + (armor?.type?.speedPercent ?: 0) + 10 * fx.count { it == GearEffect.SWIFT }
-            val baseDefense = h.defense + (armor?.defenseBonus(cls) ?: 0)
+            val fx = gear?.effects.orEmpty() + armor.flatMap { it.effects }
+            val speedPct = (gear?.type?.speedPercent ?: 0) + armor.sumOf { it.type.speedPercent } + 10 * fx.count { it == GearEffect.SWIFT }
+            val baseDefense = h.defense + armor.sumOf { it.defenseBonus(cls) }
             val defense = (baseDefense * (1 + 0.1 * fx.count { it == GearEffect.GUARDED })).toInt()
+            val attack = (h.attack + (gear?.attackBonus(cls) ?: 0) + armor.sumOf { it.attackBonus(cls) }) * (1 + 0.1 * fx.count { it == GearEffect.MIGHTY })
+            val magic = (h.magic + (gear?.magicBonus(cls) ?: 0) + armor.sumOf { it.magicBonus(cls) }) * (1 + 0.1 * fx.count { it == GearEffect.FOCUSED })
             return Combatant(
                 HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
-                h.attack + (gear?.attackBonus(cls) ?: 0), h.magic + (gear?.magicBonus(cls) ?: 0) + (armor?.magicBonus(cls) ?: 0),
+                attack.toInt(), magic.toInt(),
                 defense, (h.speed * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
             ).apply {
                 attackElement = gear?.element ?: Element.NEUTRAL
-                evasion = h.evasion + (armor?.type?.evasionPercent ?: 0) / 100.0
+                evasion = h.evasion + armor.sumOf { it.type.evasionPercent } / 100.0
                 heroClass = h.heroClass
                 hits = gear?.type?.hits ?: 1
                 energyRegen = (gear?.type?.energyPerTurn ?: 0) + 2 * fx.count { it == GearEffect.ARCANE }
@@ -307,7 +309,7 @@ class Battle(
     private val rng: Random = Random.Default,
     gear: Gear? = null,
     heroDamage: Int = 0,
-    armor: Armor? = null,
+    armor: List<Armor> = emptyList(),
     /** Other wild monsters fighting alongside [enemyMonster] as a pack (up to 3). */
     extraEnemies: List<Monster> = emptyList(),
     /** The monsters struck first: they act before you in the first round. */

@@ -91,8 +91,8 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
             SectionTitle("General")
             GameCard {
                 ToggleRow(
-                    "Feet and yards",
-                    "Show distances in feet, yards and miles. Turn off for meters and kilometers.",
+                    "Feet and miles",
+                    "Show distances in feet and miles. Turn off for meters and kilometers.",
                     prefs.imperialUnits,
                 ) { on -> vm.updateSettings { it.copy(imperialUnits = on) } }
             }

@@ -861,10 +861,43 @@ class GameTest {
         assertEquals(plate, worn.equippedArmor)
         assertTrue(worn.armor.isEmpty())
         val bare = Combatant.fromHero(s.hero)
-        val armored = Combatant.fromHero(s.hero, armor = plate)
+        val armored = Combatant.fromHero(s.hero, armor = listOf(plate))
         assertTrue(armored.defense > bare.defense)
         assertTrue(armored.speed <= bare.speed)
         assertTrue(Armor("r", ArmorType.ROBE, GearRarity.RARE, 10).magicBonus(HeroClass.MAGE) > 0)
+    }
+
+    @Test
+    fun armorPiecesFillTheirOwnSlots() {
+        val hood = Armor("h", ArmorType.HOOD, GearRarity.RARE, 10, listOf(GearEffect.FOCUSED))
+        val boots = Armor("b", ArmorType.BOOTS, GearRarity.NORMAL, 10)
+        val pants = Armor("p", ArmorType.PANTS, GearRarity.NORMAL, 10)
+        val plate = Armor("a", ArmorType.PLATE, GearRarity.NORMAL, 10)
+        var s = started().copy(armor = listOf(hood, boots, pants, plate))
+        for (id in listOf("h", "b", "p", "a")) s = GameEngine.equipArmor(s, id).state
+        assertEquals(plate, s.equippedArmor)
+        assertEquals(mapOf(ArmorSlot.HEAD to hood, ArmorSlot.FEET to boots, ArmorSlot.LEGS to pants), s.equippedPieces)
+        assertEquals(4, s.wornArmor.size)
+        assertTrue(s.armor.isEmpty())
+        // Each piece has its own buff: boots add Speed, pants Attack, the hood Magic (plus Focused).
+        val bare = Combatant.fromHero(s.hero)
+        assertTrue(Combatant.fromHero(s.hero, armor = listOf(boots)).speed > bare.speed)
+        assertTrue(Combatant.fromHero(s.hero, armor = listOf(pants)).attack > bare.attack)
+        assertTrue(Combatant.fromHero(s.hero, armor = listOf(hood)).magic > bare.magic)
+        // Swapping a hood puts the old one back in the bag.
+        val hood2 = Armor("h2", ArmorType.HOOD, GearRarity.EPIC, 12)
+        val swapped = GameEngine.equipArmor(s.copy(armor = listOf(hood2)), "h2").state
+        assertEquals(hood2, swapped.equippedPieces[ArmorSlot.HEAD])
+        assertEquals(listOf(hood), swapped.armor)
+        val off = GameEngine.unequipArmor(swapped, ArmorSlot.FEET).state
+        assertNull(off.equippedPieces[ArmorSlot.FEET])
+        // Rare and better pieces always carry their signature buff.
+        val rng = Random(4)
+        repeat(30) {
+            val a = Armory.rollArmor(20, rng, minimum = GearRarity.RARE)
+            assertEquals(a.type.signature, a.effects.first())
+            assertEquals(a.rarity.effectCount, a.effects.distinct().size)
+        }
     }
 
     @Test

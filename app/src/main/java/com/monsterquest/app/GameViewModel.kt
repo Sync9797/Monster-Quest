@@ -405,7 +405,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun unequip() = apply(GameEngine.unequip(state))
     fun dropWeapon(id: String) = apply(GameEngine.dropWeapon(state, id))
     fun equipArmor(id: String) = apply(GameEngine.equipArmor(state, id))
-    fun unequipArmor() = apply(GameEngine.unequipArmor(state))
+    fun unequipArmor(slot: com.monsterquest.core.ArmorSlot = com.monsterquest.core.ArmorSlot.BODY) = apply(GameEngine.unequipArmor(state, slot))
     fun dropArmor(id: String) = apply(GameEngine.dropArmor(state, id))
 
     fun restore(uid: String) = apply(GameEngine.restore(state, uid))

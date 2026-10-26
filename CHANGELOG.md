@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.0
+
+- **New armor pieces:** hoods, cloaks, pants and boots, worn alongside body
+  armor (one piece per slot). Each has its own buffs:
+  - Hoods: Magic and a little dodge (suit Mages and Rogues).
+  - Cloaks: harder to hit (suit Rogues and Adventurers).
+  - Pants: Defense and some Attack (suit Warriors and Adventurers).
+  - Boots: +12% Speed (suit everyone).
+  They use the same rarities as all gear. Rare and better pieces always come
+  with a signature buff (Focused +10% Magic, Swift +10% Speed, Mighty +10%
+  Attack...), plus more random buffs the rarer they are. Your hero wears them
+  too: a trimmed hood, a colored cloak, pants with knee guards and boots.
+- **Distances in feet and miles** (or meters and kilometers in Settings).
+- **Nearby list:** only shows things within 10 miles. Tapping one moves the
+  map there and shows a card with **Walk here** (directions) and **Details**.
+  Monsters get a temporary red pin so you can see where to go. Farther
+  monsters from the tracker are listed here too.
+- **Big screens and unfolded phones** no longer show the tracker bar over the
+  map, since the Nearby list beside it already lists those monsters.
+- **Fixed:** the hero now holds daggers by the grip, not the blade.
+
 ## 1.0.1
 
 - Tapping the map inside the purple reach circle no longer pops up an empty

@@ -100,16 +100,17 @@ fun BagScreen(vm: GameViewModel) {
         }
         SectionTitle("Armor")
         Text(
-            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Anyone can wear anything.",
+            "Wear one piece in each slot: body (Plate for Warriors, Leather for Rogues, Robes for Mages), " +
+                "a hood, a cloak, pants and boots. Each has its own buffs; Rare and better add more. Anyone can wear anything.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        s.equippedArmor?.let { a ->
+        s.wornArmor.forEach { a ->
             ArmorCard(a, s.hero.heroClass, equipped = true) {
-                TextButton(onClick = vm::unequipArmor) { Text("Remove") }
+                TextButton(onClick = { vm.unequipArmor(a.type.slot) }) { Text("Remove") }
             }
         }
-        if (s.armor.isEmpty() && s.equippedArmor == null) {
+        if (s.armor.isEmpty() && s.wornArmor.isEmpty()) {
             Text("No armor yet. Shrines, villain camps and loot boxes drop it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         s.armor.sortedWith(compareByDescending<Armor> { it.rarity }.thenByDescending { it.level }).forEach { a ->
@@ -240,7 +241,7 @@ private fun ArmorCard(a: Armor, cls: HeroClass, equipped: Boolean, actions: @Com
             Column(Modifier.weight(1f)) {
                 Text("${a.rarity.label} ${a.name}" + if (equipped) " (worn)" else "", fontWeight = FontWeight.SemiBold, color = a.rarity.color())
                 Text(
-                    "Lv ${a.level} ${a.type.label} armor" + if (a.matches(cls)) " • Class bonus" else "",
+                    "Lv ${a.level} ${a.type.label} (${a.type.slot.label.lowercase()})" + if (a.matches(cls)) " • Class bonus" else "",
                     fontSize = 12.sp,
                     color = if (a.matches(cls)) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                 )

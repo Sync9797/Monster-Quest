@@ -2,6 +2,7 @@ package com.monsterquest.app.ui
 
 import com.monsterquest.core.GameEngine
 import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.core.ArmorSlot
 import com.monsterquest.app.ui.art.HeroArt
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.color
@@ -61,7 +62,7 @@ fun HeroScreen(vm: GameViewModel) {
     val profile: @Composable () -> Unit = {
         GameCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                HeroArt(h.heroClass, Modifier.size(110.dp), outfit = HeroOutfit.of(s.equippedGear, s.equippedArmor))
+                HeroArt(h.heroClass, Modifier.size(110.dp), outfit = HeroOutfit.of(s.equippedGear, s.equippedArmor, s.equippedPieces))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -184,10 +185,24 @@ fun HeroScreen(vm: GameViewModel) {
             detail = a?.let { it.summary(h.heroClass) } ?: "Traveler's clothes. Armor drops at shrines, villain camps and loot boxes.",
             classMatch = a?.matches(h.heroClass) == true,
             effects = a?.effects.orEmpty().joinToString(" • ") { it.label },
-            onRemove = if (a != null) vm::unequipArmor else null,
+            onRemove = if (a != null) ({ vm.unequipArmor() }) else null,
         )
+        listOf(ArmorSlot.HEAD to "a hood", ArmorSlot.BACK to "a cloak", ArmorSlot.LEGS to "pants", ArmorSlot.FEET to "boots").forEach { (slot, what) ->
+            val p = s.equippedPieces[slot]
+            EquipSlot(
+                label = slot.label,
+                icon = p?.type?.icon() ?: GameIcon.HERO,
+                tint = p?.rarity?.color(),
+                title = p?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Nothing",
+                detail = p?.let { it.summary(h.heroClass) } ?: "Find $what at shrines, villain camps and loot boxes.",
+                classMatch = p?.matches(h.heroClass) == true,
+                effects = p?.effects.orEmpty().joinToString(" • ") { it.label },
+                onRemove = if (p != null) ({ vm.unequipArmor(slot) }) else null,
+            )
+        }
         Text(
-            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Change gear from the Bag.",
+            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Hoods suit Mages and Rogues, cloaks Rogues, " +
+                "pants Warriors and boots anyone. Change gear from the Bag.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
