@@ -99,28 +99,89 @@ data class Gear(
     }.joinToString(" • ")
 }
 
+/** Armor types. Like weapons, the matching class gets [CLASS_MATCH_BONUS] more out of it. */
+@Serializable
+enum class ArmorType(
+    val label: String,
+    val classes: Set<HeroClass>,
+    /** Share of the armor's power added to Defense / Magic. */
+    val defenseShare: Double,
+    val magicShare: Double,
+    val speedPercent: Int,
+    /** Chance to dodge attacks, in percent. */
+    val evasionPercent: Int,
+    val description: String,
+) {
+    PLATE("Plate", setOf(HeroClass.WARRIOR), 1.5, 0.0, -10, 0, "Heavy protection, but slows you down"),
+    LEATHER("Leather", setOf(HeroClass.ROGUE), 0.9, 0.0, 5, 5, "Light and quick; harder to hit"),
+    ROBE("Robe", setOf(HeroClass.MAGE), 0.5, 0.7, 0, 0, "Little protection, but adds Magic"),
+}
+
+/** Effects armor can roll (the on-hit ones only make sense on weapons). */
+val ARMOR_EFFECTS = listOf(GearEffect.GUARDED, GearEffect.SWIFT, GearEffect.ARCANE, GearEffect.LUCKY, GearEffect.VAMPIRIC)
+
+@Serializable
+data class Armor(
+    val id: String,
+    val type: ArmorType,
+    val rarity: GearRarity,
+    val level: Int,
+    val effects: List<GearEffect> = emptyList(),
+) {
+    val power: Int get() = ((5 + level * 0.7) * rarity.multiplier).roundToInt()
+
+    fun matches(cls: HeroClass) = cls in type.classes
+
+    private fun classMultiplier(cls: HeroClass) = if (matches(cls)) 1 + CLASS_MATCH_BONUS else 1.0
+
+    fun defenseBonus(cls: HeroClass): Int = (power * type.defenseShare * classMultiplier(cls)).roundToInt()
+    fun magicBonus(cls: HeroClass): Int = (power * type.magicShare * classMultiplier(cls)).roundToInt()
+
+    val name: String
+        get() = when (type) {
+            ArmorType.PLATE -> listOf("Iron Plate", "Knight's Plate", "Dragonscale Plate", "Aegis of Kings")
+            ArmorType.LEATHER -> listOf("Leather Vest", "Shadow Leathers", "Nightstalker Garb", "Phantom Mantle")
+            ArmorType.ROBE -> listOf("Cloth Robe", "Runed Robe", "Starweave Robe", "Archmage Vestments")
+        }[rarity.ordinal]
+
+    fun summary(cls: HeroClass): String = buildList {
+        defenseBonus(cls).takeIf { it > 0 }?.let { add("+$it Defense") }
+        magicBonus(cls).takeIf { it > 0 }?.let { add("+$it Magic") }
+        if (type.speedPercent != 0) add("${if (type.speedPercent > 0) "+" else ""}${type.speedPercent}% Speed")
+        if (type.evasionPercent > 0) add("${type.evasionPercent}% dodge")
+    }.joinToString(" • ")
+}
+
 object Armory {
-    /**
-     * A random weapon around [heroLevel]. Rarer weapons get likelier as you
-     * level up; [luck] shifts the odds further (forging, bosses, boxes).
-     */
-    fun roll(heroLevel: Int, rng: Random, type: WeaponType? = null, luck: Int = 0): Gear {
-        val lvl = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(1)
+    private fun rollRarity(lvl: Int, rng: Random, luck: Int, minimum: GearRarity): GearRarity {
         val weights = listOf(
             GearRarity.NORMAL to (60 - lvl).coerceAtLeast(15),
             GearRarity.RARE to 25 + lvl + luck,
             GearRarity.EPIC to 4 + lvl / 2 + luck,
             GearRarity.LEGENDARY to ((lvl - 8) / 2).coerceAtLeast(0) + luck / 2,
-        )
-        var roll = rng.nextInt(weights.sumOf { it.second })
-        var rarity = GearRarity.NORMAL
+        ).filter { it.first >= minimum }
+        var roll = rng.nextInt(weights.sumOf { it.second }.coerceAtLeast(1))
         for ((r, w) in weights) {
             roll -= w
-            if (roll < 0) {
-                rarity = r
-                break
-            }
+            if (roll < 0) return r
         }
+        return weights.first().first
+    }
+
+    /** Random armor around [heroLevel]; same rarity odds as weapons. */
+    fun rollArmor(heroLevel: Int, rng: Random, type: ArmorType? = null, luck: Int = 0, minimum: GearRarity = GearRarity.NORMAL): Armor {
+        val lvl = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(1)
+        val rarity = rollRarity(lvl, rng, luck, minimum)
+        return Armor(newId(rng), type ?: ArmorType.entries.random(rng), rarity, lvl, ARMOR_EFFECTS.shuffled(rng).take(rarity.effectCount))
+    }
+
+    /**
+     * A random weapon around [heroLevel]. Rarer weapons get likelier as you
+     * level up; [luck] shifts the odds further (forging, bosses, boxes).
+     */
+    fun roll(heroLevel: Int, rng: Random, type: WeaponType? = null, luck: Int = 0, minimum: GearRarity = GearRarity.NORMAL): Gear {
+        val lvl = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(1)
+        val rarity = rollRarity(lvl, rng, luck, minimum)
         val element = if (rng.nextDouble() < 0.4) Element.typed.random(rng) else Element.NEUTRAL
         val pool = GearEffect.entries.shuffled(rng)
         return Gear(

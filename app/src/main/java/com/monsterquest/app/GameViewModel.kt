@@ -33,6 +33,7 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.LootBoxes
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Shrine
+import com.monsterquest.core.SpawnConditions
 import com.monsterquest.core.Update
 import com.monsterquest.core.WildSpawn
 import com.monsterquest.core.World
@@ -75,7 +76,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun set(s: GameState) {
-        state = s
+        state = s.withJournal()
         pendingSave.value = s
     }
 
@@ -175,6 +176,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onAppResumed() {
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
+        GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
         val f = state.focus ?: return
         val now = System.currentTimeMillis()
         if (now - f.startMs < 10_000) return
@@ -294,6 +296,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun equip(id: String) = apply(GameEngine.equip(state, id))
     fun unequip() = apply(GameEngine.unequip(state))
     fun dropWeapon(id: String) = apply(GameEngine.dropWeapon(state, id))
+    fun equipArmor(id: String) = apply(GameEngine.equipArmor(state, id))
+    fun unequipArmor() = apply(GameEngine.unequipArmor(state))
+    fun dropArmor(id: String) = apply(GameEngine.dropArmor(state, id))
 
     fun restore(uid: String) = apply(GameEngine.restore(state, uid))
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
@@ -326,8 +331,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun spawnsNear(nowMs: Long): List<WildSpawn> {
         val (lat, lon) = location ?: return emptyList()
-        return World.spawnsNear(lat, lon, nowMs, state.hero.level).filter { it.id !in state.usedSpawns }
+        return World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs)).filter { it.id !in state.usedSpawns }
     }
+
+    fun spawnConditions(nowMs: Long): SpawnConditions = SpawnConditions(
+        hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour,
+        activity = GameEngine.activityLevel(state, nowMs),
+        lure = state.lureActive(nowMs),
+    )
+
+    fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
 
     fun distanceTo(lat: Double, lon: Double): Double? =
         location?.let { World.distanceMeters(it.first, it.second, lat, lon) }
@@ -425,6 +438,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     // ---- battle ------------------------------------------------------------
 
     private fun startBattle(enemy: Monster, type: EncounterType, shrineId: String?) {
+        set(GameEngine.markSeen(state, enemy.speciesId))
         val b = GameEngine.newBattle(state, enemy, type, shrineId)
         activeBattle = b
         battle = BattleView.of(b, null)

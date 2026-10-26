@@ -195,12 +195,22 @@ object Bestiary {
     val bosses: List<Species> = all.filter { it.bossOnly || (it.stages == 4 && it.stage == 4) }
 
     /** Random wild species that can appear at [level], weighted by rarity. */
-    fun randomWild(rng: Random, level: Int = MAX_MONSTER_LEVEL): Species {
+    /**
+     * A random wild species for [level]. [favored] types are three times as
+     * likely (time of day); [rareBoost] multiplies the odds of uncommon and
+     * rarer monsters (moving around, lures).
+     */
+    fun randomWild(rng: Random, level: Int = MAX_MONSTER_LEVEL, favored: Set<Element> = emptySet(), rareBoost: Double = 1.0): Species {
         val pool = wild.filter { it.minWildLevel <= level }
-        val total = pool.sumOf { it.rarity.spawnWeight }
-        var roll = rng.nextInt(total)
+        fun weight(s: Species): Int {
+            var w = s.rarity.spawnWeight.toDouble()
+            if (s.element in favored) w *= 3
+            if (s.rarity.ordinal > 0) w *= rareBoost
+            return w.toInt().coerceAtLeast(1)
+        }
+        var roll = rng.nextInt(pool.sumOf { weight(it) })
         for (s in pool) {
-            roll -= s.rarity.spawnWeight
+            roll -= weight(s)
             if (roll < 0) return s
         }
         return pool.last()

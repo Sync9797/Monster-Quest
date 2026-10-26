@@ -78,6 +78,17 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     DAGGER(fill("M15 3l3 3-7.5 7.5-3-3z"), line("M8.5 15.5L4 20")),
     SCYTHE(line("M7 21L15 5"), fill("M15 5c4.5 0 7.5 2.5 7.5 6.5C19.5 8.5 16.5 8 13.5 8.5z")),
 
+    // Armor
+    PLATE(fill("M5 5l4-2h6l4 2v6c0 5-3 9-7 11-4-2-7-6-7-11z"), cut("M12 4v17M7 9h10")),
+    LEATHER(fill("M7 3h10l3 5-3 2v11H7V10L4 8z"), cut("M8 6l8 12")),
+    ROBE(fill("M9 2h6l1 6 4 14H4L8 8z"), cut("M9.5 3L12 8l2.5-5M12 9v12")),
+
+    // Exploration
+    LURE(fill("M12 2c3 4 5 6 5 10a5 5 0 0 1-10 0c0-4 2-6 5-10z"), line("M5 20q7-4 14 0"), cut("M12 9v6")),
+    BOOK(fill("M4 4h7a2 2 0 0 1 1 1v16a3 3 0 0 0-3-2H4zM20 4h-7a2 2 0 0 0-1 1v16a3 3 0 0 1 3-2h5z")),
+    EYE(fill("M2 12c3-5 6.5-7 10-7s7 2 10 7c-3 5-6.5 7-10 7s-7-2-10-7z"), cut("M12 9a3 3 0 1 0 .01 0z")),
+    FIST(fill("M6 10h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"), cut("M9 10v4M12 10v4M15 10v4")),
+
     // Shrines
     ITEM_SHRINE(fill("M12 2l8 8-8 12-8-12z"), cut("M4 10h16M8 10l4 12 4-12")),
     SILVER_SHRINE(fill("M8 22V9l4-7 4 7v13z"), cut("M10 13h4M10 17h4")),

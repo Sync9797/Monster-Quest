@@ -728,4 +728,98 @@ class GameTest {
         }
         assertTrue(dodges > 0)
     }
+
+    @Test
+    fun adventurerCanBeChosenAndLevelFiveGivesRareWeapon() {
+        val s = started().copy(hero = Hero(level = 5))
+        val u = GameEngine.chooseClass(s, HeroClass.NONE, Random(1))
+        assertTrue(u.state.hero.classChosen)
+        assertEquals(HeroClass.NONE, u.state.hero.heroClass)
+        assertEquals(GearRarity.RARE, u.state.gear.single().rarity)
+        // Switching later costs gold and gives no second weapon.
+        val again = GameEngine.chooseClass(u.state.copy(gold = 1000), HeroClass.MAGE, Random(2)).state
+        assertEquals(HeroClass.MAGE, again.hero.heroClass)
+        assertEquals(1, again.gear.size)
+        assertEquals(1000 - CLASS_CHANGE_COST, again.gold)
+    }
+
+    @Test
+    fun armorAddsDefenseAndShowsInBattle() {
+        val plate = Armor("a", ArmorType.PLATE, GearRarity.EPIC, 10)
+        val s = started().copy(armor = listOf(plate))
+        assertEquals(s.bagCount, s.inventory.values.sum() + 1)
+        val worn = GameEngine.equipArmor(s, "a").state
+        assertEquals(plate, worn.equippedArmor)
+        assertTrue(worn.armor.isEmpty())
+        val bare = Combatant.fromHero(s.hero)
+        val armored = Combatant.fromHero(s.hero, armor = plate)
+        assertTrue(armored.defense > bare.defense)
+        assertTrue(armored.speed <= bare.speed)
+        assertTrue(Armor("r", ArmorType.ROBE, GearRarity.RARE, 10).magicBonus(HeroClass.MAGE) > 0)
+    }
+
+    @Test
+    fun journalTracksSeenAndCaught() {
+        val s = started()
+        assertTrue("emberkit" in s.caught && "emberkit" in s.seen)
+        val seen = GameEngine.markSeen(s, "zapmouse")
+        assertTrue("zapmouse" in seen.seen && "zapmouse" !in seen.caught)
+        val loaded = GameState.fromJson(s.copy(caught = emptySet(), seen = emptySet()).toJson())
+        assertTrue("emberkit" in loaded.caught)
+    }
+
+    @Test
+    fun lureIsFreeDailyAndBoostsSpawns() {
+        val now = 1_700_000_000_000L
+        val s = started()
+        val claimed = GameEngine.claimDailyLure(s, now)!!.state
+        assertEquals(1, claimed.count(Item.LURE))
+        assertNull(GameEngine.claimDailyLure(claimed, now + 1000))
+        val lured = GameEngine.useLure(claimed, now).state
+        assertTrue(lured.lureActive(now + 29 * 60_000L))
+        assertTrue(!lured.lureActive(now + 31 * 60_000L))
+
+        fun count(c: SpawnConditions) = (0 until 40).sumOf { i ->
+            World.spawnsNear(40.0 + i * 0.05, -75.0, now + i * World.SPAWN_WINDOW_MS, 10, c).size
+        }
+        val still = count(SpawnConditions(12))
+        val moving = count(SpawnConditions(12, activity = 1.0))
+        val withLure = count(SpawnConditions(12, lure = true))
+        assertTrue(moving > still, "moving $moving vs still $still")
+        assertTrue(withLure > still, "lure $withLure vs still $still")
+    }
+
+    @Test
+    fun alwaysSomethingNearbyWhenStandingStill() {
+        val now = 1_700_000_000_000L
+        // Over an hour at one spot, monsters keep wandering up within battle range.
+        val inRange = (0 until 12).flatMap { i ->
+            World.spawnsNear(40.0, -75.0, now + i * World.NEARBY_WINDOW_MS, 10).filter {
+                World.distanceMeters(40.0, -75.0, it.lat, it.lon) <= World.SPAWN_RANGE_M
+            }.map { it.id }
+        }.toSet()
+        assertTrue(inRange.size >= 5, "only ${inRange.size}")
+    }
+
+    @Test
+    fun nightFavorsCorruptAndGas() {
+        val rng = Random(9)
+        val night = (1..2000).count { Bestiary.randomWild(rng, 50, TimeOfDay.NIGHT.favored).element in TimeOfDay.NIGHT.favored }
+        val day = (1..2000).count { Bestiary.randomWild(rng, 50, TimeOfDay.DAY.favored).element in TimeOfDay.NIGHT.favored }
+        assertTrue(night > day * 1.5)
+        assertEquals(TimeOfDay.NIGHT, TimeOfDay.of(2))
+        assertEquals(TimeOfDay.DAY, TimeOfDay.of(13))
+    }
+
+    @Test
+    fun walkingTracksHistoryAndActivity() {
+        val now = 1_700_000_000_000L
+        val s = GameEngine.walk(started(), 1500, now).state
+        assertEquals(1500, s.stepHistory.values.single())
+        assertEquals(1.0, GameEngine.activityLevel(s, now), 0.01)
+        assertEquals(0.5, GameEngine.activityLevel(s, now + 15 * 60_000L), 0.01)
+        val withTask = GameEngine.addTask(s, "x", Difficulty.EASY, rng).state
+        val done = GameEngine.completeTask(withTask, withTask.tasks.last().id, now).state
+        assertEquals(mapOf(GameEngine.epochDay(now) to 1), done.questDays)
+    }
 }

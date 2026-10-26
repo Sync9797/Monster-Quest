@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
+import com.monsterquest.core.Armor
 import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_ITEMS_PER_BATTLE
@@ -68,6 +69,7 @@ fun BagScreen(vm: GameViewModel) {
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (item.kind == ItemKind.HEAL_HP) SmallButton("Use", { using = item }, outlined = true)
+                    if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
                     TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
                 }
             }
@@ -94,6 +96,26 @@ fun BagScreen(vm: GameViewModel) {
             GearCard(w, s.hero.heroClass, equipped = false) {
                 TextButton(onClick = { vm.dropWeapon(w.id) }) { Text("Drop") }
                 SmallButton("Equip", { vm.equip(w.id) })
+            }
+        }
+        SectionTitle("Armor")
+        Text(
+            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Anyone can wear anything.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        s.equippedArmor?.let { a ->
+            ArmorCard(a, s.hero.heroClass, equipped = true) {
+                TextButton(onClick = vm::unequipArmor) { Text("Remove") }
+            }
+        }
+        if (s.armor.isEmpty() && s.equippedArmor == null) {
+            Text("No armor yet. Shrines, villain camps and loot boxes drop it.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        s.armor.sortedWith(compareByDescending<Armor> { it.rarity }.thenByDescending { it.level }).forEach { a ->
+            ArmorCard(a, s.hero.heroClass, equipped = false) {
+                TextButton(onClick = { vm.dropArmor(a.id) }) { Text("Drop") }
+                SmallButton("Wear", { vm.equipArmor(a.id) })
             }
         }
         SectionTitle("Weapon parts")
@@ -182,6 +204,31 @@ private fun GearCard(w: Gear, cls: HeroClass, equipped: Boolean, actions: @Compo
                 )
                 Text(w.summary(cls), fontSize = 12.sp)
                 w.effects.forEach { fx ->
+                    Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            actions()
+        }
+    }
+}
+
+@Composable
+private fun ArmorCard(a: Armor, cls: HeroClass, equipped: Boolean, actions: @Composable () -> Unit) {
+    GameCard(Modifier.padding(vertical = 3.dp), border = if (equipped) Gold else a.rarity.color().copy(alpha = 0.5f)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GIcon(a.type.icon(), Modifier.size(30.dp), a.rarity.color())
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("${a.rarity.label} ${a.name}" + if (equipped) " (worn)" else "", fontWeight = FontWeight.SemiBold, color = a.rarity.color())
+                Text(
+                    "Lv ${a.level} ${a.type.label} armor" + if (a.matches(cls)) " • Class bonus" else "",
+                    fontSize = 12.sp,
+                    color = if (a.matches(cls)) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(a.summary(cls), fontSize = 12.sp)
+                a.effects.forEach { fx ->
                     Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)
                 }
             }

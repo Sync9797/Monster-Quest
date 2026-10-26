@@ -131,30 +131,31 @@ class Combatant(
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
 
-        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0): Combatant {
+        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0, armor: Armor? = null): Combatant {
             val cls = h.heroClass
-            val fx = gear?.effects.orEmpty()
-            val speedPct = (gear?.type?.speedPercent ?: 0) + (if (GearEffect.SWIFT in fx) 10 else 0)
-            val defense = if (GearEffect.GUARDED in fx) (h.defense * 1.1).toInt() else h.defense
+            val fx = gear?.effects.orEmpty() + armor?.effects.orEmpty()
+            val speedPct = (gear?.type?.speedPercent ?: 0) + (armor?.type?.speedPercent ?: 0) + 10 * fx.count { it == GearEffect.SWIFT }
+            val baseDefense = h.defense + (armor?.defenseBonus(cls) ?: 0)
+            val defense = (baseDefense * (1 + 0.1 * fx.count { it == GearEffect.GUARDED })).toInt()
             return Combatant(
                 HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
-                h.attack + (gear?.attackBonus(cls) ?: 0), h.magic + (gear?.magicBonus(cls) ?: 0),
+                h.attack + (gear?.attackBonus(cls) ?: 0), h.magic + (gear?.magicBonus(cls) ?: 0) + (armor?.magicBonus(cls) ?: 0),
                 defense, (h.speed * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
             ).apply {
                 attackElement = gear?.element ?: Element.NEUTRAL
-                evasion = h.evasion
+                evasion = h.evasion + (armor?.type?.evasionPercent ?: 0) / 100.0
                 heroClass = h.heroClass
                 hits = gear?.type?.hits ?: 1
-                energyRegen = (gear?.type?.energyPerTurn ?: 0) + (if (GearEffect.ARCANE in fx) 2 else 0)
+                energyRegen = (gear?.type?.energyPerTurn ?: 0) + 2 * fx.count { it == GearEffect.ARCANE }
                 critBonus = if (GearEffect.KEEN in fx) 0.1 else 0.0
-                lifesteal = if (GearEffect.VAMPIRIC in fx) 0.15 else 0.0
+                lifesteal = 0.15 * fx.count { it == GearEffect.VAMPIRIC }
                 onHitStatus = when {
                     GearEffect.SEARING in fx -> Status.BURN
                     GearEffect.CRACKLING in fx -> Status.SHOCK
                     GearEffect.VENOMOUS in fx -> Status.POISON
                     else -> null
                 }
-                tameBonus = if (GearEffect.LUCKY in fx) 0.1 else 0.0
+                tameBonus = 0.1 * fx.count { it == GearEffect.LUCKY }
             }
         }
 
@@ -211,9 +212,10 @@ class Battle(
     private val rng: Random = Random.Default,
     gear: Gear? = null,
     heroDamage: Int = 0,
+    armor: Armor? = null,
 ) {
     private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
-    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage)) + fighters.map { Combatant.fromMonster(it) }
+    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage, armor)) + fighters.map { Combatant.fromMonster(it) }
     val enemy: Combatant = Combatant.fromMonster(enemyMonster, Combatant.ENEMY_KEY, encounter.hpMultiplier)
     private val heroLevel = hero.level
     private val heroSkills = Spells.all.filter { it.id in hero.knownSpells }

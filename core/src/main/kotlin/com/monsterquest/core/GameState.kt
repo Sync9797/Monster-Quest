@@ -48,6 +48,8 @@ data class Hero(
     val attributes: Map<HeroAttribute, Int> = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE },
     val knownSpells: Set<String> = Spells.starting,
     val heroClass: HeroClass = HeroClass.NONE,
+    /** Set once a class (or staying an Adventurer) is picked at level 5. */
+    val classChosen: Boolean = false,
 ) {
     fun attr(a: HeroAttribute): Int = attributes[a] ?: STARTING_ATTRIBUTE
 
@@ -165,7 +167,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 3,
+    val version: Int = 4,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -178,6 +180,23 @@ data class GameState(
     /** Unequipped weapons (each takes a bag slot). */
     val gear: List<Gear> = emptyList(),
     val equippedGear: Gear? = null,
+    /** Unequipped armor (each takes a bag slot). */
+    val armor: List<Armor> = emptyList(),
+    val equippedArmor: Armor? = null,
+    /** Journal: species encountered, and species owned at some point. */
+    val seen: Set<String> = emptySet(),
+    val caught: Set<String> = emptySet(),
+    /** Epoch day -> steps walked (last ~90 days). */
+    val stepHistory: Map<Long, Int> = emptyMap(),
+    /** Epoch day -> quests completed that day. */
+    val questDays: Map<Long, Int> = emptyMap(),
+    /** How much you've been moving lately (0..1, fades over time); more movement, more spawns. */
+    val activity: Double = 0.0,
+    val activityAtMs: Long = 0,
+    /** A lure is active until this time. */
+    val lureUntilMs: Long = 0,
+    /** Epoch day the free daily lure was last handed out. */
+    val lastFreeLureDay: Long? = null,
     /** Weapon parts by type; [GameEngine.PARTS_TO_FORGE] of one type forge that weapon. */
     val parts: Map<WeaponType, Int> = emptyMap(),
     /** Damage the hero carries between battles (healed by walking and potions). */
@@ -219,11 +238,21 @@ data class GameState(
     val stats: Lifetime = Lifetime(),
     val starterChosen: Boolean = false,
 ) {
-    val bagCount: Int get() = inventory.values.sum() + gear.size
+    val bagCount: Int get() = inventory.values.sum() + gear.size + armor.size
     val bagFull: Boolean get() = bagCount >= bagCapacity
     val storageFull: Boolean get() = monsters.size >= monsterCapacity
     val partyMonsters: List<Monster> get() = party.mapNotNull { uid -> monsters.find { it.uid == uid } }
     fun count(item: Item): Int = inventory[item] ?: 0
+
+    /** Records every owned monster's species as caught (and seen) in the journal. */
+    fun withJournal(): GameState {
+        val owned = monsters.map { it.speciesId }.toSet()
+        if (caught.containsAll(owned) && seen.containsAll(caught)) return this
+        val c = caught + owned
+        return copy(caught = c, seen = seen + c)
+    }
+
+    fun lureActive(nowMs: Long): Boolean = lureUntilMs > nowMs
 
     fun toJson(): String = json.encodeToString(serializer(), this)
 
@@ -254,7 +283,18 @@ data class GameState(
                 weaponParts = 0,
             )
         }
-        return s
+        if (s.version < 4) {
+            val zone = java.time.ZoneId.systemDefault()
+            val days = s.tasks.mapNotNull { it.completedAtMs }
+                .groupingBy { java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toEpochDay() }.eachCount()
+            s = s.copy(
+                version = 4,
+                hero = s.hero.copy(classChosen = s.hero.heroClass != HeroClass.NONE),
+                questDays = days + s.questDays,
+                stepHistory = s.stepsDay?.let { s.stepHistory + (it to s.stepsToday) } ?: s.stepHistory,
+            )
+        }
+        return s.withJournal()
     }
 }
 

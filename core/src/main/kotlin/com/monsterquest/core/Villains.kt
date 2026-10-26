@@ -60,7 +60,7 @@ object Villains {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, day))
-            if (r.nextDouble() > 0.14) continue
+            if (r.nextDouble() > 0.22) continue
             val id = "v:$day:$x:$y"
             if (id in state.villainsDefeated) continue
             val tier = if (r.nextDouble() < 0.25) VillainTier.VILLAIN else VillainTier.THUGS

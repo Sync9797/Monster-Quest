@@ -339,7 +339,7 @@ fun newId(rng: Random = Random.Default): String =
 // ---------------------------------------------------------------------------
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE }
 
 @Serializable
 enum class Item(
@@ -358,7 +358,8 @@ enum class Item(
     TAMING_ORB("Taming Orb", ItemKind.CAPTURE, 1.0, 30, "Tames a weakened monster."),
     GREAT_ORB("Great Orb", ItemKind.CAPTURE, 1.5, 80, "Better taming odds."),
     MASTER_ORB("Master Orb", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
-    TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost.");
+    TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost."),
+    LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day.");
 
-    val usableInBattle: Boolean get() = kind != ItemKind.TREAT && kind != ItemKind.RESTORE
+    val usableInBattle: Boolean get() = kind in setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.CAPTURE)
 }

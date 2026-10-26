@@ -12,7 +12,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.monsterquest.app.ui.AdventuresTab
 import com.monsterquest.app.ui.AppRoot
+import androidx.compose.foundation.layout.padding
 import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,7 +81,16 @@ abstract class ScreenshotBase(private val device: String) {
                 unspentPoints = 4,
                 attributes = HeroAttribute.entries.associateWith { 14 },
                 heroClass = HeroClass.ROGUE,
+                classChosen = true,
             ),
+            equippedArmor = com.monsterquest.core.Armory.rollArmor(12, Random(6), com.monsterquest.core.ArmorType.LEATHER, minimum = com.monsterquest.core.GearRarity.EPIC),
+            armor = listOf(com.monsterquest.core.Armory.rollArmor(12, Random(7), com.monsterquest.core.ArmorType.PLATE)),
+            seen = Bestiary.all.take(14).map { it.id }.toSet() + "dread_lich",
+            stepsToday = 6_420,
+            stepsDay = java.time.LocalDate.now().toEpochDay(),
+            stepHistory = (0L..12L).associate { java.time.LocalDate.now().toEpochDay() - it to (if (it % 3 == 0L) 7_000 else 2_500) },
+            questDays = listOf(0L, 1L, 2L, 4L, 5L, 8L, 9L, 15L).associate { java.time.LocalDate.now().toEpochDay() - it to 2 },
+            lureUntilMs = now + 18 * 60_000L,
             gold = 1234,
             huntTokens = 6,
             pendingUpgrades = 1,
@@ -95,7 +106,7 @@ abstract class ScreenshotBase(private val device: String) {
             equippedGear = Armory.roll(12, Random(5), WeaponType.DAGGER, luck = 80),
             spellPages = mapOf("gale" to 3, "venom_cloud" to 1),
             parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
-            inventory = mapOf(Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
+            inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY),
                 QuestTask("b", "Finish quarterly report", Difficulty.HARD),
@@ -188,6 +199,59 @@ abstract class ScreenshotBase(private val device: String) {
                 }
             }
         }
+    }
+
+    private fun onBackground(content: @Composable () -> Unit) = @Composable {
+        androidx.compose.foundation.layout.Box(
+            androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF0D171A)),
+        ) { content() }
+    }
+
+    @Test fun dashboard() {
+        val v = vm()
+        shot("12_dashboard", content = onBackground {
+            androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(16.dp)) {
+                com.monsterquest.app.ui.WeeklyCard(v)
+                com.monsterquest.app.ui.DashboardCard(v)
+            }
+        })
+    }
+
+    @Test fun journal() {
+        val v = vm()
+        shot("13_journal", content = onBackground { com.monsterquest.app.ui.JournalTab(v) })
+    }
+
+    /** The hero wearing each kind of gear, and bare-handed. */
+    @Test fun outfits() {
+        val legendary = com.monsterquest.core.GearRarity.LEGENDARY
+        val outfits = listOf(
+            HeroClass.NONE to HeroOutfit(),
+            HeroClass.WARRIOR to HeroOutfit(WeaponType.BROADSWORD, armor = com.monsterquest.core.ArmorType.PLATE),
+            HeroClass.WARRIOR to HeroOutfit(WeaponType.SWORD, legendary, com.monsterquest.core.Element.FIRE, com.monsterquest.core.ArmorType.PLATE, legendary),
+            HeroClass.ROGUE to HeroOutfit(WeaponType.DAGGER, com.monsterquest.core.GearRarity.EPIC, com.monsterquest.core.Element.GAS, com.monsterquest.core.ArmorType.LEATHER, com.monsterquest.core.GearRarity.RARE),
+            HeroClass.MAGE to HeroOutfit(WeaponType.STAFF, armor = com.monsterquest.core.ArmorType.ROBE, armorRarity = com.monsterquest.core.GearRarity.EPIC),
+            HeroClass.MAGE to HeroOutfit(WeaponType.WAND, legendary, com.monsterquest.core.Element.ELECTRIC, com.monsterquest.core.ArmorType.ROBE, legendary),
+        )
+        shot("14_outfits", content = onBackground {
+            androidx.compose.foundation.layout.Column {
+                outfits.chunked(3).forEach { row ->
+                    androidx.compose.foundation.layout.Row {
+                        row.forEach { (cls, o) -> HeroArt(cls, androidx.compose.ui.Modifier.size(110.dp), outfit = o) }
+                    }
+                }
+                // An evolution line from first form to final form, plus a few silhouettes.
+                androidx.compose.foundation.layout.Row {
+                    Bestiary.lineOf(Bestiary.get("emberkit")).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(84.dp)) }
+                }
+                androidx.compose.foundation.layout.Row {
+                    Bestiary.lineOf(Bestiary.get("bubblefin")).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(84.dp)) }
+                }
+                androidx.compose.foundation.layout.Row {
+                    Bestiary.lineOf(Bestiary.get("toxbug")).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(84.dp), silhouette = it.stage > 1) }
+                }
+            }
+        })
     }
 
     @Test fun battleTabletop() {

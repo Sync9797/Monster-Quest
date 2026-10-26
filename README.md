@@ -6,46 +6,74 @@ your hero.
 
 ## How to play
 
-- **Quests:** add your to-dos. Completing one gives **XP, gold and a hunt
-  token**. The 📅 **Calendar** button opens your phone's calendar app.
-- **📵 Phone-free challenge:** pick 15–120 minutes and lock your phone.
+- **Quests:** your phone's calendar events become quests automatically. Use
+  **+ To-do** for tasks that aren't on the calendar, and **Calendar** to open
+  the calendar app. Completing a quest gives **XP, gold and a hunt token**.
+- **Dashboard** (Quests tab, under This week): steps today and this week,
+  your quest streak, and a month calendar. Days with a completed quest are
+  filled in, days with 5,000+ steps get a dot, and today is ringed in gold.
+- **Phone-free challenge:** pick 15 to 120 minutes and lock your phone.
   - Keep it locked until time's up to win a **loot box**. Longer sessions give
     better odds of rare boxes.
   - Unlocking early, or not locking within a minute, costs gold and a hunt token.
-- **Loot boxes** open by walking, tracked with the phone's step counter
-  (GPS if there isn't one). You can hold **6** and unlock **2 at a time**.
+- **Loot boxes** open by walking. You can hold **6** and unlock **2 at a time**.
 
   | Level | Walk | Contains |
   |---|---|---|
-  | 1 📦 | 1 mile | Gold and potions |
-  | 2 🎁 | 3 miles | + weapon parts (5 forge a weapon) |
-  | 3 💎 | 5 miles | + spell sheets (5 of a spell teach it) |
-  | 4 👑 | 10 miles | + a boss fight, 20% chance of a legendary |
+  | 1 | 1 mile | Gold and potions |
+  | 2 | 3 miles | + weapon parts |
+  | 3 | 5 miles | + spell sheets (5 of a spell teach it) |
+  | 4 | 10 miles | + a boss fight, 20% chance of a legendary |
 
   Level 4 boxes only come from sessions of 60 minutes or more.
+- **Walking:** every **100 steps** gives you and your battle party **10 XP and
+  10 HP**. Steps come from the phone's step counter (GPS if there isn't one).
 - **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
-  Defense and Speed**.
-  - Equip **weapons** for bonus stats and a typed basic attack.
-  - Learn spells by collecting **5 spell-book pages**.
-- **Classes** unlock at level 5. The first pick is free; switching costs 300 gold.
-  - ⚔️ **Warrior:** more Attack and Speed, less Magic.
-  - 🔮 **Mage:** more Magic and Defense, less Attack.
-  - 🗡️ **Rogue:** more Speed, and dodges some attacks.
+  Defense and Speed**. HP carries over between battles; heal by walking or
+  with potions. Learn spells by collecting **5 spell-book pages**.
+- **Classes** unlock at level 5:
+  - **Warrior:** more Attack and Speed, less Magic.
+  - **Mage:** more Magic and Defense, less Attack.
+  - **Rogue:** more Speed, and dodges some attacks.
+  - **Adventurer:** stay neutral, with no strengths and no weaknesses.
 
-  The bonus is 3% at level 5 and grows 1.5% per level, to 40% at level 30.
+  Your first choice is free and comes with a **Rare weapon** for that path;
+  switching later costs 300 gold. The bonus is 3% at level 5 and grows 1.5%
+  per level, to 40% at level 30.
+- **Weapons:** any class can use any weapon, but a matching class gets +20%.
+
+  | Weapon | Best for | Style |
+  |---|---|---|
+  | Sword | Warrior, Rogue | Balanced |
+  | Broadsword | Warrior | Heavy hits, slower |
+  | Dagger | Rogue | Weaker, strikes twice |
+  | Staff | Mage | Weak swings, strong magic |
+  | Wand | Mage | Weak hits, restores Energy each turn |
+
+  Rarities are **Normal, Rare, Epic and Legendary**. Rarer weapons hit
+  harder and carry 1 to 3 secondary effects (crits, lifesteal, burn, shock,
+  poison, speed, defense, energy, taming luck). Higher levels find better
+  weapons. Weapon parts are typed; 5 of one type forge that weapon.
+- **Armor:** **Plate** (Warrior: big Defense, slower), **Leather** (Rogue:
+  lighter, adds dodge) and **Robes** (Mage: less Defense, adds Magic). Armor
+  has the same rarities and can roll effects too.
+- **Your hero wears what you equip:** the avatar shows your weapon and armor,
+  or bare hands and traveler's clothes when you have none.
 - **Storage upgrades:** every 5 levels you can choose **+5 bag slots** or
   **+3 monster storage**.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:
-  ⚡ Electric > 💧 Water > 🔥 Fire > 🌑 Corrupt > 🕊️ Flight > 💨 Gas > ⚡ Electric.
+  Electric > Water > Fire > Corrupt > Flight > Gas > Electric.
 - **50 monsters:**
   - 6 four-stage lines (3 evolutions)
   - 6 hound breeds with three stages (2 evolutions)
   - 2 rare mythics
   - 6 legendary bosses
 
-  Monsters evolve automatically at set levels, and longer lines end in
-  stronger final forms. Each also rolls a **personality** and hidden
+  Monsters evolve at set levels. Each also rolls a **personality** and hidden
   **potential**, so no two are alike.
+- **Journal** (Monsters, then Journal): every species in order. Monsters you
+  haven't met are shadows, ones you've battled are shown, and ones you've
+  owned are marked caught. Tap one to see its evolution line.
 - **Monster stat pages:** tap a monster to see its stats and compare it with
   another monster. Monsters use HP, Attack, Defense and Speed, and run well
   above the hero's stats.
@@ -56,9 +84,9 @@ your hero.
     **rain or drought**, guard, dive out of reach, or reverse turn order.
     Stat drops and weather last one battle.
   - Status conditions make monsters easier to tame.
-- **🧭 Adventures** unlock once you have 5 monsters (Monsters → Adventures).
-  - Real places near you post adventures daily, at difficulty ★1–★5.
-  - Send a team of 1–5 monsters (one per star). Higher levels mean better
+- **Adventures** unlock once you have 5 monsters (Monsters, then Adventures).
+  - Real places near you post adventures daily, at difficulty 1 to 5 stars.
+  - Send a team of 1 to 5 monsters (one per star). Higher levels mean better
     odds.
   - They fight on their own at 75% strength and bring back gold, items and
     weapon parts.
@@ -73,28 +101,50 @@ your hero.
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.
 - **Taming:** get a monster below 50% HP and throw an orb.
+- **Wild spawns** work like Pokémon GO:
+  - Moving around raises how many monsters appear and how rare they are, and
+    walking somewhere new reveals fresh ones.
+  - The time of day changes which types are out: Flight and Water at dawn,
+    Fire and Electric by day, Gas and Water at dusk, Corrupt and Gas at night.
+  - Even standing still, a monster wanders up to you most 5-minute windows,
+    so the game is playable at home or at a desk.
+  - **Lures** draw extra, rarer monsters to you for 30 minutes. You get one
+    free each day; buy more in the Shop or find them at shrines.
 - **Map (GPS):**
-  - 🎁 **Item shrines** are at cafes, restaurants, parks and libraries. They
-    give weapons, spell pages, orbs and potions, and are always open.
-  - 🥈 **Silver shrines** are at cinemas, arcades, bowling alleys, sports
+  - **Item shrines** are at cafes, restaurants, parks, playgrounds, public
+    art, fountains, libraries and more. **Waystones** fill the gaps so there's
+    always a stop within a short walk. They give weapons, armor, spell pages,
+    orbs, potions and lures, and are always open.
+  - **Silver shrines** are at cinemas, arcades, bowling alleys, sports
     centres and escape rooms.
     - Open **Tuesday and Thursday** if you've done 50% of this week's quests
       (at least 2).
     - Guardians are tough evolved monsters (never legendary). They're harder
       to tame but always have at least 3 perfect stats.
-  - 🥇 **Gold shrines** are at museums, stadiums, theatres, zoos and landmarks.
-    - Open **Saturday and Sunday** if you completed 70% of your Monday–Friday
-      quests (at least 5).
+  - **Gold shrines** are at museums, stadiums, theatres, zoos and landmarks.
+    - Open **Saturday and Sunday** if you completed 70% of your Monday to
+      Friday quests (at least 5).
     - Legendary-class guardians. Defeat one once, then tame it on a later visit.
+  - **Thugs and villains** roam the map and change daily. Their monsters carry
+    the **shadow curse** (Defense -50%, Attack +25%) and can't be tamed.
+    - Beat the whole team in a row for gold, loot and weapon parts (villains
+      also drop a weapon).
+    - Then use a Restore Potion on one of their monsters: 75% of the time it
+      joins you, still cursed.
+    - Battling with a cursed monster slowly lifts the curse (longer for strong
+      monsters). Once it's cured, you choose one stat to make perfect.
 
 ## Art
 
 All artwork is vector art drawn in code, in the style of Questbound:
-- **Hero:** the hooded adventurer, recolored per class, with a staff for the
-  Mage and a dagger for the Rogue.
+- **Hero:** the hooded adventurer, recolored per class, wearing whatever
+  weapon and armor you have equipped. Rarer gear is brighter, and Epic and
+  Legendary gear glows.
 - **Legendaries:** the six Questbound bosses.
 - **Other monsters:** one body shape per evolution line, colored by type.
-  Each stage adds features (a gem, horns, then a halo on final forms).
+  Evolutions look more legendary at each stage: a gem and a type-themed aura
+  (flames, lightning, water, wind, gas or shadow), then spirit wings and
+  horns, and on final forms a gold-edged halo and a crown of light.
 - **Icons:** every icon is drawn the same way. The app uses no emoji.
 
 ## Foldable and large-screen support

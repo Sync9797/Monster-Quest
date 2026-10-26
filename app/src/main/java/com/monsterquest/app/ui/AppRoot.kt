@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
@@ -59,7 +60,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     }
     val battle = vm.battle
     if (battle != null) {
-        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster)
+        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster, outfit = HeroOutfit.of(state.equippedGear, state.equippedArmor))
         return
     }
 

@@ -73,19 +73,25 @@ fun rarityColor(r: Rarity) = when (r) {
 
 @Composable
 fun MonstersScreen(vm: GameViewModel) {
-    var adventures by rememberSaveable { mutableStateOf(false) }
+    // 0 = collection, 1 = journal, 2 = adventures
+    var tab by rememberSaveable { mutableStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallButton("Collection", { adventures = false }, Modifier.weight(1f), outlined = adventures)
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SmallButton("Collection", { tab = 0 }, Modifier.weight(1f), outlined = tab != 0)
+            SmallButton("Journal", { tab = 1 }, Modifier.weight(1f), outlined = tab != 1)
             val away = vm.state.adventures.size
             SmallButton(
                 "Adventures" + if (away > 0) " ($away)" else "",
-                { adventures = true },
-                Modifier.weight(1f),
-                outlined = !adventures,
+                { tab = 2 },
+                Modifier.weight(1.2f),
+                outlined = tab != 2,
             )
         }
-        if (adventures) AdventuresTab(vm) else MonsterCollection(vm)
+        when (tab) {
+            1 -> JournalTab(vm)
+            2 -> AdventuresTab(vm)
+            else -> MonsterCollection(vm)
+        }
     }
 }
 
@@ -195,7 +201,7 @@ private fun EmptySlot() {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(162.dp)
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, Line, RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
@@ -218,7 +224,7 @@ private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: B
     Column(
         Modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(162.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(if (border == Line) 1.dp else 2.dp, border, RoundedCornerShape(12.dp))

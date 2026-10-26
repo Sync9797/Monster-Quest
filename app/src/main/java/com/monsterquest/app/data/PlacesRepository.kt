@@ -29,7 +29,7 @@ import java.util.Locale
 object PlacesRepository {
     private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private const val RADIUS_M = 1500
-    private const val MAX_ITEM_SHRINES = 60
+    private const val MAX_ITEM_SHRINES = 90
     private const val MAX_SILVER_SHRINES = 15
     private const val MAX_GOLD_SHRINES = 10
 
@@ -47,7 +47,9 @@ object PlacesRepository {
             Log.w("MonsterQuest", "Overpass lookup failed, using generated shrines", e)
             emptyList()
         }
-        return if (places.size >= 3) places else places + World.proceduralShrines(lat, lon)
+        val base = if (places.size >= 3) places else places + World.proceduralShrines(lat, lon)
+        // Waystones fill the gaps so there's always a stop within a short walk.
+        return base + World.waystones(lat, lon, base)
     }
 
     private fun fetch(lat: Double, lon: Double, userAgent: String): List<Shrine> {
@@ -55,12 +57,12 @@ object PlacesRepository {
         val query = """
             [out:json][timeout:25];
             (
-              nwr($around)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino)$"];
-              nwr($around)["leisure"~"^(park|garden|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
-              nwr($around)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction)$"];
+              nwr($around)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace)$"];
+              nwr($around)["leisure"~"^(park|garden|playground|fitness_station|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
+              nwr($around)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction|artwork|viewpoint|picnic_site)$"];
               nwr($around)["historic"~"^(castle|monument|fort|ruins)$"];
             );
-            out center 300;
+            out center 500;
         """.trimIndent()
 
         val conn = URL(ENDPOINT).openConnection() as HttpURLConnection

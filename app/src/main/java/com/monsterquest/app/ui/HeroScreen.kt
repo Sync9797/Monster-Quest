@@ -3,6 +3,7 @@ package com.monsterquest.app.ui
 import com.monsterquest.core.GameEngine
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.HeroArt
+import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.color
 import com.monsterquest.app.ui.art.icon
 import com.monsterquest.app.ui.art.GameIcon
@@ -57,7 +58,7 @@ fun HeroScreen(vm: GameViewModel) {
     val profile: @Composable () -> Unit = {
         GameCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                HeroArt(h.heroClass, Modifier.size(96.dp))
+                HeroArt(h.heroClass, Modifier.size(110.dp), outfit = HeroOutfit.of(s.equippedGear, s.equippedArmor))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -145,17 +146,34 @@ fun HeroScreen(vm: GameViewModel) {
             }
         }
 
-        SectionTitle("Weapon")
-        GameCard {
-            val w = s.equippedGear
-            if (w == null) {
-                Text("Bare-handed. Find weapons at shrines and villain camps, or forge them, then equip them from the Bag.")
-            } else {
-                IconText(w.type.icon(), "${w.rarity.label} ${w.name} (Lv ${w.level})", tint = w.rarity.color(), bold = true)
-                Text(w.summary(h.heroClass), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (w.matches(h.heroClass)) Text("Class bonus active (+20%)", fontSize = 12.sp, color = HpGreen)
-            }
-        }
+        SectionTitle("Equipment")
+        val w = s.equippedGear
+        EquipSlot(
+            label = "Weapon",
+            icon = w?.type?.icon() ?: GameIcon.FIST,
+            tint = w?.rarity?.color(),
+            title = w?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Bare-handed",
+            detail = w?.let { it.summary(h.heroClass) } ?: "Find weapons at shrines and villain camps, or forge them from parts.",
+            classMatch = w?.matches(h.heroClass) == true,
+            effects = w?.effects.orEmpty().joinToString(" • ") { it.label },
+            onRemove = if (w != null) vm::unequip else null,
+        )
+        val a = s.equippedArmor
+        EquipSlot(
+            label = "Armor",
+            icon = a?.type?.icon() ?: GameIcon.HERO,
+            tint = a?.rarity?.color(),
+            title = a?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "No armor",
+            detail = a?.let { it.summary(h.heroClass) } ?: "Traveler's clothes. Armor drops at shrines, villain camps and loot boxes.",
+            classMatch = a?.matches(h.heroClass) == true,
+            effects = a?.effects.orEmpty().joinToString(" • ") { it.label },
+            onRemove = if (a != null) vm::unequipArmor else null,
+        )
+        Text(
+            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Change gear from the Bag.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         SectionTitle("Spells")
         Text(
@@ -237,7 +255,7 @@ private fun ClassSection(vm: GameViewModel) {
     if (h.level < CLASS_UNLOCK_LEVEL) {
         GameCard {
             IconText(GameIcon.LOCK, "Choose a class at level $CLASS_UNLOCK_LEVEL", tint = Gold)
-            Text("Warrior, Mage or Rogue.")
+            Text("Warrior, Mage or Rogue, or stay a neutral Adventurer. Your choice comes with a Rare weapon.")
             Text(
                 "Class bonuses start small and grow every level.",
                 fontSize = 12.sp,
@@ -246,22 +264,24 @@ private fun ClassSection(vm: GameViewModel) {
         }
         return
     }
-    if (h.heroClass != HeroClass.NONE) {
+    if (h.classChosen) {
         GameCard(border = Gold) {
             IconText(h.heroClass.icon(), h.heroClass.label, tint = Gold, bold = true, fontSize = 17.sp)
             Text(classEffects(h.heroClass, h.classBonus), fontSize = 13.sp)
-            Text(
-                "Bonus grows 1.5% per level, up to 40% at level 30.",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (h.heroClass != HeroClass.NONE) {
+                Text(
+                    "Bonus grows 1.5% per level, up to 40% at level 30.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     } else {
-        Text("Choose your path! The first choice is free.", color = Gold, fontSize = 13.sp)
+        Text("Choose your path! The first choice is free and comes with a Rare weapon.", color = Gold, fontSize = 13.sp)
     }
     // Preview what each class would do at the current level.
     val previewBonus = (3 + (h.level - CLASS_UNLOCK_LEVEL) * 1.5).coerceIn(0.0, 40.0)
-    HeroClass.entries.filter { it != HeroClass.NONE && it != h.heroClass }.forEach { cls ->
+    HeroClass.entries.filter { !h.classChosen || it != h.heroClass }.forEach { cls ->
         GameCard(Modifier.padding(vertical = 3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeroArt(cls, Modifier.size(56.dp), portrait = false)
@@ -271,13 +291,13 @@ private fun ClassSection(vm: GameViewModel) {
                     Text(classEffects(cls, previewBonus), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 SmallButton(
-                    if (h.heroClass == HeroClass.NONE) "Choose" else "Switch",
+                    if (!h.classChosen) "Choose" else "Switch",
                     { confirm = cls },
                 )
             }
         }
     }
-    if (h.heroClass != HeroClass.NONE) {
+    if (h.classChosen) {
         Text(
             "Switching class costs $CLASS_CHANGE_COST gold.",
             fontSize = 12.sp,
@@ -285,10 +305,10 @@ private fun ClassSection(vm: GameViewModel) {
         )
     }
     confirm?.let { cls ->
-        val cost = if (h.heroClass == HeroClass.NONE) 0 else CLASS_CHANGE_COST
+        val cost = if (!h.classChosen) 0 else CLASS_CHANGE_COST
         AlertDialog(
             onDismissRequest = { confirm = null },
-            title = { Text("Become a ${cls.label}?") },
+            title = { Text(if (cls == HeroClass.NONE) "Stay an Adventurer?" else "Become a ${cls.label}?") },
             text = { Text(classEffects(cls, previewBonus) + if (cost > 0) "\n\nCosts $cost gold." else "") },
             confirmButton = {
                 TextButton(onClick = { vm.chooseClass(cls); confirm = null }, enabled = s.gold >= cost) { Text("Confirm") }
@@ -302,9 +322,36 @@ private fun classEffects(cls: HeroClass, bonus: Double): String {
     val b = "%.1f".format(bonus)
     val half = "%.1f".format(bonus / 2)
     return when (cls) {
-        HeroClass.NONE -> ""
+        HeroClass.NONE -> "Neutral: no strengths and no weaknesses."
         HeroClass.WARRIOR -> "+$b% Attack, +$b% Speed, −$half% Magic"
         HeroClass.MAGE -> "+$b% Magic, +$b% Defense, −$half% Attack"
         HeroClass.ROGUE -> "+$b% Speed, $half% chance to dodge attacks"
+    }
+}
+
+@Composable
+private fun EquipSlot(
+    label: String,
+    icon: GameIcon,
+    tint: androidx.compose.ui.graphics.Color?,
+    title: String,
+    detail: String,
+    classMatch: Boolean,
+    effects: String,
+    onRemove: (() -> Unit)?,
+) {
+    GameCard(Modifier.padding(vertical = 3.dp), border = tint) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GIcon(icon, Modifier.size(30.dp), tint ?: MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, fontWeight = FontWeight.SemiBold, color = tint ?: MaterialTheme.colorScheme.onSurface)
+                Text(detail, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (effects.isNotEmpty()) Text(effects, fontSize = 12.sp, color = Gold)
+                if (classMatch) Text("Class bonus active (+20%)", fontSize = 12.sp, color = HpGreen)
+            }
+            if (onRemove != null) SmallButton("Remove", onRemove, outlined = true)
+        }
     }
 }

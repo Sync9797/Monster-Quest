@@ -38,6 +38,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import com.monsterquest.app.ui.art.HeroOutfit
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,7 +79,21 @@ private sealed interface Menu {
 }
 
 @Composable
-fun BattleScreen(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit = {}) {
+fun BattleScreen(
+    b: BattleView,
+    onAction: (BattleAction) -> Unit,
+    onClose: () -> Unit,
+    onNext: () -> Unit = {},
+    outfit: HeroOutfit? = null,
+) {
+    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext) }
+}
+
+/** What the hero is wearing, so their battle sprite matches their equipment. */
+private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
+
+@Composable
+private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     // Return to the main menu whenever the turn passes to someone else.
     LaunchedEffect(b.current?.key, b.round, b.log.size) { menu = Menu.Main }
@@ -261,7 +278,7 @@ private fun FighterArt(f: FighterView, modifier: Modifier) {
     val cls = f.heroClass
     val sp = f.speciesId?.let { Bestiary.get(it) }
     when {
-        cls != null -> HeroArt(cls, modifier, portrait = false)
+        cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
         sp != null -> MonsterArt(sp, modifier, dim = !f.alive)
     }
 }

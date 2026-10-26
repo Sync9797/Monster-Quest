@@ -1,6 +1,7 @@
 package com.monsterquest.app.ui
 
 import com.monsterquest.app.ui.art.drawHeroOn
+import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.drawMonsterOn
 import com.monsterquest.app.ui.art.drawIconOn
 import com.monsterquest.app.ui.art.markerDrawable
@@ -74,6 +75,7 @@ import com.monsterquest.core.Schedule
 import com.monsterquest.core.Shrine
 import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.WildSpawn
+import com.monsterquest.core.Item
 import com.monsterquest.core.VillainCamp
 import com.monsterquest.core.VillainTier
 import com.monsterquest.core.Villains
@@ -206,7 +208,8 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(sp.lat, sp.lon)
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("spawn_${sp.speciesId}", 0xDD142327.toInt()) { c, w, h -> drawMonsterOn(c, w, h, sp.species) })
+                                    val ring = if (sp.lured) 0xEEF2A198.toInt() else 0xDD142327.toInt()
+                                    setIcon(markerIcon("spawn_${sp.speciesId}_$ring", ring) { c, w, h -> drawMonsterOn(c, w, h, sp.species) })
                                     title = sp.species.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
                                 },
@@ -229,7 +232,8 @@ fun MapScreen(vm: GameViewModel) {
                                 Marker(mv).apply {
                                     position = GeoPoint(loc.first, loc.second)
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("player_${vm.state.hero.heroClass}", 0xEEEBC678.toInt()) { c, w, h -> drawHeroOn(c, w, h, vm.state.hero.heroClass) })
+                                    val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor)
+                                    setIcon(markerIcon("player_${vm.state.hero.heroClass}_$outfit", 0xEEEBC678.toInt()) { c, w, h -> drawHeroOn(c, w, h, vm.state.hero.heroClass, outfit) })
                                     setOnMarkerClickListener { _, _ -> true }
                                 },
                             )
@@ -245,6 +249,7 @@ fun MapScreen(vm: GameViewModel) {
                     )
                 }
             }
+            SpawnInfoRow(vm, now)
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -293,6 +298,38 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
         is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
         null -> {}
+    }
+}
+
+/** Time of day, how much you've been moving, and the lure. */
+@Composable
+private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
+    val cond = vm.spawnConditions(now)
+    val tod = cond.timeOfDay
+    Row(
+        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${tod.label}: ", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                tod.favored.forEach { e ->
+                    GIcon(e.icon(), Modifier.size(14.dp), e.color())
+                    Text(" ${e.label}  ", fontSize = 12.sp, color = e.color())
+                }
+            }
+            val pct = (cond.activity * 100).toInt()
+            Text(
+                if (pct >= 5) "On the move: +$pct% spawns, rarer monsters" else "Standing still: monsters still wander up to you. Walk for more.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (cond.lure) {
+            IconText(GameIcon.LURE, formatDuration(vm.state.lureUntilMs - now), tint = Color(0xFFF2A198), fontSize = 12.sp)
+        } else {
+            SmallButton("Lure (${vm.state.count(Item.LURE)})", vm::useLure, enabled = vm.state.count(Item.LURE) > 0, outlined = true)
+        }
     }
 }
 

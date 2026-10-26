@@ -24,7 +24,7 @@ object GameEngine {
         if (state.starterChosen) return Update(state, "Starter already chosen.")
         val m = Monster.create(Bestiary.get(speciesId), 3, rng)
         return Update(
-            state.copy(monsters = state.monsters + m, party = listOf(m.uid), starterChosen = true),
+            state.copy(monsters = state.monsters + m, party = listOf(m.uid), starterChosen = true).withJournal(),
             "${m.species.name} joins you! Personality: ${m.personality.label} (${m.personality.description}).",
         )
     }
@@ -56,23 +56,36 @@ object GameEngine {
         if (gain.levelsGained > 0) append(" LEVEL UP! Now level ${gain.state.hero.level}.")
         if (gain.upgradesGained > 0) append(" Storage upgrade unlocked!")
         val h = gain.state.hero
-        if (gain.levelsGained > 0 && h.heroClass == HeroClass.NONE && h.level >= CLASS_UNLOCK_LEVEL) {
-            append(" You can now choose a class on the Hero tab!")
+        if (gain.levelsGained > 0 && !h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) {
+            append(" Choose your class on the Hero tab to claim a Rare weapon!")
         }
     }
 
     /** Pick a class at level 5+. The first choice is free; switching costs gold. */
-    fun chooseClass(state: GameState, cls: HeroClass): Update {
+    fun chooseClass(state: GameState, cls: HeroClass, rng: Random = Random.Default): Update {
         val h = state.hero
-        if (cls == HeroClass.NONE) return Update(state, "Pick a class.")
         if (h.level < CLASS_UNLOCK_LEVEL) return Update(state, "Classes unlock at level $CLASS_UNLOCK_LEVEL.")
-        if (h.heroClass == cls) return Update(state, "You're already a ${cls.label}.")
-        val cost = if (h.heroClass == HeroClass.NONE) 0 else CLASS_CHANGE_COST
+        if (h.classChosen && h.heroClass == cls) return Update(state, "You're already a ${cls.label}.")
+        val cost = if (!h.classChosen) 0 else CLASS_CHANGE_COST
         if (state.gold < cost) return Update(state, "Changing class costs $cost gold.")
-        return Update(
-            state.copy(hero = h.copy(heroClass = cls), gold = state.gold - cost),
-            "You are now a ${cls.label}!" + if (cost > 0) " (−$cost gold)" else "",
-        )
+        var s = state.copy(hero = h.copy(heroClass = cls, classChosen = true), gold = state.gold - cost)
+        var gift = ""
+        if (!h.classChosen) {
+            // Picking a path at level 5 comes with a Rare weapon suited to it.
+            val type = when (cls) {
+                HeroClass.WARRIOR -> WeaponType.BROADSWORD
+                HeroClass.MAGE -> WeaponType.STAFF
+                HeroClass.ROGUE -> WeaponType.DAGGER
+                HeroClass.NONE -> WeaponType.SWORD
+            }
+            val w = Armory.roll(maxOf(h.level, CLASS_UNLOCK_LEVEL), rng, type, minimum = GearRarity.RARE).let {
+                if (it.rarity == GearRarity.RARE) it else it.copy(rarity = GearRarity.RARE, effects = it.effects.take(1))
+            }
+            s = s.copy(gear = s.gear + w)
+            gift = " You received a Rare ${w.name}! Equip it from the Bag."
+        }
+        val what = if (cls == HeroClass.NONE) "You stay an Adventurer: no strengths, no weaknesses." else "You are now a ${cls.label}!"
+        return Update(s, what + (if (cost > 0) " (−$cost gold)" else "") + gift)
     }
 
     fun allocatePoint(state: GameState, attr: HeroAttribute): Update {
@@ -122,6 +135,7 @@ object GameEngine {
         val d = task.difficulty
         var s = state.copy(
             tasks = state.tasks.map { if (it.id == id) it.copy(completedAtMs = nowMs) else it },
+            questDays = state.questDays.let { it + (epochDay(nowMs) to (it[epochDay(nowMs)] ?: 0) + 1) },
             gold = state.gold + d.gold,
             huntTokens = minOf(MAX_HUNT_TOKENS, state.huntTokens + 1),
             stats = state.stats.copy(tasksCompleted = state.stats.tasksCompleted + 1),
@@ -384,7 +398,7 @@ object GameEngine {
             state.hero,
             // Monsters out on adventures can't fight.
             state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
-            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage,
+            enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.equippedArmor,
         )
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
@@ -507,6 +521,7 @@ object GameEngine {
     data class Loot(
         val items: Map<Item, Int> = emptyMap(),
         val weapons: List<Gear> = emptyList(),
+        val armor: List<Armor> = emptyList(),
         /** Spell id -> pages. */
         val pages: Map<String, Int> = emptyMap(),
         val parts: Map<WeaponType, Int> = emptyMap(),
@@ -519,13 +534,16 @@ object GameEngine {
     fun rollLoot(state: GameState, rolls: Int, rng: Random): Loot {
         val items = mutableMapOf<Item, Int>()
         val weapons = mutableListOf<Gear>()
+        val armor = mutableListOf<Armor>()
         val pages = mutableMapOf<String, Int>()
         val unknownSpells = Spells.all.filter { it.id !in state.hero.knownSpells }
         repeat(rolls) {
             val r = rng.nextDouble()
             when {
                 r < 0.12 -> weapons += Armory.roll(state.hero.level, rng)
-                r < 0.42 && unknownSpells.isNotEmpty() -> {
+                r < 0.19 -> armor += Armory.rollArmor(state.hero.level, rng)
+                r < 0.23 -> items[Item.LURE] = (items[Item.LURE] ?: 0) + 1
+                r < 0.46 && unknownSpells.isNotEmpty() -> {
                     val sp = unknownSpells.random(rng)
                     pages[sp.id] = (pages[sp.id] ?: 0) + 1
                 }
@@ -541,7 +559,7 @@ object GameEngine {
                 }
             }
         }
-        return Loot(items, weapons, pages)
+        return Loot(items, weapons, armor, pages)
     }
 
     /** Some parts of one random weapon type. */
@@ -560,6 +578,14 @@ object GameEngine {
             if (s.bagCount < s.bagCapacity) {
                 s = s.copy(gear = s.gear + w)
                 parts += "${w.rarity.label} ${w.name}"
+            } else {
+                lostWeapons++
+            }
+        }
+        for (a in loot.armor) {
+            if (s.bagCount < s.bagCapacity) {
+                s = s.copy(armor = s.armor + a)
+                parts += "${a.rarity.label} ${a.name}"
             } else {
                 lostWeapons++
             }
@@ -638,12 +664,71 @@ object GameEngine {
         return Update(state.copy(gear = state.gear + w, equippedGear = null), "Unequipped ${w.name}.")
     }
 
+    fun equipArmor(state: GameState, id: String): Update {
+        val a = state.armor.find { it.id == id } ?: return Update(state, "Armor not found.")
+        val rest = state.armor.filterNot { it.id == id }
+        val back = state.equippedArmor?.let { rest + it } ?: rest
+        val fit = if (a.matches(state.hero.heroClass)) " Class bonus +${(CLASS_MATCH_BONUS * 100).toInt()}%!" else ""
+        return Update(state.copy(armor = back, equippedArmor = a), "Put on ${a.name}.$fit")
+    }
+
+    fun unequipArmor(state: GameState): Update {
+        val a = state.equippedArmor ?: return Update(state, "No armor on.")
+        if (state.bagFull) return Update(state, "Bag is full.")
+        return Update(state.copy(armor = state.armor + a, equippedArmor = null), "Took off ${a.name}.")
+    }
+
+    fun dropArmor(state: GameState, id: String): Update {
+        val a = state.armor.find { it.id == id } ?: return Update(state, "Armor not found.")
+        return Update(state.copy(armor = state.armor.filterNot { it.id == id }), "Dropped ${a.name}.")
+    }
+
     fun dropWeapon(state: GameState, id: String): Update {
         val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found.")
         return Update(state.copy(gear = state.gear.filterNot { it.id == id }), "Dropped ${w.name}.")
     }
 
     // ---- walking -----------------------------------------------------------
+
+    /** Steps that take activity from 0 to full. */
+    const val ACTIVITY_STEPS = 1500.0
+    /** Activity halves every this many minutes of standing still. */
+    const val ACTIVITY_HALF_LIFE_MIN = 15.0
+
+    /** How much you've been moving lately, 0..1. */
+    fun activityLevel(state: GameState, nowMs: Long): Double {
+        val minutes = ((nowMs - state.activityAtMs).coerceAtLeast(0)) / 60_000.0
+        return state.activity * Math.pow(0.5, minutes / ACTIVITY_HALF_LIFE_MIN)
+    }
+
+    // ---- lures -------------------------------------------------------------
+
+    const val LURE_MS = 30 * 60_000L
+
+    /** One free lure each day (when there's room in the bag). */
+    fun claimDailyLure(state: GameState, nowMs: Long): Update? {
+        val day = epochDay(nowMs)
+        if (state.lastFreeLureDay == day || state.bagFull) return null
+        val (s, _) = addItems(state.copy(lastFreeLureDay = day), mapOf(Item.LURE to 1))
+        return Update(s, "Your free daily Lure is in the bag. Use it from the Map to draw monsters to you.")
+    }
+
+    fun useLure(state: GameState, nowMs: Long): Update {
+        if (state.count(Item.LURE) <= 0) return Update(state, "No lures. Buy one in the Shop or find them at shrines.")
+        val until = maxOf(state.lureUntilMs, nowMs) + LURE_MS
+        return Update(
+            state.copy(inventory = removeItems(state.inventory, mapOf(Item.LURE to 1)), lureUntilMs = until),
+            "Lure active! More monsters will appear around you for the next 30 minutes.",
+        )
+    }
+
+    // ---- journal -----------------------------------------------------------
+
+    fun markSeen(state: GameState, speciesId: String): GameState =
+        if (speciesId in state.seen) state else state.copy(seen = state.seen + speciesId)
+
+    fun epochDay(nowMs: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Long =
+        java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
 
     const val STEPS_PER_REWARD = 100
     const val XP_PER_REWARD = 10
@@ -675,9 +760,13 @@ object GameEngine {
         if (steps <= 0) return Update(state, "")
         var s = LootBoxes.addWalk(state, steps * METERS_PER_MILE / STEPS_PER_MILE)
         val day = java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
+        val today = if (s.stepsDay == day) s.stepsToday + steps else steps
         s = s.copy(
-            stepsToday = if (s.stepsDay == day) s.stepsToday + steps else steps,
+            stepsToday = today,
             stepsDay = day,
+            stepHistory = s.stepHistory.filterKeys { it > day - 90 } + (day to today),
+            activity = (activityLevel(s, nowMs) + steps / ACTIVITY_STEPS).coerceAtMost(1.0),
+            activityAtMs = nowMs,
             stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
         )
         val bank = s.stepBank + steps

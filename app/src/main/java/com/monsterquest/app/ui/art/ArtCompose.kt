@@ -30,7 +30,6 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.Species
 import com.monsterquest.core.Status
-import com.monsterquest.core.Weapon
 import com.monsterquest.core.Weather
 
 @Composable
@@ -41,16 +40,31 @@ private fun ArtCanvas(modifier: Modifier, draw: (android.graphics.Canvas, Float,
     }
 }
 
-/** The hero. [portrait] adds the halo and sparkles. */
+/** The hero wearing [outfit] (by default, the class's typical look). [portrait] adds the halo and sparkles. */
 @Composable
-fun HeroArt(cls: HeroClass, modifier: Modifier, portrait: Boolean = true) {
-    ArtCanvas(modifier) { c, w, h -> drawHero(c, w, h, cls, portrait) }
+fun HeroArt(cls: HeroClass, modifier: Modifier, portrait: Boolean = true, outfit: HeroOutfit = HeroOutfit.classic(cls)) {
+    ArtCanvas(modifier) { c, w, h -> drawHero(c, w, h, cls, portrait, outfit) }
 }
 
-/** A monster's artwork. [dim] grays it out (fainted). */
+/** A monster's artwork. [dim] grays it out (fainted); [silhouette] shows only its shadow (not yet seen). */
 @Composable
-fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false) {
-    ArtCanvas(modifier) { c, w, h -> drawMonster(c, w, h, species, dim) }
+fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silhouette: Boolean = false) {
+    ArtCanvas(modifier) { c, w, h ->
+        if (silhouette) {
+            // Draw normally into a layer, then flood everything drawn with one dark color.
+            val layer = c.saveLayer(0f, 0f, w, h, null)
+            drawMonster(c, w, h, species, dim = true)
+            c.drawRect(0f, 0f, w, h, silhouettePaint)
+            c.restoreToCount(layer)
+        } else {
+            drawMonster(c, w, h, species, dim)
+        }
+    }
+}
+
+private val silhouettePaint = android.graphics.Paint().apply {
+    color = 0xFF2A3A3E.toInt()
+    xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
 }
 
 /** A small game icon. */
@@ -110,6 +124,7 @@ fun Item.icon(): GameIcon = when (this) {
     Item.RESTORE_POTION -> GameIcon.RESTORE
     Item.TAMING_ORB, Item.GREAT_ORB, Item.MASTER_ORB -> GameIcon.ORB
     Item.TREAT -> GameIcon.TREAT
+    Item.LURE -> GameIcon.LURE
 }
 
 fun Item.color(): Color = when (this) {
@@ -121,6 +136,7 @@ fun Item.color(): Color = when (this) {
     Item.GREAT_ORB -> Color(0xFFC3A6F0)
     Item.MASTER_ORB -> Color(0xFFEBC678)
     Item.TREAT -> Color(0xFFD9A07A)
+    Item.LURE -> Color(0xFFF2A198)
 }
 
 fun com.monsterquest.core.WeaponType.icon(): GameIcon = when (this) {
@@ -138,17 +154,11 @@ fun com.monsterquest.core.GearRarity.color(): Color = when (this) {
     com.monsterquest.core.GearRarity.LEGENDARY -> Color(0xFFEBC678)
 }
 
-fun Weapon.icon(): GameIcon = when (this) {
-    Weapon.WOODEN_SWORD, Weapon.IRON_SWORD, Weapon.FLAME_BLADE -> GameIcon.SWORD
-    Weapon.APPRENTICE_STAFF, Weapon.ARCANE_STAFF -> GameIcon.STAFF
-    Weapon.STORM_SPEAR -> GameIcon.SPEAR
-    Weapon.WIND_BOW -> GameIcon.BOW
-    Weapon.TIDE_TRIDENT -> GameIcon.TRIDENT
-    Weapon.VENOM_DAGGER -> GameIcon.DAGGER
-    Weapon.SHADOW_SCYTHE -> GameIcon.SCYTHE
+fun com.monsterquest.core.ArmorType.icon(): GameIcon = when (this) {
+    com.monsterquest.core.ArmorType.PLATE -> GameIcon.PLATE
+    com.monsterquest.core.ArmorType.LEATHER -> GameIcon.LEATHER
+    com.monsterquest.core.ArmorType.ROBE -> GameIcon.ROBE
 }
-
-fun Weapon.color(): Color = if (element == Element.NEUTRAL) Color(0xFFD7DDD9) else element.color()
 
 fun BoxRarity.color(): Color = when (this) {
     BoxRarity.COMMON -> Color(0xFFB8C1BE)
@@ -218,7 +228,7 @@ fun markerDrawable(context: Context, sizeDp: Int, ring: Int, draw: (android.grap
 
 fun drawMonsterOn(c: android.graphics.Canvas, w: Float, h: Float, sp: Species) = drawMonster(c, w, h, sp)
 
-fun drawHeroOn(c: android.graphics.Canvas, w: Float, h: Float, cls: HeroClass) = drawHero(c, w, h, cls, portrait = false)
+fun drawHeroOn(c: android.graphics.Canvas, w: Float, h: Float, cls: HeroClass, outfit: HeroOutfit) = drawHero(c, w, h, cls, portrait = false, outfit = outfit)
 
 fun drawIconOn(c: android.graphics.Canvas, w: Float, h: Float, icon: GameIcon, tint: Int) =
     drawIcon(c, w, h, icon, tint, Argb.hex("0d171a"))
