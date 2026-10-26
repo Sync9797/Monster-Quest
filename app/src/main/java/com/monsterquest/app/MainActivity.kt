@@ -26,7 +26,9 @@ import com.monsterquest.app.ui.AppRoot
 import com.monsterquest.app.ui.FoldInfo
 import com.monsterquest.app.ui.LocalFold
 import com.monsterquest.app.ui.MonsterQuestTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.monsterquest.core.StepSource
 import org.osmdroid.config.Configuration
 import java.io.File
 
@@ -40,6 +42,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         vm.onAppResumed()
         startStepCounting()
+        vm.refreshHealthStatus()
+        vm.refreshHealthSteps()
     }
 
     override fun onPause() {
@@ -52,6 +56,10 @@ class MainActivity : ComponentActivity() {
      * reading it whenever the app is open captures all walking since last time.
      */
     private fun startStepCounting() {
+        if (vm.state.settings.stepSource != StepSource.PHONE) {
+            stopStepCounting()
+            return
+        }
         val sm = getSystemService(SENSOR_SERVICE) as SensorManager
         val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
         val permitted = Build.VERSION.SDK_INT < 29 ||
@@ -81,6 +89,17 @@ class MainActivity : ComponentActivity() {
             userAgentValue = packageName
             osmdroidBasePath = File(cacheDir, "osmdroid")
             osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
+        }
+
+        // Health Connect has no live updates, so poll it while the game is open.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    delay(60_000)
+                    vm.refreshHealthSteps()
+                    startStepCounting()
+                }
+            }
         }
 
         // Track the hinge on foldables so layouts can avoid it and use

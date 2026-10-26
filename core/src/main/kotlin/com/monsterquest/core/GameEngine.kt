@@ -807,6 +807,35 @@ object GameEngine {
     }
 
     /**
+     * Switch where steps come from. Baselines reset so steps aren't counted
+     * twice (or counted from before the switch).
+     */
+    fun setStepSource(state: GameState, source: StepSource): GameState =
+        state.copy(settings = state.settings.copy(stepSource = source), lastStepCount = null, healthDay = null, healthSteps = null)
+
+    /**
+     * A new daily step total (from Health Connect). Steps since the previous
+     * reading count as walking. The first reading after switching sources only
+     * sets the baseline; on a new day the whole total counts.
+     */
+    fun onDailyStepTotal(state: GameState, day: Long, total: Long, nowMs: Long = System.currentTimeMillis()): Update {
+        val last = state.healthSteps
+        val delta = when {
+            state.healthDay == null || last == null -> 0L
+            state.healthDay == day -> (total - last).coerceAtLeast(0)
+            else -> total
+        }
+        val u = walk(state, delta.toInt(), nowMs)
+        return Update(u.state.copy(healthDay = day, healthSteps = maxOf(total, if (state.healthDay == day) last ?: 0 else 0)), u.message)
+    }
+
+    /** Drop calendar quests that haven't been completed (e.g. after turning calendar sync off). */
+    fun clearCalendarQuests(state: GameState): Update {
+        val kept = state.tasks.filterNot { it.source == TaskSource.CALENDAR && !it.completed }
+        return Update(state.copy(tasks = kept), "Removed ${state.tasks.size - kept.size} calendar quest(s).")
+    }
+
+    /**
      * Walking [steps]: unlocking loot boxes advance, and every
      * [STEPS_PER_REWARD] steps give the hero and each battle-party monster
      * [XP_PER_REWARD] XP and heal [HP_PER_REWARD] HP. The message is empty

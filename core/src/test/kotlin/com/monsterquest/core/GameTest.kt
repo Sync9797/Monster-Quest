@@ -875,4 +875,40 @@ class GameTest {
         assertEquals(GameEngine.TAME_CANDY, after.candy[wild.species.family])
         assertTrue(after.monsters.any { it.uid == wild.uid })
     }
+
+    @Test
+    fun healthConnectStepsCountOnlyNewSteps() {
+        val now = 1_700_000_000_000L
+        var s = GameEngine.setStepSource(started().copy(lastStepCount = 500), StepSource.SAMSUNG_HEALTH)
+        assertNull(s.lastStepCount)
+        assertEquals(StepSource.SAMSUNG_HEALTH, s.settings.stepSource)
+        // First reading: baseline only.
+        s = GameEngine.onDailyStepTotal(s, 10, 4000, now).state
+        assertEquals(0, s.stepsToday)
+        // Later the same day: only the difference counts.
+        s = GameEngine.onDailyStepTotal(s, 10, 4250, now).state
+        assertEquals(250, s.stats.totalSteps)
+        // A lower reading (data corrected) never counts negative.
+        s = GameEngine.onDailyStepTotal(s, 10, 4100, now).state
+        assertEquals(250, s.stats.totalSteps)
+        s = GameEngine.onDailyStepTotal(s, 10, 4300, now).state
+        assertEquals(300, s.stats.totalSteps)
+        // New day: the new total counts from midnight.
+        s = GameEngine.onDailyStepTotal(s, 11, 120, now).state
+        assertEquals(420, s.stats.totalSteps)
+        val json = GameState.fromJson(s.toJson())
+        assertEquals(StepSource.SAMSUNG_HEALTH, json.settings.stepSource)
+    }
+
+    @Test
+    fun clearingCalendarQuestsKeepsCompletedAndManual() {
+        val s = started().copy(
+            tasks = listOf(
+                QuestTask("a", "Manual", Difficulty.EASY),
+                QuestTask("b", "Cal", Difficulty.EASY, TaskSource.CALENDAR),
+                QuestTask("c", "Cal done", Difficulty.EASY, TaskSource.CALENDAR, completedAtMs = 5),
+            ),
+        )
+        assertEquals(listOf("a", "c"), GameEngine.clearCalendarQuests(s).state.tasks.map { it.id })
+    }
 }

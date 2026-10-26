@@ -1,6 +1,7 @@
 package com.monsterquest.app.ui
 
 import com.monsterquest.app.ui.art.HeroOutfit
+import com.monsterquest.app.ui.art.ArtQuality
 import com.monsterquest.app.ui.art.MonsterArt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Alignment
@@ -47,8 +48,9 @@ enum class Tab(val label: String, val icon: GameIcon) {
 }
 
 @Composable
-fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
+fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Boolean = false) {
     val state = vm.state
+    ArtQuality.reduced = state.settings.reducedEffects
     if (!state.starterChosen) {
         StarterScreen(onChoose = vm::chooseStarter)
         return
@@ -65,6 +67,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     }
 
     var tab by rememberSaveable { mutableStateOf(initialTab) }
+    var settingsOpen by rememberSaveable { mutableStateOf(initialSettings) }
     val snackbar = remember { SnackbarHostState() }
     val msg = vm.message
     LaunchedEffect(msg) {
@@ -112,8 +115,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 Tab.entries.forEach { t ->
                     NavigationBarItem(
-                        selected = tab == t,
-                        onClick = { tab = t },
+                        selected = tab == t && !settingsOpen,
+                        onClick = { tab = t; settingsOpen = false },
                         icon = { GIcon(t.icon, Modifier.size(24.dp)) },
                         label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
@@ -128,8 +131,10 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS) {
     ) { padding ->
         Row(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                ResourceHeader(state.hero.level, state.gold, state.huntTokens)
-                when (tab) {
+                ResourceHeader(state.hero.level, state.gold, state.huntTokens, onSettings = { settingsOpen = !settingsOpen })
+                if (settingsOpen) {
+                    SettingsScreen(vm) { settingsOpen = false }
+                } else when (tab) {
                     Tab.QUESTS -> QuestsScreen(vm)
                     Tab.HERO -> HeroScreen(vm)
                     Tab.MONSTERS -> MonstersScreen(vm)

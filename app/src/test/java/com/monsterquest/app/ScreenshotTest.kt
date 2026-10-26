@@ -267,6 +267,8 @@ abstract class ScreenshotBase(private val device: String) {
         })
     }
 
+    @Test fun settings() { val v = vm(); shot("16_settings") { AppRoot(v, initialSettings = true) } }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

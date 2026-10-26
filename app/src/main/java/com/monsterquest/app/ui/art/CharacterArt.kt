@@ -560,7 +560,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     val power = if (sp.stages <= 1) 0f else (sp.stage - 1f) / (sp.stages - 1)
     if (!dim && sp.stage >= 2) {
         ArtPainter.glow(c, 100f, 115f, 60f + 25f * power, p.light, 0.2f + 0.2f * power)
-        drawAura(c, sp.element, p, power)
+        if (!ArtQuality.reduced) drawAura(c, sp.element, p, power)
     }
     if (!dim && sp.stage >= 3) drawSpiritWings(c, p, power, final)
     if (final && !dim) ArtPainter.ringStroke(c, 100f, 110f, 76f, GOLD, 2f, 0.4f)
@@ -636,7 +636,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     }
     c.restore()
 
-    if (!dim) {
+    if (!dim && !ArtQuality.reduced) {
         // Low mist curling around the feet.
         ArtPainter.fill(c, "M34 192Q50 180 72 188Q90 178 108 188Q128 178 146 188Q160 182 168 192Z", MIST, 0.08f + 0.06f * power)
     }

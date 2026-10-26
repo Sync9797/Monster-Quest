@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,13 +112,20 @@ fun SmallButton(
 
 /** Header strip showing level, gold and hunt tokens. */
 @Composable
-fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modifier) {
+fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().padding(start = if (onSettings != null) 4.dp else 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onSettings != null) {
+                androidx.compose.material3.IconButton(onClick = onSettings) {
+                    com.monsterquest.app.ui.art.GIcon(com.monsterquest.app.ui.art.GameIcon.GEAR, Modifier.size(22.dp), MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
+        }
         IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
         IconText(GameIcon.TARGET, "$tokens hunts", tint = Mint, textColor = Mint, bold = true)
     }

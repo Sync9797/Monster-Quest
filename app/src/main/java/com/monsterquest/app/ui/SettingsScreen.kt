@@ -1,0 +1,217 @@
+package com.monsterquest.app.ui
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.CalendarContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.health.connect.client.PermissionController
+import com.monsterquest.app.GameViewModel
+import com.monsterquest.app.data.HealthSteps
+import com.monsterquest.app.ui.art.GameIcon
+import com.monsterquest.app.ui.art.IconText
+import com.monsterquest.core.CALENDAR_DAYS_AHEAD_OPTIONS
+import com.monsterquest.core.StepSource
+
+/** Settings: performance, calendar and where steps come from. */
+@Composable
+fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
+    val context = LocalContext.current
+    val prefs = vm.state.settings
+    LaunchedEffect(Unit) { vm.refreshHealthStatus() }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+    ) {
+        Column(Modifier.widthIn(max = 640.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconText(GameIcon.GEAR, "Settings", tint = Gold, textColor = Gold, size = 22.dp, style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onClose) { Text("Done") }
+            }
+
+            // ---- Steps ----
+            SectionTitle("Step sync")
+            Text(
+                "Choose where the game counts your walking from. Steps level up you and your party, open loot boxes and bring more monsters.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            StepSource.entries.forEach { source ->
+                GameCard(
+                    Modifier.padding(vertical = 3.dp).clickable { if (source != prefs.stepSource) vm.setStepSource(source) },
+                    border = if (source == prefs.stepSource) Gold else null,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = source == prefs.stepSource, onClick = { if (source != prefs.stepSource) vm.setStepSource(source) })
+                        Column(Modifier.weight(1f)) {
+                            Text(source.label, fontWeight = FontWeight.SemiBold)
+                            Text(source.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+            StepSourceStatus(vm)
+            Text(
+                "Steps today: %,d".format(vm.state.stepsToday),
+                fontSize = 13.sp,
+                color = HpGreen,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+
+            // ---- Calendar ----
+            SectionTitle("Calendar")
+            val hasCalendar = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+            val calendarPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+                if (ok) vm.syncCalendar()
+            }
+            GameCard {
+                if (!hasCalendar) {
+                    Text("Calendar access is off. Connect it to turn your events into quests.", fontSize = 13.sp)
+                    Spacer(Modifier.height(6.dp))
+                    SmallButton("Connect calendar", { calendarPermission.launch(Manifest.permission.READ_CALENDAR) }, Modifier.fillMaxWidth())
+                } else {
+                    IconText(GameIcon.CHECK, "Connected to your phone's calendars", tint = HpGreen, fontSize = 13.sp)
+                }
+                ToggleRow("Sync automatically", "Pull new events whenever you open Quests.", prefs.calendarAutoSync) { on ->
+                    vm.updateSettings { it.copy(calendarAutoSync = on) }
+                }
+                ToggleRow("Include all-day events", "Birthdays and holidays are always skipped.", prefs.includeAllDayEvents) { on ->
+                    vm.updateSettings { it.copy(includeAllDayEvents = on) }
+                }
+                Text("Look ahead", fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                Row(Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CALENDAR_DAYS_AHEAD_OPTIONS.forEach { days ->
+                        SmallButton(
+                            if (days == 1) "1 day" else "$days days",
+                            { vm.updateSettings { it.copy(calendarDaysAhead = days) } },
+                            Modifier.weight(1f),
+                            outlined = days != prefs.calendarDaysAhead,
+                        )
+                    }
+                }
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SmallButton(if (vm.syncingCalendar) "Syncing…" else "Sync now", { vm.syncCalendar() }, Modifier.weight(1f), enabled = hasCalendar && !vm.syncingCalendar)
+                    SmallButton("Open calendar", {
+                        val intent = Intent(Intent.ACTION_VIEW).setData(CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build())
+                        runCatching { context.startActivity(intent) }
+                    }, Modifier.weight(1f), outlined = true)
+                }
+                TextButton(onClick = vm::clearCalendarQuests) {
+                    Text("Remove unfinished calendar quests", color = HpRed, fontSize = 13.sp)
+                }
+            }
+
+            // ---- Performance ----
+            SectionTitle("Performance")
+            GameCard {
+                ToggleRow(
+                    "Reduced visual effects",
+                    "Turns off glows, auras, mist and engraving. Smoother on older phones and easier on the battery.",
+                    prefs.reducedEffects,
+                ) { on -> vm.updateSettings { it.copy(reducedEffects = on) } }
+                ToggleRow(
+                    "Battery saver GPS",
+                    "Checks your location less often. The map and GPS step counting update more slowly.",
+                    prefs.batterySaverGps,
+                ) { on -> vm.updateSettings { it.copy(batterySaverGps = on) } }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** Status and fix-it buttons for the chosen step source. */
+@Composable
+private fun StepSourceStatus(vm: GameViewModel) {
+    val context = LocalContext.current
+    val source = vm.state.settings.stepSource
+    val healthPermission = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) {
+        vm.refreshHealthStatus()
+        vm.refreshHealthSteps()
+    }
+    val activityPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    GameCard(Modifier.padding(top = 6.dp)) {
+        when {
+            source.usesHealthConnect -> when (vm.healthStatus) {
+                HealthSteps.Status.READY -> IconText(GameIcon.CHECK, "Health Connect is connected", tint = HpGreen, fontSize = 13.sp)
+                HealthSteps.Status.NEEDS_PERMISSION -> {
+                    Text("Allow the game to read your steps in Health Connect.", fontSize = 13.sp)
+                    SmallButton("Allow step access", { healthPermission.launch(HealthSteps.permissions) }, Modifier.fillMaxWidth().padding(top = 6.dp))
+                }
+                HealthSteps.Status.NEEDS_INSTALL -> {
+                    Text("Health Connect needs to be installed or updated.", fontSize = 13.sp)
+                    SmallButton("Get Health Connect", { runCatching { context.startActivity(HealthSteps.installIntent()) } }, Modifier.fillMaxWidth().padding(top = 6.dp))
+                }
+                HealthSteps.Status.UNAVAILABLE -> Text("Health Connect isn't available on this phone. Try the phone step counter.", fontSize = 13.sp, color = HpRed)
+                null -> Text("Checking Health Connect…", fontSize = 13.sp)
+            }
+            source == StepSource.PHONE -> {
+                val needsPermission = Build.VERSION.SDK_INT >= 29 &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED
+                when {
+                    needsPermission -> {
+                        Text("Allow physical activity access so the game can read the step counter.", fontSize = 13.sp)
+                        SmallButton(
+                            "Allow activity access",
+                            { activityPermission.launch(Manifest.permission.ACTIVITY_RECOGNITION) },
+                            Modifier.fillMaxWidth().padding(top = 6.dp),
+                        )
+                    }
+                    vm.stepSensorAvailable -> IconText(GameIcon.CHECK, "Step counter is working", tint = HpGreen, fontSize = 13.sp)
+                    else -> Text("This phone has no step counter, so GPS distance is used while the game is open.", fontSize = 13.sp)
+                }
+            }
+            else -> Text("Steps are counted from GPS distance while the map is open.", fontSize = 13.sp)
+        }
+        if (source == StepSource.SAMSUNG_HEALTH) {
+            Text(
+                "In Samsung Health open Settings, then Health Connect, and allow it to share Steps.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, description: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(8.dp))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}

@@ -186,6 +186,10 @@ data class GameState(
     /** Unequipped armor (each takes a bag slot). */
     val armor: List<Armor> = emptyList(),
     val equippedArmor: Armor? = null,
+    val settings: Settings = Settings(),
+    /** Last daily step total read from Health Connect, and the day it was for. */
+    val healthDay: Long? = null,
+    val healthSteps: Long? = null,
     /** Candy per evolution line (family name -> count). Doesn't use bag space. */
     val candy: Map<String, Int> = emptyMap(),
     /** Journal: species encountered, and species owned at some point. */

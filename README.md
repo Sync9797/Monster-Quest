@@ -121,7 +121,11 @@ your hero.
     so the game is playable at home or at a desk.
   - **Lures** draw extra, rarer monsters to you for 30 minutes. You get one
     free each day; buy more in the Shop or find them at shrines.
-- **Map (GPS):**
+- **Map (GPS):** shrines are tall stone beacons with a floating crystal and,
+  when ready, a beam of light (blue gem for item shrines, silver obelisk,
+  gold crown-crystal; purple while recharging, gray and locked off-day).
+  Monsters stand on the map themselves, villain camps fly dark banners, and
+  your hero stands in a gold ring.
   - **Item shrines** are at cafes, restaurants, parks, playgrounds, public
     art, fountains, libraries and more. **Waystones** fill the gaps so there's
     always a stop within a short walk. They give weapons, armor, spell pages,
@@ -144,6 +148,19 @@ your hero.
       joins you, still cursed.
     - Battling with a cursed monster slowly lifts the curse (longer for strong
       monsters). Once it's cured, you choose one stat to make perfect.
+
+## Settings
+
+Tap the gear left of your level:
+- **Step sync:** count steps from the **phone's step counter**, **Samsung
+  Health**, **Health Connect** (Google Fit, Fitbit, Garmin and others) or
+  **GPS distance**. Samsung Health shares steps through Health Connect: in
+  Samsung Health open Settings, then Health Connect, and allow Steps.
+  Switching sources never counts the same steps twice.
+- **Calendar:** connect, sync automatically or by hand, look 1 to 14 days
+  ahead, include or skip all-day events, or clear unfinished calendar quests.
+- **Performance:** reduced visual effects (no glows, auras, mist or
+  engraving) and battery saver GPS.
 
 ## Art
 

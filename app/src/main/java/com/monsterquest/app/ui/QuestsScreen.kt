@@ -73,7 +73,7 @@ fun QuestsScreen(vm: GameViewModel) {
         if (granted) vm.syncCalendar() else vm.toast("Without calendar access you can still add to-dos by hand.")
     }
     LaunchedEffect(hasCalendar) {
-        if (hasCalendar) vm.syncCalendar(quiet = true)
+        if (hasCalendar && state.settings.calendarAutoSync) vm.syncCalendar(quiet = true)
     }
 
     val pending = state.tasks.filter { !it.completed }.sortedWith(compareBy<QuestTask> { it.startMs ?: Long.MAX_VALUE }.thenBy { it.title })

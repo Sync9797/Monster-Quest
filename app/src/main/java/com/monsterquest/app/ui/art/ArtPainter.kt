@@ -13,6 +13,12 @@ import kotlin.math.min
  * Low-level vector drawing on an Android [Canvas] from SVG path data, so the
  * same artwork renders in Compose (via nativeCanvas) and as map-marker bitmaps.
  */
+/** Performance setting: when [reduced], glows, engraving, rune circles and auras are skipped. */
+object ArtQuality {
+    @Volatile
+    var reduced: Boolean = false
+}
+
 internal object ArtPainter {
     private val paths = HashMap<String, Path>()
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -73,6 +79,7 @@ internal object ArtPainter {
     }
 
     fun glow(c: Canvas, cx: Float, cy: Float, r: Float, color: Int, alpha: Float) {
+        if (ArtQuality.reduced) return
         val a = (alpha * 255).toInt().coerceIn(0, 255)
         val inner = (color and 0x00FFFFFF) or (a shl 24)
         val shader = RadialGradient(cx, cy, r, intArrayOf(inner, color and 0x00FFFFFF), null, Shader.TileMode.CLAMP)
@@ -89,6 +96,7 @@ internal object ArtPainter {
 
     /** Engraving-style diagonal hatching inside the shape [d], like an old storybook illustration. */
     fun hatch(c: Canvas, d: String, color: Int, alpha: Float, spacing: Float = 6f) {
+        if (ArtQuality.reduced) return
         val b = bounds(d)
         c.save()
         c.clipPath(path(d))
@@ -105,6 +113,7 @@ internal object ArtPainter {
 
     /** A carved circle of runes on the ground, as an ellipse ([rx], [ry]) around ([cx], [cy]). */
     fun runeCircle(c: Canvas, cx: Float, cy: Float, rx: Float, ry: Float, color: Int, alpha: Float, glyphs: Int = 12) {
+        if (ArtQuality.reduced) return
         strokePaint.color = color
         strokePaint.alpha = (Argb.alphaOf(color) * alpha).toInt()
         strokePaint.strokeWidth = 1.4f

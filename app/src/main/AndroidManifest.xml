@@ -13,6 +13,12 @@
     <!-- Loot boxes open by walking: read the phone's step counter. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
+    <!-- Optional step source: Health Connect (Samsung Health, Google Fit, Fitbit, ...). -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -30,7 +36,22 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Health Connect (Android 13 and older) shows why the game wants step data. -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
         </activity>
+        <!-- Health Connect (Android 14+) links here from its permission screen. -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
         <service
             android:name=".focus.FocusService"
             android:exported="false"

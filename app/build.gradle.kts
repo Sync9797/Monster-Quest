@@ -68,6 +68,9 @@ dependencies {
     // Foldable support: hinge position and posture (tabletop / book).
     implementation("androidx.window:window:1.3.0")
 
+    // Steps from Health Connect (Samsung Health, Google Fit, Fitbit, ...).
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
+
     // OpenStreetMap map view (no API key needed).
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 

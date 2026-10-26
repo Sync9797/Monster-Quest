@@ -1,10 +1,13 @@
 package com.monsterquest.app.ui
 
-import com.monsterquest.app.ui.art.drawHeroOn
+import com.monsterquest.app.ui.art.ArtQuality
+import com.monsterquest.app.ui.art.BeaconState
+import com.monsterquest.app.ui.art.drawMonsterStanding
+import com.monsterquest.app.ui.art.drawPlayerOn
+import com.monsterquest.app.ui.art.drawShrineOn
+import com.monsterquest.app.ui.art.drawVillainOn
+import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
-import com.monsterquest.app.ui.art.drawMonsterOn
-import com.monsterquest.app.ui.art.drawIconOn
-import com.monsterquest.app.ui.art.markerDrawable
 import com.monsterquest.app.ui.art.MonsterArt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.color
@@ -128,7 +131,7 @@ fun MapScreen(vm: GameViewModel) {
         return
     }
 
-    TrackLocation(context, vm::onLocation)
+    TrackLocation(context, vm.state.settings.batterySaverGps, vm::onLocation)
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -147,8 +150,8 @@ fun MapScreen(vm: GameViewModel) {
 
     val mapView = rememberMapView()
     val icons = remember { HashMap<String, BitmapDrawable>() }
-    fun markerIcon(key: String, ring: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
-        icons.getOrPut(key) { markerDrawable(context, 44, ring, draw) }
+    fun sprite(key: String, wDp: Int, hDp: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
+        icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw) }
 
     val mapPane: @Composable () -> Unit = {
         Column(Modifier.fillMaxSize()) {
@@ -182,22 +185,18 @@ fun MapScreen(vm: GameViewModel) {
                             val rec = vm.state.shrines[sh.id]
                             val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
                             val open = Schedule.access(vm.state, sh, now).open
-                            val glyph = when {
-                                sh.isBoss && !open -> GameIcon.LOCK
-                                cooling -> GameIcon.HOURGLASS
-                                else -> sh.tier.icon()
+                            val beacon = when {
+                                sh.isBoss && !open -> BeaconState.LOCKED
+                                cooling -> BeaconState.COOLING
+                                else -> BeaconState.OPEN
                             }
-                            val ring = when {
-                                cooling || (sh.isBoss && !open) -> 0x88666666.toInt()
-                                sh.tier == ShrineTier.GOLD -> 0xCCF5C542.toInt()
-                                sh.tier == ShrineTier.SILVER -> 0xCCC0C7D1.toInt()
-                                else -> 0xCC8B5CF6.toInt()
-                            }
+                            // Boss shrines stand taller so they're easy to spot from afar.
+                            val (bw, bh) = if (sh.isBoss) 44 to 80 else 36 to 66
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(sh.lat, sh.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("shrine_${glyph}_$ring", ring) { c, w, h -> drawIconOn(c, w, h, glyph, 0xFF0D171A.toInt()) })
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.945f)
+                                    setIcon(sprite("shrine_${sh.tier}_$beacon", bw, bh) { c, w, h -> drawShrineOn(c, w, h, sh.tier, beacon) })
                                     title = sh.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.ShrinePick(sh); true }
                                 },
@@ -207,21 +206,21 @@ fun MapScreen(vm: GameViewModel) {
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(sp.lat, sp.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    val ring = if (sp.lured) 0xEEF2A198.toInt() else 0xDD142327.toInt()
-                                    setIcon(markerIcon("spawn_${sp.speciesId}_$ring", ring) { c, w, h -> drawMonsterOn(c, w, h, sp.species) })
+                                    // Monsters stand on the map themselves, feet at their spot.
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
+                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured) })
                                     title = sp.species.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
                                 },
                             )
                         }
                         villains.forEach { v ->
-                            val ring = if (v.tier == VillainTier.VILLAIN) 0xEEB0303F.toInt() else 0xDD7A4A3A.toInt()
+                            val isVillain = v.tier == VillainTier.VILLAIN
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(v.lat, v.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                    setIcon(markerIcon("villain_${v.tier}", ring) { c, w, h -> drawIconOn(c, w, h, GameIcon.SKULL, 0xFF0D171A.toInt()) })
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.955f)
+                                    setIcon(sprite("villain_$isVillain", 38, 57) { c, w, h -> drawVillainOn(c, w, h, isVillain) })
                                     title = v.leader
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.VillainPick(v); true }
                                 },
@@ -231,9 +230,9 @@ fun MapScreen(vm: GameViewModel) {
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(loc.first, loc.second)
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.86f)
                                     val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor)
-                                    setIcon(markerIcon("player_${vm.state.hero.heroClass}_$outfit", 0xEEEBC678.toInt()) { c, w, h -> drawHeroOn(c, w, h, vm.state.hero.heroClass, outfit) })
+                                    setIcon(sprite("player_${vm.state.hero.heroClass}_$outfit", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit) })
                                     setOnMarkerClickListener { _, _ -> true }
                                 },
                             )
@@ -372,8 +371,8 @@ private fun rememberMapView(): MapView {
 
 @SuppressLint("MissingPermission")
 @Composable
-internal fun TrackLocation(context: Context, onLocation: (Double, Double) -> Unit) {
-    DisposableEffect(Unit) {
+internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLocation: (Double, Double) -> Unit) {
+    DisposableEffect(batterySaver) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) = onLocation(location.latitude, location.longitude)
@@ -389,7 +388,8 @@ internal fun TrackLocation(context: Context, onLocation: (Double, Double) -> Uni
             providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
                 .maxByOrNull { it.time }
                 ?.let { onLocation(it.latitude, it.longitude) }
-            providers.forEach { lm.requestLocationUpdates(it, 4_000L, 5f, listener, Looper.getMainLooper()) }
+            val (interval, distance) = if (batterySaver) 20_000L to 25f else 4_000L to 5f
+            providers.forEach { lm.requestLocationUpdates(it, interval, distance, listener, Looper.getMainLooper()) }
         } catch (e: SecurityException) {
             // Permission revoked while running; the screen will ask again.
         }

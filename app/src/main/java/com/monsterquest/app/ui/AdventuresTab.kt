@@ -76,7 +76,7 @@ fun AdventuresTab(vm: GameViewModel) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         granted = r.values.any { it }
     }
-    if (granted) TrackLocation(context, vm::onLocation)
+    if (granted) TrackLocation(context, vm.state.settings.batterySaverGps, vm::onLocation)
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {

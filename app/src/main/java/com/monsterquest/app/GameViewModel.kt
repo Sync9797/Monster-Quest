@@ -34,6 +34,9 @@ import com.monsterquest.core.LootBoxes
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Shrine
 import com.monsterquest.core.SpawnConditions
+import com.monsterquest.core.Settings
+import com.monsterquest.core.StepSource
+import com.monsterquest.app.data.HealthSteps
 import com.monsterquest.core.Update
 import com.monsterquest.core.WildSpawn
 import com.monsterquest.core.World
@@ -132,7 +135,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         syncingCalendar = true
         viewModelScope.launch {
             try {
-                val events = withContext(Dispatchers.IO) { CalendarReader.read(getApplication()) }
+                val prefs = state.settings
+                val events = withContext(Dispatchers.IO) { CalendarReader.read(getApplication(), daysAhead = prefs.calendarDaysAhead) }
+                    .filter { prefs.includeAllDayEvents || !it.allDay }
                 val u = GameEngine.syncCalendar(state, events)
                 if (quiet) set(u.state) else apply(u)
             } catch (e: SecurityException) {
@@ -212,6 +217,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Step counter reading: unlocks loot boxes and pays XP/healing every 100 steps. */
     fun onStepCount(totalSteps: Long) {
+        if (state.settings.stepSource != StepSource.PHONE) return
         val u = GameEngine.onStepCount(state, totalSteps)
         set(u.state)
         if (u.message.isNotEmpty()) message = u.message
@@ -247,8 +253,42 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun perfectStat(uid: String, stat: Stat) = apply(GameEngine.perfectStat(state, uid, stat))
 
     /** GPS fallback for phones without a step counter: count distance moved while the app is open. */
+    // ---- settings ------------------------------------------------------------
+
+    fun updateSettings(change: (Settings) -> Settings) = set(state.copy(settings = change(state.settings)))
+
+    fun clearCalendarQuests() = apply(GameEngine.clearCalendarQuests(state))
+
+    fun setStepSource(source: StepSource) {
+        set(GameEngine.setStepSource(state, source))
+        message = "Steps now come from ${source.label}."
+        refreshHealthStatus()
+        refreshHealthSteps()
+    }
+
+    /** Whether Health Connect is installed and the game may read steps. */
+    var healthStatus by mutableStateOf<HealthSteps.Status?>(null)
+        private set
+
+    fun refreshHealthStatus() {
+        viewModelScope.launch { healthStatus = runCatching { HealthSteps.status(getApplication()) }.getOrNull() }
+    }
+
+    /** Reads today's steps from Health Connect when that's the chosen source. */
+    fun refreshHealthSteps() {
+        val source = state.settings.stepSource
+        if (!source.usesHealthConnect) return
+        viewModelScope.launch {
+            val total = HealthSteps.stepsToday(getApplication(), samsungOnly = source == StepSource.SAMSUNG_HEALTH) ?: return@launch
+            val u = GameEngine.onDailyStepTotal(state, GameEngine.epochDay(System.currentTimeMillis()), total)
+            set(u.state)
+            if (u.message.isNotEmpty()) message = u.message
+        }
+    }
+
     private fun walkFromGps(lat: Double, lon: Double) {
-        if (stepSensorAvailable) return
+        val source = state.settings.stepSource
+        if (!(source == StepSource.GPS || (source == StepSource.PHONE && !stepSensorAvailable))) return
         val last = lastWalkPoint
         if (last != null) {
             val d = World.distanceMeters(last.first, last.second, lat, lon)
