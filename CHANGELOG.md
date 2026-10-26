@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Tapping the map inside the purple reach circle no longer pops up an empty
+  white bubble.
+
 ## 1.0.0
 
 - **Real places on the map:** tap a shrine to see what it really is. Shrines

@@ -209,6 +209,9 @@ fun MapScreen(vm: GameViewModel) {
                                     fillPaint.color = 0x228B5CF6
                                     outlinePaint.color = 0x888B5CF6.toInt()
                                     outlinePaint.strokeWidth = 3f
+                                    // No (empty) info bubble when the circle is tapped; let the tap through.
+                                    infoWindow = null
+                                    setOnClickListener { _, _, _ -> false }
                                 },
                             )
                         }
