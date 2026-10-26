@@ -545,7 +545,9 @@ abstract class ScreenshotBase(private val device: String) {
         val r = Random(21)
         val trio = List(3) { Monster.create(Bestiary.get("goopling"), 12, r) }
         shot("34_secret_ambush") { AppRoot(v, Tab.MAP) }
-        v.debugSecretAmbush(trio)
+        rule.runOnUiThread { v.debugSecretAmbush(trio) }
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(500)
         rule.onNodeWithText("AMBUSHED!").assertExists()
         rule.onNodeWithText("3 wild Gooplings leap out in front of you!").assertExists()
