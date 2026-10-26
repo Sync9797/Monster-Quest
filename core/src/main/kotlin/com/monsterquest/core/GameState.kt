@@ -22,7 +22,10 @@ const val STARTING_ATTRIBUTE = 8
 /** Every this-many hero levels the player earns a storage upgrade. */
 const val UPGRADE_LEVEL_INTERVAL = 5
 const val BAG_UPGRADE_AMOUNT = 5
-const val STORAGE_UPGRADE_AMOUNT = 3
+const val STORAGE_UPGRADE_AMOUNT = 5
+/** Gold to buy a big storage expansion, and how many slots it adds. */
+const val PAID_UPGRADE_COST = 1000
+const val PAID_UPGRADE_AMOUNT = 50
 
 /**
  * Hero classes, chosen at [CLASS_UNLOCK_LEVEL]. The effect starts small and
@@ -159,7 +162,7 @@ val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
 // ---------------------------------------------------------------------------
 
 const val STARTING_BAG_CAPACITY = 20
-const val STARTING_MONSTER_CAPACITY = 6
+const val STARTING_MONSTER_CAPACITY = 20
 const val MAX_PARTY_SIZE = 3
 const val MAX_ITEMS_PER_BATTLE = 3
 const val MAX_HUNT_TOKENS = 10
@@ -167,7 +170,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 4,
+    val version: Int = 5,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -295,6 +298,10 @@ data class GameState(
                 questDays = days + s.questDays,
                 stepHistory = s.stepsDay?.let { s.stepHistory + (it to s.stepsToday) } ?: s.stepHistory,
             )
+        }
+        if (s.version < 5) {
+            // Monster storage now starts at 20 instead of 6.
+            s = s.copy(version = 5, monsterCapacity = s.monsterCapacity + STARTING_MONSTER_CAPACITY - 6)
         }
         return s.withJournal()
     }

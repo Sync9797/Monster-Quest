@@ -59,8 +59,10 @@ your hero.
   has the same rarities and can roll effects too.
 - **Your hero wears what you equip:** the avatar shows your weapon and armor,
   or bare hands and traveler's clothes when you have none.
-- **Storage upgrades:** every 5 levels you can choose **+5 bag slots** or
-  **+3 monster storage**.
+- **Storage:** you can keep **20 monsters** and 20 bag items to start (up to
+  3 monsters fight in each battle). Every 5 levels a free upgrade adds **+5
+  bag slots and +5 monster storage**, or pay **1,000 gold** to add **+50**
+  to either.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:
   Electric > Water > Fire > Corrupt > Flight > Gas > Electric.
 - **65 monsters:**

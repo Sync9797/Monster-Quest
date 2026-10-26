@@ -98,16 +98,25 @@ object GameEngine {
         )
     }
 
-    fun applyUpgrade(state: GameState, bag: Boolean): Update {
+    /** Claim a level upgrade: the bag and monster storage both grow. */
+    fun applyUpgrade(state: GameState): Update {
         if (state.pendingUpgrades <= 0) return Update(state, "No upgrades available. One is earned every $UPGRADE_LEVEL_INTERVAL levels.")
-        val s = state.copy(pendingUpgrades = state.pendingUpgrades - 1)
+        val s = state.copy(
+            pendingUpgrades = state.pendingUpgrades - 1,
+            bagCapacity = state.bagCapacity + BAG_UPGRADE_AMOUNT,
+            monsterCapacity = state.monsterCapacity + STORAGE_UPGRADE_AMOUNT,
+        )
+        return Update(s, "Bag expanded to ${s.bagCapacity} slots and monster storage to ${s.monsterCapacity}.")
+    }
+
+    /** Pay [PAID_UPGRADE_COST] gold for [PAID_UPGRADE_AMOUNT] more bag slots or monster storage. */
+    fun buyStorage(state: GameState, bag: Boolean): Update {
+        if (state.gold < PAID_UPGRADE_COST) return Update(state, "Expanding storage costs $PAID_UPGRADE_COST gold.")
+        val s = state.copy(gold = state.gold - PAID_UPGRADE_COST)
         return if (bag) {
-            Update(s.copy(bagCapacity = s.bagCapacity + BAG_UPGRADE_AMOUNT), "Bag expanded to ${s.bagCapacity + BAG_UPGRADE_AMOUNT} slots.")
+            Update(s.copy(bagCapacity = s.bagCapacity + PAID_UPGRADE_AMOUNT), "Bag expanded to ${s.bagCapacity + PAID_UPGRADE_AMOUNT} slots.")
         } else {
-            Update(
-                s.copy(monsterCapacity = s.monsterCapacity + STORAGE_UPGRADE_AMOUNT),
-                "Monster storage expanded to ${s.monsterCapacity + STORAGE_UPGRADE_AMOUNT}.",
-            )
+            Update(s.copy(monsterCapacity = s.monsterCapacity + PAID_UPGRADE_AMOUNT), "Monster storage expanded to ${s.monsterCapacity + PAID_UPGRADE_AMOUNT}.")
         }
     }
 

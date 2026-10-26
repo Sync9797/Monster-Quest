@@ -110,7 +110,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun chooseStarter(speciesId: String) = apply(GameEngine.chooseStarter(state, speciesId))
     fun allocate(attr: HeroAttribute) = apply(GameEngine.allocatePoint(state, attr))
     fun chooseClass(cls: HeroClass) = apply(GameEngine.chooseClass(state, cls))
-    fun upgrade(bag: Boolean) = apply(GameEngine.applyUpgrade(state, bag))
+    fun upgrade() = apply(GameEngine.applyUpgrade(state))
+    fun buyStorage(bag: Boolean) = apply(GameEngine.buyStorage(state, bag))
     fun renameHero(name: String) {
         val n = name.trim().take(16)
         if (n.isNotEmpty()) set(state.copy(hero = state.hero.copy(name = n)))
