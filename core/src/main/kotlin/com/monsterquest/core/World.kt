@@ -120,13 +120,24 @@ object World {
 
     private fun stableHash(s: String): Int = abs(s.hashCode() % 1_000_000)
 
+    /** Gold guardians before the Earth legendary arrived; their shrines keep the same guardian. */
+    private const val ORIGINAL_GOLD_GUARDIANS = 12
+
     private fun guardianFor(id: String, tier: ShrineTier): String? {
-        val pool = when (tier) {
-            ShrineTier.ITEM -> return null
-            ShrineTier.SILVER -> Bestiary.silverGuardians
-            ShrineTier.GOLD -> Bestiary.bosses
+        val h = stableHash(id)
+        return when (tier) {
+            ShrineTier.ITEM -> null
+            ShrineTier.SILVER -> Bestiary.silverGuardians.let { it[h % it.size].id }
+            ShrineTier.GOLD -> {
+                // Newer guardians take over a fair share of shrines; every other shrine
+                // keeps the guardian it always had (so past boss wins still count).
+                val pool = Bestiary.bosses
+                val slot = h % pool.size
+                val original = pool.filter { it.id != "worldroot_colossus" }
+                if (slot >= ORIGINAL_GOLD_GUARDIANS) pool.first { it.id == "worldroot_colossus" }.id
+                else original[h % ORIGINAL_GOLD_GUARDIANS].id
+            }
         }
-        return pool[stableHash(id) % pool.size].id
     }
 
     /**

@@ -27,7 +27,7 @@ data class Species(
 )
 
 /**
- * All 83 monsters:
+ * All 84 monsters:
  * - 4 starter lines (#1, #4, #7, #10): pseudo-legendary three-stage lines, the
  *   strongest monsters short of the legendaries. Very rare in the wild.
  * - 6 four-stage lines (3 evolutions), one per type.
@@ -242,6 +242,7 @@ object Bestiary {
         add(single("abyss_kraken", "Abyss Kraken", Element.WATER, Rarity.LEGENDARY, StatBlock(80, 24, 22, 18, 12), "Maelstrom", SkillKind.MAGICAL, 58, true))
         add(single("miasma_hydra", "Miasma Hydra", Element.GAS, Rarity.LEGENDARY, StatBlock(86, 23, 22, 21, 10), "Nine Venoms", SkillKind.MAGICAL, 58, true))
         add(single("dread_lich", "Dread Lich", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
+        add(single("worldroot_colossus", "Worldroot Colossus", Element.EARTH, Rarity.LEGENDARY, StatBlock(88, 26, 16, 24, 8), "Worldsplitter", SkillKind.PHYSICAL, 60, true))
     }
 
     private val byId = all.associateBy { it.id }

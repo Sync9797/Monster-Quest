@@ -274,6 +274,7 @@ abstract class ScreenshotBase(private val device: String) {
                 }
                 androidx.compose.foundation.layout.Row {
                     listOf("magma_behemoth", "dread_lich").forEach { MonsterArt(Bestiary.get(it), androidx.compose.ui.Modifier.size(104.dp), shiny = true) }
+                    MonsterArt(Bestiary.get("worldroot_colossus"), androidx.compose.ui.Modifier.size(104.dp))
                 }
             }
         })

@@ -254,8 +254,13 @@ class GameTest {
 
     @Test
     fun allMonstersWithEvolutionLines() {
-        assertEquals(83, Bestiary.all.size)
-        assertEquals(83, Bestiary.all.map { it.id }.toSet().size)
+        assertEquals(84, Bestiary.all.size)
+        assertEquals(84, Bestiary.all.map { it.id }.toSet().size)
+        // One legendary per type, and they all guard Gold shrines.
+        val legendaries = Bestiary.all.filter { it.rarity == Rarity.LEGENDARY }
+        assertEquals(Element.typed.toSet(), legendaries.map { it.element }.toSet())
+        assertEquals(Element.typed.size, legendaries.size)
+        assertTrue(legendaries.all { it in Bestiary.bosses })
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
         assertEquals(17, lines.values.count { it.size == 3 })
@@ -1175,5 +1180,20 @@ class GameTest {
         val fresh = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state
         assertTrue(!GameState.fromJson(fresh.copy(version = 5).toJson()).starterGiftPending)
         assertTrue(!GameState.fromJson(GameState().toJson()).starterGiftPending)
+    }
+
+    @Test
+    fun goldShrinesKeepTheirGuardians() {
+        val shrines = (0 until 2_000).map { World.shrineFromPlace("node$it", "Place", 0.0, 0.0, ShrineTier.GOLD) }
+        val guardians = shrines.map { it.bossSpeciesId!! }
+        val original = Bestiary.bosses.filter { it.id != "worldroot_colossus" }
+        assertEquals(12, original.size)
+        // Every shrine either kept its pre-Earth guardian or now holds the Worldroot Colossus.
+        shrines.forEach { sh ->
+            val h = kotlin.math.abs(sh.id.hashCode() % 1_000_000)
+            assertTrue(sh.bossSpeciesId == original[h % 12].id || sh.bossSpeciesId == "worldroot_colossus")
+        }
+        val share = guardians.count { it == "worldroot_colossus" }.toDouble() / shrines.size
+        assertTrue(share in 0.04..0.12, "share $share")
     }
 }

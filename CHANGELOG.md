@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3
+
+- **Earth legendary: Worldroot Colossus**, a stone giant with a forest growing
+  from its shoulders and an amber heart. It guards Gold shrines alongside the
+  other legendaries (every type now has one) and can be tamed after you
+  defeat it once. 84 monsters in all.
+
 ## 0.5.2
 
 - **New Earth type** (stone and grass). To keep types balanced there are now

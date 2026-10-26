@@ -936,6 +936,24 @@ private fun bossBody(index: Int, color: Int): List<LPart> {
             LPart("M202 125L184 160H199L192 188L217 150H201L211 125Z", fill = Argb.hex("e5fbdf")),
             LPart("M99 57L80 93H96L78 125L113 84H95L111 57M301 57L320 93H304L322 125L287 84H305L289 57", fill = Argb.hex("c0f1e9")),
         )
+        6 -> listOf(
+            // Worldroot Colossus: a stone giant with a forest growing from its shoulders.
+            LPart("M160 100L140 62L120 50M140 62L146 34M240 100L260 62L280 50M260 62L254 34", stroke = Argb.hex("7a5236"), w = 8f),
+            LPart("M104 50A18 14 0 1 1 140 50A18 14 0 1 1 104 50Z", fill = C),
+            LPart("M134 30A13 10 0 1 1 160 30A13 10 0 1 1 134 30Z", fill = C),
+            LPart("M260 50A18 14 0 1 1 296 50A18 14 0 1 1 260 50Z", fill = C),
+            LPart("M240 30A13 10 0 1 1 266 30A13 10 0 1 1 240 30Z", fill = C),
+            LPart("M150 104L118 140L104 200L130 214L152 180L156 232H190L200 212L210 232H244L248 180L270 214L296 200L282 140L250 104L228 84H172Z", fill = Argb.hex("6e6556")),
+            LPart("M170 150L178 170L172 190M230 150L222 170L228 190M140 176L148 196M260 176L252 196", stroke = Argb.hex("3a342b"), w = 3f),
+            LPart("M150 110Q170 100 186 112Q170 124 152 126Z", fill = C),
+            LPart("M250 110Q230 100 214 112Q230 124 248 126Z", fill = C),
+            LPart("M116 150Q130 140 142 154Q130 164 118 162Z", fill = C),
+            LPart("M122 150Q116 176 128 200M278 150Q284 176 272 200", stroke = C, w = 4f),
+            LPart("M176 92L172 66L200 52L228 66L224 92L212 108H188Z", fill = Argb.hex("5d5547")),
+            LPart("M184 80H194M206 80H216", stroke = Argb.hex("c9f29a"), w = 4f),
+            LPart("M200 140L216 162L200 188L184 162Z", fill = Argb.hex("e6c277")),
+            LPart("M200 150L208 162L200 176L192 162Z", fill = Argb.hex("fff0c2")),
+        )
         else -> listOf(
             LPart("M152 80A48 48 0 1 1 248 80A48 48 0 1 1 152 80Z", fill = Argb.hex("201b30"), stroke = C, w = 5f),
             LPart("M159 79Q199 14 241 79", stroke = Argb.hex("f4d9a0"), w = 4f),
@@ -956,6 +974,7 @@ private fun legendaryIndex(id: String) = when (id) {
     "sky_serpent" -> 2
     "dread_lich" -> 3
     "thunder_titan" -> 4
+    "worldroot_colossus" -> 6
     else -> 5 // abyss_kraken
 }
 

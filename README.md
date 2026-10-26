@@ -80,7 +80,7 @@ your hero.
   | Flight | Electric, Fire | Corrupt, Earth |
   | Electric | Water, Corrupt | Gas, Flight |
 
-- **83 monsters:**
+- **84 monsters:**
   - **4 starter lines** (#1 Voltfawn, Electric; #4 Cindrake, Fire; #7
     Drizzlet, Water; #10 Mosscub, Earth): pick one when you start. Each evolves twice (at 16 and
     36) into a pseudo-legendary, stronger than every other monster except the
@@ -93,7 +93,7 @@ your hero.
     golem), **Zipwing** (Electric thunderbird), **Shellsnap** (Water shell
     turtle) and **Impling** (Corrupt imp)
   - 2 rare mythics
-  - 6 legendary bosses
+  - 7 legendary bosses, one per type (Earth's is the Worldroot Colossus)
 
   Monsters evolve at set levels. Each also rolls a **personality** and hidden
   **potential**, so no two are alike.
