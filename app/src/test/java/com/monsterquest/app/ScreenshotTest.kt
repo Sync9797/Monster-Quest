@@ -497,6 +497,8 @@ abstract class ScreenshotBase(private val device: String) {
         check(rule.onAllNodesWithText("Mage").fetchSemanticsNodes().isEmpty()) { "other classes hidden" }
         // The class card (not the subclass one): it's the one with the class bonus line.
         rule.onNodeWithText("Bonus grows", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
         rule.mainClock.advanceTimeBy(1_000)
         rule.waitForIdle()
         rule.onNodeWithText("Mage").assertExists()
