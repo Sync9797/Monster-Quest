@@ -359,6 +359,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         set(state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = null) else it }))
 
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
+    fun setPartySlot(uid: String, slot: Int) {
+        val u = GameEngine.setPartySlot(state, uid, slot)
+        set(u.state)
+        if (u.message.isNotEmpty()) message = u.message
+    }
     fun release(uid: String) = apply(GameEngine.release(state, uid))
     fun candyLevelUp(uid: String) = apply(GameEngine.candyLevelUp(state, uid))
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))

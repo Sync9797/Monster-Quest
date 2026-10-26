@@ -248,6 +248,34 @@ object GameEngine {
         }
     }
 
+    /**
+     * Puts a monster into battle-party slot [index] (drag and drop). A bench
+     * monster replaces whoever is there (they go back to the bench); a party
+     * monster swaps places.
+     */
+    fun setPartySlot(state: GameState, uid: String, index: Int): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        val party = state.party.filter { p -> state.monsters.any { it.uid == p } }.toMutableList()
+        val slot = index.coerceIn(0, MAX_PARTY_SIZE - 1)
+        val from = party.indexOf(uid)
+        return if (from >= 0) {
+            if (slot >= party.size || slot == from) return Update(state.copy(party = party), "")
+            val other = party[slot]
+            party[slot] = uid
+            party[from] = other
+            val otherName = state.monsters.find { it.uid == other }?.displayName ?: "them"
+            Update(state.copy(party = party), "${m.displayName} swapped places with $otherName.")
+        } else if (slot < party.size) {
+            val out = party[slot]
+            party[slot] = uid
+            val outName = state.monsters.find { it.uid == out }?.displayName ?: "Your monster"
+            Update(state.copy(party = party), "${m.displayName} joined the battle party; $outName went to the bench.")
+        } else {
+            party += uid
+            Update(state.copy(party = party), "${m.displayName} joined the battle party.")
+        }
+    }
+
     fun release(state: GameState, uid: String): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (state.monsters.size <= 1) return Update(state, "You can't release your last monster.")

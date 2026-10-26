@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import androidx.activity.compose.BackHandler
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.ArtQuality
 import com.monsterquest.app.ui.art.MonsterArt
@@ -69,6 +70,9 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
 
     var tab by rememberSaveable { mutableStateOf(initialTab) }
     var settingsOpen by rememberSaveable { mutableStateOf(initialSettings) }
+    // Back steps out of Settings, then from any tab to Quests; only Back on Quests leaves the app.
+    BackHandler(enabled = !settingsOpen && tab != Tab.QUESTS) { tab = Tab.QUESTS }
+    BackHandler(enabled = settingsOpen) { settingsOpen = false }
     val snackbar = remember { SnackbarHostState() }
     val msg = vm.message
     LaunchedEffect(msg) {

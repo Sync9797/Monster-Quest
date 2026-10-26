@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import androidx.activity.compose.BackHandler
 import android.app.Activity
 import android.view.WindowManager
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -126,6 +127,8 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
         }
     }
     val dimmed = now - lastTouch > DIM_AFTER_MS
+    // Back would leave the game and fail the session; just brighten the screen instead.
+    BackHandler { lastTouch = System.currentTimeMillis() }
     val activity = LocalContext.current as? Activity
     DisposableEffect(activity) {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

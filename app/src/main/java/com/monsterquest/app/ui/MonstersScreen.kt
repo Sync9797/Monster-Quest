@@ -1,5 +1,25 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.composed
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +95,7 @@ fun rarityColor(r: Rarity) = when (r) {
 fun MonstersScreen(vm: GameViewModel) {
     // 0 = collection, 1 = journal, 2 = adventures
     var tab by rememberSaveable { mutableStateOf(0) }
+    BackHandler(enabled = tab != 0) { tab = 0 }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SmallButton("Collection", { tab = 0 }, Modifier.weight(1f), outlined = tab != 0)
@@ -100,6 +121,8 @@ private fun MonsterCollection(vm: GameViewModel) {
     val s = vm.state
     var selectedUid by rememberSaveable { mutableStateOf<String?>(null) }
     val selected = s.monsters.find { it.uid == selectedUid }
+    // Back from a monster's profile returns to the list instead of closing the app.
+    BackHandler(enabled = selected != null) { selectedUid = null }
 
     // Party first, then by level.
     val sorted = s.monsters.sortedWith(compareBy<Monster> { it.uid !in s.party }.thenByDescending { it.level })
@@ -141,50 +164,103 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
             SortBy.NEWEST -> list.reversed()
         }
     }
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 104.dp),
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Battle party", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { showChart = true }) { Text("Type chart") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    (0 until MAX_PARTY_SIZE).forEach { i ->
-                        val m = s.partyMonsters.getOrNull(i)
-                        Box(Modifier.weight(1f)) {
-                            if (m != null) {
-                                MonsterTile(m, inParty = true, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
-                            } else {
-                                EmptySlot()
+    val drag = remember { PartyDrag() }
+    var listOrigin by remember { mutableStateOf(Offset.Zero) }
+    fun drop() {
+        val uid = drag.uid ?: return
+        val slot = drag.hoveredSlot()
+        when {
+            slot != null -> vm.setPartySlot(uid, slot)
+            // A party member dropped anywhere else goes back to the bench.
+            uid in s.party -> vm.toggleParty(uid)
+        }
+        drag.uid = null
+    }
+    val hovered = if (drag.uid != null) drag.hoveredSlot() else null
+
+    Box(Modifier.fillMaxSize().onGloballyPositioned { listOrigin = it.positionInRoot() }) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 104.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Battle party", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { showChart = true }) { Text("Type chart") }
+                    }
+                    Text(
+                        "Long-press a monster and drag it onto a slot. Drag a party member out to bench it.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (0 until MAX_PARTY_SIZE).forEach { i ->
+                            val m = s.partyMonsters.getOrNull(i)
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .onGloballyPositioned { drag.slots[i] = it.boundsInRoot() }
+                                    .border(if (hovered == i) 3.dp else 0.dp, if (hovered == i) Gold else Color.Transparent, RoundedCornerShape(12.dp)),
+                            ) {
+                                if (m != null) {
+                                    MonsterTile(
+                                        m, inParty = true, away = m.uid in away, selected = m.uid == selectedUid,
+                                        modifier = Modifier
+                                            .dragSource(drag, m.uid, ::drop)
+                                            .alpha(if (drag.uid == m.uid) 0.35f else 1f),
+                                    ) { onSelect(m.uid) }
+                                } else {
+                                    EmptySlot(highlight = drag.uid != null)
+                                }
                             }
                         }
                     }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Collection", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
-                    Text("${s.monsters.size}/${s.monsterCapacity}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Bar(s.monsters.size.toFloat() / s.monsterCapacity, if (s.storageFull) HpRed else Mint, Modifier.fillMaxWidth().padding(vertical = 4.dp), heightDp = 4)
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SortBy.entries.forEach { o -> SmallButton(o.label, { sortBy = o }, outlined = o != sortBy) }
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Collection", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                        Text("${s.monsters.size}/${s.monsterCapacity}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Bar(s.monsters.size.toFloat() / s.monsterCapacity, if (s.storageFull) HpRed else Mint, Modifier.fillMaxWidth().padding(vertical = 4.dp), heightDp = 4)
+                    Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SortBy.entries.forEach { o -> SmallButton(o.label, { sortBy = o }, outlined = o != sortBy) }
+                    }
                 }
             }
+            if (bench.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text("Everyone you own is in the party. Tame more monsters to fill your collection.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            items(bench, key = { it.uid }) { m ->
+                MonsterTile(
+                    m, inParty = false, away = m.uid in away, selected = m.uid == selectedUid,
+                    modifier = Modifier
+                        .dragSource(drag, m.uid, ::drop)
+                        .alpha(if (drag.uid == m.uid) 0.35f else 1f),
+                ) { onSelect(m.uid) }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
         }
-        if (bench.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Text("Everyone you own is in the party. Tame more monsters to fill your collection.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // The monster being dragged follows your finger.
+        val dragged = drag.uid?.let { uid -> s.monsters.find { it.uid == uid } }
+        if (dragged != null) {
+            val half = with(LocalDensity.current) { 40.dp.toPx() }
+            Box(
+                Modifier
+                    .offset { IntOffset((drag.pos.x - listOrigin.x - half).roundToInt(), (drag.pos.y - listOrigin.y - half * 1.4f).roundToInt()) }
+                    .size(80.dp)
+                    .shadow(8.dp, CircleShape)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                    .border(2.dp, Gold, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                MonsterArt(dragged.species, Modifier.size(66.dp))
             }
         }
-        items(bench, key = { it.uid }) { m ->
-            MonsterTile(m, inParty = false, away = m.uid in away, selected = m.uid == selectedUid) { onSelect(m.uid) }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
     }
     if (showChart) {
         AlertDialog(
@@ -197,22 +273,57 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
 }
 
 @Composable
-private fun EmptySlot() {
+private fun EmptySlot(highlight: Boolean = false) {
     Box(
         Modifier
             .fillMaxWidth()
             .height(162.dp)
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, Line, RoundedCornerShape(12.dp)),
+            .border(if (highlight) 2.dp else 1.dp, if (highlight) Gold else Line, RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text("Empty slot", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(if (highlight) "Drop here" else "Empty slot", fontSize = 12.sp, color = if (highlight) Gold else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
+}
+
+/** Drag-and-drop state for moving monsters into and out of the battle party. */
+private class PartyDrag {
+    var uid by mutableStateOf<String?>(null)
+    /** Finger position, in root coordinates. */
+    var pos by mutableStateOf(Offset.Zero)
+    val slots = mutableStateMapOf<Int, Rect>()
+
+    fun hoveredSlot(): Int? = slots.entries.firstOrNull { it.value.contains(pos) }?.key
+}
+
+/** Long-press a tile and drag it; dropping is handled by [onDrop]. */
+private fun Modifier.dragSource(drag: PartyDrag, uid: String, onDrop: () -> Unit): Modifier = composed {
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    val haptics = LocalHapticFeedback.current
+    // The gesture outlives recompositions, so always call the latest drop handler.
+    val latestDrop by rememberUpdatedState(onDrop)
+    this
+        .onGloballyPositioned { origin = it.positionInRoot() }
+        .pointerInput(uid) {
+            detectDragGesturesAfterLongPress(
+                onDragStart = { offset ->
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    drag.uid = uid
+                    drag.pos = origin + offset
+                },
+                onDrag = { change, amount ->
+                    change.consume()
+                    drag.pos += amount
+                },
+                onDragEnd = { latestDrop() },
+                onDragCancel = { drag.uid = null },
+            )
+        }
 }
 
 /** Compact tile: art, name, level and type, HP, and status badges. */
 @Composable
-private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, onClick: () -> Unit) {
+private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val sp = m.species
     val border = when {
         selected -> MpBlue
@@ -222,7 +333,7 @@ private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: B
         else -> Line
     }
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(162.dp)
             .clip(RoundedCornerShape(12.dp))

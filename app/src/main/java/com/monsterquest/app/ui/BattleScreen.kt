@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import androidx.activity.compose.BackHandler
 import com.monsterquest.core.Bestiary
 import com.monsterquest.app.ui.art.HeroArt
 import com.monsterquest.app.ui.art.MonsterArt
@@ -99,6 +100,14 @@ private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
 private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit, onTarget: (String) -> Unit) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     val fx = rememberBattleFx(b)
+    // Back closes a sub-menu (Magic, Items, Tame...). It never quits a fight in
+    // progress (use Flee), and leaves the result screen once the fight is over.
+    BackHandler {
+        when {
+            b.outcome != BattleOutcome.ONGOING -> onClose()
+            menu != Menu.Main -> menu = Menu.Main
+        }
+    }
     // Return to the main menu whenever the turn passes to someone else.
     LaunchedEffect(b.current?.key, b.round, b.log.size) { menu = Menu.Main }
 

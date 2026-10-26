@@ -83,7 +83,7 @@ private val topics = listOf(
         GameIcon.FIGHT, "Battles",
         listOf(
             "Fights are turn-based in Speed order. The turn order strip shows who acts next; the fighter whose turn it is pulses gold.",
-            "You fight with your hero plus up to 3 party monsters (set your party on the Monsters tab).",
+            "You fight with your hero plus up to 3 party monsters. On the Monsters tab, long-press a monster and drag it onto a party slot.",
             "Each monster has 4 moves. Spells and typed moves throw bolts of their type; swords and Normal moves slash.",
             "Types work like rock-paper-scissors: Electric > Water > Fire > Corrupt > Flight > Gas > Electric. Super-effective hits do 1.5x.",
             "Wild monsters grow stronger the more fighters you bring, and pay more: x0.6 alone up to x2.75 with a full team.",

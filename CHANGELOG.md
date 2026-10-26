@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1
+
+- **Back goes back:** the Back button returns to the previous screen instead
+  of closing the app (a monster's profile returns to the list, Journal and
+  Adventures return to the collection, Help returns to Settings, Settings and
+  other tabs return to Quests). In battle, Back closes sub-menus and never
+  quits a fight; during a phone-free session it can't fail you by accident.
+- **Drag and drop your team:** long-press a monster and drag it onto a battle
+  party slot. Dropping on a filled slot swaps them; drag a party member out to
+  bench it.
+
 ## 0.4.0
 
 The "Hunt" update.

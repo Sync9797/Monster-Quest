@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import androidx.activity.compose.BackHandler
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -53,6 +54,7 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
     val prefs = vm.state.settings
     LaunchedEffect(Unit) { vm.refreshHealthStatus() }
     var showHelp by rememberSaveable { mutableStateOf(initialHelp) }
+    BackHandler(enabled = showHelp) { showHelp = false }
     if (showHelp) {
         HelpScreen { showHelp = false }
         return

@@ -1036,4 +1036,21 @@ class GameTest {
         val gear = u.rewards.count { it is Reward.WeaponDrop || it is Reward.ArmorDrop }
         assertEquals(u.state.bagCount - s.bagCount, items + gear)
     }
+
+    @Test
+    fun dragMonstersIntoPartySlots() {
+        val r = Random(4)
+        val ms = (1..5).map { Monster.create(Bestiary.get("zapmouse"), 5, r) }
+        var s = started().copy(monsters = ms, party = listOf(ms[0].uid, ms[1].uid))
+        // Into an empty slot: appended.
+        s = GameEngine.setPartySlot(s, ms[2].uid, 2).state
+        assertEquals(listOf(ms[0].uid, ms[1].uid, ms[2].uid), s.party)
+        // Onto an occupied slot: replaces it.
+        s = GameEngine.setPartySlot(s, ms[3].uid, 0).state
+        assertEquals(listOf(ms[3].uid, ms[1].uid, ms[2].uid), s.party)
+        // A party member onto another slot: they swap.
+        s = GameEngine.setPartySlot(s, ms[2].uid, 0).state
+        assertEquals(listOf(ms[2].uid, ms[1].uid, ms[3].uid), s.party)
+        assertEquals(MAX_PARTY_SIZE, s.party.size)
+    }
 }
