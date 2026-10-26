@@ -139,6 +139,8 @@ object Bestiary {
         "storm_kirin" to "Storm Behemoth", "skylark" to "Razorwing", "tidefin" to "Fangfin",
         "basilisk" to "Plague Mantis", "gloombat" to "Gloomshade", "nightstalker" to "Nightwraith",
         "slime_sovereign" to "Ooze Hydra", "inferno_fenrir" to "Inferno Cerberus",
+        "ember_pup" to "Ember Wolfcub", "spark_pup" to "Spark Wolfcub", "gale_pup" to "Gale Wolfcub", "tide_pup" to "Tide Wolfcub",
+        "venom_pup" to "Venom Wolfcub", "shadow_pup" to "Shadow Wolfcub", "moss_pup" to "Moss Wolfcub",
         "cinder_hound" to "Cinder Warg", "volt_hound" to "Volt Warg", "sky_hound" to "Sky Warg", "surf_hound" to "Surf Warg",
         "toxic_hound" to "Toxic Warg", "dusk_hound" to "Dusk Warg", "thorn_hound" to "Thorn Warg",
     )

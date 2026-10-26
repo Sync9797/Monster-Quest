@@ -101,7 +101,7 @@ data class StatBlock(
 }
 
 // ---------------------------------------------------------------------------
-// Personalities: every monster rolls one, so two Ember Pups can play very
+// Personalities: every monster rolls one, so two Ember Wolfcubs can play very
 // differently (e.g. a Ferocious one hits hard but folds quickly, a Stalwart
 // one is a slow wall).
 // ---------------------------------------------------------------------------

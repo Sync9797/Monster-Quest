@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.3
+
+- **Hound lines start as wolf cubs:** pricked ears, fluffy cheeks and chest
+  and a bushy tail, renamed Ember, Spark, Gale, Tide, Venom, Shadow and Moss
+  Wolfcub. They grow into Wargs, then Fenrirs (or the Inferno Cerberus).
+
 ## 1.3.2
 
 - **Hound pups look like puppies** (floppy ears, round muzzle, tongue out,
