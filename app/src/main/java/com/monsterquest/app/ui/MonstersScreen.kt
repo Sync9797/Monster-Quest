@@ -1,5 +1,7 @@
 package com.monsterquest.app.ui
 
+import com.monsterquest.core.trait
+
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
@@ -497,6 +499,30 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Its skill: one per kind of monster, gained at level 30 and stronger every 10 levels.
+        val skill = com.monsterquest.core.MonsterTraits.of(m.species)
+        val skillRank = m.trait?.second ?: 0
+        GameCard(Modifier.padding(top = 6.dp), border = if (skillRank > 0) XpPurple else null) {
+            if (skillRank > 0) {
+                Text(
+                    "Skill: ${skill.label}  ${"★".repeat(skillRank)}${"☆".repeat(com.monsterquest.core.MAX_SKILL_RANK - skillRank)}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = XpPurple,
+                )
+                Text(skill.describe(skillRank, hero = false) + ".", fontSize = 12.sp)
+                if (skillRank < com.monsterquest.core.MAX_SKILL_RANK) {
+                    Text(
+                        "Ranks up every ${com.monsterquest.core.SKILL_RANK_LEVELS} levels.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Text("Skill: ${skill.label} (at level ${com.monsterquest.core.MONSTER_SKILL_LEVEL})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(skill.describe(1, hero = false) + ".", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         // Stat points (IVs): fixed at taming, so better monsters come from taming more.
         GameCard(Modifier.padding(top = 6.dp)) {
             Text("Stat points", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)

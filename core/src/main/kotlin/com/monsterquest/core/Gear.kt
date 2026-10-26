@@ -65,16 +65,40 @@ data class Gear(
     val level: Int,
     val element: Element = Element.NEUTRAL,
     val effects: List<GearEffect> = emptyList(),
+    /** Battles fought with this weapon (up to [PROFICIENCY_BATTLES]); each weapon is learned on its own. */
+    val proficiency: Int = 0,
 ) {
     /** Raw weapon power before its type splits it between Attack and Magic. */
     val power: Int get() = ((6 + level * 0.8) * rarity.multiplier).roundToInt()
 
     fun matches(cls: HeroClass) = cls in type.classes
 
+    /** Outside your class (Adventurers have no class weapons, so nothing is foreign to them). */
+    fun foreign(cls: HeroClass) = cls != HeroClass.NONE && !matches(cls)
+
+    val mastered: Boolean get() = proficiency >= PROFICIENCY_BATTLES
+
     private fun classMultiplier(cls: HeroClass) = if (matches(cls)) 1 + CLASS_MATCH_BONUS else 1.0
 
     fun attackBonus(cls: HeroClass): Int = (power * type.attackShare * classMultiplier(cls)).roundToInt()
     fun magicBonus(cls: HeroClass): Int = (power * type.magicShare * classMultiplier(cls)).roundToInt()
+
+    /**
+     * Added to Attack, Magic, Defense and Speed: +2/4/6/8 (by rarity) for a
+     * weapon of your class; the same amount off for one outside it, fading
+     * as you get used to that weapon over [PROFICIENCY_BATTLES] battles.
+     */
+    fun classStats(cls: HeroClass, anyWeapon: Boolean = false): Int = when {
+        matches(cls) || anyWeapon -> rarity.classStatBonus
+        foreign(cls) -> -(rarity.classStatBonus * (PROFICIENCY_BATTLES - proficiency.coerceAtMost(PROFICIENCY_BATTLES)) + PROFICIENCY_BATTLES - 1) / PROFICIENCY_BATTLES
+        else -> 0
+    }
+
+    /** One more battle with this weapon. */
+    fun practiced(): Gear = if (proficiency >= PROFICIENCY_BATTLES) this else copy(proficiency = proficiency + 1)
+
+    /** Gold the shop pays for it: rarer and higher-level weapons pay more. */
+    val sellPrice: Int get() = gearSellPrice(rarity, level)
 
     val name: String
         get() {
@@ -101,6 +125,13 @@ data class Gear(
         if (element != Element.NEUTRAL) add("${element.label} attacks")
     }.joinToString(" • ")
 }
+
+/** Sell value of a weapon or armor piece. */
+fun gearSellPrice(rarity: GearRarity, level: Int): Int = listOf(15, 50, 140, 350)[rarity.ordinal] + level * (rarity.ordinal + 1) * 2
+
+/** Gold to smelt a weapon, and the parts of its type it gives back (by rarity). */
+const val SMELT_COST = 50
+val GearRarity.smeltParts: Int get() = ordinal + 1
 
 /** Where a piece of armor is worn. The hero wears one piece in each slot. */
 @Serializable
@@ -167,6 +198,8 @@ data class Armor(
     fun defenseBonus(cls: HeroClass): Int = (power * type.defenseShare * classMultiplier(cls)).roundToInt()
     fun magicBonus(cls: HeroClass): Int = (power * type.magicShare * classMultiplier(cls)).roundToInt()
     fun attackBonus(cls: HeroClass): Int = (power * type.attackShare * classMultiplier(cls)).roundToInt()
+
+    val sellPrice: Int get() = gearSellPrice(rarity, level)
 
     val name: String
         get() = when (type) {

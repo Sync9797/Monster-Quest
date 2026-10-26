@@ -55,6 +55,10 @@ data class Hero(
     val heroClass: HeroClass = HeroClass.NONE,
     /** Set once a class (or staying an Adventurer) is picked at level 5. */
     val classChosen: Boolean = false,
+    /** Picked at [SUBCLASS_UNLOCK_LEVEL]; always one of [heroClass]'s. */
+    val subclass: Subclass? = null,
+    /** Skills in slot order; slot i opens at [HERO_SKILL_LEVELS][i]. */
+    val skills: List<Trait> = emptyList(),
 ) {
     fun attr(a: HeroAttribute): Int = attributes[a] ?: STARTING_ATTRIBUTE
 
@@ -89,7 +93,49 @@ data class Hero(
         }
     }
 
-    private fun stat(a: HeroAttribute) = ((attr(a) + level) * classMultiplier(a)).toInt()
+    /** The subclass, if it still belongs to the hero's class. */
+    val activeSubclass: Subclass? get() = subclass?.takeIf { it.parent == heroClass }
+
+    /** Skill slots open at this level. */
+    val skillSlots: Int get() = HERO_SKILL_LEVELS.count { level >= it }
+
+    /** Each picked skill with its rank (it grows every 10 levels after its slot opened). */
+    val skillRanks: List<Pair<Trait, Int>>
+        get() = skills.take(skillSlots).mapIndexed { i, t -> t to skillRank(level, HERO_SKILL_LEVELS[i]) }
+
+    fun rankOf(t: Trait): Int = skillRanks.firstOrNull { it.first == t }?.second ?: 0
+
+    /** Everything the subclass and skills add. */
+    val perks: Perks
+        get() {
+            var p = activeSubclass?.perks ?: Perks()
+            for ((t, r) in skillRanks) {
+                p += when (t) {
+                    Trait.MORALE_MASTER -> Perks(teamPct = t.teamPct(r))
+                    Trait.TREASURE_HUNTER -> Perks(goldPct = t.goldPct(r))
+                    Trait.SCHOLAR -> Perks(xpPct = t.xpPct(r))
+                    Trait.BEAST_WHISPERER -> Perks(tamePct = t.tamePct(r))
+                    Trait.EAGLE_EYE -> Perks(critPct = t.critPct(r))
+                    Trait.MANA_WELL -> Perks(energyPerTurn = t.energyPerTurn(r), maxEnergy = t.maxEnergy(r))
+                    else -> Perks()
+                }
+            }
+            return p
+        }
+
+    /** Percent the subclass (and First Strike, for Speed) adds to a stat; already part of [attack] and the rest. */
+    private fun bonusPct(a: HeroAttribute): Int {
+        val p = activeSubclass?.perks ?: Perks()
+        return when (a) {
+            HeroAttribute.ATTACK -> p.attackPct
+            HeroAttribute.MAGIC -> p.magicPct
+            HeroAttribute.DEFENSE -> p.defensePct
+            HeroAttribute.SPEED -> p.speedPct + 3 * rankOf(Trait.FIRST_STRIKE)
+            HeroAttribute.ENERGY -> 0
+        }
+    }
+
+    private fun stat(a: HeroAttribute) = ((attr(a) + level) * (classMultiplier(a) + bonusPct(a) / 100.0)).toInt()
 
     // Effective combat stats; level adds a little to everything so allocating
     // points is a boost rather than the only source of growth.
@@ -100,8 +146,8 @@ data class Hero(
 
     /** Chance (0..1) to dodge an enemy attack; Rogues only. */
     val evasion: Double get() = if (heroClass == HeroClass.ROGUE) classBonus / 200 else 0.0
-    val maxHp: Int get() = 40 + level * 10 + attr(HeroAttribute.DEFENSE) * 3
-    val maxMp: Int get() = 10 + attr(HeroAttribute.ENERGY) * 2
+    val maxHp: Int get() = (40 + level * 10 + attr(HeroAttribute.DEFENSE) * 3) * (100 + (activeSubclass?.perks?.maxHpPct ?: 0)) / 100
+    val maxMp: Int get() = 10 + attr(HeroAttribute.ENERGY) * 2 + perks.maxEnergy
 
     val xpToNext: Int get() = heroXpForNext(level)
 }
@@ -207,6 +253,8 @@ data class GameState(
     /** Unequipped weapons (each takes a bag slot). */
     val gear: List<Gear> = emptyList(),
     val equippedGear: Gear? = null,
+    /** Second weapon, carried with the Kleptomaniac skill. */
+    val offhandGear: Gear? = null,
     /** Unequipped armor (each takes a bag slot). */
     val armor: List<Armor> = emptyList(),
     /** Body armor (plate, leather or robe). */

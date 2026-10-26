@@ -169,6 +169,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun claimStarterGift(speciesId: String) = apply(GameEngine.claimStarterGift(state, speciesId))
     fun allocate(attr: HeroAttribute) = apply(GameEngine.allocatePoint(state, attr))
     fun chooseClass(cls: HeroClass) = apply(GameEngine.chooseClass(state, cls))
+    fun chooseSubclass(sub: com.monsterquest.core.Subclass) = apply(GameEngine.chooseSubclass(state, sub))
+    fun learnSkill(slot: Int, skill: com.monsterquest.core.Trait) = apply(GameEngine.learnSkill(state, slot, skill))
     fun upgrade() = apply(GameEngine.applyUpgrade(state))
     fun buyStorage(bag: Boolean) = apply(GameEngine.buyStorage(state, bag))
     fun renameHero(name: String) {
@@ -446,6 +448,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun equip(id: String) = apply(GameEngine.equip(state, id))
     fun unequip() = apply(GameEngine.unequip(state))
     fun dropWeapon(id: String) = apply(GameEngine.dropWeapon(state, id))
+    fun equipOffhand(id: String) = apply(GameEngine.equipOffhand(state, id))
+    fun unequipOffhand() = apply(GameEngine.unequipOffhand(state))
+    fun sellWeapon(id: String) = apply(GameEngine.sellWeapon(state, id))
+    fun smelt(id: String) = apply(GameEngine.smelt(state, id))
+    fun sellArmor(id: String) = apply(GameEngine.sellArmor(state, id))
     fun equipArmor(id: String) = apply(GameEngine.equipArmor(state, id))
     fun unequipArmor(slot: com.monsterquest.core.ArmorSlot = com.monsterquest.core.ArmorSlot.BODY) = apply(GameEngine.unequipArmor(state, slot))
     fun dropArmor(id: String) = apply(GameEngine.dropArmor(state, id))
@@ -473,6 +480,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))
     fun feedTreat(uid: String) = apply(GameEngine.feedTreat(state, uid))
     fun buy(item: Item) = apply(GameEngine.buy(state, item))
+    fun sell(item: Item) = apply(GameEngine.sellItem(state, item))
     fun discard(item: Item) = apply(GameEngine.discard(state, item))
 
     // ---- map ---------------------------------------------------------------

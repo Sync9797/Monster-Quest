@@ -52,6 +52,19 @@ import com.monsterquest.core.MAX_PARTY_SIZE
 import com.monsterquest.core.PAID_UPGRADE_AMOUNT
 import com.monsterquest.core.PAID_UPGRADE_COST
 import com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
+import com.monsterquest.core.Gear
+import com.monsterquest.core.Hero
+import com.monsterquest.core.HERO_SKILL_LEVELS
+import com.monsterquest.core.MAX_SKILL_RANK
+import com.monsterquest.core.PROFICIENCY_BATTLES
+import com.monsterquest.core.SKILL_CHANGE_COST
+import com.monsterquest.core.SKILL_RANK_LEVELS
+import com.monsterquest.core.SUBCLASS_CHANGE_COST
+import com.monsterquest.core.SUBCLASS_UNLOCK_LEVEL
+import com.monsterquest.core.Subclass
+import com.monsterquest.core.TEAM_RANGE_RANK
+import com.monsterquest.core.Trait
+import com.monsterquest.core.skillRank
 
 @Composable
 fun HeroScreen(vm: GameViewModel) {
@@ -66,7 +79,7 @@ fun HeroScreen(vm: GameViewModel) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Level ${h.level} ${h.heroClass.label}", color = XpPurple)
+                    Text("Level ${h.level} ${h.activeSubclass?.label ?: h.heroClass.label}", color = XpPurple)
                 }
                 TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) {
                     GIcon(GameIcon.EDIT, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)
@@ -99,6 +112,8 @@ fun HeroScreen(vm: GameViewModel) {
         }
 
         ClassSection(vm)
+        SubclassSection(vm)
+        SkillsSection(vm)
 
         SectionTitle(if (h.unspentPoints > 0) "Attributes: ${h.unspentPoints} point(s) to spend!" else "Attributes")
         HeroAttribute.entries.forEach { a ->
@@ -172,10 +187,24 @@ fun HeroScreen(vm: GameViewModel) {
             tint = w?.rarity?.color(),
             title = w?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Bare-handed",
             detail = w?.let { it.summary(h.heroClass) } ?: "Find weapons at shrines and villain camps, or forge them from parts.",
-            classMatch = w?.matches(h.heroClass) == true,
+            classNote = w?.let { weaponClassNote(it, h) },
             effects = w?.effects.orEmpty().joinToString(" • ") { it.label },
             onRemove = if (w != null) vm::unequip else null,
         )
+        val klepto = h.rankOf(Trait.KLEPTOMANIAC)
+        if (klepto > 0) {
+            val o = s.offhandGear
+            EquipSlot(
+                label = "Off hand (${Trait.KLEPTOMANIAC.offhandPct(klepto)}%)",
+                icon = o?.type?.icon() ?: GameIcon.FIST,
+                tint = o?.rarity?.color(),
+                title = o?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Empty",
+                detail = o?.let { it.summary(h.heroClass) } ?: "Kleptomaniac: carry a second weapon. Pick one in the Bag.",
+                classNote = o?.let { weaponClassNote(it, h) },
+                effects = if (klepto >= 3) o?.effects.orEmpty().joinToString(" • ") { it.label } else "",
+                onRemove = if (o != null) vm::unequipOffhand else null,
+            )
+        }
         val a = s.equippedArmor
         EquipSlot(
             label = "Armor",
@@ -183,7 +212,7 @@ fun HeroScreen(vm: GameViewModel) {
             tint = a?.rarity?.color(),
             title = a?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "No armor",
             detail = a?.let { it.summary(h.heroClass) } ?: "Traveler's clothes. Armor drops at shrines, villain camps and loot boxes.",
-            classMatch = a?.matches(h.heroClass) == true,
+            classNote = if (a?.matches(h.heroClass) == true) "Class bonus active (+20%)" to HpGreen else null,
             effects = a?.effects.orEmpty().joinToString(" • ") { it.label },
             onRemove = if (a != null) ({ vm.unequipArmor() }) else null,
         )
@@ -195,14 +224,16 @@ fun HeroScreen(vm: GameViewModel) {
                 tint = p?.rarity?.color(),
                 title = p?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Nothing",
                 detail = p?.let { it.summary(h.heroClass) } ?: "Find $what at shrines, villain camps and loot boxes.",
-                classMatch = p?.matches(h.heroClass) == true,
+                classNote = if (p?.matches(h.heroClass) == true) "Class bonus active (+20%)" to HpGreen else null,
                 effects = p?.effects.orEmpty().joinToString(" • ") { it.label },
                 onRemove = if (p != null) ({ vm.unequipArmor(slot) }) else null,
             )
         }
         Text(
-            "Plate suits Warriors, Leather suits Rogues and Robes suit Mages (+20%). Hoods suit Mages and Rogues, cloaks Rogues, " +
-                "pants Warriors and boots anyone. Change gear from the Bag.",
+            "A weapon of your class adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off " +
+                "until you've fought $PROFICIENCY_BATTLES battles with that weapon. Plate suits Warriors, Leather suits Rogues " +
+                "and Robes suit Mages (+20%). Hoods suit Mages and Rogues, cloaks Rogues, pants Warriors and boots anyone. " +
+                "Change gear from the Bag.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -393,7 +424,7 @@ private fun EquipSlot(
     tint: androidx.compose.ui.graphics.Color?,
     title: String,
     detail: String,
-    classMatch: Boolean,
+    classNote: Pair<String, androidx.compose.ui.graphics.Color>?,
     effects: String,
     onRemove: (() -> Unit)?,
 ) {
@@ -406,9 +437,139 @@ private fun EquipSlot(
                 Text(title, fontWeight = FontWeight.SemiBold, color = tint ?: MaterialTheme.colorScheme.onSurface)
                 Text(detail, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (effects.isNotEmpty()) Text(effects, fontSize = 12.sp, color = Gold)
-                if (classMatch) Text("Class bonus active (+20%)", fontSize = 12.sp, color = HpGreen)
+                classNote?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
             }
             if (onRemove != null) SmallButton("Remove", onRemove, outlined = true)
         }
+    }
+}
+
+/** How a weapon suits this hero: the class bonus, or the penalty and practice for an unfamiliar one. */
+fun weaponClassNote(w: Gear, h: Hero): Pair<String, androidx.compose.ui.graphics.Color>? {
+    val n = w.classStats(h.heroClass, h.perks.anyWeapon)
+    return when {
+        n > 0 && w.matches(h.heroClass) -> "Class bonus: +$n to all stats, +20% power" to HpGreen
+        n > 0 -> "Jack of All Trades: +$n to all stats" to HpGreen
+        n < 0 -> "Unfamiliar: $n to all stats • practice ${w.proficiency}/$PROFICIENCY_BATTLES battles" to HpYellow
+        w.foreign(h.heroClass) -> "Mastered: no penalty" to MpBlue
+        else -> null
+    }
+}
+
+/** Subclass choice at level 15: three specialties for each class. */
+@Composable
+private fun SubclassSection(vm: GameViewModel) {
+    val s = vm.state
+    val h = s.hero
+    if (!h.classChosen) return
+    var confirm by remember { mutableStateOf<Subclass?>(null) }
+    SectionTitle("Subclass")
+    if (h.level < SUBCLASS_UNLOCK_LEVEL) {
+        GameCard {
+            IconText(GameIcon.LOCK, "Choose a subclass at level $SUBCLASS_UNLOCK_LEVEL", tint = Gold)
+            Text(
+                "Each class has three: " + Subclass.of(h.heroClass).joinToString { it.label } + ".",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    val current = h.activeSubclass
+    if (current == null) Text("Pick a specialty! The first pick is free.", color = Gold, fontSize = 13.sp)
+    Subclass.of(h.heroClass).forEach { sub ->
+        val mine = sub == current
+        GameCard(Modifier.padding(vertical = 3.dp), border = if (mine) Gold else null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(sub.label, fontWeight = FontWeight.SemiBold, color = if (mine) Gold else MaterialTheme.colorScheme.onSurface)
+                    Text(sub.summary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (!mine) SmallButton(if (current == null) "Choose" else "Switch", { confirm = sub }, outlined = current != null)
+            }
+        }
+    }
+    if (current != null) {
+        Text("Switching subclass costs $SUBCLASS_CHANGE_COST gold.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    confirm?.let { sub ->
+        val cost = if (current == null) 0 else SUBCLASS_CHANGE_COST
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text("Become a ${sub.label}?") },
+            text = { Text(sub.summary + if (cost > 0) "\n\nCosts $cost gold." else "") },
+            confirmButton = { TextButton(onClick = { vm.chooseSubclass(sub); confirm = null }, enabled = s.gold >= cost) { Text("Confirm") } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+/** Skill slots (levels 30, 45 and 60); each skill ranks up every 10 levels. */
+@Composable
+private fun SkillsSection(vm: GameViewModel) {
+    val s = vm.state
+    val h = s.hero
+    var picking by remember { mutableStateOf<Int?>(null) }
+    SectionTitle("Skills")
+    Text(
+        "Passive skills. A slot opens at levels ${HERO_SKILL_LEVELS.joinToString()}, and each skill ranks up every " +
+            "$SKILL_RANK_LEVELS levels after (up to rank $MAX_SKILL_RANK) for a bigger effect. From rank $TEAM_RANGE_RANK " +
+            "some cover your whole team.",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    HERO_SKILL_LEVELS.forEachIndexed { slot, at ->
+        val skill = h.skills.getOrNull(slot)?.takeIf { slot < h.skillSlots }
+        val rank = skillRank(h.level, at)
+        GameCard(Modifier.padding(vertical = 3.dp), border = if (skill != null) XpPurple else null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    when {
+                        h.level < at -> IconText(GameIcon.LOCK, "Slot ${slot + 1}: opens at level $at", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        skill == null -> Text("Slot ${slot + 1}: choose a skill!", color = Gold, fontWeight = FontWeight.SemiBold)
+                        else -> {
+                            Text(
+                                "${skill.label}  ${"★".repeat(rank)}${"☆".repeat(MAX_SKILL_RANK - rank)}",
+                                fontWeight = FontWeight.SemiBold,
+                                color = XpPurple,
+                            )
+                            Text(skill.describe(rank), fontSize = 12.sp)
+                            if (rank < MAX_SKILL_RANK) {
+                                Text(
+                                    "Rank ${rank + 1} at level ${at + rank * SKILL_RANK_LEVELS}: ${skill.describe(rank + 1)}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (h.level >= at) SmallButton(if (skill == null) "Choose" else "Swap", { picking = slot }, outlined = skill != null)
+            }
+        }
+    }
+    picking?.let { slot ->
+        val rank = skillRank(h.level, HERO_SKILL_LEVELS[slot]).coerceAtLeast(1)
+        val current = h.skills.getOrNull(slot)
+        val cost = if (current == null) 0 else SKILL_CHANGE_COST
+        AlertDialog(
+            onDismissRequest = { picking = null },
+            title = { Text(if (current == null) "Choose a skill" else "Swap ${current.label}") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (cost > 0) Text("Swapping costs $cost gold.", color = Gold, fontSize = 13.sp)
+                    Trait.heroSkills.filter { it !in h.skills }.forEach { t ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(t.label, fontWeight = FontWeight.SemiBold)
+                                Text(t.describe(rank), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            SmallButton("Pick", { vm.learnSkill(slot, t); picking = null }, enabled = s.gold >= cost)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { picking = null }) { Text("Cancel") } },
+        )
     }
 }

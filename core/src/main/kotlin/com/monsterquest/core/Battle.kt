@@ -86,6 +86,65 @@ class Combatant(
     var onHitStatus: Status? = null
     var tameBonus: Double = 0.0
     var cursed: Boolean = false
+
+    // Subclass perks (hero only).
+    var spellPct: Int = 0
+    var healPct: Int = 0
+    var spellDrainPct: Int = 0
+    var critDamagePct: Int = 0
+    var ragePct: Int = 0
+    var blindPct: Int = 0
+
+    // Skills: the fighter's own, at their rank, and what they (or a teammate's) give it.
+    val traits: MutableMap<Trait, Int> = mutableMapOf()
+    var immuneEarth: Boolean = false
+    /** Less damage from Earth moves, in percent (a hovering hero's team). */
+    var earthResistPct: Int = 0
+    var oblivious: Boolean = false
+    /** Turns of sleep shaken off; [NO_SLEEP] means it can't fall asleep. */
+    var sleepCut: Int = 0
+    var regenPct: Int = 0
+    var secondWindPct: Int = 0
+    var secondWindUsed: Boolean = false
+    var hidePct: Int = 0
+    var touchStatus: Status? = null
+    var touchPct: Int = 0
+
+    /** Applies a skill's effect on its owner. */
+    fun gainTrait(t: Trait, rank: Int, hero: Boolean) {
+        traits[t] = rank
+        when (t) {
+            Trait.INSOMNIA -> sleepCut = maxOf(sleepCut, if (rank >= MAX_SKILL_RANK) NO_SLEEP else t.sleepCut(rank))
+            Trait.HOVER, Trait.LEVITATE -> immuneEarth = true
+            Trait.OBLIVIOUS -> oblivious = true
+            Trait.QUICK_STEP -> evasion += t.dodgePct(rank) / 100.0
+            Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
+            Trait.REGENERATION -> regenPct += t.regenPct(rank)
+            Trait.THICK_HIDE -> hidePct = t.hidePct(rank)
+            Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT -> {
+                touchStatus = when (t) {
+                    Trait.STATIC -> Status.SHOCK
+                    Trait.FLAME_BODY -> Status.BURN
+                    else -> Status.POISON
+                }
+                touchPct = t.touchPct(rank)
+            }
+            else -> {}
+        }
+    }
+
+    /** What a hero skill at team range gives a teammate. */
+    fun shareTrait(t: Trait, rank: Int) {
+        when (t) {
+            Trait.INSOMNIA -> sleepCut = maxOf(sleepCut, t.sleepCut(rank.coerceAtMost(MAX_SKILL_RANK - 1)))
+            Trait.HOVER -> earthResistPct = maxOf(earthResistPct, t.hoverTeamPct(rank))
+            Trait.OBLIVIOUS -> oblivious = true
+            Trait.QUICK_STEP -> evasion += t.dodgePct(rank) / 200.0
+            Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
+            Trait.REGENERATION -> regenPct += t.regenPct(rank)
+            else -> {}
+        }
+    }
     /** Type of the hero's basic Attack (from their weapon). */
     var attackElement: Element = Element.NEUTRAL
     var defending: Boolean = false
@@ -128,6 +187,7 @@ class Combatant(
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
         if (powerUp > 0) add("Power +$powerUp%")
         if (scared) add("Scared")
+        traits.forEach { (t, r) -> add("${t.label} ${"★".repeat(r)}") }
         if (diving != null) add("In the air")
         if (protecting) add("Guarding")
         if (shield > 0) add("Ward $shield")
@@ -138,31 +198,49 @@ class Combatant(
     companion object {
         const val HERO_KEY = "hero"
         const val ENEMY_KEY = "enemy"
+        const val NO_SLEEP = 99
 
         /** Keys for a pack's monsters: "enemy", "enemy2", "enemy3", "enemy4". */
         fun enemyKey(index: Int) = if (index == 0) ENEMY_KEY else "$ENEMY_KEY${index + 1}"
 
         fun isEnemy(key: String) = key.startsWith(ENEMY_KEY)
 
-        fun fromHero(h: Hero, gear: Gear? = null, damage: Int = 0, armor: List<Armor> = emptyList()): Combatant {
+        fun fromHero(
+            h: Hero,
+            gear: Gear? = null,
+            damage: Int = 0,
+            armor: List<Armor> = emptyList(),
+            /** Second weapon (Kleptomaniac): part of its power counts. */
+            offhand: Gear? = null,
+        ): Combatant {
             val cls = h.heroClass
-            val fx = gear?.effects.orEmpty() + armor.flatMap { it.effects }
+            val perks = h.perks
+            val klepto = h.rankOf(Trait.KLEPTOMANIAC)
+            val off = offhand?.takeIf { klepto > 0 }
+            val share = if (off != null) Trait.KLEPTOMANIAC.offhandPct(klepto) / 100.0 else 0.0
+            val fx = gear?.effects.orEmpty() + armor.flatMap { it.effects } + (if (klepto >= 3) off?.effects.orEmpty() else emptyList())
+            // The class bonus (or the penalty for an unfamiliar weapon) goes on every stat.
+            val classStats = (gear?.classStats(cls, perks.anyWeapon) ?: 0) + ((off?.classStats(cls, perks.anyWeapon) ?: 0) * share).roundToInt()
+            val offAttack = ((off?.attackBonus(cls) ?: 0) * share).roundToInt()
+            val offMagic = ((off?.magicBonus(cls) ?: 0) * share).roundToInt()
             val speedPct = (gear?.type?.speedPercent ?: 0) + armor.sumOf { it.type.speedPercent } + 10 * fx.count { it == GearEffect.SWIFT }
-            val baseDefense = h.defense + armor.sumOf { it.defenseBonus(cls) }
-            val defense = (baseDefense * (1 + 0.1 * fx.count { it == GearEffect.GUARDED })).toInt()
-            val attack = (h.attack + (gear?.attackBonus(cls) ?: 0) + armor.sumOf { it.attackBonus(cls) }) * (1 + 0.1 * fx.count { it == GearEffect.MIGHTY })
-            val magic = (h.magic + (gear?.magicBonus(cls) ?: 0) + armor.sumOf { it.magicBonus(cls) }) * (1 + 0.1 * fx.count { it == GearEffect.FOCUSED })
+            val baseDefense = h.defense + armor.sumOf { it.defenseBonus(cls) } + classStats
+            val defense = (baseDefense * (1 + 0.1 * fx.count { it == GearEffect.GUARDED })).toInt().coerceAtLeast(1)
+            val attack = (h.attack + (gear?.attackBonus(cls) ?: 0) + offAttack + armor.sumOf { it.attackBonus(cls) } + classStats) *
+                (1 + 0.1 * fx.count { it == GearEffect.MIGHTY })
+            val magic = (h.magic + (gear?.magicBonus(cls) ?: 0) + offMagic + armor.sumOf { it.magicBonus(cls) } + classStats) *
+                (1 + 0.1 * fx.count { it == GearEffect.FOCUSED })
             return Combatant(
                 HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
-                attack.toInt(), magic.toInt(),
-                defense, (h.speed * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
+                attack.toInt().coerceAtLeast(1), magic.toInt().coerceAtLeast(1),
+                defense, ((h.speed + classStats) * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp, h.maxMp, true, emptyList(),
             ).apply {
                 attackElement = gear?.element ?: Element.NEUTRAL
-                evasion = h.evasion + armor.sumOf { it.type.evasionPercent } / 100.0
+                evasion = h.evasion + armor.sumOf { it.type.evasionPercent } / 100.0 + perks.dodgePct / 100.0
                 heroClass = h.heroClass
                 hits = gear?.type?.hits ?: 1
-                energyRegen = (gear?.type?.energyPerTurn ?: 0) + 2 * fx.count { it == GearEffect.ARCANE }
-                critBonus = if (GearEffect.KEEN in fx) 0.1 else 0.0
+                energyRegen = (gear?.type?.energyPerTurn ?: 0) + 2 * fx.count { it == GearEffect.ARCANE } + perks.energyPerTurn
+                critBonus = (if (GearEffect.KEEN in fx) 0.1 else 0.0) + perks.critPct / 100.0
                 lifesteal = 0.15 * fx.count { it == GearEffect.VAMPIRIC }
                 onHitStatus = when {
                     GearEffect.SEARING in fx -> Status.BURN
@@ -170,7 +248,16 @@ class Combatant(
                     GearEffect.VENOMOUS in fx -> Status.POISON
                     else -> null
                 }
-                tameBonus = 0.1 * fx.count { it == GearEffect.LUCKY }
+                tameBonus = 0.1 * fx.count { it == GearEffect.LUCKY } + perks.tamePct / 100.0
+                spellPct = perks.spellPct
+                healPct = perks.healPct
+                spellDrainPct = perks.spellDrainPct
+                critDamagePct = perks.critDamagePct
+                ragePct = perks.ragePct
+                blindPct = perks.blindPct
+                regenPct = perks.regenPct
+                if (perks.startWardPct > 0) shield = maxHp * perks.startWardPct / 100
+                h.skillRanks.forEach { (t, r) -> gainTrait(t, r, hero = true) }
             }
         }
 
@@ -180,17 +267,19 @@ class Combatant(
             hpMultiplier: Double = 1.0,
             attackMultiplier: Double = 1.0,
             defenseMultiplier: Double = 1.0,
+            speedMultiplier: Double = 1.0,
         ): Combatant {
             val s = m.stats
             val hp = (s.hp * hpMultiplier).toInt()
             val atk = (s.attack * attackMultiplier).toInt()
             return Combatant(
                 key, m.displayName, m.species.element, m.level, hp, (hp - m.damage).coerceIn(1, hp),
-                atk, atk, (s.defense * defenseMultiplier).toInt(), s.speed, 0, 0, false, m.activeMoves,
+                atk, atk, (s.defense * defenseMultiplier).toInt(), (s.speed * speedMultiplier).toInt().coerceAtLeast(1), 0, 0, false, m.activeMoves,
             ).apply {
                 speciesId = m.speciesId
                 cursed = m.cursed
                 shiny = m.shiny
+                m.trait?.let { (t, r) -> gainTrait(t, r, hero = false) }
             }
         }
     }
@@ -301,6 +390,8 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 /** Hero spells aimed at an ally (or the hero) instead of an enemy. */
 val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY)
 
+private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT)
+
 /** Highest a stat stage can go (stage multipliers are capped at 2x anyway). */
 private const val MAX_STAGES = 6
 
@@ -321,23 +412,32 @@ class Battle(
     extraEnemies: List<Monster> = emptyList(),
     /** The monsters struck first: they act before you in the first round. */
     val ambush: Boolean = false,
+    /** Second weapon carried with Kleptomaniac. */
+    offhand: Gear? = null,
 ) {
     private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
-    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage, armor)) + fighters.map { Combatant.fromMonster(it) }
+    private val heroPerks = hero.perks
+    /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
+    private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
+    val allies: List<Combatant> = listOf(Combatant.fromHero(hero, gear, heroDamage, armor, offhand)) + fighters.map {
+        Combatant.fromMonster(it, hpMultiplier = teamBoost, attackMultiplier = teamBoost, defenseMultiplier = teamBoost, speedMultiplier = teamBoost)
+    }
     /** Fighters on your side: the hero plus the party monsters able to fight. */
     val teamSize: Int = 1 + fighters.size
     /** The enemy side: one monster, or a pack of up to 4. */
     val enemyMonsters: List<Monster> = listOf(enemyMonster) + extraEnemies.take(3)
     private val scaling = TeamScaling.pack(TeamScaling.factors(teamSize, encounter), enemyMonsters.size)
+    private val enemyBoost = 1 + packLeader(enemyMonsters) / 100.0
     val enemies: List<Combatant> = enemyMonsters.mapIndexed { i, m ->
         // Legendaries are built stronger to own; as shrine guardians they're scaled back to their usual challenge.
         val legend = if (m.species.rarity == Rarity.LEGENDARY && encounter != EncounterType.WILD) 1 / Bestiary.LEGENDARY_POWER else 1.0
         Combatant.fromMonster(
             m,
             Combatant.enemyKey(i),
-            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend,
-            attackMultiplier = scaling.attack * legend,
-            defenseMultiplier = scaling.defense * legend,
+            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost,
+            attackMultiplier = scaling.attack * legend * enemyBoost,
+            defenseMultiplier = scaling.defense * legend * enemyBoost,
+            speedMultiplier = enemyBoost,
         )
     }
 
@@ -407,7 +507,38 @@ class Battle(
         if (encounter == EncounterType.WILD && teamSize > 1 && enemies.size < teamSize) {
             log += (if (enemies.size > 1) "The pack grows" else "${enemy.name} grows") + " stronger against your team of $teamSize!"
         }
+        openingSkills(hero)
         advance()
+    }
+
+    /** The best Pack Leader bonus in a group of monsters, in percent. */
+    private fun packLeader(group: List<Monster>): Int =
+        group.mapNotNull { m -> m.trait?.takeIf { it.first == Trait.PACK_LEADER }?.let { (t, r) -> t.teamPct(r) } }.maxOrNull() ?: 0
+
+    /** Skills that act as the battle starts: team-wide hero skills, wards and Intimidate. */
+    private fun openingSkills(hero: Hero) {
+        val me = allies.first()
+        for ((t, r) in hero.skillRanks) {
+            if (t.teamRange(r, hero = true)) allies.drop(1).forEach { it.shareTrait(t, r) }
+        }
+        if (heroPerks.teamPct > 0 && allies.size > 1) log += "Your monsters are fired up! (+${heroPerks.teamPct}%)"
+        if (packLeader(fighters) > 0) log += "A Pack Leader rallies your team! (+${packLeader(fighters)}%)"
+        if (enemyBoost > 1) log += "A Pack Leader rallies the wild pack! (+${packLeader(enemyMonsters)}%)"
+        if (me.shield > 0) log += "${me.name} starts behind a holy ward (absorbs ${me.shield})."
+        for (c in allies + enemies) {
+            val r = c.traits[Trait.INTIMIDATE] ?: continue
+            if (!c.alive) continue
+            val stages = Trait.INTIMIDATE.intimidateStages(r)
+            log += "${c.name}'s Intimidate!"
+            for (foe in foesOf(c).filter { it.alive }) {
+                if (foe.oblivious) {
+                    log += "${foe.name} doesn't even notice."
+                } else {
+                    foe.stages[BattleStat.ATTACK] = ((foe.stages[BattleStat.ATTACK] ?: 0) - stages).coerceAtLeast(-4)
+                    log += "${foe.name}'s Attack fell!"
+                }
+            }
+        }
     }
 
     fun combatant(key: String): Combatant? =
@@ -500,7 +631,14 @@ class Battle(
         val bySpeed = everyone.sortedByDescending { it.effectiveSpeed + rng.nextDouble() }
         val ordered = if (reversedRounds > 0) bySpeed.reversed() else bySpeed
         // An ambush: the monsters all act before you in the first round.
-        val order = if (ambush && round == 1) ordered.sortedBy { !Combatant.isEnemy(it.key) } else ordered
+        var order = if (ambush && round == 1) ordered.sortedBy { !Combatant.isEnemy(it.key) } else ordered
+        // First Strike: the hero (or, at team range, the whole team) opens the battle.
+        val strike = allies.first().traits[Trait.FIRST_STRIKE]
+        if (round == 1 && strike != null) {
+            val first = if (Trait.FIRST_STRIKE.teamRange(strike, hero = true)) order.filter { !Combatant.isEnemy(it.key) }
+            else order.filter { it.key == Combatant.HERO_KEY }
+            order = first + (order - first.toSet())
+        }
         queue.addAll(order.map { it.key })
         // Bosses act twice per round.
         if (isBoss) queue.addLast(Combatant.ENEMY_KEY)
@@ -513,6 +651,25 @@ class Battle(
         c.hp = max(0, c.hp - amount)
         log += "${c.name} $text ($amount)."
         if (!c.alive) log += "${c.name} falls!"
+        secondWind(c)
+    }
+
+    /** Second Wind: once a battle, a big heal on dropping below a quarter of max HP. */
+    private fun secondWind(c: Combatant) {
+        if (c.secondWindPct <= 0 || c.secondWindUsed || !c.alive || c.hpFraction >= 0.25) return
+        c.secondWindUsed = true
+        heal(c, maxOf(1, c.maxHp * c.secondWindPct / 100), "${c.name} gets a second wind")
+    }
+
+    /** Puts [d] to sleep for [turns], less what Insomnia shakes off. Returns false if it stays awake. */
+    private fun fallAsleep(d: Combatant, turns: Int): Boolean {
+        if (d.sleepCut >= Combatant.NO_SLEEP) {
+            log += "${d.name}'s Insomnia keeps it wide awake!"
+            return false
+        }
+        d.status = Status.SLEEP
+        d.statusTurns = (turns - d.sleepCut).coerceAtLeast(1)
+        return true
     }
 
     /** Ticks conditions at the start of a fighter's turn. Returns false if it loses the turn. */
@@ -520,6 +677,7 @@ class Battle(
         c.defending = false
         c.protecting = false
         if (c.energyRegen > 0 && c.mp < c.maxMp) c.mp = minOf(c.maxMp, c.mp + c.energyRegen)
+        if (c.regenPct > 0 && c.hp < c.maxHp) heal(c, maxOf(1, c.maxHp * c.regenPct / 100), "${c.name} regenerates")
         if (c.scorchTurns > 0) {
             c.scorchTurns--
             hurt(c, c.scorchDamage, c.scorchVerb)
@@ -597,9 +755,9 @@ class Battle(
                 if (actor.isHero) {
                     // Daggers strike twice.
                     repeat(actor.hits) {
-                        if (enemy.alive && rollHit(actor, enemy, 100)) {
+                        if (enemy.alive && !floatsOver(actor, enemy, actor.attackElement) && rollHit(actor, enemy, 100)) {
                             val dmg = strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks", style = StrikeStyle.SLASH)
-                            afterHeroHit(actor, enemy, dmg)
+                            afterHeroHit(actor, enemy, dmg, basic = true)
                         }
                     }
                 } else {
@@ -623,7 +781,7 @@ class Battle(
                     actor.mp -= skill.mpCost
                     when (skill.kind) {
                         SkillKind.SHIELD -> {
-                            val amount = (skill.power + actor.magic * 1.2).roundToInt()
+                            val amount = ((skill.power + actor.magic * 1.2) * (1 + actor.healPct / 100.0)).roundToInt()
                             target.shield = max(target.shield, amount)
                             log += "${actor.name} casts ${skill.name}: ${target.name} is shielded (absorbs ${target.shield})."
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
@@ -634,13 +792,16 @@ class Battle(
                             log += "${actor.name} casts ${skill.name}: ${target.name}'s Defense rises!"
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL)
                         }
-                        else -> heal(target, (skill.power + actor.magic * 1.5).roundToInt(), "${actor.name} casts ${skill.name}")
+                        else -> heal(target, ((skill.power + actor.magic * 1.5) * (1 + actor.healPct / 100.0)).roundToInt(), "${actor.name} casts ${skill.name}")
                     }
                 } else {
                     actor.mp -= skill.mpCost
-                    if (!rollHit(actor, enemy, 100)) return true
+                    if (floatsOver(actor, enemy, skill.element) || !rollHit(actor, enemy, 100)) return true
                     val dmg = strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
                     afterHeroHit(actor, enemy, dmg)
+                    if (actor.spellDrainPct > 0 && dmg > 0 && actor.alive && actor.hp < actor.maxHp) {
+                        heal(actor, maxOf(1, dmg * actor.spellDrainPct / 100), "${actor.name}'s dark magic drains life")
+                    }
                 }
             }
             is BattleAction.UseItem -> {
@@ -797,6 +958,7 @@ class Battle(
             return false
         }
         if (t.protecting) log += "${move.name} pierces ${t.name}'s guard!"
+        if (floatsOver(a, t, move.type)) return false
         if (MoveEffect.SureHit !in move.effects && !rollHit(a, t, move.accuracy)) return false
         if (!move.isDamaging) return true
         if (t.diving != null) log += "Thunder Bolt strikes ${t.name} mid-dive!"
@@ -818,14 +980,27 @@ class Battle(
         return true
     }
 
+    /** Hover and Levitate: Earth attacks pass beneath. Logs it and returns true if [t] is out of reach. */
+    private fun floatsOver(a: Combatant, t: Combatant, type: Element): Boolean {
+        if (type != Element.EARTH || !t.immuneEarth) return false
+        log += "${t.name} floats above it. Earth attacks can't reach!"
+        record(a, t, StrikeStyle.MISS, Element.NEUTRAL)
+        return true
+    }
+
     /** Applies [move]'s effects: those aimed at the foe [d] ([onFoe]) and/or those on the user and its team ([onSelf]). */
     private fun applyEffects(a: Combatant, d: Combatant, move: Move, onFoe: Boolean, onSelf: Boolean) {
         for (fx in move.effects) {
             if (if (fx.targetsFoe()) !onFoe else !onSelf) continue
             when (fx) {
                 is MoveEffect.Inflict -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
-                    d.status = fx.status
-                    d.statusTurns = rng.nextInt(fx.minTurns, fx.maxTurns + 1)
+                    val turns = rng.nextInt(fx.minTurns, fx.maxTurns + 1)
+                    if (fx.status == Status.SLEEP) {
+                        if (!fallAsleep(d, turns)) continue
+                    } else {
+                        d.status = fx.status
+                        d.statusTurns = turns
+                    }
                     log += when (fx.status) {
                         Status.SLEEP -> "${d.name} fell asleep!"
                         Status.SHOCK -> "${d.name} is shocked!"
@@ -836,14 +1011,15 @@ class Battle(
                     log += "${d.name} is already ${d.status!!.label.lowercase()}."
                 }
                 is MoveEffect.Nightmare -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
-                    d.status = Status.SLEEP
-                    d.statusTurns = rng.nextInt(3, 6)
+                    if (!fallAsleep(d, rng.nextInt(3, 6))) continue
                     d.nightmareDamage = scaled(fx.base, a.level)
                     log += "${d.name} falls into a nightmare!"
                 } else {
                     log += "${d.name} resists the nightmare."
                 }
-                is MoveEffect.LowerFoe -> if (d.alive && rng.nextDouble() < fx.chance) {
+                is MoveEffect.LowerFoe -> if (d.alive && d.oblivious) {
+                    log += "${d.name} is oblivious. Its stats don't drop!"
+                } else if (d.alive && rng.nextDouble() < fx.chance) {
                     fx.stats.forEach { d.stages[it] = ((d.stages[it] ?: 0) - 1).coerceAtLeast(-4) }
                     log += "${d.name}'s ${fx.stats.joinToString(", ") { it.label }} fell!"
                 }
@@ -904,7 +1080,9 @@ class Battle(
                     a.powerUp += fx.percent
                     log += "${a.name}'s power rises! (+${a.powerUp}%)"
                 }
-                MoveEffect.Scare -> {
+                MoveEffect.Scare -> if (d.oblivious) {
+                    log += "${d.name} is too oblivious to be scared."
+                } else {
                     d.scared = true
                     log += "${d.name} is scared and will deal less damage!"
                 }
@@ -917,8 +1095,12 @@ class Battle(
         }
     }
 
-    /** Weapon effects after the hero lands a hit: lifesteal and on-hit statuses. */
-    private fun afterHeroHit(a: Combatant, d: Combatant, dmg: Int) {
+    /** Weapon effects after the hero lands a hit: lifesteal and on-hit statuses (and Trickster feints on [basic] attacks). */
+    private fun afterHeroHit(a: Combatant, d: Combatant, dmg: Int, basic: Boolean = false) {
+        if (basic && a.blindPct > 0 && d.alive && !d.accuracyDown && rng.nextInt(100) < a.blindPct) {
+            d.accuracyDown = true
+            log += "${a.name} feints! ${d.name} is thrown off balance."
+        }
         if (a.lifesteal > 0 && dmg > 0 && a.alive) {
             heal(a, maxOf(1, (dmg * a.lifesteal).roundToInt()), "${a.name}'s weapon drains life")
         }
@@ -948,8 +1130,13 @@ class Battle(
             (1 + a.powerUp / 100.0) *
             (if (a.scared) 0.75 else 1.0) *
             (0.85 + rng.nextDouble() * 0.15) *
-            (if (crit) 1.5 else 1.0) *
-            (if (d.defending && !pierce) 0.5 else 1.0)
+            (if (crit) 1.5 + a.critDamagePct / 100.0 else 1.0) *
+            (if (d.defending && !pierce) 0.5 else 1.0) *
+            // Subclass perks and skills.
+            (if (useMagic) 1 + a.spellPct / 100.0 else 1.0) *
+            (1 + a.ragePct / 100.0 * (1 - a.hpFraction)) *
+            (1 - d.hidePct / 100.0) *
+            (if (type == Element.EARTH) 1 - d.earthResistPct / 100.0 else 1.0)
         val dmg = max(1, raw.roundToInt())
         val absorbed = minOf(d.shield, dmg)
         d.shield -= absorbed
@@ -963,6 +1150,14 @@ class Battle(
         }.joinToString(" ")
         log += (if (verb != null) "${a.name} $verb ${d.name} for $dmg damage. $notes" else "It hits ${d.name} for $dmg damage. $notes").trim()
         if (!d.alive) log += "${d.name} falls!"
+        secondWind(d)
+        // Static, Flame Body and Poison Point punish whoever strikes in close.
+        val touch = d.touchStatus
+        if (touch != null && !useMagic && a.alive && a.status == null && rng.nextInt(100) < d.touchPct) {
+            a.status = touch
+            a.statusTurns = 3
+            log += "${d.name}'s ${d.traits.keys.first { it in TOUCH_TRAITS }.label}: ${a.name} is ${touch.label.lowercase()}!"
+        }
         return dmg
     }
 
@@ -1010,15 +1205,21 @@ class Battle(
             EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
             else -> TeamScaling.bossReward(teamSize)
         }
+        // Wayfarer, Scholar and Treasure Hunter add to the spoils.
+        val xpMult = 1 + heroPerks.xpPct / 100.0
         val heroXp = when (outcome) {
             BattleOutcome.WON -> lvl * 3 * bossMult
             BattleOutcome.CAPTURED -> GameEngine.captureXp(lvl) * bossMult
             else -> 0
-        }.let { (it * rewardMult).roundToInt() }
-        val gold = if (outcome == BattleOutcome.WON) ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult).roundToInt() else 0
+        }.let { (it * rewardMult * xpMult).roundToInt() }
+        val gold = if (outcome == BattleOutcome.WON) {
+            ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult * (1 + heroPerks.goldPct / 100.0)).roundToInt()
+        } else {
+            0
+        }
         val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED) {
             partyUids.associateWith { uid ->
-                val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult).roundToInt()
+                val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult * xpMult).roundToInt()
                 if (combatant(uid)?.alive == true) base else base / 2
             }
         } else {

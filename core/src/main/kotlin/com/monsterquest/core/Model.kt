@@ -419,6 +419,8 @@ fun newId(rng: Random = Random.Default): String =
 // Items
 // ---------------------------------------------------------------------------
 
+const val MASTER_ORB_SELL_PRICE = 200
+
 @Serializable
 enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE }
 
@@ -443,4 +445,7 @@ enum class Item(
     LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day.");
 
     val usableInBattle: Boolean get() = kind in setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.CAPTURE)
+
+    /** What the shop pays: half the price (Master Orbs, which aren't sold, fetch a fixed sum). */
+    val sellPrice: Int get() = if (price > 0) price / 2 else MASTER_ORB_SELL_PRICE
 }

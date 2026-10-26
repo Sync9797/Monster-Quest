@@ -456,6 +456,40 @@ abstract class ScreenshotBase(private val device: String) {
         capture("27_ward", 400)
     }
 
+    /** Level 47 Berserker with two skills and a staff they haven't learned yet. */
+    private fun skilledHero(): GameState {
+        val base = sampleState()
+        val staff = com.monsterquest.core.Gear("staff1", com.monsterquest.core.WeaponType.STAFF, com.monsterquest.core.GearRarity.EPIC, 40, proficiency = 3)
+        return base.copy(
+            hero = base.hero.copy(
+                level = 47,
+                heroClass = com.monsterquest.core.HeroClass.WARRIOR,
+                classChosen = true,
+                subclass = com.monsterquest.core.Subclass.BERSERKER,
+                skills = listOf(com.monsterquest.core.Trait.INTIMIDATE, com.monsterquest.core.Trait.KLEPTOMANIAC),
+            ),
+            gold = 2000,
+            gear = base.gear + staff,
+        )
+    }
+
+    @Test fun heroSkills() {
+        val v = vm(skilledHero())
+        shot("28_hero_skills") { AppRoot(v, Tab.HERO) }
+        check(rule.onAllNodesWithText("Berserker", substring = true).fetchSemanticsNodes().isNotEmpty()) { "subclass shown" }
+        rule.onNodeWithText("Intimidate  ★★☆☆☆").assertExists()
+        rule.onNodeWithText("Slot 3: opens at level 60").assertExists()
+        rule.onNodeWithText("Off hand", substring = true).assertExists()
+    }
+
+    @Test fun shopSell() {
+        val v = vm(skilledHero())
+        shot("29_shop_sell") { AppRoot(v, Tab.BAG) }
+        check(rule.onAllNodesWithText("Smelt +3").fetchSemanticsNodes().isNotEmpty()) { "epic weapons smelt into 3 parts" }
+        // An Epic is -6 when new; after 3 of 10 battles, -5 is left.
+        rule.onNodeWithText("Unfamiliar: -5 to all stats • practice 3/10 battles").assertExists()
+    }
+
     /** Fold and unfold on the map: the map moves between layouts without breaking. */
     @Test fun foldUnfold() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)

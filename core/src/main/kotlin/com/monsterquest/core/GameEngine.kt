@@ -130,7 +130,8 @@ object GameEngine {
         if (h.classChosen && h.heroClass == cls) return Update(state, "You're already a ${cls.label}.")
         val cost = if (!h.classChosen) 0 else CLASS_CHANGE_COST
         if (state.gold < cost) return Update(state, "Changing class costs $cost gold.")
-        var s = state.copy(hero = h.copy(heroClass = cls, classChosen = true), gold = state.gold - cost)
+        // A new class means a new subclass: the old one belonged to the old class.
+        var s = state.copy(hero = h.copy(heroClass = cls, classChosen = true, subclass = null), gold = state.gold - cost)
         var gift = ""
         if (!h.classChosen) {
             // Picking a path at level 5 comes with a Rare weapon suited to it.
@@ -147,7 +148,52 @@ object GameEngine {
             gift = " You received a Rare ${w.name}! Equip it from the Bag."
         }
         val what = if (cls == HeroClass.NONE) "You stay an Adventurer: no strengths, no weaknesses." else "You are now a ${cls.label}!"
-        return Update(s, what + (if (cost > 0) " (−$cost gold)" else "") + gift)
+        val sub = if (h.subclass != null && h.level >= SUBCLASS_UNLOCK_LEVEL) " Pick a new subclass on the Hero tab." else ""
+        return Update(s, what + (if (cost > 0) " (−$cost gold)" else "") + gift + sub)
+    }
+
+    /** Pick a subclass of your class at level 15. The first pick is free; switching costs gold. */
+    fun chooseSubclass(state: GameState, sub: Subclass): Update {
+        val h = state.hero
+        if (h.level < SUBCLASS_UNLOCK_LEVEL) return Update(state, "Subclasses unlock at level $SUBCLASS_UNLOCK_LEVEL.")
+        if (!h.classChosen) return Update(state, "Choose a class first.")
+        if (sub.parent != h.heroClass) return Update(state, "${sub.label} is a ${sub.parent.label} subclass.")
+        if (h.activeSubclass == sub) return Update(state, "You're already a ${sub.label}.")
+        val cost = if (h.activeSubclass == null) 0 else SUBCLASS_CHANGE_COST
+        if (state.gold < cost) return Update(state, "Switching subclass costs $cost gold.")
+        return Update(
+            state.copy(hero = h.copy(subclass = sub), gold = state.gold - cost),
+            "You are now a ${sub.label}!" + if (cost > 0) " (−$cost gold)" else "",
+        )
+    }
+
+    /**
+     * Puts a skill in slot [slot] (slots open at levels 30, 45 and 60). Filling
+     * an empty slot is free; swapping a skill out costs gold. A slot's rank
+     * comes from your level, so a new skill there starts at the same rank.
+     */
+    fun learnSkill(state: GameState, slot: Int, skill: Trait): Update {
+        val h = state.hero
+        if (slot !in 0 until h.skillSlots) {
+            val at = HERO_SKILL_LEVELS.getOrNull(slot) ?: return Update(state, "There's no such skill slot.")
+            return Update(state, "This skill slot opens at level $at.")
+        }
+        if (!skill.forHero) return Update(state, "Only monsters can have ${skill.label}.")
+        val current = h.skills.getOrNull(slot)
+        if (current == skill) return Update(state, "You already have ${skill.label}.")
+        if (skill in h.skills) return Update(state, "${skill.label} is already in another slot.")
+        val cost = if (current == null) 0 else SKILL_CHANGE_COST
+        if (state.gold < cost) return Update(state, "Swapping a skill costs $cost gold.")
+        val skills = h.skills.toMutableList()
+        if (current == null) skills += skill else skills[slot] = skill
+        var s = state.copy(hero = h.copy(skills = skills), gold = state.gold - cost)
+        var extra = ""
+        // Without Kleptomaniac there's no hand free for the second weapon.
+        if (current == Trait.KLEPTOMANIAC && s.offhandGear != null) {
+            extra = " Your ${s.offhandGear!!.name} went back in your bag."
+            s = s.copy(gear = s.gear + s.offhandGear!!, offhandGear = null)
+        }
+        return Update(s, "You learned ${skill.label}!" + (if (cost > 0) " (−$cost gold)" else "") + extra)
     }
 
     fun allocatePoint(state: GameState, attr: HeroAttribute): Update {
@@ -456,7 +502,19 @@ object GameEngine {
             learned = learned,
             canLearn = canLearn,
             evolvedFrom = if (after.speciesId != m.speciesId) m.species.name else null,
+            notes = traitNotes(m, after),
         )
+    }
+
+    /** A monster's skill: gained at level 30, stronger every 10 levels after. */
+    private fun traitNotes(before: Monster, after: Monster): List<String> {
+        val (t, r) = after.trait ?: return emptyList()
+        val was = before.trait?.second ?: 0
+        return when {
+            was == 0 -> listOf("Gained the skill ${t.label}! ${t.describe(r, hero = false)}.")
+            r > was -> listOf("${t.label} ranked up to $r: ${t.describe(r, hero = false)}.")
+            else -> emptyList()
+        }
     }
 
     /** The hero's level-up as a [LevelUp], or null if no level was gained. */
@@ -467,6 +525,11 @@ object GameEngine {
             add("+${gain.levelsGained * STAT_POINTS_PER_LEVEL} attribute points to spend on the Hero tab.")
             if (gain.upgradesGained > 0) add("Storage upgrade unlocked!")
             if (!h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) add("Choose your class on the Hero tab to claim a Rare weapon!")
+            if (before.level < SUBCLASS_UNLOCK_LEVEL && h.level >= SUBCLASS_UNLOCK_LEVEL) add("Subclasses unlocked! Pick one on the Hero tab.")
+            HERO_SKILL_LEVELS.forEachIndexed { i, at ->
+                if (before.level < at && h.level >= at) add("Skill slot ${i + 1} opened! Pick a skill on the Hero tab.")
+            }
+            for ((t, r) in h.skillRanks) if (before.rankOf(t) in 1 until r) add("${t.label} ranked up to $r: ${t.describe(r)}.")
         }
         return LevelUp(
             key = Combatant.HERO_KEY,
@@ -685,6 +748,7 @@ object GameEngine {
         enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.wornArmor,
         extraEnemies = pack,
         ambush = ambush,
+        offhand = state.offhandGear,
     )
 
     fun applyBattleResult(state: GameState, r: BattleResult, nowMs: Long): Update {
@@ -765,6 +829,8 @@ object GameEngine {
             BattleOutcome.FLED -> msg.append("You escaped.")
             BattleOutcome.ONGOING -> {}
         }
+        // Fighting with a weapon makes you better with it (only unfamiliar ones need it).
+        if (r.outcome != BattleOutcome.FLED) s = practiceWeapons(s, msg)
         // Damage carries over to the next battle. A fallen hero limps home at 10% HP.
         val heroMax = s.hero.maxHp
         s = s.copy(
@@ -981,19 +1047,106 @@ object GameEngine {
         )
     }
 
+    /** What a weapon's class bonus or penalty means for this hero, for messages. */
+    fun weaponFit(w: Gear, h: Hero): String {
+        val n = w.classStats(h.heroClass, h.perks.anyWeapon)
+        return when {
+            n > 0 -> " Class bonus: +$n to all stats!"
+            n < 0 -> " Unfamiliar weapon: $n to all stats until you've fought ${PROFICIENCY_BATTLES - w.proficiency} more battle(s) with it."
+            else -> ""
+        }
+    }
+
+    /** Adds a battle of practice to the weapons in hand; reports any newly mastered. */
+    private fun practiceWeapons(state: GameState, msg: StringBuilder): GameState {
+        val cls = state.hero.heroClass
+        fun practice(w: Gear?): Gear? {
+            if (w == null || !w.foreign(cls) || w.mastered) return w
+            val p = w.practiced()
+            if (p.mastered) msg.append(" You've mastered your ${w.name}: no more penalty!")
+            return p
+        }
+        return state.copy(equippedGear = practice(state.equippedGear), offhandGear = practice(state.offhandGear))
+    }
+
     fun equip(state: GameState, id: String): Update {
         val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found.")
         val rest = state.gear.filterNot { it.id == id }
         // The previously equipped weapon goes back in the bag (equipping frees a slot, so it fits).
         val back = state.equippedGear?.let { rest + it } ?: rest
-        val fit = if (w.matches(state.hero.heroClass)) " Class bonus +${(CLASS_MATCH_BONUS * 100).toInt()}%!" else ""
-        return Update(state.copy(gear = back, equippedGear = w), "Equipped ${w.name}.$fit")
+        return Update(state.copy(gear = back, equippedGear = w), "Equipped ${w.name}.${weaponFit(w, state.hero)}")
     }
 
     fun unequip(state: GameState): Update {
         val w = state.equippedGear ?: return Update(state, "Nothing equipped.")
         if (state.bagFull) return Update(state, "Bag is full.")
         return Update(state.copy(gear = state.gear + w, equippedGear = null), "Unequipped ${w.name}.")
+    }
+
+    /** Kleptomaniac: carry a second weapon in the other hand. */
+    fun equipOffhand(state: GameState, id: String): Update {
+        val r = state.hero.rankOf(Trait.KLEPTOMANIAC)
+        if (r <= 0) return Update(state, "You need the Kleptomaniac skill to carry two weapons.")
+        val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found.")
+        val rest = state.gear.filterNot { it.id == id }
+        val back = state.offhandGear?.let { rest + it } ?: rest
+        return Update(
+            state.copy(gear = back, offhandGear = w),
+            "${w.name} in your off hand (${Trait.KLEPTOMANIAC.offhandPct(r)}% of its power).${weaponFit(w, state.hero)}",
+        )
+    }
+
+    fun unequipOffhand(state: GameState): Update {
+        val w = state.offhandGear ?: return Update(state, "Nothing in your off hand.")
+        if (state.bagFull) return Update(state, "Bag is full.")
+        return Update(state.copy(gear = state.gear + w, offhandGear = null), "Put away ${w.name}.")
+    }
+
+    // ---- selling -------------------------------------------------------------
+
+    fun sellItem(state: GameState, item: Item, qty: Int = 1): Update {
+        val n = minOf(qty, state.count(item))
+        if (n <= 0) return Update(state, "You don't have any ${item.label}.")
+        val gold = item.sellPrice * n
+        return Update(
+            state.copy(inventory = removeItems(state.inventory, mapOf(item to n)), gold = state.gold + gold),
+            "Sold ${item.label}${if (n > 1) " x$n" else ""} for $gold gold.",
+            listOf(Reward.Gold(gold)),
+        )
+    }
+
+    fun sellWeapon(state: GameState, id: String): Update {
+        val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found. Take it off first.")
+        return Update(
+            state.copy(gear = state.gear.filterNot { it.id == id }, gold = state.gold + w.sellPrice),
+            "Sold ${w.rarity.label} ${w.name} for ${w.sellPrice} gold.",
+            listOf(Reward.Gold(w.sellPrice)),
+        )
+    }
+
+    fun sellArmor(state: GameState, id: String): Update {
+        val a = state.armor.find { it.id == id } ?: return Update(state, "Armor not found. Take it off first.")
+        return Update(
+            state.copy(armor = state.armor.filterNot { it.id == id }, gold = state.gold + a.sellPrice),
+            "Sold ${a.rarity.label} ${a.name} for ${a.sellPrice} gold.",
+            listOf(Reward.Gold(a.sellPrice)),
+        )
+    }
+
+    /** Melts a weapon down into parts of its type (more for rarer weapons), for [SMELT_COST] gold. */
+    fun smelt(state: GameState, id: String): Update {
+        val w = state.gear.find { it.id == id } ?: return Update(state, "Weapon not found. Take it off first.")
+        if (state.gold < SMELT_COST) return Update(state, "Smelting costs $SMELT_COST gold.")
+        val n = w.rarity.smeltParts
+        return Update(
+            state.copy(
+                gear = state.gear.filterNot { it.id == id },
+                gold = state.gold - SMELT_COST,
+                parts = state.parts + (w.type to (state.parts[w.type] ?: 0) + n),
+            ),
+            "Smelted ${w.name} into $n ${w.type.label.lowercase()} part${if (n > 1) "s" else ""} (−$SMELT_COST gold).",
+            listOf(Reward.Parts(w.type, n)),
+        )
     }
 
     fun equipArmor(state: GameState, id: String): Update {

@@ -42,6 +42,11 @@ import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Item
 import com.monsterquest.core.MAX_ITEMS_PER_BATTLE
 import com.monsterquest.core.Spells
+import com.monsterquest.core.Hero
+import com.monsterquest.core.PROFICIENCY_BATTLES
+import com.monsterquest.core.SMELT_COST
+import com.monsterquest.core.Trait
+import com.monsterquest.core.smeltParts
 
 @Composable
 fun BagScreen(vm: GameViewModel) {
@@ -79,22 +84,31 @@ fun BagScreen(vm: GameViewModel) {
     val gear: @Composable () -> Unit = {
         SectionTitle("Weapons")
         Text(
-            "Any class can use any weapon; your class gets +20% from its own types " +
-                "(Warrior: sword, broadsword • Rogue: dagger, sword • Mage: staff, wand).",
+            "Any class can use any weapon. Your class's own types (Warrior: sword, broadsword • Rogue: dagger, sword • " +
+                "Mage: staff, wand) get +20% power and +2/4/6/8 to all stats by rarity. Others take that much off until " +
+                "you've fought $PROFICIENCY_BATTLES battles with that weapon.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         s.equippedGear?.let { w ->
-            GearCard(w, s.hero.heroClass, equipped = true) {
+            GearCard(w, s.hero, equipped = true) {
                 TextButton(onClick = vm::unequip) { Text("Remove") }
+            }
+        }
+        val klepto = s.hero.rankOf(Trait.KLEPTOMANIAC) > 0
+        s.offhandGear?.let { w ->
+            GearCard(w, s.hero, equipped = true, where = "off hand") {
+                TextButton(onClick = vm::unequipOffhand) { Text("Remove") }
             }
         }
         if (s.gear.isEmpty() && s.equippedGear == null) {
             Text("No weapons yet. Item shrines, villains and boxes drop them, and parts can be forged.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         s.gear.sortedWith(compareByDescending<Gear> { it.rarity }.thenByDescending { it.level }).forEach { w ->
-            GearCard(w, s.hero.heroClass, equipped = false) {
+            GearCard(w, s.hero, equipped = false) {
                 TextButton(onClick = { vm.dropWeapon(w.id) }) { Text("Drop") }
+                if (klepto) SmallButton("Off hand", { vm.equipOffhand(w.id) }, outlined = true)
+                Spacer(Modifier.width(6.dp))
                 SmallButton("Equip", { vm.equip(w.id) })
             }
         }
@@ -178,6 +192,7 @@ fun BagScreen(vm: GameViewModel) {
                 }
             }
         }
+        SellSection(vm)
     }
 
     AdaptivePanes(
@@ -206,20 +221,65 @@ fun BagScreen(vm: GameViewModel) {
     using?.let { item -> PotionTargetDialog(vm, item) { using = null } }
 }
 
+/** The shop buys anything that isn't worn: items at half price, gear by rarity and level. Weapons can be smelted. */
+@Composable
+private fun SellSection(vm: GameViewModel) {
+    val s = vm.state
+    SectionTitle("Sell")
+    Text(
+        "The shop pays half price for items; rarer and higher-level gear pays more. Smelt a weapon for $SMELT_COST gold " +
+            "to get parts of its type (1 to 4 by rarity). Take gear off to sell it.",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val owned = Item.entries.filter { s.count(it) > 0 }
+    if (owned.isEmpty() && s.gear.isEmpty() && s.armor.isEmpty()) {
+        Text("Nothing to sell.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    owned.forEach { item ->
+        SellRow(item.icon(), item.color(), "${item.label} x${s.count(item)}", null) {
+            SmallButton("Sell ${item.sellPrice}", { vm.sell(item) }, outlined = true)
+        }
+    }
+    s.gear.sortedWith(compareByDescending<Gear> { it.rarity }.thenByDescending { it.level }).forEach { w ->
+        SellRow(w.type.icon(), w.rarity.color(), "${w.rarity.label} ${w.name}", "Lv ${w.level} ${w.type.label}") {
+            SmallButton("Smelt +${w.rarity.smeltParts}", { vm.smelt(w.id) }, enabled = s.gold >= SMELT_COST, outlined = true)
+            Spacer(Modifier.width(6.dp))
+            SmallButton("Sell ${w.sellPrice}", { vm.sellWeapon(w.id) }, outlined = true)
+        }
+    }
+    s.armor.sortedWith(compareByDescending<Armor> { it.rarity }.thenByDescending { it.level }).forEach { a ->
+        SellRow(a.type.icon(), a.rarity.color(), "${a.rarity.label} ${a.name}", "Lv ${a.level} ${a.type.label}") {
+            SmallButton("Sell ${a.sellPrice}", { vm.sellArmor(a.id) }, outlined = true)
+        }
+    }
+}
+
+@Composable
+private fun SellRow(icon: GameIcon, tint: androidx.compose.ui.graphics.Color, title: String, detail: String?, actions: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        GIcon(icon, Modifier.size(24.dp), tint)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold, color = tint, fontSize = 14.sp)
+            detail?.let { Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        actions()
+    }
+}
+
 /** One weapon: rarity-colored name, level and type, stats for your class, and its effects. */
 @Composable
-private fun GearCard(w: Gear, cls: HeroClass, equipped: Boolean, actions: @Composable () -> Unit) {
+private fun GearCard(w: Gear, hero: Hero, equipped: Boolean, where: String = "equipped", actions: @Composable () -> Unit) {
+    val cls = hero.heroClass
     GameCard(Modifier.padding(vertical = 3.dp), border = if (equipped) Gold else w.rarity.color().copy(alpha = 0.5f)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             GIcon(w.type.icon(), Modifier.size(30.dp), w.rarity.color())
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("${w.rarity.label} ${w.name}" + if (equipped) " (equipped)" else "", fontWeight = FontWeight.SemiBold, color = w.rarity.color())
-                Text(
-                    "Lv ${w.level} ${w.type.label}" + if (w.matches(cls)) " • Class bonus" else "",
-                    fontSize = 12.sp,
-                    color = if (w.matches(cls)) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text("${w.rarity.label} ${w.name}" + if (equipped) " ($where)" else "", fontWeight = FontWeight.SemiBold, color = w.rarity.color())
+                Text("Lv ${w.level} ${w.type.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                weaponClassNote(w, hero)?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
                 Text(w.summary(cls), fontSize = 12.sp)
                 w.effects.forEach { fx ->
                     Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)

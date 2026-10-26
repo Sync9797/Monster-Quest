@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.13.0
+
+- **Weapon class bonus:** a weapon of your class adds +2, +4, +6 or +8
+  (Normal, Rare, Epic, Legendary) to Attack, Magic, Defense and Speed, on
+  top of the +20% power it already had. A weapon outside your class takes
+  the same amount off. The penalty fades as you fight with that weapon and
+  is gone after 10 battles. Practice counts for that one weapon only: a
+  Warrior who masters one staff starts over with the next.
+- **Subclasses at level 15:** three for each class.
+
+  | Class | Subclasses |
+  |---|---|
+  | Warrior | Berserker (more Attack, stronger as HP drops), Paladin (Defense, better healing, starts behind a ward), Warlord (your monsters +8%) |
+  | Mage | Elementalist (+25% spell damage), Cleric (+50% healing and wards), Warlock (spells drain life) |
+  | Rogue | Assassin (more and bigger critical hits), Trickster (dodge, feints that throw foes off), Beastmaster (taming odds, monsters +5%) |
+  | Adventurer | Jack of All Trades (every weapon counts as yours), Survivor (more HP, heals every turn), Wayfarer (+20% gold and XP) |
+
+  The first pick is free; switching costs 300 gold.
+- **Hero skills:** a skill slot opens at levels 30, 45 and 60. Skills rank
+  up every 10 levels (up to rank 5), and from rank 3 some cover your whole
+  team. Pick from Morale Master, Kleptomaniac (carry a second weapon),
+  Insomnia, Intimidate, Hover, Oblivious, Quick Step, Treasure Hunter,
+  Scholar, Second Wind, First Strike, Beast Whisperer, Regeneration, Eagle
+  Eye and Mana Well. Swapping a skill costs 500 gold.
+- **Monster skills at level 30:** every monster gets one that fits what it
+  is. Birds, bats, wisps and fairies levitate (Earth moves miss them; Earth
+  monsters never do), dragons intimidate, hounds lead their pack, slimes
+  and trees regenerate, and shells and bears have thick hides. Wild
+  monsters have them too.
+- **Selling:** the shop now buys items at half price, and weapons and armor
+  by rarity and level. Smelt a weapon for 50 gold to get 1 to 4 parts of
+  its type back, depending on rarity.
+
 ## 1.12.1
 
 - **Battles on a half-open fold:** with the phone folded to about 90°
