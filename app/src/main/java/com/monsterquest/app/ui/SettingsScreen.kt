@@ -145,6 +145,14 @@ fun SettingsScreen(vm: GameViewModel, onClose: () -> Unit) {
                     prefs.batterySaverGps,
                 ) { on -> vm.updateSettings { it.copy(batterySaverGps = on) } }
             }
+            // ---- About ----
+            val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
+            Text(
+                "Monster Quest ${version ?: ""}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp),
+            )
             Spacer(Modifier.height(24.dp))
         }
     }

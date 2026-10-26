@@ -62,7 +62,8 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     CRYSTAL(fill("M12 2l6 7-6 13-6-13z"), cut("M6 9h12M12 2v20")),
     FEATHER(fill("M20 3C12 4 6 10 5 19l-1 2 2-1c9-1 14-7 14-17z"), cut("M6 18l9-9")),
     RESTORE(fill("M12 21l-8.2-8.2a5 5 0 0 1 8.2-6 5 5 0 0 1 8.2 6z"), cut("M12 9v7M8.5 12.5h7")),
-    ORB(fill("M12 3a9 9 0 1 0 .01 0z"), cut("M3 12h6.5M14.5 12H21"), cut("M12 9.5a2.5 2.5 0 1 0 .01 0z")),
+    // A crystal taming orb held in a small claw cradle, marked with a rune.
+    ORB(fill("M12 2.5a7.5 7.5 0 1 0 .01 0z"), cut("M8 7.5a5 5 0 0 1 3.5-2.4"), cut("M12 7v6.5M9.6 9.2l4.8 2.3M14.4 9.2l-4.8 2.3"), fill("M5.5 16.5L8 21.5h8l2.5-5-3.5 1.6h-6z")),
     TREAT(fill("M15 3a6 6 0 0 1 0 12h-1.5l-4 4a2 2 0 1 1-2.5-2.5l4-4V11A6 6 0 0 1 15 3z")),
     CHEST(fill("M3 11h18v10H3z"), fill("M3.5 10Q12 2 20.5 10z"), cut("M3 13.5h18"), cut("M10.5 12h3v4h-3z")),
     PARTS(fill("M12 3l2 2.5 3-.5.5 3L20 10l-1.5 2.5L20 15l-2.5 2-.5 3-3-.5L12 21l-2-2.5-3 .5-.5-3L4 15l1.5-2.5L4 10l2.5-2 .5-3 3 .5z"), cut("M12 9a3 3 0 1 0 .01 0z")),

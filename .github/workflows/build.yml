@@ -68,6 +68,25 @@ jobs:
             --notes "Automatic build of ${GITHUB_SHA}. Download MonsterQuest.apk on your Android phone and open it to install." \
             --target "${GITHUB_SHA}"
 
+      # When versionName changes, also publish a permanent release for that
+      # version (e.g. v0.2.0) with its notes from CHANGELOG.md.
+      - name: Publish versioned release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION already released"
+            exit 0
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk "MonsterQuest-$VERSION.apk"
+          awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          gh release create "v$VERSION" "MonsterQuest-$VERSION.apk" \
+            --title "Monster Quest $VERSION" \
+            --notes-file notes.md \
+            --target "${GITHUB_SHA}"
+
       # Render every screen at foldable/phone sizes and publish the PNGs to the
       # `screenshots` branch for layout review.
       - name: Render screenshots
