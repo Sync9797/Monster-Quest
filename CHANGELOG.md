@@ -2,7 +2,7 @@
 
 ## 1.10.0
 
-- **39 new monster moves** (98 in all): every type now has 11 to 13 moves,
+- **39 new monster moves** (93 in all): every type now has 11 to 13 moves,
   and Normal has 10. New kinds of moves:
   - **Multi-hit:** Fury Swipes, Ember Barrage, Spark Storm, Bubble Barrage,
     Feather Flurry, Toxic Barrage, Hex Barrage, Rock Blast (2 to 5 hits).
