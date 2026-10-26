@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.2
+
+- **Hound pups look like puppies** (floppy ears, round muzzle, tongue out,
+  wagging tail) instead of cats, so every hound line reads pup → warg →
+  fenrir (or cerberus).
+
 ## 1.3.1
 
 - **Evolution lines that make sense:** every line now stays the same kind of
