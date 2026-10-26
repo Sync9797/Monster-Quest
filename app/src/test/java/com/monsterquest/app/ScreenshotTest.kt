@@ -367,7 +367,7 @@ abstract class ScreenshotBase(private val device: String) {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
         val v = vm()
         val shop = World.shrineFromPlace(
-            "node1", "Barnes & Noble", 40.7600, -73.9850, com.monsterquest.core.ShrineTier.ITEM,
+            "node1", "Barnes & Noble", 40.75803, -73.98552, com.monsterquest.core.ShrineTier.ITEM,
             kind = "Bookstore", street = "Wards Road", category = World.PlaceCategory.SHOP,
         )
         v.debugSetLocation(40.7580, -73.9855, listOf(shop))
