@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.0
+
+- **Quests on big screens:** unfolded phones and tablets show the Quests tab
+  in two panes: the calendar, weekly goal and focus timer on the left, your
+  quest list on the right (split at the hinge on a book-style fold).
+- **Tap a day on the calendar** to see that day's quests, like a calendar
+  app: what's due or happening that day, then what you completed. Tap the
+  day again (or Show all) to go back to every quest. On phones the list
+  scrolls into view.
+- Days with quests due get a gold dot, and the calendar now goes forward
+  into future months too.
+
 ## 1.6.0
 
 - **Due dates:** give a to-do a due date and time: quick picks (in 1 hour,

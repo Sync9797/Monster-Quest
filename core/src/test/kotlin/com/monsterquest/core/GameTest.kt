@@ -1094,6 +1094,14 @@ class GameTest {
         // A calendar event in progress isn't overdue until it ends.
         val meeting = QuestTask("cal", "Meeting", source = TaskSource.CALENDAR, startMs = now - 10 * 60_000, endMs = now + 50 * 60_000)
         assertEquals(Planner.Group.HAPPENING, Planner.groupOf(meeting, now, zone))
+        // A single day's view: what's due that day, and what was done that day.
+        val today = java.time.LocalDate.of(2026, 10, 26).toEpochDay()
+        val done = GameEngine.completeTask(s, s.tasks.first { it.title == "late" }.id, now).state
+        val day = Planner.onDay(done.tasks, today, zone)
+        assertEquals(listOf("soon", "tonight low", "tonight high"), day.due.map { it.title })
+        assertEquals(listOf("late"), day.completed.map { it.title })
+        assertEquals(listOf("tomorrow"), Planner.onDay(done.tasks, today + 1, zone).due.map { it.title })
+        assertTrue(today + 1 in Planner.dueDays(done.tasks, zone))
     }
 
     @Test

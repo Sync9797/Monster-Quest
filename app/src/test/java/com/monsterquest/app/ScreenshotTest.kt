@@ -159,6 +159,14 @@ abstract class ScreenshotBase(private val device: String) {
         shot("02_quests") { AppRoot(v, Tab.QUESTS) }
         // Due within the hour: the to-do in 20 minutes and the dentist in an hour.
         rule.onNodeWithText("2 quests due within the hour").assertExists()
+        // Tap today on the calendar: just today's quests. Tap it again: everything.
+        val today = java.time.LocalDate.now().dayOfMonth.toString()
+        rule.onAllNodesWithText(today)[0].performClick()
+        capture("02c_quests_day", 1_000)
+        rule.onNodeWithText("Show all").assertExists()
+        rule.onAllNodesWithText(today)[0].performClick()
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithText("Show all").assertDoesNotExist()
     }
 
     /** The grouped quest list on its own: due-soon highlight, priorities, sections. */

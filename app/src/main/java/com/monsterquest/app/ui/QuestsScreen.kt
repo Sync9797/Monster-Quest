@@ -24,10 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -49,6 +45,13 @@ import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Difficulty
 import com.monsterquest.core.QuestTask
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyColumn
 import kotlinx.coroutines.delay
 import com.monsterquest.core.Priority
 import com.monsterquest.core.Planner
@@ -108,56 +111,80 @@ fun QuestsScreen(vm: GameViewModel) {
     val dueSoon = pending.filter { Planner.isDueSoon(it, now) }
     val done = state.tasks.filter { it.completed }.sortedByDescending { it.completedAtMs }
 
-    // One column on phones; more side by side when unfolded.
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            // Grid items stack their children on top of each other, so wrap in a Column.
-            Column {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Left: a to-do that isn't on the calendar. Right: open the calendar app.
-                    SmallButton("+ To-do", { showAdd = true }, Modifier.weight(1f))
-                    SmallButton(
-                        "Calendar",
-                        { if (!openCalendar(context)) vm.toast("No calendar app found.") },
-                        Modifier.weight(1f),
-                        outlined = true,
-                    )
-                }
-                // Anything due within the hour is the first thing you see.
-                if (dueSoon.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    DueSoonBanner(dueSoon, now)
-                }
-                if (!hasCalendar) {
-                    Spacer(Modifier.height(10.dp))
-                    GameCard(border = MpBlue) {
-                        IconText(GameIcon.CALENDAR, "Sync your calendar", tint = MpBlue, bold = true)
-                        Text(
-                            "Events from your phone's calendar become quests automatically.",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        SmallButton("Connect calendar", { calendarLauncher.launch(Manifest.permission.READ_CALENDAR) }, Modifier.fillMaxWidth())
-                    }
-                } else if (vm.syncingCalendar) {
-                    Text("Syncing calendar…", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                }
-                Spacer(Modifier.height(10.dp))
-                WeeklyCard(vm)
-                Spacer(Modifier.height(10.dp))
-                DashboardCard(vm)
-                Spacer(Modifier.height(10.dp))
-                FocusCard(vm)
-                SectionTitle("Active quests (${pending.size})")
+    // Tapping a day on the calendar shows just that day's quests; tapping it again goes back.
+    var selectedDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val twoPane = useTwoPane()
+
+    val overview: @Composable () -> Unit = {
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Left: a to-do that isn't on the calendar. Right: open the calendar app.
+                SmallButton("+ To-do", { showAdd = true }, Modifier.weight(1f))
+                SmallButton(
+                    "Calendar",
+                    { if (!openCalendar(context)) vm.toast("No calendar app found.") },
+                    Modifier.weight(1f),
+                    outlined = true,
+                )
             }
+            // Anything due within the hour is the first thing you see.
+            if (dueSoon.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                DueSoonBanner(dueSoon, now)
+            }
+            if (!hasCalendar) {
+                Spacer(Modifier.height(10.dp))
+                GameCard(border = MpBlue) {
+                    IconText(GameIcon.CALENDAR, "Sync your calendar", tint = MpBlue, bold = true)
+                    Text(
+                        "Events from your phone's calendar become quests automatically.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    SmallButton("Connect calendar", { calendarLauncher.launch(Manifest.permission.READ_CALENDAR) }, Modifier.fillMaxWidth())
+                }
+            } else if (vm.syncingCalendar) {
+                Text("Syncing calendar…", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            DashboardCard(vm, selectedDay = selectedDay) { day ->
+                selectedDay = if (selectedDay == day) null else day
+                // On a phone the list is below the calendar: bring the day's quests into view.
+                if (!twoPane && selectedDay != null) scope.launch { listState.animateScrollToItem(1) }
+            }
+            Spacer(Modifier.height(10.dp))
+            WeeklyCard(vm)
+            Spacer(Modifier.height(10.dp))
+            FocusCard(vm)
+            Spacer(Modifier.height(10.dp))
         }
+    }
+
+    fun LazyListScope.taskList() {
+        val day = selectedDay
+        if (day != null) {
+            val view = Planner.onDay(state.tasks, day)
+            item(key = "day_header") { DayHeader(day, view.due.size + view.completed.size) { selectedDay = null } }
+            if (view.due.isEmpty() && view.completed.isEmpty()) {
+                item(key = "day_empty") {
+                    Text("Nothing on this day.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+            items(view.due, key = { it.id }) { task ->
+                QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
+            }
+            if (view.completed.isNotEmpty()) {
+                item(key = "day_done") { SectionTitle("Completed (${view.completed.size})") }
+                items(view.completed, key = { "dd_" + it.id }) { DoneLine(it) }
+            }
+            return
+        }
+        item(key = "active_header") { SectionTitle("Active quests (${pending.size})") }
         if (pending.isEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            item(key = "empty") {
                 Text(
                     "No quests yet. Add a to-do, or sync your calendar so events become quests.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -165,36 +192,39 @@ fun QuestsScreen(vm: GameViewModel) {
             }
         }
         sections.forEach { sec ->
-            item(key = "sec_${sec.group}", span = { GridItemSpan(maxLineSpan) }) {
-                GroupHeader(sec.group, sec.tasks.size)
-            }
+            item(key = "sec_${sec.group}") { GroupHeader(sec.group, sec.tasks.size) }
             items(sec.tasks, key = { it.id }) { task ->
-                QuestRow(
-                    task, now,
-                    onClick = { editing = task },
-                    onComplete = { vm.completeTask(task.id) },
-                    onDelete = { vm.deleteTask(task.id) },
-                )
+                QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+        item(key = "done_header") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionTitle("Completed (${done.size})")
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = { showDone = !showDone }) { Text(if (showDone) "Hide" else "Show") }
             }
         }
-        if (showDone) {
-            items(done.take(50), key = { "done_" + it.id }, span = { GridItemSpan(maxLineSpan) }) { task ->
-                Text(
-                    task.title,
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    textDecoration = TextDecoration.LineThrough,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        if (showDone) items(done.take(50), key = { "done_" + it.id }) { DoneLine(it) }
+        item(key = "bottom") { Spacer(Modifier.height(24.dp)) }
     }
+
+    // Phones: one scrolling column. Unfolded and tablets: calendar and dashboard on
+    // the left, the quest list on the right (split at the hinge on a book-style fold).
+    AdaptivePanes(
+        firstWeight = 0.46f,
+        compact = {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                item(key = "overview") { overview() }
+                taskList()
+            }
+        },
+        first = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 8.dp)) { overview() }
+        },
+        second = {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp)) { taskList() }
+        },
+    )
 
     if (showAdd) {
         QuestEditor(null, onDismiss = { showAdd = false }) { t, d, due, p -> vm.addTask(t, d, due, p); showAdd = false }
@@ -244,6 +274,37 @@ internal fun GroupHeader(g: Planner.Group, count: Int) {
         }
         Text(g.label, color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text("  $count", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+    }
+}
+
+/** The heading of a single day's view, with the way back to every quest. */
+@Composable
+private fun DayHeader(epochDay: Long, count: Int, onShowAll: () -> Unit) {
+    val date = java.time.LocalDate.ofEpochDay(epochDay)
+    val today = java.time.LocalDate.now()
+    val label = when (date) {
+        today -> "Today"
+        today.plusDays(1) -> "Tomorrow"
+        today.minusDays(1) -> "Yesterday"
+        else -> date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        GIcon(GameIcon.CALENDAR, Modifier.size(18.dp), Gold)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(if (count == 1) "1 quest" else "$count quests", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        SmallButton("Show all", onShowAll, outlined = true)
+    }
+}
+
+@Composable
+private fun DoneLine(task: QuestTask) {
+    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        GIcon(GameIcon.CHECK, Modifier.size(14.dp), Mint)
+        Spacer(Modifier.width(6.dp))
+        Text(task.title, textDecoration = TextDecoration.LineThrough, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

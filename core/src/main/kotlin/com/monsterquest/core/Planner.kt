@@ -63,6 +63,22 @@ object Planner {
             .toSortedMap()
             .map { (g, ts) -> Section(g, if (g == Group.OVERDUE || g == Group.SOON || g == Group.HAPPENING) ts.sortedBy { it.dueAt } else ts.sortedWith(order)) }
 
+    private fun dayOf(ms: Long, zone: ZoneId) = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate().toEpochDay()
+
+    /** One calendar day's quests: what's due (or starts) that day, then what was completed that day. */
+    data class Day(val due: List<QuestTask>, val completed: List<QuestTask>)
+
+    fun onDay(tasks: List<QuestTask>, epochDay: Long, zone: ZoneId = ZoneId.systemDefault()): Day = Day(
+        due = tasks.filter { !it.completed && it.dueAt?.let { d -> dayOf(d, zone) } == epochDay }
+            .sortedWith(compareBy<QuestTask> { it.dueAt }.thenByDescending { it.priority.ordinal }),
+        completed = tasks.filter { t -> t.completedAtMs?.let { dayOf(it, zone) } == epochDay }
+            .sortedBy { it.completedAtMs },
+    )
+
+    /** Days (epoch days) that have something due, for marking the calendar. */
+    fun dueDays(tasks: List<QuestTask>, zone: ZoneId = ZoneId.systemDefault()): Set<Long> =
+        tasks.filter { !it.completed }.mapNotNull { it.dueAt?.let { d -> dayOf(d, zone) } }.toSet()
+
     /** "in 25 min", "in 3 h", "2 h ago". */
     fun relative(dueMs: Long, nowMs: Long): String {
         val diff = dueMs - nowMs
