@@ -73,8 +73,8 @@ fun HeroArt(cls: HeroClass, modifier: Modifier, portrait: Boolean = true, outfit
 
 /** A monster's artwork. [dim] grays it out (fainted); [silhouette] shows only its shadow (not yet seen). */
 @Composable
-fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silhouette: Boolean = false) {
-    ArtCanvas(modifier, "monster:${species.id}:$dim:$silhouette") { c, w, h ->
+fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silhouette: Boolean = false, shiny: Boolean = false) {
+    ArtCanvas(modifier, "monster:${species.id}:$dim:$silhouette:$shiny") { c, w, h ->
         if (silhouette) {
             // Draw normally into a layer, then flood everything drawn with one dark color.
             val layer = c.saveLayer(0f, 0f, w, h, null)
@@ -82,7 +82,7 @@ fun MonsterArt(species: Species, modifier: Modifier, dim: Boolean = false, silho
             c.drawRect(0f, 0f, w, h, silhouettePaint)
             c.restoreToCount(layer)
         } else {
-            drawMonster(c, w, h, species, dim)
+            drawMonster(c, w, h, species, dim, shiny)
         }
     }
 }

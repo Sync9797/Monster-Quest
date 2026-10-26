@@ -73,8 +73,10 @@ fun JournalTab(vm: GameViewModel) {
                 LabeledBar("Seen", seen, all.size, MpBlue)
                 Spacer(Modifier.height(4.dp))
                 LabeledBar("Caught", caught, all.size, Gold)
+                val shinies = all.count { it.id in s.shinyCaught }
+                if (shinies > 0) IconText(GameIcon.SPARK, "Shinies caught: $shinies", tint = Gold, textColor = Gold, fontSize = 12.sp)
                 Text(
-                    "Battle a monster to record it; tame it to mark it caught. Legendaries guard Gold shrines.",
+                    "Battle a monster to record it; tame it to mark it caught. About 1 in 200 wild monsters is shiny (1 in 100 with a lure). Legendaries guard Gold shrines.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),
@@ -82,14 +84,14 @@ fun JournalTab(vm: GameViewModel) {
             }
         }
         items(all, key = { it.id }) { sp ->
-            JournalCell(all.indexOf(sp) + 1, sp, seen = sp.id in s.seen, caught = sp.id in s.caught) { open = sp }
+            JournalCell(all.indexOf(sp) + 1, sp, seen = sp.id in s.seen, caught = sp.id in s.caught, shiny = sp.id in s.shinyCaught) { open = sp }
         }
     }
     open?.let { sp -> JournalEntry(vm, sp) { open = null } }
 }
 
 @Composable
-private fun JournalCell(number: Int, sp: Species, seen: Boolean, caught: Boolean, onClick: () -> Unit) {
+private fun JournalCell(number: Int, sp: Species, seen: Boolean, caught: Boolean, shiny: Boolean, onClick: () -> Unit) {
     val border = when {
         caught -> Gold
         seen -> Line
@@ -106,7 +108,10 @@ private fun JournalCell(number: Int, sp: Species, seen: Boolean, caught: Boolean
             .padding(6.dp),
     ) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("#%03d".format(number), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.Start))
+            Row(Modifier.align(Alignment.Start), verticalAlignment = Alignment.CenterVertically) {
+                Text("#%03d".format(number), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (shiny) GIcon(GameIcon.SPARK, Modifier.padding(start = 3.dp).size(11.dp), Gold)
+            }
             MonsterArt(sp, Modifier.size(62.dp), silhouette = !seen)
             Text(
                 if (seen) sp.name else "???",
@@ -142,7 +147,12 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
         title = { Text(sp.name) },
         text = {
             Column {
-                MonsterArt(sp, Modifier.size(120.dp).align(Alignment.CenterHorizontally))
+                Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                    MonsterArt(sp, Modifier.size(120.dp))
+                    // Caught a shiny one? Show its colors too.
+                    if (sp.id in s.shinyCaught) MonsterArt(sp, Modifier.size(96.dp), shiny = true)
+                }
+                if (sp.id in s.shinyCaught) IconText(GameIcon.SPARK, "Shiny caught", tint = Gold, textColor = Gold, fontSize = 12.sp)
                 Text(
                     "${sp.element.label} type • ${sp.rarity.label}" + (sp.breed?.let { " • $it breed" } ?: ""),
                     color = rarityColor(sp.rarity),

@@ -64,6 +64,8 @@ data class WildSpawn(
     val originLon: Double = lon,
     /** Followed you because you walked (a walking reward); waits right beside you. */
     val follower: Boolean = false,
+    /** A rare color variant. */
+    val shiny: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
 }
@@ -213,6 +215,7 @@ object World {
             val species = Bestiary.randomWild(r, level, favored, rareBoost)
             // How quickly it closes in (share of the way per minute): most are wary, some curious.
             val curiosity = 0.008 + r.nextDouble().let { it * it } * 0.055
+            val shiny = rollShiny(r, conditions.lure)
             val pull = (ageMin * curiosity * (if (conditions.lure) 2.5 else 1.0) +
                 conditions.activity * 0.55 + (if (conditions.lure) 0.2 else 0.0)).coerceIn(0.0, 0.93)
             out += WildSpawn(
@@ -225,6 +228,7 @@ object World {
                 lured = conditions.lure && curiosity > 0.03,
                 originLat = oLat,
                 originLon = oLon,
+                shiny = shiny,
             )
         }
         return out
@@ -287,5 +291,5 @@ object World {
     }
 
     fun spawnMonster(spawn: WildSpawn): Monster =
-        Monster.create(spawn.species, spawn.level, Random(spawn.id.hashCode().toLong()))
+        Monster.create(spawn.species, spawn.level, Random(spawn.id.hashCode().toLong()), shiny = spawn.shiny)
 }

@@ -351,7 +351,7 @@ private fun FighterArt(f: FighterView, modifier: Modifier) {
     val sp = f.speciesId?.let { Bestiary.get(it) }
     when {
         cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
-        sp != null -> MonsterArt(sp, modifier, dim = !f.alive)
+        sp != null -> MonsterArt(sp, modifier, dim = !f.alive, shiny = f.shiny)
     }
 }
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+The "Legends" update.
+
+- **New starters #1, #4 and #7:** Voltfawn (Electric stag), Cindrake (Fire
+  drake) and Drizzlet (Water serpent). Each evolves twice (at 16 and 36) into
+  a pseudo-legendary: Thunderhorn, Infernodrake and Maelstrom Serpent, stronger
+  than every other monster except the legendaries. New games choose one of
+  them; they're also very rare in the wild.
+- **Shinies:** about 1 in 200 wild monsters (1 in 100 with a lure) is shiny,
+  with rare colors and sparkles. Shinies show on the map, in battle and on
+  their profile, buzz when in range, and are tracked in the Journal.
+- **Legendaries are the strongest monsters to own:** their HP, Attack and
+  Defense are now higher than any other monster's. As Gold shrine guardians
+  they fight exactly as before.
+- 74 monsters in all.
+
 ## 0.4.2
 
 - **Resting heals everyone:** each hour the hero and every monster (party,

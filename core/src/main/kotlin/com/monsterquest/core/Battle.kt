@@ -69,6 +69,7 @@ class Combatant(
 ) {
     /** For artwork: the monster's species, or the hero's class. */
     var speciesId: String? = null
+    var shiny: Boolean = false
     var heroClass: HeroClass? = null
 
     /** Chance to dodge incoming attacks (Rogue hero). */
@@ -180,6 +181,7 @@ class Combatant(
             ).apply {
                 speciesId = m.speciesId
                 cursed = m.cursed
+                shiny = m.shiny
             }
         }
     }
@@ -308,12 +310,14 @@ class Battle(
     val enemyMonsters: List<Monster> = listOf(enemyMonster) + extraEnemies.take(3)
     private val scaling = TeamScaling.pack(TeamScaling.factors(teamSize, encounter), enemyMonsters.size)
     val enemies: List<Combatant> = enemyMonsters.mapIndexed { i, m ->
+        // Legendaries are built stronger to own; as shrine guardians they're scaled back to their usual challenge.
+        val legend = if (m.species.rarity == Rarity.LEGENDARY && encounter != EncounterType.WILD) 1 / Bestiary.LEGENDARY_POWER else 1.0
         Combatant.fromMonster(
             m,
             Combatant.enemyKey(i),
-            hpMultiplier = encounter.hpMultiplier * scaling.hp,
-            attackMultiplier = scaling.attack,
-            defenseMultiplier = scaling.defense,
+            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend,
+            attackMultiplier = scaling.attack * legend,
+            defenseMultiplier = scaling.defense * legend,
         )
     }
 

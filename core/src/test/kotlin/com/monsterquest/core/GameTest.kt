@@ -254,11 +254,14 @@ class GameTest {
 
     @Test
     fun sixtyFiveMonstersWithEvolutionLines() {
-        assertEquals(65, Bestiary.all.size)
-        assertEquals(65, Bestiary.all.map { it.id }.toSet().size)
+        assertEquals(74, Bestiary.all.size)
+        assertEquals(74, Bestiary.all.map { it.id }.toSet().size)
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
-        assertEquals(11, lines.values.count { it.size == 3 })
+        assertEquals(14, lines.values.count { it.size == 3 })
+        // Starters are #1, #4 and #7, each a three-stage line.
+        assertEquals(GameEngine.starters, listOf(Bestiary.all[0].id, Bestiary.all[3].id, Bestiary.all[6].id))
+        GameEngine.starters.forEach { assertEquals(3, Bestiary.lineOf(Bestiary.get(it)).size) }
         // The newer lines evolve like the hounds.
         assertEquals("sludgeon", Monster.create(Bestiary.get("goopling"), 16, rng).speciesId)
         assertEquals("magma_colossus", Monster.create(Bestiary.get("pebblit"), 32, rng).speciesId)
@@ -1083,5 +1086,45 @@ class GameTest {
         // Old saves stored knocked-out monsters with 0 damage: treated as empty, not full.
         val legacy = base.copy(monsters = listOf(m.copy(fainted = true, damage = 0)), lastRegenMs = t0)
         assertTrue(GameEngine.regenerate(legacy, t0 + hour).state.monsters.single().fainted)
+    }
+
+    @Test
+    fun startersArePseudoLegendary() {
+        // Monsters fight with HP, Attack (their better of Attack/Magic), Defense and Speed.
+        fun total(id: String) = Bestiary.get(id).base.let { it.hp + maxOf(it.attack, it.magic) + it.defense + it.speed }
+        val finals = listOf("thunderhorn", "infernodrake", "maelstrom_serpent")
+        val otherFinals = Bestiary.all.filter { !it.bossOnly && it.evolvesTo == null && it.stages > 1 && it.id !in finals }
+        val legendaries = Bestiary.all.filter { it.bossOnly }
+        finals.forEach { f ->
+            assertTrue(otherFinals.all { total(f) > total(it.id) }, "$f should beat every other line")
+            assertTrue(total(f) < legendaries.minOf { total(it.id) }, "$f should stay below every legendary")
+            assertTrue(Bestiary.get(f).rarity != Rarity.LEGENDARY)
+        }
+        // Starting the game gives a starter, which evolves at 16 and 36.
+        val s = GameEngine.chooseStarter(GameState(), "cindrake", Random(1)).state
+        assertEquals("cindrake", s.monsters.single().speciesId)
+        assertEquals("blazewyrm", Monster.create(Bestiary.get("cindrake"), 16, Random(1)).speciesId)
+        assertEquals("infernodrake", Monster.create(Bestiary.get("cindrake"), 36, Random(1)).speciesId)
+    }
+
+    @Test
+    fun shiniesAreRareButAchievable() {
+        val rng = Random(5)
+        val rolls = 200_000
+        val shinies = (1..rolls).count { rollShiny(rng) }
+        val rate = shinies.toDouble() / rolls
+        assertTrue(rate in 0.0035..0.0065, "rate $rate")
+        val lured = (1..rolls).count { rollShiny(rng, lure = true) }.toDouble() / rolls
+        assertTrue(lured > rate * 1.6)
+        // Shiny spawns stay shiny when you battle them, and the journal records them.
+        val now = 1_700_000_000_000L
+        val spawn = (0 until 400).asSequence().flatMap { w ->
+            World.spawnsNear(40.0, -75.0, now + w * World.SPAWN_WINDOW_MS, 10).asSequence()
+        }.first { it.shiny }
+        val m = World.spawnMonster(spawn)
+        assertTrue(m.shiny)
+        val s = started().let { it.copy(monsters = it.monsters + m) }.withJournal()
+        assertTrue(spawn.speciesId in s.shinyCaught)
+        assertTrue(GameState.fromJson(s.toJson()).monsters.any { it.shiny })
     }
 }

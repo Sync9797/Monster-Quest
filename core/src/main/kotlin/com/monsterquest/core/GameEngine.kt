@@ -29,7 +29,8 @@ data class CalendarEvent(
 
 object GameEngine {
 
-    val starters = listOf("emberkit", "bubblefin", "zapmouse")
+    /** The three starters: #1 Voltfawn, #4 Cindrake, #7 Drizzlet. */
+    val starters = listOf("voltfawn", "cindrake", "drizzlet")
 
     fun chooseStarter(state: GameState, speciesId: String, rng: Random = Random.Default): Update {
         if (state.starterChosen) return Update(state, "Starter already chosen.")
@@ -538,7 +539,7 @@ object GameEngine {
     fun startHunt(state: GameState, rng: Random = Random.Default): Pair<GameState, Monster?> {
         if (state.huntTokens <= 0) return state to null
         val level = wildLevel(state.hero.level, rng)
-        val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng)
+        val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng).let { it.copy(shiny = rollShiny(rng)) }
         return state.copy(huntTokens = state.huntTokens - 1) to enemy
     }
 
@@ -890,7 +891,7 @@ object GameEngine {
         return WildSpawn(
             id = "f:${f.id}", speciesId = f.speciesId, level = f.level,
             lat = lat + 0.00018 * kotlin.math.cos(angle), lon = lon + 0.00022 * kotlin.math.sin(angle),
-            expiresAtMs = f.createdMs + FOLLOWER_TTL_MS, follower = true,
+            expiresAtMs = f.createdMs + FOLLOWER_TTL_MS, follower = true, shiny = f.shiny,
         )
     }
 
@@ -907,7 +908,7 @@ object GameEngine {
             bank -= FOLLOWER_STEPS
             if (current.size >= MAX_FOLLOWERS) continue
             val level = wildLevel(state.hero.level, rng)
-            val f = Follower(newId(rng), Bestiary.randomWild(rng, level, rareBoost = 1.5).id, level, nowMs)
+            val f = Follower(newId(rng), Bestiary.randomWild(rng, level, rareBoost = 1.5).id, level, nowMs, rollShiny(rng))
             current += f
             added += f
         }

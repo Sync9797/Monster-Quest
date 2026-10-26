@@ -115,11 +115,11 @@ fun drawShrineOn(c: Canvas, w: Float, h: Float, tier: ShrineTier, state: BeaconS
 fun drawVillainOn(c: Canvas, w: Float, h: Float, villain: Boolean) = drawVillainBanner(c, w, h, villain)
 
 /** A monster standing on the map; [lured] adds a pink lure glow at its feet. */
-fun drawMonsterStanding(c: Canvas, w: Float, h: Float, sp: com.monsterquest.core.Species, lured: Boolean) {
+fun drawMonsterStanding(c: Canvas, w: Float, h: Float, sp: com.monsterquest.core.Species, lured: Boolean, shiny: Boolean = false) {
     if (lured) {
         ArtPainter.glow(c, w / 2, h * 0.9f, w * 0.45f, Argb.hex("f2a198"), 0.7f)
     }
-    drawMonster(c, w, h, sp)
+    drawMonster(c, w, h, sp, shiny = shiny)
 }
 
 /** The player on the map: the hero in their gear, standing in a gold ring. */

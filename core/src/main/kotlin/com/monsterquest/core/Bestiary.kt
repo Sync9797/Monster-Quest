@@ -27,8 +27,10 @@ data class Species(
 )
 
 /**
- * All 65 monsters:
- * - 6 four-stage lines (3 evolutions), one per type: the strongest final forms.
+ * All 74 monsters:
+ * - 3 starter lines (#1, #4, #7): pseudo-legendary three-stage lines, the
+ *   strongest monsters short of the legendaries. Very rare in the wild.
+ * - 6 four-stage lines (3 evolutions), one per type.
  * - 6 three-stage hound lines (2 evolutions): one breed per type.
  * - 5 more three-stage lines: slime, rock golem, thunderbird, shell turtle and imp.
  * - 2 rare one-stage mythics.
@@ -48,6 +50,11 @@ object Bestiary {
         (b.hp * m).toInt(), (b.attack * m).toInt(), (b.magic * m).toInt(), (b.defense * m).toInt(), (b.speed * m).toInt(),
     )
 
+    // Starters: three stages, strong growth, always rare.
+    private val starterMultipliers = listOf(1.0, 1.45, 1.95)
+    private val starterRarity = listOf(Rarity.EPIC, Rarity.EPIC, Rarity.EPIC)
+    private val starterLevels = listOf(16, 36)
+
     private fun line(
         family: String,
         element: Element,
@@ -55,11 +62,12 @@ object Bestiary {
         kind: SkillKind,
         members: List<Member>,
         breed: String? = null,
+        starter: Boolean = false,
     ): List<Species> {
         val four = members.size == 4
-        val mults = if (four) fourStageMultipliers else threeStageMultipliers
-        val rarities = if (four) fourStageRarity else threeStageRarity
-        val levels = if (four) fourStageLevels else threeStageLevels
+        val mults = if (starter) starterMultipliers else if (four) fourStageMultipliers else threeStageMultipliers
+        val rarities = if (starter) starterRarity else if (four) fourStageRarity else threeStageRarity
+        val levels = if (starter) starterLevels else if (four) fourStageLevels else threeStageLevels
         return members.mapIndexed { i, m ->
             Species(
                 id = m.id,
@@ -96,15 +104,49 @@ object Bestiary {
         )
     }
 
+    /**
+     * Legendaries are the strongest monsters you can own: their HP, Attack,
+     * Magic and Defense are boosted by this much. Boss fights scale them back
+     * down (see [Battle]), so Gold shrines stay as hard as they were.
+     */
+    const val LEGENDARY_POWER = 1.6
+
     private fun single(
         id: String, name: String, element: Element, rarity: Rarity,
         base: StatBlock, special: String, kind: SkillKind, power: Int, bossOnly: Boolean, minWildLevel: Int = 1,
-    ) = Species(
-        id, name, element, rarity, base, Skill("${id}_special", special, element, kind, power),
-        bossOnly = bossOnly, family = name, minWildLevel = minWildLevel,
-    )
+    ): Species {
+        val b = if (rarity == Rarity.LEGENDARY) {
+            StatBlock(
+                (base.hp * LEGENDARY_POWER).toInt(), (base.attack * LEGENDARY_POWER).toInt(), (base.magic * LEGENDARY_POWER).toInt(),
+                (base.defense * LEGENDARY_POWER).toInt(), base.speed,
+            )
+        } else {
+            base
+        }
+        return Species(
+            id, name, element, rarity, b, Skill("${id}_special", special, element, kind, power),
+            bossOnly = bossOnly, family = name, minWildLevel = minWildLevel,
+        )
+    }
 
     val all: List<Species> = buildList {
+        // ---- Starters (#1, #4, #7): pseudo-legendary three-stage lines ----
+        addAll(line("Voltfawn line", Element.ELECTRIC, StatBlock(44, 15, 17, 13, 18), SkillKind.MAGICAL, listOf(
+            Member("voltfawn", "Voltfawn", "Volt Kick"),
+            Member("stormstag", "Stormstag", "Storm Charge"),
+            Member("thunderhorn", "Thunderhorn", "Thunder Crown"),
+        ), starter = true))
+        addAll(line("Cindrake line", Element.FIRE, StatBlock(46, 18, 14, 14, 15), SkillKind.PHYSICAL, listOf(
+            Member("cindrake", "Cindrake", "Cinder Breath"),
+            Member("blazewyrm", "Blazewyrm", "Blaze Wing"),
+            Member("infernodrake", "Infernodrake", "Infernal Roar"),
+        ), starter = true))
+        addAll(line("Drizzlet line", Element.WATER, StatBlock(50, 14, 16, 16, 13), SkillKind.MAGICAL, listOf(
+            Member("drizzlet", "Drizzlet", "Drizzle Jet"),
+            Member("tidewyrm", "Tidewyrm", "Tide Coil"),
+            Member("maelstrom_serpent", "Maelstrom Serpent", "Maelstrom Fang"),
+        ), starter = true))
+
         // ---- Four-stage lines (3 evolutions) ----
         addAll(line("Emberkit line", Element.FIRE, StatBlock(40, 15, 10, 9, 15), SkillKind.PHYSICAL, listOf(
             Member("emberkit", "Emberkit", "Ember Swipe"),

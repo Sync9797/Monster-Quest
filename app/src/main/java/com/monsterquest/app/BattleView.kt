@@ -99,13 +99,14 @@ data class FighterView(
     val tags: List<String>,
     val status: Status?,
     val cursed: Boolean = false,
+    val shiny: Boolean = false,
 ) {
     val alive: Boolean get() = hp > 0
     val hpFraction: Float get() = hp.toFloat() / maxHp
 
     companion object {
         fun of(c: Combatant) = FighterView(
-            c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status, c.cursed,
+            c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status, c.cursed, c.shiny,
         )
     }
 }

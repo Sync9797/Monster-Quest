@@ -259,6 +259,25 @@ abstract class ScreenshotBase(private val device: String) {
         })
     }
 
+    /** The three starters' lines and some shinies. */
+    @Test fun starters() {
+        shot("23_starters", content = onBackground {
+            androidx.compose.foundation.layout.Column {
+                com.monsterquest.core.GameEngine.starters.forEach { id ->
+                    androidx.compose.foundation.layout.Row {
+                        Bestiary.lineOf(Bestiary.get(id)).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(104.dp)) }
+                    }
+                }
+                androidx.compose.foundation.layout.Row {
+                    listOf("thunderhorn", "emberkit", "goopling").forEach { MonsterArt(Bestiary.get(it), androidx.compose.ui.Modifier.size(104.dp), shiny = true) }
+                }
+                androidx.compose.foundation.layout.Row {
+                    listOf("magma_behemoth", "dread_lich").forEach { MonsterArt(Bestiary.get(it), androidx.compose.ui.Modifier.size(104.dp), shiny = true) }
+                }
+            }
+        })
+    }
+
     /** The five newest evolution lines, first form to final form. */
     @Test fun newMonsters() {
         shot("15_new_monsters", content = onBackground {

@@ -99,6 +99,7 @@ private val topics = listOf(
             "Taming gives 3 candy for that monster's line; releasing one gives more. Spend candy on a monster's page to level it up.",
             "Leveling never changes a monster's stat points (0 to 15 per stat). Better ones come from taming more monsters.",
             "The Journal records every monster you've seen and caught.",
+            "Shinies: about 1 in 200 wild monsters (1 in 100 with a lure) has rare colors and sparkles. They're marked in battle, on the map up close, and in your Journal.",
         ),
     ),
     HelpTopic(

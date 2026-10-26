@@ -470,7 +470,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             spawnsPrimed = true
             return emptyList()
         }
-        fresh.firstOrNull()?.let { lastSpawnAlert = "A wild ${it.species.name} is in range!" }
+        (fresh.firstOrNull { it.shiny } ?: fresh.firstOrNull())?.let {
+            lastSpawnAlert = if (it.shiny) "A shiny ${it.species.name} is in range!" else "A wild ${it.species.name} is in range!"
+            if (it.shiny) message = lastSpawnAlert
+        }
         return fresh
     }
 

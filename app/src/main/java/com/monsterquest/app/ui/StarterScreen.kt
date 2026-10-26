@@ -50,6 +50,13 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                 )
                 Spacer(Modifier.height(24.dp))
                 Text("Choose your first companion", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Starters are rare, powerful monsters that evolve twice: second only to the legendaries.",
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
                 Spacer(Modifier.height(12.dp))
                 GameEngine.starters.map { Bestiary.get(it) }.forEach { sp ->
                     GameCard(Modifier.padding(vertical = 6.dp).clickable { onChoose(sp.id) }) {
@@ -57,7 +64,10 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                             MonsterArt(sp, Modifier.size(72.dp))
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text(sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                val number = Bestiary.all.indexOf(sp) + 1
+                                val line = Bestiary.lineOf(sp)
+                                Text("#%03d  ".format(number) + sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                Text(line.joinToString(" > ") { it.name }, fontSize = 11.sp, color = Gold)
                                 Text(
                                     "${sp.element.label} type • Moves: " +
                                         Moves.autoLoadout(sp, 3).joinToString { it.name },

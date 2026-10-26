@@ -159,7 +159,7 @@ val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
 
 /** A wild monster drawn to you by your walking. */
 @Serializable
-data class Follower(val id: String, val speciesId: String, val level: Int, val createdMs: Long) {
+data class Follower(val id: String, val speciesId: String, val level: Int, val createdMs: Long, val shiny: Boolean = false) {
     val species: Species get() = Bestiary.get(speciesId)
 }
 
@@ -209,6 +209,8 @@ data class GameState(
     /** Journal: species encountered, and species owned at some point. */
     val seen: Set<String> = emptySet(),
     val caught: Set<String> = emptySet(),
+    /** Species caught in their shiny colors. */
+    val shinyCaught: Set<String> = emptySet(),
     /** Epoch day -> steps walked (last ~90 days). */
     val stepHistory: Map<Long, Int> = emptyMap(),
     /** Epoch day -> quests completed that day. */
@@ -270,9 +272,10 @@ data class GameState(
     /** Records every owned monster's species as caught (and seen) in the journal. */
     fun withJournal(): GameState {
         val owned = monsters.map { it.speciesId }.toSet()
-        if (caught.containsAll(owned) && seen.containsAll(caught)) return this
+        val shinies = monsters.filter { it.shiny }.map { it.speciesId }.toSet()
+        if (caught.containsAll(owned) && seen.containsAll(caught) && shinyCaught.containsAll(shinies)) return this
         val c = caught + owned
-        return copy(caught = c, seen = seen + c)
+        return copy(caught = c, seen = seen + c, shinyCaught = shinyCaught + shinies)
     }
 
     fun lureActive(nowMs: Long): Boolean = lureUntilMs > nowMs

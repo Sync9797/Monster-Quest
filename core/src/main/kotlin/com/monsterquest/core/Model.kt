@@ -240,6 +240,8 @@ data class Monster(
     val cureProgress: Int = 0,
     /** The curse just lifted: the player picks one stat to perfect. */
     val cureReady: Boolean = false,
+    /** A rare color variant (about 1 in [SHINY_ODDS]). */
+    val shiny: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name
@@ -295,15 +297,21 @@ data class Monster(
 
     companion object {
         /** A new monster; it evolves straight away if [level] is past its evolution levels. */
-        fun create(species: Species, level: Int, rng: Random): Monster = Monster(
+        fun create(species: Species, level: Int, rng: Random, shiny: Boolean = false): Monster = Monster(
             uid = newId(rng),
             speciesId = species.id,
             personality = Personality.entries[rng.nextInt(Personality.entries.size)],
             ivs = StatBlock.random(rng, MAX_IV),
             level = level.coerceIn(1, MAX_MONSTER_LEVEL),
+            shiny = shiny,
         ).evolved()
     }
 }
+
+/** About 1 in this many wild monsters is shiny (lures halve it). */
+const val SHINY_ODDS = 200
+
+fun rollShiny(rng: Random, lure: Boolean = false): Boolean = rng.nextInt(if (lure) SHINY_ODDS / 2 else SHINY_ODDS) == 0
 
 fun monsterXpForNext(level: Int): Int = 20 + level * level * 5
 

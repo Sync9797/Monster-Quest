@@ -234,7 +234,7 @@ fun MapScreen(vm: GameViewModel) {
                                     position = GeoPoint(sp.lat, sp.lon)
                                     // Monsters stand on the map themselves, feet at their spot.
                                     setAnchor(Marker.ANCHOR_CENTER, 0.95f)
-                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured) })
+                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny) })
                                     title = sp.species.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
                                 },
@@ -518,7 +518,8 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
         text = {
             val pack = vm.packFor(spawn)
             Column {
-                MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally))
+                MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = spawn.shiny)
+                if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
                 Text("Level ${spawn.level} • ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
                 if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
                 Text(distanceText(dist), color = MaterialTheme.colorScheme.onSurfaceVariant)

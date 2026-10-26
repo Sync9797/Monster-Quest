@@ -70,7 +70,11 @@ your hero.
   to either.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:
   Electric > Water > Fire > Corrupt > Flight > Gas > Electric.
-- **65 monsters:**
+- **74 monsters:**
+  - **3 starter lines** (#1 Voltfawn, Electric; #4 Cindrake, Fire; #7
+    Drizzlet, Water): pick one when you start. Each evolves twice (at 16 and
+    36) into a pseudo-legendary, stronger than every other monster except the
+    legendaries. They're very rare in the wild.
   - 6 four-stage lines (3 evolutions)
   - 6 hound breeds with three stages (2 evolutions)
   - 5 more three-stage lines: **Goopling** (Gas slime), **Pebblit** (Fire rock
@@ -87,6 +91,9 @@ your hero.
   Candy doesn't use bag space. Leveling and evolving never change a
   monster's **stat points**, which are set when it's tamed, so better
   monsters come from taming more.
+- **Shinies:** about 1 in 200 wild monsters (1 in 100 with a lure) is a
+  shiny, with rare colors and sparkles. Shinies you catch are marked in the
+  Journal.
 - **Journal** (Monsters, then Journal): every species in order. Monsters you
   haven't met are shadows, ones you've battled are shown, and ones you've
   owned are marked caught. Tap one to see its evolution line.

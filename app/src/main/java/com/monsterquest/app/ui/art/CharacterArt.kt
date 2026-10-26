@@ -510,6 +510,67 @@ private val IMP = Shape(
     100f, 100f, 30f,
 )
 
+// Starter lines: a lightning stag, a fire drake and a sea serpent.
+private val STAG = Shape(
+    listOf(
+        s("M80 150L76 186M94 152L92 186M110 152L112 186M124 150L128 186", Role.DARK, 5f),
+        f("M64 134L52 124L60 144Z", Role.LIGHT),
+        f("M64 150Q60 118 96 114Q132 112 138 140Q138 160 116 162H84Q64 162 64 150Z", Role.BODY),
+        f("M80 156Q98 146 122 154Q112 162 96 162Q84 162 80 156Z", Role.LIGHT),
+        f("M86 128A4 4 0 1 1 94 128A4 4 0 1 1 86 128Z", Role.LIGHT),
+        f("M100 134A3.5 3.5 0 1 1 107 134A3.5 3.5 0 1 1 100 134Z", Role.LIGHT),
+        f("M112 124L120 96L136 98L132 128Z", Role.BODY),
+        f("M118 98Q122 76 140 78Q154 82 152 96L146 104Q134 108 124 106Z", Role.BODY),
+        f("M145 95Q156 97 152 106L143 104Z", Role.LIGHT),
+        f("M126 84L114 72L130 79Z", Role.BODY),
+        f("M133 88A4 4 0 1 1 141 88A4 4 0 1 1 133 88Z", Role.EYE),
+        s("M132 78L128 58L136 50M128 58L118 48M138 80L146 60L156 54M146 60L144 46", Role.ACCENT, 3.5f),
+    ),
+    140f, 90f, 15f,
+)
+
+private val DRAKE = Shape(
+    listOf(
+        f("M80 122Q40 82 28 100Q42 104 36 116Q50 114 52 126Q64 120 76 136Z", Role.DARK),
+        f("M120 122Q160 82 172 100Q158 104 164 116Q150 114 148 126Q136 120 124 136Z", Role.DARK),
+        s("M120 172Q160 180 158 148", Role.BODY, 9f),
+        f("M152 150Q150 132 160 126Q160 140 166 146Q164 154 156 156Z", Role.ACCENT),
+        f("M70 184Q64 136 100 124Q136 136 130 184Z", Role.BODY),
+        f("M86 182Q86 146 100 140Q114 146 114 182Z", Role.LIGHT),
+        s("M90 154H110M88 168H112", Role.DARK, 2f),
+        f("M68 186Q70 174 84 176L86 186Z", Role.DARK),
+        f("M132 186Q130 174 116 176L114 186Z", Role.DARK),
+        f("M78 74L70 52L88 68Z", Role.ACCENT),
+        f("M122 74L130 52L112 68Z", Role.ACCENT),
+        f("M72 96Q72 66 100 64Q128 66 128 96Q126 116 100 120Q74 116 72 96Z", Role.BODY),
+        f("M86 104Q100 98 114 104Q112 116 100 118Q88 116 86 104Z", Role.LIGHT),
+        f("M95 108A1.8 1.8 0 1 1 98.6 108A1.8 1.8 0 1 1 95 108Z", Role.DARK),
+        f("M101.4 108A1.8 1.8 0 1 1 105 108A1.8 1.8 0 1 1 101.4 108Z", Role.DARK),
+        f("M80 90Q88 82 96 90Q88 95 80 90Z", Role.EYE),
+        f("M120 90Q112 82 104 90Q112 95 120 90Z", Role.EYE),
+        s("M88 86V93M112 86V93", Role.DARK, 2.5f),
+    ),
+    100f, 90f, 28f,
+)
+
+private val SERPENT = Shape(
+    listOf(
+        f("M100 186Q100 160 128 158Q156 158 158 176Q158 188 140 188Z", Role.DARK),
+        f("M150 168L170 158L158 176Z", Role.WING),
+        f("M44 184Q40 156 76 152Q112 150 116 170Q118 186 90 188H56Q44 188 44 184Z", Role.BODY),
+        f("M58 162L40 148L64 154Z", Role.WING),
+        s("M58 174Q68 168 78 174M82 178Q92 172 102 178", Role.DARK, 2f),
+        f("M96 162Q84 122 104 92L124 98Q112 126 120 162Z", Role.BODY),
+        f("M104 158Q98 126 110 100L116 102Q108 128 112 158Z", Role.LIGHT),
+        f("M98 84Q86 62 104 50Q104 64 112 66Q110 52 124 48Q120 62 130 64Z", Role.WING),
+        f("M96 96Q92 70 116 64Q140 62 146 80Q148 92 132 98Q114 104 96 96Z", Role.BODY),
+        f("M120 92Q136 90 146 82Q146 94 132 98Q124 100 120 92Z", Role.LIGHT),
+        f("M117 77Q124 70 131 77Q124 82 117 77Z", Role.EYE),
+        s("M124 74V80", Role.DARK, 2f),
+    ),
+    118f, 80f, 22f,
+)
+
 private fun shapeFor(sp: Species): Shape = when {
     sp.id == "mimic" -> MIMIC
     sp.id == "prism_fairy" -> FAIRY
@@ -520,6 +581,9 @@ private fun shapeFor(sp: Species): Shape = when {
     sp.family.startsWith("Bubblefin") -> FISH
     sp.family.startsWith("Toxbug") -> BUG
     sp.family.startsWith("Gloomwisp") -> WISP
+    sp.family.startsWith("Voltfawn") -> STAG
+    sp.family.startsWith("Cindrake") -> DRAKE
+    sp.family.startsWith("Drizzlet") -> SERPENT
     sp.family.startsWith("Goopling") -> SLIME
     sp.family.startsWith("Pebblit") -> GOLEM
     sp.family.startsWith("Zipwing") -> THUNDERBIRD
@@ -542,16 +606,45 @@ private fun roleColor(r: Role, p: TypePalette): Int = when (r) {
 
 private fun fmt(v: Float) = String.format(Locale.US, "%.1f", v)
 
-/** Draws a monster into [w]x[h]. [dim] grays it out (fainted / locked). */
-internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolean = false) {
+/** A shiny's colors: the type palette turned around the color wheel and brightened. */
+private fun shinyColor(color: Int): Int {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color, hsv)
+    hsv[0] = (hsv[0] + 150f) % 360f
+    hsv[1] = (hsv[1] * 1.15f).coerceAtMost(1f)
+    hsv[2] = (hsv[2] * 1.08f).coerceAtMost(1f)
+    return android.graphics.Color.HSVToColor(android.graphics.Color.alpha(color), hsv)
+}
+
+private fun shinyPalette(p: TypePalette) = TypePalette(shinyColor(p.base), shinyColor(p.light), shinyColor(p.dark))
+
+/** Twinkling stars around a shiny, drawn in a 200x200 box. */
+private fun drawShinySparkles(c: Canvas) {
+    val star = { x: Float, y: Float, r: Float, color: Int ->
+        ArtPainter.fill(
+            c,
+            "M${fmt(x)} ${fmt(y - r)}L${fmt(x + r * 0.28f)} ${fmt(y - r * 0.28f)}L${fmt(x + r)} ${fmt(y)}L${fmt(x + r * 0.28f)} ${fmt(y + r * 0.28f)}" +
+                "L${fmt(x)} ${fmt(y + r)}L${fmt(x - r * 0.28f)} ${fmt(y + r * 0.28f)}L${fmt(x - r)} ${fmt(y)}L${fmt(x - r * 0.28f)} ${fmt(y - r * 0.28f)}Z",
+            color,
+        )
+    }
+    ArtPainter.glow(c, 52f, 62f, 16f, 0xFFFFFFFF.toInt(), 0.6f)
+    star(52f, 62f, 11f, 0xFFFFFFFF.toInt())
+    star(152f, 96f, 8f, Argb.hex("fff0c2"))
+    star(40f, 140f, 6f, Argb.hex("fff0c2"))
+    star(160f, 52f, 5f, 0xFFFFFFFF.toInt())
+}
+
+/** Draws a monster into [w]x[h]. [dim] grays it out (fainted / locked); [shiny] uses its rare colors. */
+internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolean = false, shiny: Boolean = false) {
     if (sp.bossOnly) {
-        drawLegendary(c, w, h, sp, dim)
+        drawLegendary(c, w, h, sp, dim, shiny)
         return
     }
     c.save()
     // Crop to where the creature actually is, so it fills its frame.
     ArtPainter.fitRegion(c, w, h, 22f, 28f, 156f, 166f)
-    val p0 = palette(sp.element)
+    val p0 = palette(sp.element).let { if (shiny) shinyPalette(it) else it }
     val p = if (dim) TypePalette(Argb.hex("5d6866"), Argb.hex("8a9592"), Argb.hex("2a3331")) else p0
     val shape = shapeFor(sp)
     val final = sp.stages > 1 && sp.stage == sp.stages
@@ -646,6 +739,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         ArtPainter.fill(c, "M162 44l2 4 4 2-4 2-2 4-2-4-4-2 4-2z", GOLD)
         ArtPainter.circle(c, 164f, 150f, 2.5f, GOLD)
     }
+    if (shiny && !dim) drawShinySparkles(c)
     c.restore()
 }
 
@@ -803,10 +897,10 @@ private fun legendaryIndex(id: String) = when (id) {
     else -> 5 // abyss_kraken
 }
 
-private fun drawLegendary(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolean) {
+private fun drawLegendary(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolean, shiny: Boolean = false) {
     c.save()
     ArtPainter.fitRegion(c, w, h, 62f, 10f, 276f, 240f)
-    val color = if (dim) Argb.hex("5d6866") else palette(sp.element).base
+    val color = if (dim) Argb.hex("5d6866") else palette(sp.element).base.let { if (shiny) shinyColor(it) else it }
     if (!dim) {
         ArtPainter.glow(c, 200f, 120f, 116f, color, 0.3f)
         ArtPainter.ringStroke(c, 200f, 110f, 77f, color, 2f, 0.3f)
@@ -822,6 +916,12 @@ private fun drawLegendary(c: Canvas, w: Float, h: Float, sp: Species, dim: Boole
         ArtPainter.circle(c, 310f, 69f, 3f, color, 0.55f)
         ArtPainter.circle(c, 90f, 181f, 2f, color, 0.55f)
         ArtPainter.circle(c, 301f, 181f, 2f, color, 0.55f)
+    }
+    if (shiny && !dim) {
+        c.save()
+        c.translate(100f, 20f)
+        drawShinySparkles(c)
+        c.restore()
     }
     c.restore()
 }

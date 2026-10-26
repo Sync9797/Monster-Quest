@@ -224,7 +224,7 @@ private fun TeamPicker(vm: GameViewModel, adv: Adventure, onDismiss: () -> Unit,
                     ) {
                         GIcon(if (on) GameIcon.CHECK else GameIcon.RING, Modifier.size(20.dp), if (on) Gold else MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(8.dp))
-                        MonsterArt(m.species, Modifier.size(36.dp))
+                        MonsterArt(m.species, Modifier.size(36.dp), shiny = m.shiny)
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(m.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

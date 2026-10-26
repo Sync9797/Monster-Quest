@@ -258,7 +258,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                     .border(2.dp, Gold, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                MonsterArt(dragged.species, Modifier.size(66.dp))
+                MonsterArt(dragged.species, Modifier.size(66.dp), shiny = dragged.shiny)
             }
         }
     }
@@ -343,7 +343,7 @@ private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: B
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted)
+        MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted, shiny = m.shiny)
         Text(m.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
             GIcon(sp.element.icon(), Modifier.size(11.dp), sp.element.color())
@@ -383,10 +383,11 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         }
         GameCard(border = if (m.fainted) HpRed else if (inParty) Gold else null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                MonsterArt(sp, Modifier.size(120.dp), dim = m.fainted)
+                MonsterArt(sp, Modifier.size(120.dp), dim = m.fainted, shiny = m.shiny)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (m.shiny) IconText(GameIcon.SPARK, "Shiny", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp, size = 14.dp)
                     IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.element.label}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
                     Row {
                         Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
