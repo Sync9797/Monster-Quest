@@ -3,6 +3,7 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertCountEquals
 import android.Manifest
 import android.app.Application
 import android.graphics.Bitmap
@@ -384,7 +385,8 @@ abstract class ScreenshotBase(private val device: String) {
             rule.onNodeWithText("Details").performClick()
             rule.mainClock.advanceTimeBy(500)
             rule.waitForIdle()
-            rule.onNodeWithText("Barnes & Noble on Wards Road").assertExists()
+            // On the focus card and in the shrine's dialog.
+            rule.onAllNodesWithText("Barnes & Noble on Wards Road").assertCountEquals(2)
         }
     }
 
