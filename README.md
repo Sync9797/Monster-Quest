@@ -19,7 +19,8 @@ your hero.
   - Stay in Monster Quest until time's up to win a **loot box**. Longer
     sessions give better odds of rare boxes.
   - Leaving for another app (and not coming back within 15 seconds) or giving
-    up costs gold and a hunt token.
+    up costs gold and a hunt token. Phone calls don't count: after you hang
+    up you have 15 seconds to come back.
 - **Loot boxes** open by walking. You can hold **6** and unlock **2 at a time**.
 
   | Level | Walk | Contains |

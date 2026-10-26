@@ -166,7 +166,7 @@ fun FocusOverlay(session: FocusSession, onGiveUp: () -> Unit, onDone: () -> Unit
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    if (dimmed) "Tap to brighten" else "Put your phone down. The screen stays on and dims; leaving Monster Quest fails the session.",
+                    if (dimmed) "Tap to brighten" else "Put your phone down. The screen stays on and dims; leaving Monster Quest fails the session (phone calls are fine).",
                     textAlign = TextAlign.Center,
                     color = if (dimmed) dim else MaterialTheme.colorScheme.onSurfaceVariant,
                 )

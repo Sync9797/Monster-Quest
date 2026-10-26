@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -24,6 +25,8 @@ import java.util.Date
  * timer showing, so locking or unlocking the phone doesn't matter:
  * - Leaving Monster Quest for another app (and not coming back within
  *   [LEAVE_GRACE_MS]) fails the session.
+ * - Phone calls (ringing, regular or app calls) never count as leaving: the
+ *   grace period starts again once the call ends.
  * - Reaching the end time succeeds.
  * The outcome goes to [FocusStore]; the game applies rewards or penalties when opened.
  */
@@ -32,8 +35,39 @@ class FocusService : Service() {
     private var sessionId: String? = null
     private var endMs = 0L
 
-    private val leaveCheck = Runnable {
-        finish(FocusStore.Outcome.FAILED, "You left Monster Quest", "The phone-free session failed. Open Monster Quest to see the damage.")
+    /** A call was going on during this time away; after it ends the player gets a fresh grace period. */
+    private var callSeen = false
+
+    private val leaveCheck = Runnable { checkLeft() }
+
+    private fun checkLeft() {
+        when {
+            inCall() -> {
+                callSeen = true
+                handler.postDelayed(leaveCheck, CALL_POLL_MS)
+            }
+            callSeen -> {
+                callSeen = false
+                handler.postDelayed(leaveCheck, LEAVE_GRACE_MS)
+            }
+            else -> finish(FocusStore.Outcome.FAILED, "You left Monster Quest", "The phone-free session failed. Open Monster Quest to see the damage.")
+        }
+    }
+
+    /** Ringing, on a phone call, or on a call in another app (WhatsApp, Teams, ...). No permission needed. */
+    private fun inCall(): Boolean {
+        val mode = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).mode
+        val callModes = buildSet {
+            add(AudioManager.MODE_RINGTONE)
+            add(AudioManager.MODE_IN_CALL)
+            add(AudioManager.MODE_IN_COMMUNICATION)
+            if (Build.VERSION.SDK_INT >= 30) add(AudioManager.MODE_CALL_SCREENING)
+            if (Build.VERSION.SDK_INT >= 33) {
+                add(AudioManager.MODE_CALL_REDIRECT)
+                add(AudioManager.MODE_COMMUNICATION_REDIRECT)
+            }
+        }
+        return mode in callModes
     }
 
     private val endCheck = Runnable {
@@ -47,12 +81,14 @@ class FocusService : Service() {
             ACTION_LEFT -> {
                 if (sessionId != null) {
                     handler.removeCallbacks(leaveCheck)
+                    callSeen = false
                     handler.postDelayed(leaveCheck, LEAVE_GRACE_MS)
                 }
                 return START_NOT_STICKY
             }
             ACTION_RETURNED -> {
                 handler.removeCallbacks(leaveCheck)
+                callSeen = false
                 return START_NOT_STICKY
             }
         }
@@ -122,6 +158,9 @@ class FocusService : Service() {
 
         /** Time allowed outside the game (an accidental tap on Home) before the session fails. */
         const val LEAVE_GRACE_MS = 15_000L
+
+        /** How often to check whether a call has ended. */
+        private const val CALL_POLL_MS = 5_000L
 
         /** The player switched to another app (not just turned the screen off). */
         fun appLeft(context: Context) = send(context, ACTION_LEFT)

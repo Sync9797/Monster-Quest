@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- **Phone calls never fail a phone-free session.** Answering or making a call
+  (including calls in apps like WhatsApp or Teams) doesn't count as leaving
+  the game. After you hang up you have 15 seconds to come back.
+
 ## 0.2.2
 
 - **Phone-free sessions keep the screen on.** The timer stays up and dims
