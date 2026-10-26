@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,6 +70,8 @@ fun DashboardCard(vm: GameViewModel) {
             DashStat(GameIcon.STAR, "$streak", "day streak", Gold)
         }
         Spacer(Modifier.height(10.dp))
+        // Keep the calendar compact on wide (unfolded) screens.
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) { Column(Modifier.widthIn(max = 420.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { month = month.minusMonths(1) }, contentPadding = PaddingValues(0.dp)) { Text("<") }
             Text(
@@ -115,6 +118,7 @@ fun DashboardCard(vm: GameViewModel) {
             Box(Modifier.size(10.dp).border(1.5.dp, Gold, CircleShape))
             Text(" Today", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        } }
     }
 }
 

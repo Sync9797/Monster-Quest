@@ -74,10 +74,11 @@ fun HeroScreen(vm: GameViewModel) {
             LabeledBar("XP", h.xp, h.xpToNext, XpPurple)
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconText(GameIcon.WALK, "${s.stepsToday} steps today", tint = HpGreen, fontSize = 13.sp)
+                IconText(GameIcon.WALK, "%,d steps today".format(s.stepsToday), tint = HpGreen, fontSize = 13.sp)
                 Spacer(Modifier.weight(1f))
                 Text(
-                    "Next +${GameEngine.XP_PER_REWARD} XP/HP in ${GameEngine.STEPS_PER_REWARD - s.stepBank} steps",
+                    "+${GameEngine.XP_PER_REWARD} XP/HP in ${GameEngine.STEPS_PER_REWARD - s.stepBank}",
+                    maxLines = 1,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
