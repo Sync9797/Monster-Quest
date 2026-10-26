@@ -23,6 +23,13 @@ object Haptics {
         runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 120, 300, 120, 300), -1)) }
     }
 
+    /** One long buzz: a monster leapt out at you while walking. */
+    fun secretAmbush(context: Context) {
+        val v = vibrator(context) ?: return
+        if (!v.hasVibrator()) return
+        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 150, 250), -1)) }
+    }
+
     /** Two quick pulses: a wild monster appeared nearby. */
     fun spawn(context: Context) {
         val v = vibrator(context) ?: return

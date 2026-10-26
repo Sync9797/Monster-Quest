@@ -72,6 +72,7 @@ private val topics = listOf(
             "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 to 10 throws to tame it. Each throw is a long shot. Dens move every day.",
             "Some monsters are aggressive (more at night). If one reaches you it ambushes (never in your first 30 seconds on the map): the fight starts on its own and it strikes first. Turn ambushes off in Settings.",
             "Hold the phone upside down on the map for battery saver; turn it upright to return.",
+            "Keep your eyes open while you walk with the map open: now and then a monster (sometimes 2 or 3 of the same kind, each weaker) leaps out in front of you. The phone gives a long buzz and the fight starts. Turn this off with Ambushes in Settings.",
             "Lures (one free each day) draw extra, rarer monsters to you for 30 minutes.",
         ),
     ),

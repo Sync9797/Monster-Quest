@@ -1110,6 +1110,34 @@ class GameTest {
     }
 
     @Test
+    fun secretWalkingEncounters() {
+        // Every 50 steps rolls a 25% chance; leftover steps carry over.
+        val rng = Random(7)
+        var bank = 0
+        var hits = 0
+        repeat(4_000) {
+            val (b, hit) = SecretEncounters.roll(bank, 50, rng)
+            bank = b
+            if (hit) hits++
+        }
+        assertTrue(hits in 850..1150, "hits $hits of 4000")
+        assertEquals(30 to false, SecretEncounters.roll(0, 30, Random(1)))
+        assertEquals(10, SecretEncounters.roll(40, 70, Random(1)).first)
+        // Usually one monster, sometimes 2 or 3 of the same kind.
+        val groups = (1..2_000).map { SecretEncounters.encounter(10, 12, Random(it)) }
+        assertTrue(groups.all { g -> g.size in 1..3 && g.map { it.speciesId }.distinct().size == 1 })
+        assertTrue(groups.count { it.size == 1 } > groups.count { it.size == 3 })
+        assertTrue(groups.any { it.size == 3 })
+        // Groups are proportionally weaker each, so a trio isn't overwhelming.
+        val trio = groups.first { it.size == 3 }
+        val s = started()
+        val one = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), ambush = true)
+        val three = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), pack = trio.drop(1), ambush = true)
+        assertTrue(three.enemies.all { it.maxHp < one.enemy.maxHp })
+        assertTrue(three.enemies.sumOf { it.maxHp } < one.enemy.maxHp * 1.2)
+    }
+
+    @Test
     fun packsAndAmbushes() {
         val s = started()
         val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }

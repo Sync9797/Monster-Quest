@@ -537,6 +537,25 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("OK").performClick()
     }
 
+    /** The secret walking encounter: "Ambushed!" over the map, then the fight starts by itself. */
+    @Test fun secretAmbush() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        val r = Random(21)
+        val trio = List(3) { Monster.create(Bestiary.get("goopling"), 12, r) }
+        shot("34_secret_ambush") { AppRoot(v, Tab.MAP) }
+        v.debugSecretAmbush(trio)
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithText("AMBUSHED!").assertExists()
+        rule.onNodeWithText("3 wild Gooplings leap out in front of you!").assertExists()
+        rule.mainClock.advanceTimeBy(2_500)
+        rule.waitForIdle()
+        val b = checkNotNull(v.battle) { "the fight starts on its own" }
+        check(b.enemies.size == 3)
+        capture("35_secret_ambush_battle", 1_000)
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

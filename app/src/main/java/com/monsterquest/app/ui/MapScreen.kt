@@ -49,6 +49,12 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
 import com.monsterquest.app.ui.art.drawDenOn
 import com.monsterquest.core.Den
 import com.monsterquest.core.Dens
@@ -163,6 +169,12 @@ fun MapScreen(vm: GameViewModel) {
 
     TrackLocation(context, vm.state.settings.batterySaverGps || vm.batterySaver, vm::onLocation)
     LaunchedEffect(Unit) { vm.onMapOpened() }
+    // Secret walking encounters only happen while the map is open.
+    DisposableEffect(Unit) {
+        vm.mapVisible = true
+        onDispose { vm.mapVisible = false }
+    }
+    vm.secretAmbush?.let { SecretAmbushPopup(vm, it) }
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -520,6 +532,56 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
     }
 }
 
+
+/** A monster leapt out while you walked: a long buzz, "Ambushed!", then the fight starts on its own. */
+@Composable
+private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.core.Monster>) {
+    val context = LocalContext.current
+    LaunchedEffect(group) {
+        if (vm.state.settings.vibrateOnSpawn) Haptics.secretAmbush(context)
+        delay(2_200)
+        vm.startSecretAmbush()
+    }
+    val sp = group.first().species
+    val shake = rememberInfiniteTransition(label = "ambush").animateFloat(
+        -4f, 4f, infiniteRepeatable(tween(90), RepeatMode.Reverse), label = "shake",
+    )
+    AlertDialog(
+        onDismissRequest = {},
+        title = {
+            Text(
+                "AMBUSHED!",
+                color = HpRed,
+                fontWeight = FontWeight.Black,
+                fontSize = 30.sp,
+                modifier = Modifier.fillMaxWidth().offset(x = shake.value.dp),
+                textAlign = TextAlign.Center,
+            )
+        },
+        text = {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(horizontalArrangement = Arrangement.spacedBy((-18).dp)) {
+                    group.forEach { m -> MonsterArt(m.species, Modifier.size(if (group.size == 1) 120.dp else 90.dp), shiny = m.shiny) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (group.size == 1) "A wild ${sp.name} leaps out in front of you!"
+                    else "${group.size} wild ${sp.name}s leap out in front of you!",
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Lv ${group.first().level} • ${sp.element.label}" + if (group.size > 1) " • each one weaker as a pack" else "",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                if (group.any { it.shiny }) Text("Shiny!", color = Gold, fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = { Button(onClick = vm::startSecretAmbush) { Text("Fight!") } },
+    )
+}
 
 /** The street at a point: the map data's own when it has one, otherwise asked of the phone's geocoder. */
 @Composable

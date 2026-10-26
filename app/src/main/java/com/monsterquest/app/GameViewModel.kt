@@ -91,8 +91,47 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun set(s: GameState) {
+        val walked = s.stats.totalSteps - state.stats.totalSteps
         state = s.withJournal()
         pendingSave.value = s
+        if (walked > 0) rollSecretEncounter(walked.toInt())
+    }
+
+    // ---- secret walking encounters -------------------------------------------
+
+    /** Steps toward the next secret-encounter roll (every [SecretEncounters.STEPS]). */
+    private var secretBank = 0
+    /** True while the map is on screen; surprise attacks only happen there. */
+    var mapVisible = false
+    private var lastBattleEndMs = 0L
+
+    /** Monsters that just leapt out at you: the map shows "Ambushed!" and buzzes, then the fight starts. */
+    var secretAmbush by mutableStateOf<List<Monster>?>(null)
+        private set
+
+    private fun rollSecretEncounter(steps: Int) {
+        val (bank, hit) = com.monsterquest.core.SecretEncounters.roll(secretBank, steps, kotlin.random.Random.Default)
+        secretBank = bank
+        val now = System.currentTimeMillis()
+        if (!hit || !mapVisible || !state.settings.ambushes || battle != null || secretAmbush != null) return
+        if (state.focus != null || state.monsters.isEmpty() || now - lastBattleEndMs < com.monsterquest.core.SecretEncounters.COOLDOWN_MS) return
+        val hour = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour
+        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, kotlin.random.Random.Default)
+    }
+
+    /** The "Ambushed!" pop-up has shown: the monsters strike first. */
+    fun startSecretAmbush() {
+        val group = secretAmbush ?: return
+        secretAmbush = null
+        if (battle != null) return
+        batterySaver = false
+        startBattle(group.first(), EncounterType.WILD, null, group.drop(1), ambush = true)
+    }
+
+    /** Test hook: make a surprise attack happen now. */
+    @VisibleForTesting
+    fun debugSecretAmbush(group: List<Monster>) {
+        secretAmbush = group
     }
 
     private fun apply(u: Update) {
@@ -778,6 +817,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeBattle() {
+        lastBattleEndMs = System.currentTimeMillis()
         activeBattle = null
         battle = null
         villainRun = null

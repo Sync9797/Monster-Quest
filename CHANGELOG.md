@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.0
+
+- **Surprise attacks while walking:** with the map open, every 50 steps
+  there's a 25% chance a monster leaps out in front of you. The phone gives a
+  long buzz, an **AMBUSHED!** pop-up appears over the map, and the battle
+  starts by itself (or tap Fight!) with the monsters striking first.
+  - Usually one monster; sometimes 2 or 3 of the same kind, and then each is
+    proportionally weaker (a trio has less total HP than one alone).
+  - Never during a battle or phone-free session, not within a minute of your
+    last fight, and off when Ambushes is turned off in Settings.
+
 ## 1.7.1
 
 - **Many more monsters around you.** Monsters now also wander close by (from
