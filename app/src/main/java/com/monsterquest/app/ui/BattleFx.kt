@@ -174,7 +174,10 @@ fun BattleFxOverlay(modifier: Modifier = Modifier) {
             numberPaint.textSize = size.sp.toPx()
             numberPaint.color = tint.copy(alpha = 1f - after * 0.6f).toArgb()
             numberPaint.setShadowLayer(6f, 0f, 2f, 0xFF000000.toInt())
-            drawIntoCanvas { it.nativeCanvas.drawText(text, to.x, to.y - 30.dp.toPx() - after * 26.dp.toPx(), numberPaint) }
+            // Float upward, or below the target when it sits near the top edge.
+            val rise = after * 26.dp.toPx()
+            val y = if (to.y > 90.dp.toPx()) to.y - 30.dp.toPx() - rise else to.y + 52.dp.toPx() - rise * 0.5f
+            drawIntoCanvas { it.nativeCanvas.drawText(text, to.x, y, numberPaint) }
         }
     }
 }
