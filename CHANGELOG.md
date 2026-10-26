@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2
+
+- **Resting heals everyone:** each hour the hero and every monster (party,
+  bench and away on adventures) heal 5% of their max HP, about a full heal in
+  20 hours.
+- **Knocked-out monsters wake up on their own** once they rest back to 10% HP
+  (about 2 hours); their profile shows how long. Restore Potions still bring
+  one back instantly at full HP.
+
 ## 0.4.1
 
 - **Back goes back:** the Back button returns to the previous screen instead

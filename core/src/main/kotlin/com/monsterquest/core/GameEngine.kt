@@ -392,6 +392,67 @@ object GameEngine {
         )
     }
 
+    // ---- rest: everyone slowly heals over time --------------------------------
+
+    /** Share of max HP healed each hour, for the hero and every monster. */
+    const val REGEN_PERCENT_PER_HOUR = 5
+    /** A knocked-out monster wakes up once it's back to this share of max HP. */
+    const val WAKE_PERCENT = 10
+    private const val HOUR_MS = 3_600_000L
+
+    private fun perHour(maxHp: Int) = maxOf(1, (maxHp * REGEN_PERCENT_PER_HOUR + 99) / 100)
+    private fun wakeHp(maxHp: Int) = maxOf(1, (maxHp * WAKE_PERCENT + 99) / 100)
+
+    /** A fainted monster's missing HP (older saves stored 0 for knocked out, meaning empty). */
+    private fun faintedDamage(m: Monster): Int = if (m.damage <= 0) m.stats.hp else m.damage
+
+    /** Whole hours until a knocked-out monster wakes up by resting (0 if it isn't knocked out). */
+    fun hoursUntilAwake(m: Monster): Int {
+        if (!m.fainted) return 0
+        val max = m.stats.hp
+        val missing = wakeHp(max) - (max - faintedDamage(m))
+        return if (missing <= 0) 0 else (missing + perHour(max) - 1) / perHour(max)
+    }
+
+    /**
+     * Rest: every full hour since the last check heals the hero and every
+     * monster [REGEN_PERCENT_PER_HOUR]% of max HP. Knocked-out monsters
+     * recover too and wake up at [WAKE_PERCENT]% (a Restore Potion is instant).
+     */
+    fun regenerate(state: GameState, nowMs: Long): Update {
+        if (state.lastRegenMs <= 0L || nowMs < state.lastRegenMs) return Update(state.copy(lastRegenMs = nowMs), "")
+        val hours = ((nowMs - state.lastRegenMs) / HOUR_MS).toInt()
+        if (hours <= 0) return Update(state, "")
+        val woke = mutableListOf<String>()
+        val heroHeal = perHour(state.hero.maxHp) * hours
+        val monsters = state.monsters.map { m ->
+            val max = m.stats.hp
+            val heal = perHour(max) * hours
+            if (m.fainted) {
+                val damage = (faintedDamage(m) - heal).coerceAtLeast(0)
+                if (max - damage >= wakeHp(max)) {
+                    woke += m.displayName
+                    m.copy(fainted = false, damage = damage)
+                } else {
+                    m.copy(damage = damage)
+                }
+            } else {
+                m.copy(damage = (m.damage - heal).coerceAtLeast(0))
+            }
+        }
+        val s = state.copy(
+            heroDamage = (state.heroDamage - heroHeal).coerceAtLeast(0),
+            monsters = monsters,
+            lastRegenMs = state.lastRegenMs + hours * HOUR_MS,
+        )
+        val msg = when (woke.size) {
+            0 -> ""
+            1 -> "${woke[0]} rested and is back on its feet!"
+            else -> "${woke.joinToString()} rested and are back on their feet!"
+        }
+        return Update(s, msg)
+    }
+
     /**
      * Safety net: if every monster you own has fainted, your strongest one
      * recovers on its own once per day so you're never stuck.
@@ -586,7 +647,7 @@ object GameEngine {
         // Monsters knocked out stay down until a Restore Potion is used.
         if (r.faintedUids.isNotEmpty()) {
             val names = s.monsters.filter { it.uid in r.faintedUids }.map { it.displayName }
-            s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true, damage = 0) else it })
+            s = s.copy(monsters = s.monsters.map { if (it.uid in r.faintedUids) it.copy(fainted = true, damage = it.stats.hp) else it })
             msg.append(" ${names.joinToString()} fainted and need${if (names.size == 1) "s" else ""} a Restore Potion.")
         }
         // Fighting slowly lifts the shadow curse.

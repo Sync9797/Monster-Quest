@@ -398,7 +398,13 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             if (m.fainted) {
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Fainted. It can't battle until restored.", color = HpRed, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    val hours = GameEngine.hoursUntilAwake(m)
+                    Text(
+                        "Knocked out. Resting, it wakes up in about ${if (hours <= 1) "an hour" else "$hours hours"}; a Restore Potion works now.",
+                        color = HpRed,
+                        fontSize = 13.sp,
+                        modifier = Modifier.weight(1f),
+                    )
                     SmallButton(
                         "Restore (${s.count(Item.RESTORE_POTION)})",
                         { vm.restore(m.uid) },

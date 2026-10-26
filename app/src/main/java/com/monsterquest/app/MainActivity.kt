@@ -135,6 +135,7 @@ class MainActivity : ComponentActivity() {
                 while (true) {
                     delay(60_000)
                     vm.refreshHealthSteps()
+                    vm.regenerate()
                     startStepCounting()
                 }
             }

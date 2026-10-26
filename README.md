@@ -110,9 +110,12 @@ your hero.
     takes 30 minutes to 8 hours.
   - A failed adventure pays a little gold, and the weakest team member
     returns fainted.
-- **Fainting:** a monster knocked out in battle stays down until healed with
-  a rare **Restore Potion**. If all your monsters are down, your strongest
-  recovers once a day.
+- **Resting:** every hour the hero and every monster heal 5% of their max HP
+  (a full heal in about 20 hours), on top of walking's 10 HP per 100 steps.
+- **Fainting:** a monster knocked out in battle rests back to 10% HP and wakes
+  up after about 2 hours, or a **Restore Potion** brings it back instantly at
+  full HP. If all your monsters are down, your strongest also recovers once a
+  day.
 - **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.

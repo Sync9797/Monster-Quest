@@ -190,6 +190,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      * or time ran out); otherwise it keeps running.
      */
     fun onAppResumed() {
+        regenerate()
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
         GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
         val f = state.focus ?: return
@@ -357,6 +358,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
     fun resetMoves(uid: String) =
         set(state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = null) else it }))
+
+    /** Hourly rest healing for the hero and every monster (knocked-out ones wake at 10%). */
+    fun regenerate() {
+        val u = GameEngine.regenerate(state, System.currentTimeMillis())
+        if (u.state != state) set(u.state)
+        if (u.message.isNotEmpty()) message = u.message
+    }
 
     fun toggleParty(uid: String) = apply(GameEngine.toggleParty(state, uid))
     fun setPartySlot(uid: String, slot: Int) {

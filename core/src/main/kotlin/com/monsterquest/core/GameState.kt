@@ -197,6 +197,8 @@ data class GameState(
     val followers: List<Follower> = emptyList(),
     /** Steps toward the next follower. */
     val followerStepBank: Int = 0,
+    /** When rest healing was last applied (see GameEngine.regenerate). */
+    val lastRegenMs: Long = 0,
     /** Last time a monster ambushed you (ambushes have a cooldown). */
     val lastAmbushMs: Long = 0,
     /** Last daily step total read from Health Connect, and the day it was for. */

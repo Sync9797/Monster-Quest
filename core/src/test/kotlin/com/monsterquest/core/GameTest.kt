@@ -1053,4 +1053,35 @@ class GameTest {
         assertEquals(listOf(ms[2].uid, ms[1].uid, ms[3].uid), s.party)
         assertEquals(MAX_PARTY_SIZE, s.party.size)
     }
+
+    @Test
+    fun restHealsEveryoneAndWakesFaintedMonsters() {
+        val hour = 3_600_000L
+        val t0 = 1_700_000_000_000L
+        val base = started()
+        val m = base.monsters.single()
+        val max = m.stats.hp
+        var s = base.copy(
+            heroDamage = 50,
+            monsters = listOf(m.copy(fainted = true, damage = max)),
+        )
+        // The first check only starts the clock.
+        s = GameEngine.regenerate(s, t0).state
+        assertEquals(t0, s.lastRegenMs)
+        assertEquals(2, GameEngine.hoursUntilAwake(s.monsters.single()))
+        // One hour: 5% back, still knocked out.
+        s = GameEngine.regenerate(s, t0 + hour + 10).state
+        assertTrue(s.monsters.single().fainted)
+        assertEquals(1, GameEngine.hoursUntilAwake(s.monsters.single()))
+        // Two hours: back to 10%, awake.
+        val woke = GameEngine.regenerate(s, t0 + 2 * hour + 10)
+        assertTrue(!woke.state.monsters.single().fainted)
+        assertTrue(woke.message.contains("back on its feet"))
+        // The hero heals too, and partial hours carry over.
+        assertTrue(woke.state.heroDamage < 50)
+        assertEquals(t0 + 2 * hour, woke.state.lastRegenMs)
+        // Old saves stored knocked-out monsters with 0 damage: treated as empty, not full.
+        val legacy = base.copy(monsters = listOf(m.copy(fainted = true, damage = 0)), lastRegenMs = t0)
+        assertTrue(GameEngine.regenerate(legacy, t0 + hour).state.monsters.single().fainted)
+    }
 }

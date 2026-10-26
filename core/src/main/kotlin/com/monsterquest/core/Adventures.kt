@@ -178,7 +178,7 @@ object Adventures {
             val weakest = team.minByOrNull { it.level }
             s = s.copy(
                 gold = s.gold + gold,
-                monsters = s.monsters.map { if (it.uid == weakest?.uid) it.copy(fainted = true) else it },
+                monsters = s.monsters.map { if (it.uid == weakest?.uid) it.copy(fainted = true, damage = it.stats.hp) else it },
             )
             Update(
                 s,
