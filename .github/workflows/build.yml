@@ -30,7 +30,23 @@ jobs:
         run: ./gradlew :core:test
 
       - name: Build APK
-        run: ./gradlew :app:assembleDebug
+        shell: bash
+        run: ./gradlew :app:assembleDebug 2>&1 | tee build.log
+
+      # Logs need a GitHub login to view; push them to a branch so failures can
+      # be diagnosed from anywhere.
+      - name: Publish build log on failure
+        if: failure() && github.event_name == 'push'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p logs && cp build.log logs/ 2>/dev/null || echo "no log" > logs/build.log
+          cd logs
+          git init -q
+          git checkout -q -b ci-logs
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Build log for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
