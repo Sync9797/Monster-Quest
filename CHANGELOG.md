@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.5
+
+- **Battle animations:** spells and typed moves throw a bolt of their type
+  (fireballs, lightning, water orbs, wind crescents, gas clouds, shadow orbs);
+  sword attacks and Normal moves slash across the target. Hits shake and flash
+  the target with a floating damage number (gold for critical and
+  super-effective hits); misses and heals show too.
+- **Who's acting is highlighted:** the attacker gets a gold ring, and the
+  fighter whose turn it is pulses with "Your move".
+- **Turn order strip:** small portraits of who acts next, starting with "Now".
+
 ## 0.2.4
 
 - **Battery saver turns on by itself:** on the map, hold the phone upside

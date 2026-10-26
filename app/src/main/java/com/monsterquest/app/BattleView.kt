@@ -1,6 +1,7 @@
 package com.monsterquest.app
 
 import com.monsterquest.core.Battle
+import com.monsterquest.core.BattleEvent
 import com.monsterquest.core.BattleOutcome
 import com.monsterquest.core.Combatant
 import com.monsterquest.core.Element
@@ -33,7 +34,13 @@ data class BattleView(
     val resultText: String?,
     /** Villain fights: the next monster to face after this win. */
     val nextOpponent: String? = null,
+    /** Every attack, heal and miss so far, for animations. */
+    val events: List<BattleEvent> = emptyList(),
+    /** Fighter keys in the order they'll act, starting with the one acting now. */
+    val turnOrder: List<String> = emptyList(),
 ) {
+    fun fighter(key: String): FighterView? = if (key == enemy.key) enemy else allies.find { it.key == key }
+
     val isBoss: Boolean get() = encounter != EncounterType.WILD
 
     companion object {
@@ -57,6 +64,8 @@ data class BattleView(
                 captureBlocked = b.captureBlockedReason(),
                 resultText = resultText,
                 nextOpponent = nextOpponent,
+                events = b.events.toList(),
+                turnOrder = if (b.outcome == BattleOutcome.ONGOING) b.turnOrder() else emptyList(),
             )
         }
     }

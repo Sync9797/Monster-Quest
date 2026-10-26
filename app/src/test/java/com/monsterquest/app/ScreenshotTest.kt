@@ -279,6 +279,14 @@ abstract class ScreenshotBase(private val device: String) {
         shot("17_battery_saver") { AppRoot(v, Tab.MAP) }
     }
 
+    /** Mid-animation: attacks in flight, the attacker ringed, the turn order strip. */
+    @Test fun battleFx() {
+        val v = vm()
+        v.hunt()
+        v.battleAction(com.monsterquest.core.BattleAction.Attack)
+        shot("18_battle_fx") { AppRoot(v) }
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

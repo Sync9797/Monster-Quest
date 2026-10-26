@@ -10,6 +10,7 @@ import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -95,6 +96,7 @@ private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
 @Composable
 private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
+    val fx = rememberBattleFx(b)
     // Return to the main menu whenever the turn passes to someone else.
     LaunchedEffect(b.current?.key, b.round, b.log.size) { menu = Menu.Main }
 
@@ -109,6 +111,7 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
     }
     val controls: @Composable () -> Unit = {
         Column {
+            TurnOrderStrip(b) { f, m -> FighterArt(f, m) }
             AllyRow(b)
             Spacer(Modifier.height(8.dp))
             if (b.outcome == BattleOutcome.ONGOING) {
@@ -123,25 +126,31 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        AdaptivePanes(
-            modifier = Modifier.safeDrawingPadding().padding(12.dp),
-            compact = {
-                // Commands may use at most ~55% of the height; the enemy and log
-                // shrink (and clip) instead of being drawn underneath them.
-                BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val controlsMax = maxHeight * 0.55f
-                    Column(Modifier.fillMaxSize()) {
-                        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) { top() }
-                        Spacer(Modifier.height(8.dp))
-                        Box(Modifier.fillMaxWidth().heightIn(max = controlsMax)) { controls() }
-                    }
-                }
-            },
-            first = top,
-            second = {
-                Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
-            },
-        )
+        CompositionLocalProvider(LocalBattleFx provides fx) {
+            Box(Modifier.fillMaxSize()) {
+                AdaptivePanes(
+                    modifier = Modifier.safeDrawingPadding().padding(12.dp),
+                    compact = {
+                        // Commands may use at most ~55% of the height; the enemy and log
+                        // shrink (and clip) instead of being drawn underneath them.
+                        BoxWithConstraints(Modifier.fillMaxSize()) {
+                            val controlsMax = maxHeight * 0.55f
+                            Column(Modifier.fillMaxSize()) {
+                                Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) { top() }
+                                Spacer(Modifier.height(8.dp))
+                                Box(Modifier.fillMaxWidth().heightIn(max = controlsMax)) { controls() }
+                            }
+                        }
+                    },
+                    first = top,
+                    second = {
+                        Box(Modifier.fillMaxSize().clipToBounds(), contentAlignment = Alignment.BottomCenter) { controls() }
+                    },
+                )
+                // Projectiles, slashes and damage numbers fly over everything.
+                BattleFxOverlay()
+            }
+        }
     }
 }
 
@@ -156,7 +165,7 @@ private fun EnemyPanel(b: BattleView) {
     }
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FighterArt(e, Modifier.size(96.dp))
+            FighterArt(e, Modifier.size(96.dp).fighterFx(e.key))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 if (b.isBoss) {
@@ -226,10 +235,11 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
         modifier
             .clip(RoundedCornerShape(10.dp))
             .background(bg)
+            .border(if (active) 2.dp else 0.dp, if (active) Gold else Color.Transparent, RoundedCornerShape(10.dp))
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FighterArt(a, Modifier.size(44.dp))
+        FighterArt(a, Modifier.size(44.dp).fighterFx(a.key))
         Text(
             a.name,
             fontSize = 11.sp,
@@ -238,6 +248,7 @@ private fun AllyCard(a: FighterView, active: Boolean, modifier: Modifier) {
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             color = if (active) Gold else MaterialTheme.colorScheme.onSurface,
         )
+        if (active) Text("Your move", fontSize = 9.sp, color = Gold, fontWeight = FontWeight.Bold)
         Bar(a.hpFraction, hpColor(a.hpFraction), Modifier.fillMaxWidth(), heightDp = 6)
         Text("${a.hp}/${a.maxHp}", fontSize = 10.sp)
         a.tags.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = HpYellow, maxLines = 1, overflow = TextOverflow.Ellipsis) }

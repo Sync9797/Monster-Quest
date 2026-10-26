@@ -911,4 +911,24 @@ class GameTest {
         )
         assertEquals(listOf("a", "c"), GameEngine.clearCalendarQuests(s).state.tasks.map { it.id })
     }
+
+    @Test
+    fun battleRecordsEventsAndTurnOrder() {
+        val s = started()
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 3, Random(2)), EncounterType.WILD, rng = Random(4))
+        val order = b.turnOrder()
+        assertEquals(b.current?.key, order.first())
+        assertTrue(order.size >= 4)
+        assertTrue(Combatant.ENEMY_KEY in order)
+        repeat(6) { if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Attack) }
+        // Hero sword attacks are slashes; every event is numbered in order.
+        assertTrue(b.events.isNotEmpty())
+        assertEquals(b.events.indices.toList(), b.events.map { it.seq })
+        assertTrue(b.events.any { it.actorKey == Combatant.HERO_KEY && (it.style == StrikeStyle.SLASH || it.style == StrikeStyle.MISS) })
+        b.events.filter { it.style == StrikeStyle.SLASH || it.style == StrikeStyle.BOLT }.forEach { assertTrue(it.amount > 0) }
+        // Typed monster moves fly as bolts; Normal moves slash.
+        b.events.filter { it.actorKey == Combatant.ENEMY_KEY && it.style != StrikeStyle.MISS && it.style != StrikeStyle.HEAL }.forEach {
+            assertEquals(if (it.element == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT, it.style)
+        }
+    }
 }

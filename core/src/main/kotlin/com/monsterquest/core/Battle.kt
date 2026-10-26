@@ -173,6 +173,28 @@ class Combatant(
     }
 }
 
+/** How an attack is shown on screen. */
+enum class StrikeStyle {
+    /** Weapons and Normal-type moves: slash marks across the target. */
+    SLASH,
+    /** Spells and typed moves: a projectile of the move's type flies at the target. */
+    BOLT,
+    HEAL,
+    MISS,
+}
+
+/** One thing that happened in battle, for the UI to animate (in [seq] order). */
+data class BattleEvent(
+    val seq: Int,
+    val actorKey: String,
+    val targetKey: String,
+    val style: StrikeStyle,
+    val element: Element,
+    val amount: Int = 0,
+    val crit: Boolean = false,
+    val superEffective: Boolean = false,
+)
+
 data class BattleResult(
     val outcome: BattleOutcome,
     val encounter: EncounterType,
@@ -227,6 +249,8 @@ class Battle(
     val itemsRemainingThisBattle: Int get() = MAX_ITEMS_PER_BATTLE - itemsUsedCount
 
     val log = mutableListOf<String>()
+    /** Attacks, heals and misses in order, for animations. */
+    val events = mutableListOf<BattleEvent>()
     var outcome: BattleOutcome = BattleOutcome.ONGOING
         private set
     var round: Int = 0
@@ -321,6 +345,24 @@ class Battle(
             }
         }
         current = null
+    }
+
+    /**
+     * Who acts next, starting with whoever is acting now: the rest of this
+     * round, then the predicted order of the next round (by Speed).
+     */
+    fun turnOrder(count: Int = 6): List<String> {
+        val alive = { k: String -> combatant(k)?.alive == true }
+        val now = listOfNotNull(current?.key) + queue.filter(alive)
+        val everyone = (allies + enemy).filter { it.alive }.sortedByDescending { it.effectiveSpeed }
+        val nextReversed = reversedRounds > 1
+        val next = (if (nextReversed) everyone.reversed() else everyone).map { it.key } +
+            (if (isBoss && enemy.alive) listOf(Combatant.ENEMY_KEY) else emptyList())
+        return (now + next + next).take(count)
+    }
+
+    private fun record(a: Combatant, d: Combatant, style: StrikeStyle, element: Element, amount: Int = 0, crit: Boolean = false, superEffective: Boolean = false) {
+        events += BattleEvent(events.size, a.key, d.key, style, element, amount, crit, superEffective)
     }
 
     private fun startRound() {
@@ -426,7 +468,7 @@ class Battle(
                     // Daggers strike twice.
                     repeat(actor.hits) {
                         if (enemy.alive && rollHit(actor, enemy, 100)) {
-                            val dmg = strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks")
+                            val dmg = strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks", style = StrikeStyle.SLASH)
                             afterHeroHit(actor, enemy, dmg)
                         }
                     }
@@ -453,7 +495,7 @@ class Battle(
                 } else {
                     actor.mp -= skill.mpCost
                     if (!rollHit(actor, enemy, 100)) return true
-                    val dmg = strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on")
+                    val dmg = strike(actor, enemy, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
                     afterHeroHit(actor, enemy, dmg)
                 }
             }
@@ -521,6 +563,7 @@ class Battle(
         val before = target.hp
         target.hp = minOf(target.maxHp, target.hp + amount)
         log += "$prefix: ${target.name} +${target.hp - before} HP."
+        record(target, target, StrikeStyle.HEAL, Element.NEUTRAL, target.hp - before)
     }
 
     /** Accuracy check, including blinding effects. Logs a miss. */
@@ -529,6 +572,7 @@ class Battle(
             a.missNext = false
             a.accuracyDown = false
             log += "${a.name} misses!"
+            record(a, d, StrikeStyle.MISS, Element.NEUTRAL)
             return false
         }
         var chance = accuracy / 100.0
@@ -538,10 +582,12 @@ class Battle(
         }
         if (rng.nextDouble() >= chance) {
             log += "${a.name}'s attack misses ${d.name}!"
+            record(a, d, StrikeStyle.MISS, Element.NEUTRAL)
             return false
         }
         if (d.evasion > 0 && rng.nextDouble() < d.evasion) {
             log += "${d.name} nimbly dodges!"
+            record(a, d, StrikeStyle.MISS, Element.NEUTRAL)
             return false
         }
         return true
@@ -582,7 +628,7 @@ class Battle(
             if (!rollHit(a, d, move.accuracy)) return
             if (move.isDamaging) {
                 if (d.diving != null) log += "Thunder Bolt strikes ${d.name} mid-dive!"
-                strike(a, d, move.power, move.type, useMagic = false, verb = null)
+                strike(a, d, move.power, move.type, useMagic = false, verb = null, style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT)
             }
         } else {
             log += "${a.name} uses ${move.name}!"
@@ -675,7 +721,7 @@ class Battle(
         }
     }
 
-    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?): Int {
+    private fun strike(a: Combatant, d: Combatant, power: Int, type: Element, useMagic: Boolean, verb: String?, style: StrikeStyle): Int {
         val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
         val def = d.defense * d.stageMultiplier(BattleStat.DEFENSE)
         val typeMult = type.multiplierAgainst(d.element)
@@ -691,6 +737,7 @@ class Battle(
             (if (d.defending) 0.5 else 1.0)
         val dmg = max(1, raw.roundToInt())
         d.hp = max(0, d.hp - dmg)
+        record(a, d, style, type, dmg, crit, typeMult > 1.0)
         val notes = buildList {
             if (crit) add("Critical!")
             if (typeMult > 1.0) add("Super effective!")

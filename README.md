@@ -116,6 +116,10 @@ your hero.
 - **Battles:** turn-based, ordered by Speed. You fight alongside up to **3 party
   monsters** and can use up to **3 items per battle**. Losing costs 10% of
   your gold.
+- **Battle animations:** spells and typed moves throw a bolt of their type,
+  and swords and Normal moves slash. The attacker is ringed in gold, the
+  fighter whose turn it is pulses, and a **turn order** strip shows who acts
+  next.
 - **Taming:** get a monster below 50% HP and throw an orb.
 - **Wild spawns** work like Pokémon GO:
   - Moving around raises how many monsters appear and how rare they are, and
