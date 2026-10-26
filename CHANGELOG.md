@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.2.0
+
+- **Fixed: folding or unfolding the phone crashed the app.** The map tore
+  itself down every time it moved between the folded and unfolded layouts;
+  it now carries over intact. The app also handles more display changes
+  itself instead of restarting.
+- **More monsters**, especially while walking: more spawn in the wild (and
+  many more while you're moving), and a monster follows your footsteps every
+  600 steps (was 1,000), with up to 4 waiting beside you.
+- **Monsters gather around shrines:** most shrines have a monster or two
+  nearby (boss shrines more), favoring types that suit the place: Water by
+  fountains, Earth in parks, Fire at cafes, Electric at shops and so on. They
+  stay by their shrine and never ambush.
+- **Dens:** rocky caves on the map, each holding one strong ordinary monster
+  (never a legendary): a few levels above you, more HP, no stat below 10 and
+  two perfect stats. No loot, just the monster. It can't be tamed mid-fight:
+  beat it, then you get 5 to 10 throws to tame it, each one a long shot
+  (about half of den monsters end up tamed). Dens move every day and show in
+  the Nearby list too.
+- **Taming always pays XP:** taming now gives more hero XP than beating a
+  monster, and taming a den monster gives double.
+- **One dagger:** the hero holds a single dagger in the hand (daggers still
+  strike twice).
+
 ## 1.1.0
 
 - **New armor pieces:** hoods, cloaks, pants and boots, worn alongside body

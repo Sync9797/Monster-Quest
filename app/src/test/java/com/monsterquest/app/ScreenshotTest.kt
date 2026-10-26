@@ -12,6 +12,8 @@ import android.graphics.Rect
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.monsterquest.app.ui.AdventuresTab
@@ -400,6 +402,37 @@ abstract class ScreenshotBase(private val device: String) {
         v.hunt()
         v.battleAction(com.monsterquest.core.BattleAction.CastSpell("ward", "hero"))
         capture("27_ward", 400)
+    }
+
+    /** Fold and unfold on the map: the map moves between layouts without breaking. */
+    @Test fun foldUnfold() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        val dm = app.resources.displayMetrics
+        val book = FoldInfo(isSeparating = true, isVertical = true, bounds = Rect(dm.widthPixels / 2, 0, dm.widthPixels / 2, dm.heightPixels))
+        var fold by androidx.compose.runtime.mutableStateOf<FoldInfo?>(null)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            CompositionLocalProvider(LocalFold provides fold) { MonsterQuestTheme { AppRoot(v, Tab.MAP) } }
+        }
+        capture("29_fold_a", 1_000)
+        repeat(2) {
+            fold = book
+            capture("29_fold_b", 1_000)
+            fold = null
+            capture("29_fold_c", 1_000)
+        }
+        rule.onNodeWithText("Center").assertExists()
+    }
+
+    /** A den's monster after the fight: the taming throws. */
+    @Test fun denCatch() {
+        val m = Monster.create(Bestiary.get("ember_pup"), 16, Random(4))
+        val v = vm(sampleState().copy(pendingDenCatch = com.monsterquest.core.DenCatch("den:1:2:3", m, 6, 8)))
+        shot("30_den_catch") { AppRoot(v) }
+        rule.onNodeWithText("Tame the", substring = true).assertExists()
+        rule.onNodeWithText("Throw").assertExists()
     }
 
     @Test fun battleTabletop() {

@@ -472,8 +472,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val (aLat, aLon) = spawnAnchor ?: (lat to lon)
         val wild = World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), aLat, aLon)
             .filter { it.id !in state.usedSpawns }
+        val guards = World.shrineSpawns(shrines, lat, lon, nowMs, state.hero.level, spawnConditions(nowMs))
+            .filter { it.id !in state.usedSpawns }
         val followers = GameEngine.activeFollowers(state, nowMs).mapIndexed { i, f -> GameEngine.followerSpawn(f, lat, lon, i) }
-        return followers + wild
+        return followers + guards + wild
     }
 
     /**
@@ -672,6 +674,27 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** A fight against a villain's team in progress: which monster we're on. */
     private data class VillainRun(val camp: VillainCamp, val index: Int)
     private var villainRun: VillainRun? = null
+
+    fun densNear(nowMs: Long): List<com.monsterquest.core.Den> {
+        val (lat, lon) = location ?: return emptyList()
+        return com.monsterquest.core.Dens.near(state, lat, lon, nowMs)
+    }
+
+    fun challengeDen(den: com.monsterquest.core.Den) {
+        val d = distanceTo(den.lat, den.lon)
+        if (d == null || d > com.monsterquest.core.Dens.RANGE_M) {
+            message = "Get closer to the ${den.name} (within ${dist(com.monsterquest.core.Dens.RANGE_M)})."
+            return
+        }
+        if (state.monsters.isEmpty()) {
+            message = "You need a monster first."
+            return
+        }
+        startBattle(den.monster, EncounterType.DEN, den.id)
+    }
+
+    fun denThrow() = apply(com.monsterquest.core.Dens.attempt(state))
+    fun denGiveUp() = apply(com.monsterquest.core.Dens.giveUp(state))
 
     fun villainsNear(nowMs: Long): List<VillainCamp> {
         val (lat, lon) = location ?: return emptyList()

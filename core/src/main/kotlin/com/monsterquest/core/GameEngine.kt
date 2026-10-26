@@ -84,7 +84,7 @@ object GameEngine {
         )
     }
 
-    private fun levelUpText(gain: XpGain): String = buildString {
+    fun levelUpText(gain: XpGain): String = buildString {
         if (gain.levelsGained > 0) append(" LEVEL UP! Now level ${gain.state.hero.level}.")
         if (gain.upgradesGained > 0) append(" Storage upgrade unlocked!")
         val h = gain.state.hero
@@ -551,6 +551,9 @@ object GameEngine {
 
     // ---- encounters --------------------------------------------------------
 
+    /** Hero XP for taming a monster: more than beating it, so catching always pays. */
+    fun captureXp(level: Int): Int = level * 4
+
     fun wildLevel(heroLevel: Int, rng: Random): Int = (heroLevel + rng.nextInt(-2, 3)).coerceAtLeast(1)
 
     fun bossLevel(heroLevel: Int): Int = maxOf(8, heroLevel + 5)
@@ -636,6 +639,12 @@ object GameEngine {
                 if (r.shrineId != null && r.encounter == EncounterType.SILVER_BOSS) {
                     val rec = s.shrines[r.shrineId] ?: ShrineRecord()
                     s = s.copy(shrines = s.shrines + (r.shrineId to rec.copy(lastVisitMs = nowMs)))
+                } else if (r.shrineId != null && r.encounter == EncounterType.DEN) {
+                    // A den is beaten, not tamed: now come the taming throws.
+                    if (r.outcome == BattleOutcome.WON) {
+                        s = Dens.defeated(s, r.shrineId, r.enemy, nowMs, Random(nowMs))
+                        s.pendingDenCatch?.let { msg.append(" ${r.enemy.displayName} is worn out! You have ${it.throwsTotal} throws to tame it.") }
+                    }
                 } else if (r.shrineId != null && r.encounter != EncounterType.WILD) {
                     val rec = s.shrines[r.shrineId] ?: ShrineRecord()
                     val firstDefeat = !rec.bossDefeated && r.outcome == BattleOutcome.WON
@@ -935,8 +944,8 @@ object GameEngine {
     // ---- followers (walking draws monsters to you) ---------------------------
 
     /** Steps that draw one monster to follow you. */
-    const val FOLLOWER_STEPS = 1_000
-    const val MAX_FOLLOWERS = 3
+    const val FOLLOWER_STEPS = 600
+    const val MAX_FOLLOWERS = 4
     /** Followers wander off after this long. */
     const val FOLLOWER_TTL_MS = 4 * 60 * 60_000L
 

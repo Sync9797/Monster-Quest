@@ -183,6 +183,9 @@ private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
             FighterArt(e, Modifier.size(96.dp).fighterFx(e.key))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
+                if (b.encounter == EncounterType.DEN) {
+                    Text("DEN BEAST", color = HpYellow, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                }
                 if (b.isBoss) {
                     val silver = b.encounter == EncounterType.SILVER_BOSS
                     Text(

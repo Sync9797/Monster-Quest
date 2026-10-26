@@ -246,6 +246,10 @@ data class GameState(
     val stepsDay: Long? = null,
     /** Villain camp id -> epoch day defeated. */
     val villainsDefeated: Map<String, Long> = emptyMap(),
+    /** Dens beaten (id to day); they stay empty until the dens move the next day. */
+    val densCleared: Map<String, Long> = emptyMap(),
+    /** A beaten den monster waiting for taming throws. */
+    val pendingDenCatch: DenCatch? = null,
     /** Monsters of the last defeated villain team; one can be restored to join you. */
     val villainSpoils: List<Monster> = emptyList(),
     // Legacy fields from older saves, converted on load.

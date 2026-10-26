@@ -55,7 +55,7 @@ private val topics = listOf(
         GameIcon.WALK, "Walking: monsters come to you",
         listOf(
             "Every 100 steps gives you and your battle party 10 XP and heals 10 HP.",
-            "Every 1,000 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 3 wait beside you on the map for 4 hours.",
+            "Every 600 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 4 wait beside you on the map for 4 hours.",
             "Monsters hear you moving: while you walk, every monster nearby closes in on you much faster.",
             "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",
         ),
@@ -65,7 +65,9 @@ private val topics = listOf(
         listOf(
             "New monsters appear out at the edge of your range and creep toward you over time. Only the ones within about 200 m stand on the map.",
             "The tracker bar at the top (or the Nearby list beside the map on big screens) shows monsters farther out, with their distance (feet and miles, or meters) and the direction to walk. Tap one to see what landmark it is near and whether it is heading your way.",
-            "Get within 100 m of a monster to battle it. The phone buzzes when one comes into range.",
+            "Get within 330 ft (100 m) of a monster to battle it. The phone buzzes when one comes into range.",
+            "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",
+            "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 to 10 throws to tame it. Each throw is a long shot. Dens move every day.",
             "Some monsters are aggressive (more at night). If one reaches you it ambushes (never in your first 30 seconds on the map): the fight starts on its own and it strikes first. Turn ambushes off in Settings.",
             "Hold the phone upside down on the map for battery saver; turn it upright to return.",
             "Lures (one free each day) draw extra, rarer monsters to you for 30 minutes.",
@@ -97,7 +99,7 @@ private val topics = listOf(
         GameIcon.ORB, "Taming and candy",
         listOf(
             "Get a monster below 50% HP, then use Tame and throw an orb. Sleep, shock, poison and burn make it easier.",
-            "Taming gives 3 candy for that monster's line; releasing one gives more. Spend candy on a monster's page to level it up.",
+            "Taming gives 3 candy for that monster's line and hero XP (more than beating it); releasing one gives more candy. Spend candy on a monster's page to level it up.",
             "Leveling never changes a monster's stat points (0 to 15 per stat). Better ones come from taming more monsters.",
             "The Journal records every monster you've seen and caught.",
             "Shinies: about 1 in 200 wild monsters (1 in 100 with a lure) has rare colors and sparkles. They're marked in battle, on the map up close, and in your Journal.",

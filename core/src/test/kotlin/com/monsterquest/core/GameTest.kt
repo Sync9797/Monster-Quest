@@ -3,6 +3,7 @@ package com.monsterquest.core
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -961,15 +962,75 @@ class GameTest {
     fun walkingDrawsFollowers() {
         val now = 1_700_000_000_000L
         var s = started()
-        s = GameEngine.walk(s, 2_500, now).state
+        s = GameEngine.walk(s, 1_500, now).state
         assertEquals(2, s.followers.size)
-        assertEquals(500, s.followerStepBank)
+        assertEquals(300, s.followerStepBank)
         s = GameEngine.walk(s, 5_000, now).state
         assertEquals(GameEngine.MAX_FOLLOWERS, s.followers.size)
         assertTrue(GameEngine.activeFollowers(s, now + GameEngine.FOLLOWER_TTL_MS + 1).isEmpty())
         val spawn = GameEngine.followerSpawn(s.followers.first(), 40.0, -75.0, 0)
         assertTrue(World.distanceMeters(40.0, -75.0, spawn.lat, spawn.lon) < World.SPAWN_RANGE_M)
         assertEquals(GameEngine.MAX_FOLLOWERS - 1, GameEngine.removeFollower(s, spawn.id).followers.size)
+    }
+
+    @Test
+    fun densHoldStrongMonstersThatMustBeBeatenFirst() {
+        val now = 1_700_000_000_000L
+        val s = started().copy(hero = started().hero.copy(level = 10))
+        val dens = Dens.near(s, 40.0, -75.0, now, java.time.ZoneOffset.UTC)
+        assertTrue(dens.isNotEmpty())
+        // Same dens all day, and never legendaries.
+        assertEquals(dens.map { it.id to it.monster.speciesId }, Dens.near(s, 40.0, -75.0, now + 60_000, java.time.ZoneOffset.UTC).map { it.id to it.monster.speciesId })
+        for (d in dens) {
+            assertTrue(d.species.rarity != Rarity.LEGENDARY)
+            assertTrue(d.monster.level >= 13)
+            assertTrue(GameEngine.perfectStatCount(d.monster) >= 2)
+            assertTrue(MONSTER_STATS.all { d.monster.ivs[it] >= 10 })
+        }
+        val den = dens.first()
+        // It can't be tamed during the fight.
+        val b = GameEngine.newBattle(s, den.monster, EncounterType.DEN, den.id, rng = Random(2))
+        assertTrue(b.captureLocked)
+        assertFalse(b.isBoss)
+        // Beating it clears the den and starts 5-10 taming throws.
+        var won = Dens.defeated(s, den.id, den.monster, now, Random(3), java.time.ZoneOffset.UTC)
+        val c = won.pendingDenCatch!!
+        assertTrue(c.throwsTotal in Dens.MIN_THROWS..Dens.MAX_THROWS)
+        assertTrue(Dens.near(won, 40.0, -75.0, now, java.time.ZoneOffset.UTC).none { it.id == den.id })
+        // Hard but possible: keep throwing until it's tamed or escapes.
+        val rng = Random(9)
+        var tries = 0
+        while (won.pendingDenCatch != null) {
+            won = Dens.attempt(won, rng).state
+            tries++
+        }
+        assertTrue(tries <= c.throwsTotal)
+        // Over many dens, some are tamed and some get away.
+        var tamed = 0
+        repeat(200) { i ->
+            var t = Dens.defeated(s, den.id, den.monster, now, Random(i), java.time.ZoneOffset.UTC)
+            val r = Random(1000 + i)
+            while (t.pendingDenCatch != null) t = Dens.attempt(t, r).state
+            if (t.monsters.size > s.monsters.size) tamed++
+        }
+        assertTrue(tamed in 40..160, "tamed $tamed of 200")
+    }
+
+    @Test
+    fun shrinesDrawMonstersAndTamingPaysXp() {
+        val now = 1_700_000_000_000L
+        val shrines = (0 until 40).map { World.shrineFromPlace("n$it", "Cafe $it", 40.0 + it * 0.0005, -75.0, ShrineTier.ITEM, category = World.PlaceCategory.WATER) }
+        val near = World.shrineSpawns(shrines, 40.0, -75.0, now, 10)
+        assertTrue(near.size >= 8, "${near.size} monsters around 40 shrines")
+        for (sp in near) {
+            val sh = shrines.first { it.id == sp.shrineId }
+            assertTrue(World.distanceMeters(sh.lat, sh.lon, sp.lat, sp.lon) in 15.0..75.0)
+            assertFalse(World.isAggressive(sp, 23))
+        }
+        // Walking draws more.
+        val walking = World.shrineSpawns(shrines, 40.0, -75.0, now, 10, SpawnConditions(12, activity = 1.0))
+        assertTrue(walking.size > near.size)
+        assertTrue(GameEngine.captureXp(10) > 10 * 3)
     }
 
     @Test

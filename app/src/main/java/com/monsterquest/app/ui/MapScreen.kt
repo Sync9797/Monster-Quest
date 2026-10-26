@@ -49,6 +49,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import com.monsterquest.app.ui.art.drawDenOn
+import com.monsterquest.core.Den
+import com.monsterquest.core.Dens
 import com.monsterquest.app.ui.art.drawFocusPin
 import com.monsterquest.app.data.StreetLookup
 import com.monsterquest.app.Navigation
@@ -121,6 +124,7 @@ private sealed interface MapPick {
     data class SpawnPick(val spawn: WildSpawn) : MapPick
     data class VillainPick(val camp: VillainCamp) : MapPick
     data class TrackedPick(val spawn: WildSpawn) : MapPick
+    data class DenPick(val den: Den) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -175,6 +179,7 @@ fun MapScreen(vm: GameViewModel) {
     val tracked = vm.trackedSpawns(now)
     val shrines = vm.shrines
     val villains = vm.villainsNear(now)
+    val dens = vm.densNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
     var focus by remember { mutableStateOf<MapFocus?>(null) }
     // The pin and card are temporary: they clear themselves after a few minutes.
@@ -272,6 +277,17 @@ fun MapScreen(vm: GameViewModel) {
                                 },
                             )
                         }
+                        dens.forEach { den ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(den.lat, den.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.93f)
+                                    setIcon(sprite("den_${den.species.element}", 56, 48) { c, w, h -> drawDenOn(c, w, h, den.species.element) })
+                                    title = den.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.DenPick(den); true }
+                                },
+                            )
+                        }
                         villains.forEach { v ->
                             val isVillain = v.tier == VillainTier.VILLAIN
                             mv.overlays.add(
@@ -327,7 +343,7 @@ fun MapScreen(vm: GameViewModel) {
                     when {
                         vm.loadingPlaces -> "Scanning for shrines…"
                         else -> "${shrines.count { it.tier == ShrineTier.ITEM }} item • ${shrines.count { it.tier == ShrineTier.SILVER }} silver • " +
-                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${spawns.size} monsters near • ${tracked.size} tracked • ${villains.size} foes"
+                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${dens.size} dens • ${spawns.size} monsters near • ${tracked.size} tracked • ${villains.size} foes"
                     },
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
@@ -362,6 +378,10 @@ fun MapScreen(vm: GameViewModel) {
                 shrines = shrines,
                 spawns = spawns + tracked,
                 villains = villains,
+                dens = dens,
+                onDen = { den ->
+                    focusOn(MapFocus(den.lat, den.lon, den.name, "Lv ${den.monster.level} ${den.species.name} • strong", pin = false) { pick = MapPick.DenPick(den) })
+                },
                 onShrine = { sh ->
                     focusOn(MapFocus(sh.lat, sh.lon, sh.name, sh.subtitle ?: sh.tier.label, pin = false) { pick = MapPick.ShrinePick(sh) })
                 },
@@ -388,6 +408,7 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.ShrinePick -> ShrineDialog(vm, p.shrine, now) { pick = null }
         is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
         is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
+        is MapPick.DenPick -> DenDialog(vm, p.den) { pick = null }
         is MapPick.TrackedPick -> TrackedDialog(
             vm,
             p.spawn,
@@ -439,6 +460,10 @@ private fun rememberMapView(): MapView {
             // can't paint over the nav rail, headers or the status row.
             outlineProvider = ViewOutlineProvider.BOUNDS
             clipToOutline = true
+            // The map moves between layouts when the phone folds or unfolds. By default
+            // osmdroid tears itself down when detached from a window, which broke (and
+            // crashed) the map on every fold; we clean it up ourselves on dispose instead.
+            setDestroyMode(false)
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
@@ -783,6 +808,51 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
     )
 }
 
+/** A den: a strong monster to beat, then 5-10 throws to tame it. */
+@Composable
+private fun DenDialog(vm: GameViewModel, den: Den, onDismiss: () -> Unit) {
+    val dist = vm.distanceTo(den.lat, den.lon)
+    val inRange = dist != null && dist <= Dens.RANGE_M
+    val imperial = vm.state.settings.imperialUnits
+    val landmark = vm.landmarkNear(den.lat, den.lon)
+    val street = rememberStreet(den.lat, den.lon)
+    val where = landmark?.let { (place, gap) -> landmarkText(place, gap, imperial) } ?: street?.let { "On $it" }
+    val m = den.monster
+    val seen = m.speciesId in vm.state.seen
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { PlaceTitle(GameIcon.PAW, den.name, den.species.element.color(), where) },
+        text = {
+            Column {
+                MonsterArt(den.species, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = m.shiny, silhouette = !seen)
+                Text(
+                    (if (seen) m.species.name else "Something big") + " • Lv ${m.level} • ${den.species.element.label}",
+                    fontWeight = FontWeight.SemiBold,
+                    color = rarityColor(den.species.rarity),
+                )
+                Text(distanceText(dist, imperial), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Stronger than wild monsters: more HP, great stats (${GameEngine.perfectStatCount(m)} perfect). No loot here, just the monster.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    "It can't be tamed mid-fight. Beat it, and you get ${Dens.MIN_THROWS} to ${Dens.MAX_THROWS} throws to tame it. Each one is a long shot.",
+                    fontSize = 13.sp,
+                    color = HpYellow,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(Dens.RANGE_M, imperial)} to fight.", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(den.lat, den.lon, den.name)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.challengeDen(den); onDismiss() }, enabled = inRange) { Text("Fight!") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
 @Composable
 private fun VillainDialog(vm: GameViewModel, camp: VillainCamp, onDismiss: () -> Unit) {
     val dist = vm.distanceTo(camp.lat, camp.lon)
@@ -852,6 +922,8 @@ private fun NearbyList(
     shrines: List<Shrine>,
     spawns: List<WildSpawn>,
     villains: List<VillainCamp>,
+    dens: List<Den>,
+    onDen: (Den) -> Unit,
     onShrine: (Shrine) -> Unit,
     onSpawn: (WildSpawn) -> Unit,
     onVillain: (VillainCamp) -> Unit,
@@ -875,6 +947,15 @@ private fun NearbyList(
             "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SPAWN_RANGE_M,
         ) { onSpawn(sp) }
+    } + dens.map { den ->
+        val d = vm.distanceTo(den.lat, den.lon) ?: Double.MAX_VALUE
+        Entry(
+            d,
+            { MonsterArt(den.species, Modifier.size(40.dp), silhouette = den.monster.speciesId !in vm.state.seen) },
+            den.name,
+            "Den • Lv ${den.monster.level} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
+            d <= Dens.RANGE_M,
+        ) { onDen(den) }
     } + villains.map { v ->
         val d = vm.distanceTo(v.lat, v.lon) ?: Double.MAX_VALUE
         Entry(

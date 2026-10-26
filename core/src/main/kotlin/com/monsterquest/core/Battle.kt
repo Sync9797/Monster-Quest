@@ -17,12 +17,15 @@ enum class EncounterType {
     /** Boss that bursts out of a Legendary loot box; tameable right away. */
     BOX_BOSS,
     /** A villain's shadow-cursed monster: can't be tamed. */
-    VILLAIN;
+    VILLAIN,
+    /** A den's strong monster: beat it first, then you get a few taming throws. */
+    DEN;
 
     /** Enemy HP multiplier. */
     val hpMultiplier: Double
         get() = when (this) {
             WILD, VILLAIN -> 1.0
+            DEN -> Dens.HP_MULTIPLIER
             SILVER_BOSS -> 2.2
             else -> 2.0
         }
@@ -226,7 +229,7 @@ object TeamScaling {
     data class Factors(val hp: Double, val attack: Double, val defense: Double)
 
     fun factors(teamSize: Int, encounter: EncounterType): Factors =
-        if (encounter == EncounterType.WILD) {
+        if (encounter == EncounterType.WILD || encounter == EncounterType.DEN) {
             Factors(hp(teamSize), attack(teamSize), defense(teamSize))
         } else {
             Factors(hp(teamSize) / hp(4), attack(teamSize) / attack(4), defense(teamSize) / defense(4))
@@ -377,8 +380,9 @@ class Battle(
     var current: Combatant? = null
         private set
 
-    val isBoss: Boolean get() = encounter != EncounterType.WILD
-    val captureLocked: Boolean get() = encounter == EncounterType.BOSS_CHALLENGE || encounter == EncounterType.VILLAIN
+    val isBoss: Boolean get() = encounter != EncounterType.WILD && encounter != EncounterType.DEN
+    val captureLocked: Boolean
+        get() = encounter == EncounterType.BOSS_CHALLENGE || encounter == EncounterType.VILLAIN || encounter == EncounterType.DEN
 
     init {
         val intro = when (encounter) {
@@ -392,6 +396,7 @@ class Battle(
             EncounterType.SILVER_BOSS -> "SILVER GUARDIAN: ${enemy.name} (Lv ${enemy.level}) blocks your path! It's hard to tame, but it has perfect genes."
             EncounterType.BOX_BOSS -> "The loot box bursts open... ${enemy.name} (Lv ${enemy.level}) erupts out of it!"
             EncounterType.VILLAIN -> "A shadow-cursed ${enemy.name} (Lv ${enemy.level}) attacks! It can't be tamed."
+            EncounterType.DEN -> "A fierce ${enemy.name} (Lv ${enemy.level}) charges out of its den! Beat it, then try to tame it."
         }
         log += intro
         if (ambush) log += "Ambush! The monsters strike before you're ready!"
@@ -418,6 +423,7 @@ class Battle(
     /** Null when capture is allowed, otherwise a reason to show the player. */
     fun captureBlockedReason(): String? = when {
         encounter == EncounterType.VILLAIN -> "Shadow-bound monsters can't be tamed. Defeat the whole team."
+        encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your taming throws."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         storageFull -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No orbs left."
@@ -925,10 +931,14 @@ class Battle(
         check(outcome != BattleOutcome.ONGOING) { "Battle still in progress" }
         val lvl = enemies.maxOf { it.level }
         val bossMult = if (isBoss) 3 else 1
-        val rewardMult = if (encounter == EncounterType.WILD) TeamScaling.reward(teamSize) * TeamScaling.packReward(enemies.size) else 1.0
+        val rewardMult = when (encounter) {
+            EncounterType.WILD -> TeamScaling.reward(teamSize) * TeamScaling.packReward(enemies.size)
+            EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
+            else -> 1.0
+        }
         val heroXp = when (outcome) {
             BattleOutcome.WON -> lvl * 3 * bossMult
-            BattleOutcome.CAPTURED -> lvl * 2 * bossMult
+            BattleOutcome.CAPTURED -> GameEngine.captureXp(lvl) * bossMult
             else -> 0
         }.let { (it * rewardMult).roundToInt() }
         val gold = if (outcome == BattleOutcome.WON) ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult).roundToInt() else 0

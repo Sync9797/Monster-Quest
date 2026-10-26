@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.NavigationBar
@@ -112,6 +114,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
 
     if (state.villainSpoils.isNotEmpty()) SpoilsDialog(vm)
     if (state.starterGiftPending && !vm.starterGiftLater) StarterGiftDialog(vm)
+    state.pendingDenCatch?.let { DenCatchDialog(vm, it) }
 
     // The menu stays at the bottom on every screen size, folded or open, so it's
     // always within thumb reach.
@@ -155,6 +158,37 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     if (vm.batterySaver) BatterySaverOverlay(vm)
     vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
     }
+}
+
+/** A den monster is beaten: a few throws to tame it before it slips away. */
+@Composable
+private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch) {
+    val m = c.monster
+    val pct = (com.monsterquest.core.Dens.throwChance(m) * 100).toInt()
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Tame the ${m.species.name}!") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                MonsterArt(m.species, Modifier.size(110.dp), shiny = m.shiny)
+                Text("Lv ${m.level} • ${com.monsterquest.core.GameEngine.perfectStatCount(m)} perfect stats", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "It's worn out from the fight. Each throw has about a $pct% chance. " +
+                        "Throws left: ${c.throwsLeft} of ${c.throwsTotal}.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(c.throwsTotal) { i ->
+                        GIcon(GameIcon.ORB, Modifier.size(18.dp), if (i < c.throwsLeft) Gold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                    }
+                }
+                if (vm.state.storageFull) Text("Monster storage is full: make room first.", color = HpRed, fontSize = 12.sp)
+            }
+        },
+        confirmButton = { Button(onClick = vm::denThrow, enabled = !vm.state.storageFull) { Text("Throw") } },
+        dismissButton = { TextButton(onClick = vm::denGiveUp) { Text("Let it go") } },
+    )
 }
 
 /** For players from before 0.5: pick one of the new starters, free. */

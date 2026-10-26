@@ -146,3 +146,23 @@ fun drawFocusPin(c: Canvas, w: Float, h: Float) {
     ArtPainter.circle(c, 12f, 12f, 3.5f, Argb.hex("ffffff"))
     c.restore()
 }
+
+/** A den: a rocky mound with a dark cave mouth and glowing eyes, tinted by its monster's type. Drawn in a 60x52 box. */
+fun drawDenOn(c: Canvas, w: Float, h: Float, element: com.monsterquest.core.Element) {
+    c.save()
+    ArtPainter.fit(c, w, h, 60f, 52f)
+    val tint = palette(element).base
+    ArtPainter.fill(c, "M6 48A24 4 0 1 1 54 48A24 4 0 1 1 6 48Z", Argb.hex("071113"), 0.7f)
+    ArtPainter.glow(c, 30f, 34f, 26f, tint, 0.45f)
+    val rock = "M4 48L10 28L20 14L32 8L44 16L52 30L56 48Z"
+    ArtPainter.fill(c, rock, ArtPainter.linear(0f, 8f, 0f, 48f, Argb.hex("7b766a"), Argb.hex("3a3630")))
+    ArtPainter.hatch(c, rock, INK_MAP, 0.25f, 4f)
+    ArtPainter.stroke(c, rock, INK_MAP, 1.4f, 0.85f)
+    ArtPainter.fill(c, "M18 48Q18 26 30 24Q42 26 42 48Z", Argb.hex("0b0908"))
+    ArtPainter.stroke(c, "M18 48Q18 26 30 24Q42 26 42 48", tint, 1.6f, 0.9f)
+    ArtPainter.fill(c, "M23 36Q26 33 28 36Q26 38 23 36Z", palette(element).light)
+    ArtPainter.fill(c, "M32 36Q34 33 37 36Q34 38 32 36Z", palette(element).light)
+    // Moss and claw marks.
+    ArtPainter.stroke(c, "M12 30L16 26M14 34L18 30M44 22L47 27M46 20L49 25", INK_MAP, 1.2f, 0.7f)
+    c.restore()
+}

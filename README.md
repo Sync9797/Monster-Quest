@@ -163,11 +163,18 @@ your hero.
     reach you even if you stand still. Only monsters within about 200 m stand
     on the map.
   - The **tracker bar** at the top of the map shows monsters farther out, with
-    their distance (feet and yards, or meters) and direction. Tap one to see
+    their distance (feet and miles, or meters) and direction. Tap one to see
     which landmark it's near, whether it's closing in, and to pan the map
-    there.
-  - **Walking reward:** every 1,000 steps a monster follows your footsteps,
-    even with the phone in your pocket (up to 3 wait beside you).
+    there. On big screens and unfolded phones the Nearby list beside the map
+    shows them instead.
+  - **Walking reward:** every 600 steps a monster follows your footsteps,
+    even with the phone in your pocket (up to 4 wait beside you).
+  - **Shrine monsters:** monsters gather around shrines, favoring types that
+    suit the place (Water by fountains, Earth in parks, Fire at cafes). They
+    stay by their shrine and never ambush.
+  - **Dens:** rocky caves holding one strong ordinary monster (a few levels
+    above you, great stats, no loot). Beat it, then you get 5 to 10 throws to
+    tame it; each is a long shot. Dens move daily.
   - **Packs:** nearby monsters may team up against you (2 vs 4, 3 vs 3, 4 vs
     4...). Tap one to target it. Packs are tougher and pay up to 2.1x more.
   - **Ambushes:** aggressive monsters (more at night) that reach you attack

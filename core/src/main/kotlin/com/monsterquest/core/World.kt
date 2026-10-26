@@ -80,6 +80,8 @@ data class WildSpawn(
     val follower: Boolean = false,
     /** A rare color variant. */
     val shiny: Boolean = false,
+    /** Lingers around this shrine (id) instead of roaming. */
+    val shrineId: String? = null,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
 }
@@ -226,7 +228,66 @@ object World {
     fun windowOf(spawnId: String): Long? = spawnId.split(":").getOrNull(1)?.toLongOrNull()
 
     /** Chance a map cell holds a monster: more when you've been moving, more again with a lure. */
-    fun cellChance(c: SpawnConditions): Double = 0.10 + 0.08 * c.activity + if (c.lure) 0.08 else 0.0
+    fun cellChance(c: SpawnConditions): Double = 0.16 + 0.16 * c.activity + if (c.lure) 0.1 else 0.0
+
+    /** The type a shrine's surroundings favor, from the kind of place it stands at. */
+    fun shrineElement(s: Shrine): Element? = when (s.name) {
+        "Spring Shrine" -> Element.WATER
+        "Grove Shrine" -> Element.EARTH
+        "Provision Shrine" -> Element.FIRE
+        "Supply Cache" -> Element.ELECTRIC
+        "Lore Shrine" -> Element.CORRUPT
+        "Muse Stone" -> Element.FLIGHT
+        "Sanctum" -> Element.GAS
+        else -> null
+    }
+
+    /**
+     * Monsters that gather around shrines. Each shrine within the tracker's
+     * reach has a good chance of one or two (boss shrines draw more), more when
+     * you're on the move, standing 20-70 m from it. They favor the type that
+     * suits the place (water by fountains, earth in parks...). They stay put
+     * by their shrine and never ambush.
+     */
+    fun shrineSpawns(
+        shrines: List<Shrine>,
+        lat: Double,
+        lon: Double,
+        nowMs: Long,
+        heroLevel: Int,
+        conditions: SpawnConditions = SpawnConditions(12),
+    ): List<WildSpawn> {
+        val window = spawnWindow(nowMs)
+        val expires = (window + 1) * SPAWN_WINDOW_MS
+        val rareBoost = 1.0 + conditions.activity + if (conditions.lure) 0.5 else 0.0
+        val out = mutableListOf<WildSpawn>()
+        for (sh in shrines) {
+            if (distanceMeters(lat, lon, sh.lat, sh.lon) > TRACK_M) continue
+            val r = Random(seed(stableHash(sh.id).toLong(), window, 0x5a17))
+            val chance = (if (sh.isBoss) 0.8 else 0.45) + 0.25 * conditions.activity + (if (conditions.lure) 0.15 else 0.0)
+            if (r.nextDouble() > chance) continue
+            val count = if (sh.isBoss) 2 + r.nextInt(2) else 1 + (if (r.nextDouble() < 0.25 + 0.25 * conditions.activity) 1 else 0)
+            val favored = conditions.timeOfDay.favored + listOfNotNull(shrineElement(sh))
+            repeat(count) { i ->
+                val angle = r.nextDouble() * 2 * Math.PI
+                val dist = 20 + r.nextDouble() * 50
+                val dLat = dist * cos(angle) / 111_320.0
+                val dLon = dist * sin(angle) / (111_320.0 * cos(Math.toRadians(sh.lat)))
+                val level = GameEngine.wildLevel(heroLevel, r) + if (sh.isBoss) 1 else 0
+                out += WildSpawn(
+                    id = "h:$window:${stableHash(sh.id)}:$i",
+                    speciesId = Bestiary.randomWild(r, level, favored, rareBoost).id,
+                    level = level,
+                    lat = sh.lat + dLat,
+                    lon = sh.lon + dLon,
+                    expiresAtMs = expires,
+                    shiny = rollShiny(r, conditions.lure),
+                    shrineId = sh.id,
+                )
+            }
+        }
+        return out
+    }
 
     /**
      * Wild monsters around you, Pokémon GO style but on the move:
@@ -318,7 +379,7 @@ object World {
 
     /** Some monsters are aggressive and will attack first when they reach you; more of them at night. */
     fun isAggressive(spawn: WildSpawn, hour: Int): Boolean =
-        !spawn.follower && hashPercent(spawn.id, 13) < (if (TimeOfDay.of(hour) == TimeOfDay.NIGHT) 40 else 25)
+        !spawn.follower && spawn.shrineId == null && hashPercent(spawn.id, 13) < (if (TimeOfDay.of(hour) == TimeOfDay.NIGHT) 40 else 25)
 
     /**
      * Extra item stops ("waystones") filling the gaps between real places, so

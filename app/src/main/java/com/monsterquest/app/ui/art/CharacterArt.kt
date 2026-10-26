@@ -267,18 +267,12 @@ private fun drawWeapon(c: Canvas, o: HeroOutfit) {
             ArtPainter.circle(c, 196f, 210f, 4.5f, guard)
         }
         WeaponType.DAGGER -> {
-            // A pair: one in each hand (daggers strike twice).
-            // The grip sits inside the fist (hands are drawn on top), guard just above it.
-            for (dx in listOf(0f, -71f)) {
-                c.save()
-                c.translate(dx, 0f)
-                ArtPainter.fill(c, "M184 118L190 104L196 118L193 160H187Z", bladeHi)
-                ArtPainter.fill(c, "M184 118L190 104V160H187Z", bladeLo)
-                ArtPainter.fill(c, "M177 158H203V164H177Z", guard)
-                ArtPainter.fill(c, "M187 164H193V186H187Z", wood)
-                ArtPainter.circle(c, 190f, 188f, 3.5f, guard)
-                c.restore()
-            }
+            // One dagger in the weapon hand; the grip sits inside the fist (hands are drawn on top).
+            ArtPainter.fill(c, "M184 118L190 104L196 118L193 160H187Z", bladeHi)
+            ArtPainter.fill(c, "M184 118L190 104V160H187Z", bladeLo)
+            ArtPainter.fill(c, "M177 158H203V164H177Z", guard)
+            ArtPainter.fill(c, "M187 164H193V186H187Z", wood)
+            ArtPainter.circle(c, 190f, 188f, 3.5f, guard)
         }
         WeaponType.STAFF -> {
             ArtPainter.stroke(c, "M196 86V206", wood, 7f)
