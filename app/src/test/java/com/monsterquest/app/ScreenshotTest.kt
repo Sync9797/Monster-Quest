@@ -495,7 +495,8 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Off hand", substring = true).assertExists()
         // The class is a dropdown: the other classes only show once it's opened.
         check(rule.onAllNodesWithText("Mage").fetchSemanticsNodes().isEmpty()) { "other classes hidden" }
-        rule.onAllNodesWithText("Change ▾")[0].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        // The class card (not the subclass one): it's the one with the class bonus line.
+        rule.onNodeWithText("Bonus grows", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.mainClock.advanceTimeBy(1_000)
         rule.waitForIdle()
         rule.onNodeWithText("Mage").assertExists()
@@ -646,7 +647,9 @@ abstract class ScreenshotBase(private val device: String) {
         rule.mainClock.advanceTimeBy(300)
         rule.waitForIdle()
         rule.onNodeWithText("Send in from the swap slots").assertExists()
-        rule.onNodeWithText(extra[0].displayName, substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        // The entry in the swap menu (the name alone also shows elsewhere on big screens).
+        rule.onNodeWithText("${extra[0].displayName}  Lv ${extra[0].level}", substring = true)
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${extra[0].displayName} takes whose place?").assertExists()
