@@ -329,9 +329,9 @@ private fun LevelUpBanner(up: LevelUp, modifier: Modifier) {
     val pulse by rememberInfiniteTransition(label = "lvl").animateFloat(
         1f, 1.08f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "lvlPulse",
     )
-    Column(
+    Row(
         modifier
-            .offset(y = (-6).dp)
+            .offset(y = (-11).dp)
             .graphicsLayer {
                 val k = pop.value * pulse
                 scaleX = k
@@ -341,11 +341,11 @@ private fun LevelUpBanner(up: LevelUp, modifier: Modifier) {
             .clip(RoundedCornerShape(8.dp))
             .background(Brush.verticalGradient(listOf(Color(0xFFF5DA93), Gold)))
             .border(1.dp, Color(0xFF6B5126), RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 7.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(if (up.evolvedFrom != null) "EVOLVED!" else "LEVEL UP!", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color(0xFF2A1A08))
-        Text("Lv ${up.fromLevel} → ${up.toLevel}", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2A1A08))
+        Text(if (up.evolvedFrom != null) "EVOLVED!" else "LEVEL UP!", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFF2A1A08), maxLines = 1)
+        Text(" ${up.toLevel}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B3A08), maxLines = 1)
     }
 }
 
