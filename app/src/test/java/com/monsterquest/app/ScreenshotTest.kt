@@ -206,7 +206,13 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Tasks").assertExists()
     }
     @Test fun hero() { val v = vm(); shot("03_hero") { AppRoot(v, Tab.HERO) } }
-    @Test fun monsters() { val v = vm(); shot("04_monsters") { AppRoot(v, Tab.MONSTERS) } }
+    @Test fun monsters() {
+        val v = vm()
+        shot("04_monsters") { AppRoot(v, Tab.MONSTERS) }
+        // Sort options, with Potential after Newest.
+        rule.onNodeWithText("Newest").assertExists()
+        rule.onNodeWithText("Potential").assertExists()
+    }
     @Test fun bag() { val v = vm(); shot("05_bag") { AppRoot(v, Tab.BAG) } }
 
     @Test fun map() {

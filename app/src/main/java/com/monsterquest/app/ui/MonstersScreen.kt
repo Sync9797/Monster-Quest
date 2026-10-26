@@ -155,7 +155,7 @@ private fun MonsterCollection(vm: GameViewModel) {
     )
 }
 
-private enum class SortBy(val label: String) { LEVEL("Level"), TYPE("Type"), NAME("Name"), NEWEST("Newest") }
+private enum class SortBy(val label: String) { LEVEL("Level"), TYPE("Type"), NAME("Name"), NEWEST("Newest"), POTENTIAL("Potential") }
 
 /** Party slots on top, then a tidy grid of the rest of the collection. */
 @Composable
@@ -170,6 +170,8 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
             SortBy.TYPE -> list.sortedWith(compareBy<Monster> { it.species.element }.thenByDescending { it.level })
             SortBy.NAME -> list.sortedBy { it.displayName }
             SortBy.NEWEST -> list.reversed()
+            // Best genes first (ties: higher level first).
+            SortBy.POTENTIAL -> list.sortedWith(compareByDescending<Monster> { it.potential }.thenByDescending { it.level })
         }
     }
     val drag = remember { PartyDrag() }
@@ -311,6 +313,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
             items(bench, key = { it.uid }) { m ->
                 MonsterTile(
                     m, inParty = false, away = m.uid in away, selected = m.uid == selectedUid,
+                    showPotential = sortBy == SortBy.POTENTIAL,
                     modifier = Modifier
                         .dragSource(drag, m.uid, ::drop)
                         .alpha(if (drag.uid == m.uid) 0.35f else 1f),
@@ -409,7 +412,16 @@ private fun Modifier.dragSource(drag: PartyDrag, uid: String, onDrop: () -> Unit
 
 /** Compact tile: art, name, level and type, HP, and status badges. */
 @Composable
-private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun MonsterTile(
+    m: Monster,
+    inParty: Boolean,
+    away: Boolean,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    /** Show the monster's potential (when the list is sorted by it). */
+    showPotential: Boolean = false,
+    onClick: () -> Unit,
+) {
     val sp = m.species
     val border = when {
         selected -> MpBlue
@@ -435,6 +447,9 @@ private fun MonsterTile(m: Monster, inParty: Boolean, away: Boolean, selected: B
             GIcon(sp.element.icon(), Modifier.size(11.dp), sp.element.color())
             Spacer(Modifier.width(3.dp))
             Text("Lv ${m.level}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (showPotential) {
+                Text("  •  ${m.potential}%", fontSize = 11.sp, color = if (m.potential >= 80) Gold else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Spacer(Modifier.height(4.dp))
         val hpMax = m.stats.hp

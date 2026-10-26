@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.3
+
+- **Sort by potential:** a new "Potential" sort option next to "Newest"
+  lists your monsters with the best genes first. While it's on, each tile
+  shows the monster's potential (gold at 80% and up).
+
 ## 1.15.2
 
 - **Drag to scroll:** while holding a monster to move it into the party,
