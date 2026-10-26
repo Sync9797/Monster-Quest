@@ -657,8 +657,10 @@ abstract class ScreenshotBase(private val device: String) {
         rule.waitForIdle()
         rule.onNodeWithText("Send in from the swap slots").assertExists()
         // The entry in the swap menu (the name alone also shows elsewhere on big screens).
-        rule.onNodeWithText("${extra[0].displayName}  Lv ${extra[0].level}", substring = true)
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.onAllNodes(
+            androidx.compose.ui.test.hasText("${extra[0].displayName}  Lv ${extra[0].level}", substring = true) and
+                androidx.compose.ui.test.hasClickAction(),
+        )[0].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${extra[0].displayName} takes whose place?").assertExists()
