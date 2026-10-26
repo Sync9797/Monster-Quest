@@ -120,6 +120,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     // ---- setup / hero ------------------------------------------------------
 
     fun chooseStarter(speciesId: String) = apply(GameEngine.chooseStarter(state, speciesId))
+
+    /** The "new starters" gift was put off until next time the app opens. */
+    var starterGiftLater by mutableStateOf(false)
+
+    fun claimStarterGift(speciesId: String) = apply(GameEngine.claimStarterGift(state, speciesId))
     fun allocate(attr: HeroAttribute) = apply(GameEngine.allocatePoint(state, attr))
     fun chooseClass(cls: HeroClass) = apply(GameEngine.chooseClass(state, cls))
     fun upgrade() = apply(GameEngine.applyUpgrade(state))

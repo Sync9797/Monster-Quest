@@ -111,6 +111,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
 
 
     if (state.villainSpoils.isNotEmpty()) SpoilsDialog(vm)
+    if (state.starterGiftPending && !vm.starterGiftLater) StarterGiftDialog(vm)
 
     // The menu stays at the bottom on every screen size, folded or open, so it's
     // always within thumb reach.
@@ -154,6 +155,41 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     if (vm.batterySaver) BatterySaverOverlay(vm)
     vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
     }
+}
+
+/** For players from before 0.5: pick one of the new starters, free. */
+@Composable
+private fun StarterGiftDialog(vm: GameViewModel) {
+    val level = com.monsterquest.core.GameEngine.giftStarterLevel(vm.state.hero.level)
+    AlertDialog(
+        onDismissRequest = { vm.starterGiftLater = true },
+        title = { Text("New starters have arrived!") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Thanks for playing from the start. Three rare starters joined Monster Quest: pick one to join you " +
+                        "at level $level. Each evolves twice into a pseudo-legendary.",
+                    fontSize = 13.sp,
+                )
+                com.monsterquest.core.GameEngine.starters.map { com.monsterquest.core.Bestiary.get(it) }.forEach { sp ->
+                    Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MonsterArt(sp, Modifier.size(56.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(sp.name, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${sp.element.label} • " + com.monsterquest.core.Bestiary.lineOf(sp).drop(1).joinToString(" > ") { it.name },
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        SmallButton("Choose", { vm.claimStarterGift(sp.id) })
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.starterGiftLater = true }) { Text("Decide later") } },
+    )
 }
 
 /** After beating a villain's team: restore one of their monsters (75% it joins you). */

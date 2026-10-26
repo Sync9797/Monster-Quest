@@ -176,7 +176,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 5,
+    val version: Int = 6,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -193,6 +193,8 @@ data class GameState(
     val armor: List<Armor> = emptyList(),
     val equippedArmor: Armor? = null,
     val settings: Settings = Settings(),
+    /** Players from before the new starters get to pick one for free. */
+    val starterGiftPending: Boolean = false,
     /** Monsters that followed you because you walked; they wait beside you until battled. */
     val followers: List<Follower> = emptyList(),
     /** Steps toward the next follower. */
@@ -323,6 +325,12 @@ data class GameState(
         if (s.version < 5) {
             // Monster storage now starts at 20 instead of 6.
             s = s.copy(version = 5, monsterCapacity = s.monsterCapacity + STARTING_MONSTER_CAPACITY - 6)
+        }
+        if (s.version < 6) {
+            // The starters changed (0.5): existing players get to pick one of the new ones.
+            val starterFamilies = GameEngine.starters.map { Bestiary.get(it).family }.toSet()
+            val hasOne = s.monsters.any { it.species.family in starterFamilies }
+            s = s.copy(version = 6, starterGiftPending = s.starterChosen && !hasOne)
         }
         return s.withJournal()
     }

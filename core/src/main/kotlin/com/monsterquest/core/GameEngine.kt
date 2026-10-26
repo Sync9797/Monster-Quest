@@ -41,6 +41,26 @@ object GameEngine {
         )
     }
 
+    /** Level a gifted starter joins at: near the hero's level, but young enough to evolve on screen. */
+    fun giftStarterLevel(heroLevel: Int) = heroLevel.coerceIn(5, 15)
+
+    /**
+     * For players who started before the new starters: pick one, free. It joins
+     * even if monster storage is full, and goes into the party if there's room.
+     */
+    fun claimStarterGift(state: GameState, speciesId: String, rng: Random = Random.Default): Update {
+        if (!state.starterGiftPending) return Update(state, "You've already claimed your new starter.")
+        if (speciesId !in starters) return Update(state, "Pick one of the new starters.")
+        val m = Monster.create(Bestiary.get(speciesId), giftStarterLevel(state.hero.level), rng)
+        val party = if (state.party.size < MAX_PARTY_SIZE) state.party + m.uid else state.party
+        val s = addCandy(
+            state.copy(monsters = state.monsters + m, party = party, starterGiftPending = false),
+            m.species,
+            TAME_CANDY,
+        ).withJournal()
+        return Update(s, "${m.species.name} joins you! It evolves at level 16 and again at 36.")
+    }
+
     // ---- hero progression --------------------------------------------------
 
     data class XpGain(val state: GameState, val levelsGained: Int, val upgradesGained: Int)

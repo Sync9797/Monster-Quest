@@ -1127,4 +1127,24 @@ class GameTest {
         assertTrue(spawn.speciesId in s.shinyCaught)
         assertTrue(GameState.fromJson(s.toJson()).monsters.any { it.shiny })
     }
+
+    @Test
+    fun existingPlayersGetToPickANewStarter() {
+        // A save from before 0.5 with an old starter.
+        val old = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.copy(version = 5, hero = Hero(level = 22))
+        val loaded = GameState.fromJson(old.toJson())
+        assertTrue(loaded.starterGiftPending)
+        val u = GameEngine.claimStarterGift(loaded, "drizzlet", Random(2))
+        val gift = u.state.monsters.last()
+        assertEquals("drizzlet", gift.speciesId)
+        assertEquals(15, gift.level)
+        assertTrue(!u.state.starterGiftPending)
+        assertTrue(gift.uid in u.state.party)
+        // Only once.
+        assertEquals(u.state, GameEngine.claimStarterGift(u.state, "cindrake", Random(3)).state)
+        // New players (who already chose a new starter) and brand-new saves aren't offered one.
+        val fresh = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state
+        assertTrue(!GameState.fromJson(fresh.copy(version = 5).toJson()).starterGiftPending)
+        assertTrue(!GameState.fromJson(GameState().toJson()).starterGiftPending)
+    }
 }

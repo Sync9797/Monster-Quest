@@ -330,6 +330,11 @@ abstract class ScreenshotBase(private val device: String) {
         shot("20_loot_popup", advanceMs = 900) { AppRoot(v, Tab.MAP) }
     }
 
+    @Test fun starterGift() {
+        val v = vm(sampleState().copy(starterGiftPending = true))
+        shot("24_starter_gift") { AppRoot(v) }
+    }
+
     @Test fun help() {
         shot("21_help", content = onBackground { com.monsterquest.app.ui.HelpScreen {} })
     }

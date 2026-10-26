@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1
+
+- **Existing players get a new starter too:** if you started before 0.5, the
+  game offers you a free pick of Voltfawn, Cindrake or Drizzlet the next time
+  you open it. It joins near your level (5 to 15), with 3 candy, and goes into
+  your party if there's room. "Decide later" asks again next time.
+
 ## 0.5.0
 
 The "Legends" update.
