@@ -254,6 +254,19 @@ abstract class ScreenshotBase(private val device: String) {
         })
     }
 
+    /** The five newest evolution lines, first form to final form. */
+    @Test fun newMonsters() {
+        shot("15_new_monsters", content = onBackground {
+            androidx.compose.foundation.layout.Column {
+                listOf("goopling", "pebblit", "zipwing", "shellsnap", "impling").forEach { id ->
+                    androidx.compose.foundation.layout.Row {
+                        Bestiary.lineOf(Bestiary.get(id)).forEach { MonsterArt(it, androidx.compose.ui.Modifier.size(104.dp)) }
+                    }
+                }
+            }
+        })
+    }
+
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()

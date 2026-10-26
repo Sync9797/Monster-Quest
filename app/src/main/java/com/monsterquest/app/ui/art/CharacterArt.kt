@@ -391,6 +391,102 @@ private val FAIRY = Shape(
     100f, 86f, 16f,
 )
 
+private val SLIME = Shape(
+    listOf(
+        f("M60 176Q56 192 66 192Q74 188 72 176Z", Role.BODY),
+        f("M128 178Q126 190 134 190Q140 186 138 176Z", Role.BODY),
+        f("M44 180Q38 122 100 94Q162 122 156 180Q100 194 44 180Z", Role.BODY),
+        f("M90 100Q100 70 110 100Z", Role.BODY),
+        f("M62 140Q68 114 90 104Q76 122 72 146Z", Role.LIGHT),
+        f("M126 152A5 5 0 1 1 136 152A5 5 0 1 1 126 152Z", Role.LIGHT),
+        f("M116 170A3 3 0 1 1 122 170A3 3 0 1 1 116 170Z", Role.LIGHT),
+        f("M72 134A10 12 0 1 1 92 134A10 12 0 1 1 72 134Z", Role.EYE),
+        f("M108 134A10 12 0 1 1 128 134A10 12 0 1 1 108 134Z", Role.EYE),
+        f("M78 136A4 5 0 1 1 86 136A4 5 0 1 1 78 136Z", Role.DARK),
+        f("M114 136A4 5 0 1 1 122 136A4 5 0 1 1 114 136Z", Role.DARK),
+        s("M90 156Q100 166 110 156", Role.DARK, 3f),
+    ),
+    100f, 126f, 34f,
+)
+
+private val GOLEM = Shape(
+    listOf(
+        f("M66 186L70 152H92L94 186Z", Role.DARK),
+        f("M106 186L108 152H130L134 186Z", Role.DARK),
+        f("M28 156L34 114L56 104L64 138L54 164L34 168Z", Role.BODY),
+        f("M172 156L166 114L144 104L136 138L146 164L166 168Z", Role.BODY),
+        f("M26 160L36 148L56 150L56 168L34 172Z", Role.DARK),
+        f("M174 160L164 148L144 150L144 168L166 172Z", Role.DARK),
+        f("M52 158L60 106L100 94L140 106L148 158L118 172H82Z", Role.BODY),
+        s("M74 116L86 132L78 150M126 114L116 130L124 148", Role.DARK, 2.5f),
+        f("M90 128L100 114L110 128L100 144Z", Role.LIGHT),
+        f("M64 110L74 106L76 116Z", Role.LIGHT),
+        f("M132 140L140 136L142 146Z", Role.LIGHT),
+        f("M78 100L82 70L100 60L118 70L122 100L100 108Z", Role.BODY),
+        f("M86 80H97V88H86Z", Role.EYE),
+        f("M103 80H114V88H103Z", Role.EYE),
+        s("M92 96H108", Role.DARK, 2.5f),
+    ),
+    100f, 84f, 22f,
+)
+
+private val THUNDERBIRD = Shape(
+    listOf(
+        f("M96 122Q60 84 22 80Q36 100 30 108Q46 108 50 118Q36 126 40 134Q66 128 90 142Z", Role.BODY),
+        f("M104 122Q140 84 178 80Q164 100 170 108Q154 108 150 118Q164 126 160 134Q134 128 110 142Z", Role.BODY),
+        s("M30 108L50 118M40 134L62 130M170 108L150 118M160 134L138 130", Role.DARK, 2.5f),
+        f("M88 166L78 190L100 178L122 190L112 166Z", Role.DARK),
+        f("M78 166Q72 122 100 106Q128 122 122 166Q100 178 78 166Z", Role.BODY),
+        f("M88 164Q88 136 100 128Q112 136 112 164Q100 172 88 164Z", Role.LIGHT),
+        f("M80 96A20 20 0 1 1 120 96A20 20 0 1 1 80 96Z", Role.BODY),
+        f("M95 78L103 52L101 68L114 60L105 80Z", Role.ACCENT),
+        f("M93 102L107 102L100 117Z", Role.ACCENT),
+        f("M83 90L97 95L86 100Z", Role.EYE),
+        f("M117 90L103 95L114 100Z", Role.EYE),
+        s("M92 176V186M108 176V186", Role.ACCENT, 4f),
+    ),
+    100f, 94f, 20f,
+)
+
+private val TURTLE = Shape(
+    listOf(
+        f("M48 178Q42 160 58 156L72 170Q66 186 48 178Z", Role.LIGHT),
+        f("M152 178Q158 160 142 156L128 170Q134 186 152 178Z", Role.LIGHT),
+        f("M42 166Q46 102 100 94Q154 102 158 166Z", Role.BODY),
+        s("M100 98V132M66 118L100 132L134 118M56 148L78 140M144 148L122 140", Role.DARK, 2.5f),
+        f("M38 164H162Q162 176 150 178H50Q38 176 38 164Z", Role.DARK),
+        f("M76 150A24 21 0 1 1 124 150A24 21 0 1 1 76 150Z", Role.LIGHT),
+        f("M85 146A6 6 0 1 1 97 146A6 6 0 1 1 85 146Z", Role.EYE),
+        f("M103 146A6 6 0 1 1 115 146A6 6 0 1 1 103 146Z", Role.EYE),
+        f("M88 147A3 3 0 1 1 94 147A3 3 0 1 1 88 147Z", Role.DARK),
+        f("M106 147A3 3 0 1 1 112 147A3 3 0 1 1 106 147Z", Role.DARK),
+        s("M93 160Q100 165 107 160", Role.DARK, 2.5f),
+    ),
+    100f, 120f, 24f,
+)
+
+private val IMP = Shape(
+    listOf(
+        f("M78 124Q44 86 28 100Q40 108 34 118Q48 116 50 128Q60 122 72 136Z", Role.DARK),
+        f("M122 124Q156 86 172 100Q160 108 166 118Q152 116 150 128Q140 122 128 136Z", Role.DARK),
+        s("M120 172Q158 176 150 138", Role.DARK, 4f),
+        f("M142 142L150 126L158 142L150 137Z", Role.DARK),
+        f("M74 184Q70 138 100 128Q130 138 126 184Z", Role.BODY),
+        f("M88 182Q88 152 100 146Q112 152 112 182Z", Role.LIGHT),
+        f("M68 100L46 90L66 114Z", Role.BODY),
+        f("M132 100L154 90L134 114Z", Role.BODY),
+        f("M74 84L68 58L88 74Z", Role.DARK),
+        f("M126 84L132 58L112 74Z", Role.DARK),
+        f("M68 100A32 30 0 1 1 132 100A32 30 0 1 1 68 100Z", Role.BODY),
+        f("M80 98Q88 89 97 100Q88 105 80 98Z", Role.EYE),
+        f("M120 98Q112 89 103 100Q112 105 120 98Z", Role.EYE),
+        f("M86 112Q100 126 114 112Q100 119 86 112Z", Role.DARK),
+        f("M91 114L94 120L97 115Z", Role.EYE),
+        f("M103 115L106 120L109 114Z", Role.EYE),
+    ),
+    100f, 100f, 30f,
+)
+
 private fun shapeFor(sp: Species): Shape = when {
     sp.id == "mimic" -> MIMIC
     sp.id == "prism_fairy" -> FAIRY
@@ -401,6 +497,11 @@ private fun shapeFor(sp: Species): Shape = when {
     sp.family.startsWith("Bubblefin") -> FISH
     sp.family.startsWith("Toxbug") -> BUG
     sp.family.startsWith("Gloomwisp") -> WISP
+    sp.family.startsWith("Goopling") -> SLIME
+    sp.family.startsWith("Pebblit") -> GOLEM
+    sp.family.startsWith("Zipwing") -> THUNDERBIRD
+    sp.family.startsWith("Shellsnap") -> TURTLE
+    sp.family.startsWith("Impling") -> IMP
     else -> HOUND
 }
 
@@ -465,7 +566,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     val hy = shape.headY
     val r = shape.headR
     // Stage 3+: horns (birds and fish rely on their crest, gem and halo instead).
-    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC && shape !== BIRD && shape !== FISH) {
+    if (sp.stage >= 3 && shape !== FAIRY && shape !== MIMIC && shape !== BIRD && shape !== FISH && shape !== THUNDERBIRD && shape !== SLIME) {
         val horn = { side: Float ->
             val bx = hx + side * r * 0.45f
             val by = hy - r * 0.75f
@@ -486,7 +587,7 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
     // Final forms: a crown of light (or a halo for winged, finned and spirit shapes).
     if (final && !dim && shape !== MIMIC) {
         val top = hy - r * 1.05f
-        if (sp.stage >= 3 && shape !== FAIRY && shape !== BIRD && shape !== FISH && shape !== WISP) {
+        if (sp.stage >= 3 && shape !== FAIRY && shape !== BIRD && shape !== FISH && shape !== WISP && shape !== THUNDERBIRD && shape !== SLIME) {
             ArtPainter.glow(c, hx, top - 18f, 22f, GOLD, 0.35f)
             ArtPainter.ringStroke(c, hx, top - 22f, 7f, GOLD, 2f, 0.9f)
         } else {

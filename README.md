@@ -63,9 +63,12 @@ your hero.
   **+3 monster storage**.
 - **Types** work like rock-paper-scissors. Each beats exactly one other:
   Electric > Water > Fire > Corrupt > Flight > Gas > Electric.
-- **50 monsters:**
+- **65 monsters:**
   - 6 four-stage lines (3 evolutions)
   - 6 hound breeds with three stages (2 evolutions)
+  - 5 more three-stage lines: **Goopling** (Gas slime), **Pebblit** (Fire rock
+    golem), **Zipwing** (Electric thunderbird), **Shellsnap** (Water shell
+    turtle) and **Impling** (Corrupt imp)
   - 2 rare mythics
   - 6 legendary bosses
 

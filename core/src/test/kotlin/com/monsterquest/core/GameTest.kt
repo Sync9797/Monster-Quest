@@ -240,12 +240,15 @@ class GameTest {
     }
 
     @Test
-    fun fiftyMonstersWithEvolutionLines() {
-        assertEquals(50, Bestiary.all.size)
-        assertEquals(50, Bestiary.all.map { it.id }.toSet().size)
+    fun sixtyFiveMonstersWithEvolutionLines() {
+        assertEquals(65, Bestiary.all.size)
+        assertEquals(65, Bestiary.all.map { it.id }.toSet().size)
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
-        assertEquals(6, lines.values.count { it.size == 3 })
+        assertEquals(11, lines.values.count { it.size == 3 })
+        // The newer lines evolve like the hounds.
+        assertEquals("sludgeon", Monster.create(Bestiary.get("goopling"), 16, rng).speciesId)
+        assertEquals("magma_colossus", Monster.create(Bestiary.get("pebblit"), 32, rng).speciesId)
         // Every type is represented, and every evolution target exists.
         assertEquals(Element.typed.toSet(), Bestiary.all.map { it.element }.toSet())
         Bestiary.all.mapNotNull { it.evolvesTo }.forEach { Bestiary.get(it) }

@@ -27,9 +27,10 @@ data class Species(
 )
 
 /**
- * All 50 monsters:
+ * All 65 monsters:
  * - 6 four-stage lines (3 evolutions), one per type: the strongest final forms.
  * - 6 three-stage hound lines (2 evolutions): one breed per type.
+ * - 5 more three-stage lines: slime, rock golem, thunderbird, shell turtle and imp.
  * - 2 rare one-stage mythics.
  * - 6 legendary bosses, one per type, found only at boss shrines.
  */
@@ -150,6 +151,33 @@ object Bestiary {
         addAll(hounds("Venom", Element.GAS, listOf("Venom Pup", "Toxic Hound", "Plague Fenrir"), listOf("Venom Bite", "Toxic Fang", "Plague Howl")))
         addAll(hounds("Shadow", Element.CORRUPT, listOf("Shadow Pup", "Dusk Hound", "Void Fenrir"), listOf("Shadow Bite", "Dusk Fang", "Void Howl")))
 
+        // ---- More three-stage lines ----
+        addAll(line("Goopling line", Element.GAS, StatBlock(46, 10, 13, 13, 8), SkillKind.MAGICAL, listOf(
+            Member("goopling", "Goopling", "Goo Toss"),
+            Member("sludgeon", "Sludgeon", "Sludge Wave"),
+            Member("slime_sovereign", "Slime Sovereign", "Royal Ooze"),
+        )))
+        addAll(line("Pebblit line", Element.FIRE, StatBlock(50, 16, 6, 17, 5), SkillKind.PHYSICAL, listOf(
+            Member("pebblit", "Pebblit", "Rock Toss"),
+            Member("boulderon", "Boulderon", "Boulder Slam"),
+            Member("magma_colossus", "Magma Colossus", "Molten Quake"),
+        )))
+        addAll(line("Zipwing line", Element.ELECTRIC, StatBlock(34, 13, 14, 8, 19), SkillKind.PHYSICAL, listOf(
+            Member("zipwing", "Zipwing", "Zap Peck"),
+            Member("stormtalon", "Stormtalon", "Static Dive"),
+            Member("thunderbird", "Thunderbird", "Thunderclap"),
+        )))
+        addAll(line("Shellsnap line", Element.WATER, StatBlock(48, 13, 10, 17, 6), SkillKind.PHYSICAL, listOf(
+            Member("shellsnap", "Shellsnap", "Shell Ram"),
+            Member("coralback", "Coralback", "Coral Crush"),
+            Member("bastion_tortoise", "Bastion Tortoise", "Bastion Surge"),
+        )))
+        addAll(line("Impling line", Element.CORRUPT, StatBlock(36, 12, 16, 9, 16), SkillKind.MAGICAL, listOf(
+            Member("impling", "Impling", "Imp Claw"),
+            Member("hexfiend", "Hexfiend", "Hex Bolt"),
+            Member("archfiend", "Archfiend", "Infernal Pact"),
+        )))
+
         // ---- Mythics: rare single-stage monsters ----
         add(single("mimic", "Mimic", Element.CORRUPT, Rarity.RARE, StatBlock(66, 24, 24, 24, 10), "Treasure Trap", SkillKind.PHYSICAL, 44, false, minWildLevel = 8))
         add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.RARE, StatBlock(54, 10, 30, 15, 27), "Prism Beam", SkillKind.MAGICAL, 44, false, minWildLevel = 8))
@@ -187,7 +215,7 @@ object Bestiary {
 
     /**
      * Silver shrine guardians: strong evolved monsters but never legendary:
-     * third stages of the four-stage lines and the final hound breeds.
+     * third stages of the four-stage lines and the final forms of the three-stage lines.
      */
     val silverGuardians: List<Species> = all.filter { !it.bossOnly && it.stage == 3 }
 
