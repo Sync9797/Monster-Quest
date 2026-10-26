@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.1
+
+- **Class dropdown:** the Hero tab shows just your class. Tap it ("Change
+  ▾") to open the other classes and switch; tap again to close. Your
+  subclass works the same way. Before you've picked, the choices still
+  show so you can choose.
+
 ## 1.15.0
 
 - **Energy carries over:** your Energy no longer refills after each

@@ -487,6 +487,13 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Intimidate  ★★☆☆☆").assertExists()
         rule.onNodeWithText("Slot 3: opens at level 60").assertExists()
         rule.onNodeWithText("Off hand", substring = true).assertExists()
+        // The class is a dropdown: the other classes only show once it's opened.
+        check(rule.onAllNodesWithText("Mage").fetchSemanticsNodes().isEmpty()) { "other classes hidden" }
+        rule.onAllNodesWithText("Change ▾")[0].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(1_000)
+        rule.waitForIdle()
+        rule.onNodeWithText("Mage").assertExists()
+        rule.onNodeWithText("Hide ▴").assertExists()
     }
 
     @Test fun shopSell() {

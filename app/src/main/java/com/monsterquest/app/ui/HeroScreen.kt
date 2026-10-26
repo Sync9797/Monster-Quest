@@ -30,6 +30,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -355,9 +357,15 @@ private fun ClassSection(vm: GameViewModel) {
         }
         return
     }
+    // Your class is a dropdown: tap it to see the other classes and switch.
+    var open by rememberSaveable { mutableStateOf(false) }
     if (h.classChosen) {
-        GameCard(border = Gold) {
-            IconText(h.heroClass.icon(), h.heroClass.label, tint = Gold, bold = true, fontSize = 17.sp)
+        GameCard(Modifier.clickable { open = !open }, border = Gold) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconText(h.heroClass.icon(), h.heroClass.label, tint = Gold, bold = true, fontSize = 17.sp)
+                Spacer(Modifier.weight(1f))
+                Text(if (open) "Hide ▴" else "Change ▾", fontSize = 13.sp, color = Gold)
+            }
             Text(classEffects(h.heroClass, h.classBonus), fontSize = 13.sp)
             if (h.heroClass != HeroClass.NONE) {
                 Text(
@@ -372,6 +380,8 @@ private fun ClassSection(vm: GameViewModel) {
     }
     // Preview what each class would do at the current level.
     val previewBonus = (3 + (h.level - CLASS_UNLOCK_LEVEL) * 1.5).coerceIn(0.0, 40.0)
+    androidx.compose.animation.AnimatedVisibility(visible = open || !h.classChosen) {
+    Column {
     HeroClass.entries.filter { !h.classChosen || it != h.heroClass }.forEach { cls ->
         GameCard(Modifier.padding(vertical = 3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -395,6 +405,8 @@ private fun ClassSection(vm: GameViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    }
+    }
     confirm?.let { cls ->
         val cost = if (!h.classChosen) 0 else CLASS_CHANGE_COST
         AlertDialog(
@@ -402,7 +414,7 @@ private fun ClassSection(vm: GameViewModel) {
             title = { Text(if (cls == HeroClass.NONE) "Stay an Adventurer?" else "Become a ${cls.label}?") },
             text = { Text(classEffects(cls, previewBonus) + if (cost > 0) "\n\nCosts $cost gold." else "") },
             confirmButton = {
-                TextButton(onClick = { vm.chooseClass(cls); confirm = null }, enabled = s.gold >= cost) { Text("Confirm") }
+                TextButton(onClick = { vm.chooseClass(cls); confirm = null; open = false }, enabled = s.gold >= cost) { Text("Confirm") }
             },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
         )
@@ -479,21 +491,36 @@ private fun SubclassSection(vm: GameViewModel) {
         return
     }
     val current = h.activeSubclass
-    if (current == null) Text("Pick a specialty! The first pick is free.", color = Gold, fontSize = 13.sp)
-    Subclass.of(h.heroClass).forEach { sub ->
-        val mine = sub == current
-        GameCard(Modifier.padding(vertical = 3.dp), border = if (mine) Gold else null) {
+    // Like the class: your subclass is a dropdown, tap it to see the others.
+    var open by rememberSaveable { mutableStateOf(false) }
+    if (current == null) {
+        Text("Pick a specialty! The first pick is free.", color = Gold, fontSize = 13.sp)
+    } else {
+        GameCard(Modifier.padding(vertical = 3.dp).clickable { open = !open }, border = Gold) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(sub.label, fontWeight = FontWeight.SemiBold, color = if (mine) Gold else MaterialTheme.colorScheme.onSurface)
-                    Text(sub.summary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (!mine) SmallButton(if (current == null) "Choose" else "Switch", { confirm = sub }, outlined = current != null)
+                Text(current.label, fontWeight = FontWeight.SemiBold, color = Gold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Text(if (open) "Hide ▴" else "Change ▾", fontSize = 13.sp, color = Gold)
             }
+            Text(current.summary, fontSize = 12.sp)
         }
     }
-    if (current != null) {
-        Text("Switching subclass costs $SUBCLASS_CHANGE_COST gold.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    androidx.compose.animation.AnimatedVisibility(visible = open || current == null) {
+        Column {
+            Subclass.of(h.heroClass).filter { it != current }.forEach { sub ->
+                GameCard(Modifier.padding(vertical = 3.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(sub.label, fontWeight = FontWeight.SemiBold)
+                            Text(sub.summary, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        SmallButton(if (current == null) "Choose" else "Switch", { confirm = sub }, outlined = current != null)
+                    }
+                }
+            }
+            if (current != null) {
+                Text("Switching subclass costs $SUBCLASS_CHANGE_COST gold.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
     confirm?.let { sub ->
         val cost = if (current == null) 0 else SUBCLASS_CHANGE_COST
@@ -501,7 +528,7 @@ private fun SubclassSection(vm: GameViewModel) {
             onDismissRequest = { confirm = null },
             title = { Text("Become a ${sub.label}?") },
             text = { Text(sub.summary + if (cost > 0) "\n\nCosts $cost gold." else "") },
-            confirmButton = { TextButton(onClick = { vm.chooseSubclass(sub); confirm = null }, enabled = s.gold >= cost) { Text("Confirm") } },
+            confirmButton = { TextButton(onClick = { vm.chooseSubclass(sub); confirm = null; open = false }, enabled = s.gold >= cost) { Text("Confirm") } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
         )
     }
