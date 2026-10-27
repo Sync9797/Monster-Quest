@@ -135,7 +135,7 @@ private fun WidgetBody(state: GameState) {
         androidx.glance.layout.Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Monster Quest",
-                style = TextStyle(color = colors.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                style = TextStyle(color = colors.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold),
                 modifier = GlanceModifier.defaultWeight(),
             )
             Text("Lv ${summary.heroLevel}", style = TextStyle(color = colors.onSurfaceVariant, fontSize = 12.sp))
@@ -149,7 +149,7 @@ private fun WidgetBody(state: GameState) {
                     when (row) {
                         is Entry.Header -> Text(
                             row.text,
-                            style = TextStyle(color = colors.secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                            style = TextStyle(color = colors.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium),
                             modifier = GlanceModifier.padding(top = 6.dp, bottom = 2.dp),
                         )
                         is Entry.Item -> LineRow(row.line)
@@ -171,13 +171,13 @@ private fun LineRow(line: HomeWidget.Line) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         line.time?.let {
-            Text(it, style = TextStyle(color = colors.primary, fontSize = 12.sp, fontWeight = FontWeight.Medium))
+            Text(it, style = TextStyle(color = colors.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium))
             Spacer(GlanceModifier.width(8.dp))
         }
         Text(
             (if (line.done) "✓ " else "") + line.title,
             style = TextStyle(
-                color = if (line.done) colors.onSurfaceVariant else colors.onSecondaryContainer,
+                color = if (line.done) colors.onSurfaceVariant else colors.onSurface,
                 fontSize = 13.sp,
             ),
             maxLines = 1,
@@ -209,23 +209,23 @@ private fun DateCard(next: HomeWidget.Line?) {
     ) {
         Text(
             next?.title ?: "All clear",
-            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 18.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = colors.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold),
             maxLines = titleLines,
         )
         Text(
             next?.time ?: "Nothing planned",
-            style = TextStyle(color = if (next?.urgent == true) colors.primary else colors.onSecondaryContainer, fontSize = 13.sp),
+            style = TextStyle(color = if (next?.urgent == true) colors.primary else colors.onSurfaceVariant, fontSize = 13.sp),
             maxLines = 1,
         )
         Spacer(GlanceModifier.defaultWeight())
         Text(
             today.dayOfMonth.toString(),
-            style = TextStyle(color = colors.onSecondaryContainer, fontSize = dateSp.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = colors.onSurface, fontSize = dateSp.sp, fontWeight = FontWeight.Bold),
         )
         Text(
             "${today.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)}, " +
                 today.month.getDisplayName(java.time.format.TextStyle.SHORT, locale),
-            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = colors.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold),
             maxLines = 1,
         )
     }

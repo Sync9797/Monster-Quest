@@ -246,6 +246,22 @@ abstract class ScreenshotBase(private val device: String) {
         shot("07_battle") { AppRoot(v) }
     }
 
+    /** A foe you've already caught has a small orb next to its name. */
+    @Test fun battleCaughtMark() {
+        val v = vm(sampleState().copy(caught = Bestiary.all.map { it.id }.toSet()))
+        v.hunt()
+        shot("07b_battle_caught") { AppRoot(v) }
+        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Already caught")).fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test fun battleNotCaughtMark() {
+        val v = vm(sampleState().copy(caught = emptySet()))
+        v.hunt()
+        rule.setContent { MonsterQuestTheme(com.monsterquest.core.ThemeMode.DARK) { AppRoot(v) } }
+        rule.waitForIdle()
+        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Already caught")).fetchSemanticsNodes().isEmpty())
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

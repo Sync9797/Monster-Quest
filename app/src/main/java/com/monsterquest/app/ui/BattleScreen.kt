@@ -58,6 +58,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
@@ -269,13 +271,17 @@ private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
                         fontSize = 12.sp,
                     )
                 }
-                Text(
-                    "${e.name}  Lv ${e.level}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${e.name}  Lv ${e.level}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (b.alreadyCaught(e)) CaughtMark(Modifier.padding(start = 6.dp).size(18.dp))
+                }
                 IconText(e.element.icon(), "${e.element.label} type", tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
                 if (b.encounter == EncounterType.WILD) {
                     val reward = "%.2g".format(com.monsterquest.core.TeamScaling.reward(b.teamSize))
@@ -322,7 +328,10 @@ private fun PackPanel(b: BattleView, onTarget: (String) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     FighterArt(f, Modifier.size(56.dp).fighterFx(f.key))
-                    Text(f.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (targeted) FontWeight.Bold else FontWeight.Normal)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(f.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (targeted) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f, fill = false))
+                        if (b.alreadyCaught(f)) CaughtMark(Modifier.padding(start = 3.dp).size(11.dp))
+                    }
                     IconText(f.element.icon(), "Lv ${f.level}", tint = f.element.color(), fontSize = 10.sp, size = 11.dp)
                     Bar(f.hpFraction, hpColor(f.hpFraction), Modifier.fillMaxWidth(), heightDp = 6)
                     Text(if (f.alive) "${f.hp}/${f.maxHp}" else "Defeated", fontSize = 10.sp, color = if (f.alive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -576,6 +585,12 @@ private fun FighterArt(f: FighterView, modifier: Modifier) {
         cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
         sp != null -> MonsterArt(sp, modifier, dim = !f.alive, shiny = f.shiny)
     }
+}
+
+/** A small taming orb next to a foe's name: you've already caught one of these. */
+@Composable
+private fun CaughtMark(modifier: Modifier) {
+    GIcon(GameIcon.ORB, modifier.semantics { contentDescription = "Already caught" }, Gold)
 }
 
 /** A move button: type-colored, with power and a hint when it's super effective. */

@@ -47,7 +47,12 @@ data class BattleView(
     val levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
     /** Monsters in the swap slots, ready to be sent in. */
     val swaps: List<FighterView> = emptyList(),
+    /** Species you've already caught: marked next to the foe's name. */
+    val caught: Set<String> = emptySet(),
 ) {
+    /** True if you've already caught a monster of [f]'s species. */
+    fun alreadyCaught(f: FighterView): Boolean = f.speciesId != null && f.speciesId in caught
+
     fun fighter(key: String): FighterView? = enemies.find { it.key == key } ?: allies.find { it.key == key }
 
     val isPack: Boolean get() = enemies.size > 1

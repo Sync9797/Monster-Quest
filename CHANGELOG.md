@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.35.0
+
+- **Caught mark in battle:** a small gold taming orb next to a foe's name
+  means you've already caught that monster. It shows in the big name
+  header and on each member of a pack.
+- **Calmer widget colors:** the widget's text now uses Material 3's
+  neutral colors (on-surface and on-surface-variant) instead of the tinted
+  primary and secondary colors. Only an item that's due now keeps a touch
+  of accent color. The frosted glass is unchanged.
+
 ## 1.34.3
 
 - **Smoother schedule:** the to-do and events list (the right side when the

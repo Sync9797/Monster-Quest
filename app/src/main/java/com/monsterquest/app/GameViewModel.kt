@@ -873,13 +873,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun replaceFainted(inUid: String, outKey: String) {
         val b = activeBattle ?: return
         if (!b.replaceFainted(inUid, outKey)) return
-        battle = battle?.let { BattleView.of(b, it.resultText, it.nextOpponent) }
+        battle = battle?.let { battleView(b, it.resultText, it.nextOpponent) }
     }
 
     fun selectTarget(key: String) {
         val b = activeBattle ?: return
         b.selectTarget(key)
-        battle = battle?.let { BattleView.of(b, it.resultText, it.nextOpponent) }
+        battle = battle?.let { battleView(b, it.resultText, it.nextOpponent) }
     }
 
     fun hunt() {
@@ -965,7 +965,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         set(s)
         val b = GameEngine.newBattle(state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug)
         activeBattle = b
-        battle = BattleView.of(b, null)
+        battle = battleView(b, null)
     }
 
     fun battleAction(action: BattleAction) {
@@ -996,11 +996,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
-        battle = BattleView.of(
+        battle = battleView(
             b, resultText ?: battle?.resultText, nextOpponent ?: battle?.nextOpponent,
             levelUps ?: battle?.levelUps.orEmpty(),
         )
     }
+
+    /** The battle as the screen shows it, with the species you've caught marked. */
+    private fun battleView(
+        b: com.monsterquest.core.Battle,
+        resultText: String?,
+        nextOpponent: String? = null,
+        levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
+    ) = BattleView.of(b, resultText, nextOpponent, levelUps).copy(caught = state.caught)
 
     fun closeBattle() {
         lastBattleEndMs = System.currentTimeMillis()
