@@ -395,6 +395,8 @@ abstract class ScreenshotBase(private val device: String) {
         click(rule.onNodeWithText("Release…"))
         rule.onNodeWithText("Tap monsters to release").assertExists()
         // The collection grid is lazy: scroll each tile into view, then tap it.
+        // Scrolling waits for frames, so let the clock run from here on.
+        rule.mainClock.autoAdvance = true
         val grid = rule.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
         bench.take(2).forEach { m ->
             val tile = androidx.compose.ui.test.hasText(m.displayName, substring = true) and androidx.compose.ui.test.hasClickAction()
