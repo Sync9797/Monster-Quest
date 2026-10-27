@@ -787,6 +787,7 @@ abstract class ScreenshotBase(private val device: String) {
                     hpRestored = 415, tasks = 6,
                 ),
             ),
+            stepHistory = mapOf(today.toEpochDay() - 1 to 9_874),
         )
         val wake = today.atTime(7, 10).atZone(zone)
         base = com.monsterquest.core.SleepLog.record(
@@ -798,6 +799,7 @@ abstract class ScreenshotBase(private val device: String) {
         v.openRecap()
         shot("42_morning_recap") { AppRoot(v, Tab.QUESTS) }
         rule.onNodeWithText("Monster XP").assertExists()
+        rule.onNodeWithText("9,874").assertExists()
         rule.onNodeWithText("+1,240 (3 levels)").assertExists()
         rule.onNodeWithText("380 gold, 5 items, 1 gear").assertExists()
         rule.onNodeWithText("7h 25m").assertExists()

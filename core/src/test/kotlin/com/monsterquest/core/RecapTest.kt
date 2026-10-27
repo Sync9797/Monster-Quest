@@ -55,6 +55,10 @@ class RecapTest {
         assertFalse(Recap.due(shown, at(9, d = day.plusDays(1)), zone))
         // Nothing happened yesterday and no sleep: no recap.
         assertFalse(Recap.due(started(), at(8), zone))
+        // Yesterday's steps are in the recap (and enough on their own to show it).
+        val walker = started().copy(stepHistory = mapOf(day.toEpochDay() - 1 to 8_421))
+        assertEquals(8_421, Recap.yesterdaySteps(walker, at(8), zone))
+        assertTrue(Recap.due(walker, at(8), zone))
     }
 
     @Test

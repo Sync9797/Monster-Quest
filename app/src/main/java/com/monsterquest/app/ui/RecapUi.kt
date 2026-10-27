@@ -46,6 +46,7 @@ fun MorningRecap(vm: GameViewModel) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Yesterday", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+                RecapRow(GameIcon.WALK, Mint, "Steps", "%,d".format(Recap.yesterdaySteps(s, now)))
                 RecapRow(GameIcon.HERO, XpPurple, "Levels grown", if (y.heroLevels > 0) "+${y.heroLevels}" else "None")
                 RecapRow(
                     GameIcon.MONSTERS, Mint, "Monster XP",

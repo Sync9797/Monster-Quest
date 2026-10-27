@@ -89,13 +89,17 @@ object Recap {
     fun yesterday(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): DayTally =
         state.tallies[day(nowMs, zone).toEpochDay() - 1] ?: DayTally()
 
+    /** Steps walked yesterday (from the step history the calendar uses). */
+    fun yesterdaySteps(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Int =
+        state.stepHistory[day(nowMs, zone).toEpochDay() - 1] ?: 0
+
     /** True on the first open of a new day, from [MORNING_HOUR], when there's something to show. */
     fun due(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean {
         val t = Instant.ofEpochMilli(nowMs).atZone(zone)
         if (t.hour < MORNING_HOUR || !state.starterChosen) return false
         val today = t.toLocalDate().toEpochDay()
         if (state.recapShownDay == today) return false
-        return !yesterday(state, nowMs, zone).isEmpty || state.sleep[today] != null
+        return !yesterday(state, nowMs, zone).isEmpty || state.sleep[today] != null || yesterdaySteps(state, nowMs, zone) > 0
     }
 
     fun markShown(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): GameState =

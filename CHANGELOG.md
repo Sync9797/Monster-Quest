@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.34.2
+
+- **Morning recap: steps.** The recap now starts with yesterday's total
+  steps. A day of walking alone is enough for the recap to show.
+
 ## 1.34.1
 
 - **Widget sizes fixed:** the date card now only shows when the widget is
