@@ -1,5 +1,6 @@
 package com.monsterquest.app
 
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
@@ -409,7 +410,7 @@ abstract class ScreenshotBase(private val device: String) {
         rule.waitForIdle()
         click(rule.onNodeWithText("Release 2"))
         rule.onNodeWithText("Release 2 monsters?").assertExists()
-        click(rule.onNodeWithText("Release"))
+        click(rule.onAllNodes(androidx.compose.ui.test.hasText("Release") and androidx.compose.ui.test.hasClickAction()).onLast())
         check(v.state.monsters.size == before - 2) { "released 2: ${v.state.monsters.size} of $before" }
         check(bench.take(2).none { m -> v.state.monsters.any { it.uid == m.uid } }) { "the picked ones went" }
     }

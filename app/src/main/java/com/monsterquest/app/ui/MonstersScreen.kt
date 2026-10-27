@@ -527,7 +527,7 @@ private fun MonsterTile(
         val hpMax = m.stats.hp
         Bar(m.currentHp.toFloat() / hpMax, hpColor(m.currentHp.toFloat() / hpMax), Modifier.fillMaxWidth(), heightDp = 4)
         val badge = when {
-            picked -> "Release" to HpRed
+            picked -> "Selected" to HpRed
             m.fainted -> "Fainted" to HpRed
             away -> "Away" to MpBlue
             m.cureReady -> "Cured!" to Gold
