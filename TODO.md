@@ -2,10 +2,32 @@
 
 Ideas we've agreed to do later. Newest first.
 
+- [ ] **Health section:** a new Health screen for steps, sleep and water.
+      Open it from the top-left corner of the header, which shows "LV 12"
+      today: a heart icon with today's steps, for example. The hero's
+      level moves next to the portrait in the welcome header and stays on
+      the Hero tab, so nothing is lost. The screen shows details for:
+      - **Steps:** today, this week and a 30-day chart, plus the step
+        source (phone, Health Connect or GPS).
+      - **Sleep:** see below.
+      - **Water:** see below.
+- [ ] **Sleep tracker:** syncs the same ways as the step tracker (Health
+      Connect, which covers Samsung Health, Google Fit, Fitbit and others;
+      manual entry when there's no source). Shows time asleep for last
+      night and recent nights, and the sleep stages (awake, light, deep,
+      REM) when a wearable recorded them, as a timeline bar.
+      - **Gameplay:** a night's sleep wakes fainted monsters and heals the
+        hero and the team. A full night (about 7 hours or more) is a full
+        recovery; shorter nights heal in proportion.
+      - **Limits:** only once per night, and only for a sleep session that
+        ends on or after the day it's claimed, so it can't be farmed.
+      - Needs the Health Connect sleep permission.
+- [ ] **Water tracker:** log water with quick + buttons (a glass or a
+      bottle, in oz or ml to match the units setting). Shows today's total
+      against a daily goal you set, with a short history. No game rewards.
 - [ ] **Move store:** a store section for buying moves. A move costs candy of
       a monster whose type matches the move, plus gold, both depending on
       the move's quality.
-
 - [ ] **Theme preview in Settings:** show a small preview of the Quests screen
       (or a card and a button) for each theme and color option before picking it.
 - [ ] **More Flight and Earth monsters:** Flight has 8 monsters (3 lines) and
