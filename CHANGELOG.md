@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.29.0
+
+- **56 new attacks: 8 more for every type**, learned at levels 6, 14, 21,
+  29, 36, 44, 52 and 60. Each type now fights its own way:
+  - **Fire, raw damage:** the hardest hitters, often with a cost: Cinder
+    Jab, Flare Rush, Searing Blade, Magma Fist, Flare Blitz (120, always
+    recoil), Meteor Flame, Sunfire, Supernova (150 to every foe, then rest).
+  - **Electric, status:** shocks, and new *status bonus* moves that hit
+    harder when the foe already has a status: Static Jolt, Galvanize (double
+    power), Charge Net, Ion Storm, Volt Snare, Plasma Lance, Thunderclap,
+    Judgment Bolt.
+  - **Water, balanced and fast:** new *Swift* moves let the user go first
+    next round: Ripple Dart, Rapid Current, Surf, Riptide, Undertow, Torrent
+    Rush, Tidal Wave, Tsunami.
+  - **Flight, balanced with self boosts:** Wing Flick, Sky Uppercut,
+    Updraft, Air Slash, Soaring Strike, Ascent, Hurricane, Talon Storm.
+  - **Gas, status:** poison, sleep and status bonuses: Noxious Spit,
+    Venoshock, Drowsy Mist, Toxic Cloud, Sludge Bomb, Plague Fang, Caustic
+    Burst, Pandemic.
+  - **Corrupt, dirty fighting:** attacks that drop the foe's stats: Low
+    Blow, Spiteful Jab, Eye Gouge, Backstab, Rend, Dread Howl, Hollowing
+    Strike, Doomfall.
+  - **Earth, built on Defense:** some damage, plenty of Defense, and new
+    *Defense strike* moves that hit with the user's Defense instead of its
+    Attack: Stone Knuckle, Bedrock Press, Mud Slap, Shield Bash, Rockslide,
+    Iron Root, Mountain Crush, Titan Slam.
+- Monsters already past those levels know the new moves right away.
+  Automatic loadouts pick them up; custom loadouts can swap them in on the
+  Monsters tab.
+
 ## 1.28.0
 
 - **Hold a move to see what it does:** in battle, press and hold any move

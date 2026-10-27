@@ -206,6 +206,8 @@ class Combatant(
     var powerUp: Int = 0
     /** Scared or Intimidated: Attack drops to [SCARED_ATTACK] (66.7%) for the battle. Doesn't stack. */
     var scared: Boolean = false
+    /** Swift (Water moves): moves first next round. */
+    var swift: Boolean = false
 
     val alive: Boolean get() = hp > 0
     val hpFraction: Double get() = hp.toDouble() / maxHp
@@ -221,6 +223,7 @@ class Combatant(
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
         if (powerUp > 0) add("Power +$powerUp%")
         if (scared) add("Scared (Atk 67%)")
+        if (swift) add("Moves first")
         if (immuneEarth) add("Hovering")
         if (grounded) add("Grounded")
         traits.forEach { (t, r) -> add("${t.label} ${"★".repeat(r)}") }
@@ -742,6 +745,7 @@ class Battle(
         val alive = { k: String -> combatant(k)?.alive == true }
         val now = listOfNotNull(current?.key) + queue.filter(alive)
         val everyone = (allies + enemies).filter { it.alive }.sortedByDescending { it.effectiveSpeed }
+            .sortedByDescending { it.swift }
         val nextReversed = reversedRounds > 1
         val next = (if (nextReversed) everyone.reversed() else everyone).map { it.key } +
             (if (isBoss && enemies.first().alive) listOf(Combatant.ENEMY_KEY) else emptyList())
@@ -767,6 +771,12 @@ class Battle(
             val first = if (Trait.FIRST_STRIKE.teamRange(strike, hero = true)) order.filter { !Combatant.isEnemy(it.key) }
             else order.filter { it.key == Combatant.HERO_KEY }
             order = first + (order - first.toSet())
+        }
+        // Swift: whoever used a Swift move last round goes first now.
+        val swifts = order.filter { it.swift }
+        if (swifts.isNotEmpty()) {
+            order = swifts + (order - swifts.toSet())
+            swifts.forEach { it.swift = false }
         }
         queue.addAll(order.map { it.key })
         // Bosses act twice per round.
@@ -1178,11 +1188,15 @@ class Battle(
         val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
         // Smack Down hits a hovering foe harder and knocks it to the ground.
         val airborne = smack != null && t.immuneEarth
-        val power = ((if (airborne) smack!!.groundedPower else move.power) * mult).roundToInt()
+        // Status Bonus: hits harder when the foe is already asleep, shocked, poisoned...
+        val bonus = move.effects.filterIsInstance<MoveEffect.StatusBonus>().firstOrNull()
+            ?.takeIf { t.status != null }?.multiplier ?: 1.0
+        val power = ((if (airborne) smack!!.groundedPower else move.power) * mult * bonus).roundToInt()
+        val useDefense = MoveEffect.DefenseStrike in move.effects
         var count = 0
         var dealt = 0
         while (count < hits && t.alive) {
-            dealt += strike(a, t, power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit, pierce = pierce)
+            dealt += strike(a, t, power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit, pierce = pierce, useDefense = useDefense)
             count++
         }
         if (multi != null) log += "Hit $count time${if (count == 1) "" else "s"}!"
@@ -1291,7 +1305,11 @@ class Battle(
                     log += "The whole team's ${fx.stats.joinToString(" and ") { it.label }} rose!"
                 }
                 is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit, MoveEffect.HitsAllFoes, MoveEffect.Pierce, is MoveEffect.LifeDrain,
-                is MoveEffect.SmackDown -> {}
+                is MoveEffect.SmackDown, is MoveEffect.StatusBonus, MoveEffect.DefenseStrike -> {}
+                MoveEffect.Swift -> if (a.alive) {
+                    a.swift = true
+                    log += "${a.name} will move first next round!"
+                }
                 MoveEffect.Recharge -> a.mustRecharge = true
                 is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
                     heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
@@ -1359,8 +1377,14 @@ class Battle(
         extraCrit: Double = 0.0,
         /** Ignores the target's raised Defense and its brace. */
         pierce: Boolean = false,
+        /** Defense Strike: the user's Defense does the hitting. */
+        useDefense: Boolean = false,
     ): Int {
-        val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK) * (if (a.scared) SCARED_ATTACK else 1.0))
+        val atk = when {
+            useMagic -> a.magic.toDouble()
+            useDefense -> a.defense * a.stageMultiplier(BattleStat.DEFENSE)
+            else -> a.attack * a.stageMultiplier(BattleStat.ATTACK) * (if (a.scared) SCARED_ATTACK else 1.0)
+        }
         val defStage = d.stageMultiplier(BattleStat.DEFENSE).let { if (pierce) minOf(it, 1.0) else it }
         val def = d.defense * defStage
         val typeMult = type.multiplierAgainst(d.element)

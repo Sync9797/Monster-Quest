@@ -248,4 +248,52 @@ class ClassesTest {
         assertTrue(way.heroXp > base.heroXp)
         assertFalse(base.heroXp == 0)
     }
+
+    @Test
+    fun everyTypeHasEightNewAttacksWithItsOwnStrength() {
+        val new = mapOf(
+            Element.FIRE to listOf("cinder_jab", "flare_rush", "searing_blade", "magma_fist", "flare_blitz", "meteor_flame", "sunfire", "supernova"),
+            Element.ELECTRIC to listOf("static_jolt", "galvanize", "charge_net", "ion_storm", "volt_snare", "plasma_lance", "thunderclap", "judgment_bolt"),
+            Element.WATER to listOf("ripple_dart", "rapid_current", "surf", "riptide", "undertow", "torrent_rush", "tidal_wave", "tsunami"),
+            Element.FLIGHT to listOf("wing_flick", "sky_uppercut", "updraft", "air_slash", "soaring_strike", "ascent", "hurricane", "talon_storm"),
+            Element.GAS to listOf("noxious_spit", "venoshock", "drowsy_mist", "toxic_cloud", "sludge_bomb", "plague_fang", "caustic_burst", "pandemic"),
+            Element.CORRUPT to listOf("low_blow", "spiteful_jab", "eye_gouge", "backstab", "rend", "dread_howl", "hollowing_strike", "doomfall"),
+            Element.EARTH to listOf("stone_knuckle", "bedrock_press", "mud_slap", "shield_bash", "rockslide", "iron_root", "mountain_crush", "titan_slam"),
+        ).mapValues { (t, ids) -> ids.map { Moves.get(it) }.onEach { m -> assertEquals(t, m.type); assertTrue(m.isDamaging) } }
+        // Each type learns all eight.
+        new.forEach { (t, moves) -> assertTrue(Moves.learnsets.getValue(t).map { it.second }.containsAll(moves.map { it.id })) }
+        fun avg(t: Element) = new.getValue(t).map { it.expectedPower }.average()
+        // Fire hits hardest; status types trade damage for effects.
+        assertTrue(Element.entries.filter { it in new && it != Element.FIRE }.all { avg(Element.FIRE) > avg(it) })
+        assertTrue(avg(Element.ELECTRIC) < avg(Element.WATER) && avg(Element.GAS) < avg(Element.FLIGHT))
+        fun share(t: Element, test: (Move) -> Boolean) = new.getValue(t).count(test)
+        assertTrue(share(Element.ELECTRIC) { m -> m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.StatusBonus } } >= 6)
+        assertTrue(share(Element.GAS) { m -> m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.StatusBonus } } >= 6)
+        assertTrue(share(Element.CORRUPT) { m -> m.effects.any { it is MoveEffect.LowerFoe || it is MoveEffect.FoeAccuracyDown } } >= 6)
+        assertTrue(share(Element.FLIGHT) { m -> m.effects.any { it is MoveEffect.RaiseSelf || it is MoveEffect.PowerUp } } >= 5)
+        assertTrue(share(Element.EARTH) { m -> m.effects.any { it == MoveEffect.DefenseStrike || (it is MoveEffect.RaiseSelf && BattleStat.DEFENSE in it.stats) } } >= 5)
+        assertTrue(share(Element.WATER) { m -> m.effects.any { it == MoveEffect.Swift || it == MoveEffect.SureHit || (it is MoveEffect.RaiseSelf && BattleStat.SPEED in it.stats) } } >= 4)
+    }
+
+    @Test
+    fun swiftMovesFirstAndStatusBonusAndDefenseStrikeWork() {
+        val me = Monster.create(Bestiary.get("bubblefin"), 30, rng).copy(moves = listOf("ripple_dart"))
+        val foe = Monster.create(Bestiary.get("goopling"), 30, rng)
+        val s = started().copy(monsters = listOf(me), party = listOf(me.uid))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3))
+        var guard = 0
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 40 && b.log.none { "move first next round" in it }) {
+            b.allies.forEach { it.hp = it.maxHp }
+            b.enemies.forEach { it.hp = it.maxHp }
+            val cur = b.current ?: break
+            b.act(if (cur.isHero) BattleAction.Defend else BattleAction.UseMove("ripple_dart"))
+        }
+        assertTrue(b.log.any { "move first next round" in it })
+        val swifter = (b.allies + b.enemies).first { it.swift }
+        assertEquals(swifter.key, b.turnOrder().first { it != b.current?.key && b.combatant(it)?.swift == true })
+        assertTrue(swifter.tags().contains("Moves first"))
+        // Galvanize: double power on a statused foe; Bedrock Press: Defense does the hitting.
+        assertEquals(2.0, Moves.get("galvanize").effects.filterIsInstance<MoveEffect.StatusBonus>().single().multiplier)
+        assertTrue(MoveEffect.DefenseStrike in Moves.get("bedrock_press").effects)
+    }
 }
