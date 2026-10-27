@@ -167,6 +167,9 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun quests() {
         val v = vm()
         shot("02_quests") { AppRoot(v, Tab.QUESTS) }
+        // Headers: a welcome on the left (or top), the to-do and events title over the list.
+        rule.onNodeWithText("Welcome back, Aaronimus").assertExists()
+        rule.onNodeWithText("To-do & events").assertExists()
         // Buttons: + Task, Calendar and Sync (no more + To-do).
         rule.onNodeWithText("+ Task").assertExists()
         rule.onNodeWithText("Sync").assertExists()

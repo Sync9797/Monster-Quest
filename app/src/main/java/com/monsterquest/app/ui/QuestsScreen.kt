@@ -179,7 +179,7 @@ fun QuestsScreen(vm: GameViewModel) {
             DashboardCard(vm, selectedDay = selectedDay) { day ->
                 selectedDay = if (selectedDay == day) null else day
                 // On a phone the list is below the calendar: bring the day's quests into view.
-                if (!twoPane && selectedDay != null) scope.launch { listState.animateScrollToItem(1) }
+                if (!twoPane && selectedDay != null) scope.launch { listState.animateScrollToItem(2) }
             }
             Spacer(Modifier.height(10.dp))
             FocusCard(vm)
@@ -258,15 +258,24 @@ fun QuestsScreen(vm: GameViewModel) {
         firstWeight = 0.46f,
         compact = {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                item(key = "welcome") { WelcomeHeader(vm, now) }
                 item(key = "overview") { overview() }
+                item(key = "agenda") { AgendaHeader(vm, now) { addTask = true } }
                 taskList()
             }
         },
+        // Big screens: a welcome header over the left pane, the to-do and events header over the right.
         first = {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 8.dp)) { overview() }
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 8.dp)) {
+                WelcomeHeader(vm, now)
+                overview()
+            }
         },
         second = {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp)) { taskList() }
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp)) {
+                item(key = "agenda") { AgendaHeader(vm, now) { addTask = true } }
+                taskList()
+            }
         },
     )
 

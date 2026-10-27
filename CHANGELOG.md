@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.24.0
+
+- **Home page headers:** a welcome header ("Good morning" and "Welcome
+  back, [hero]", with your hero's portrait in a glowing ring) and a
+  "To-do & events" header with today's counts (events, to-dos and
+  reminders left) and a quick + button. On big screens and unfolded phones
+  they sit over the left and right panes; on phones the welcome is at the
+  top and the to-do header sits above the list.
+
 ## 1.23.0
 
 - **Evolving is your choice:** monsters no longer evolve on their own when
