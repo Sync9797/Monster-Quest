@@ -365,10 +365,10 @@ private fun SpoilsDialog(vm: GameViewModel) {
 private fun RowScope.HeroMenuButton(current: Tab?, open: Boolean, onToggle: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
     val lift by animateFloatAsState(if (open) 1.08f else 1f, label = "heroLift")
+    // Sized like its neighbours (the bar only sets a minimum height, so filling it would take the screen).
     Column(
-        Modifier.weight(1f).fillMaxHeight(),
+        Modifier.weight(1f).align(Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         Box(
             Modifier
