@@ -368,9 +368,12 @@ abstract class ScreenshotBase(private val device: String) {
 
     /** Batch release: pick monsters from the collection, confirm, and they're gone (with candy). */
     @Test fun batchRelease() {
-        val v = vm()
-        val bench = v.state.monsters.filter { it.uid !in v.state.team && it.uid !in com.monsterquest.core.Adventures.awayUids(v.state) }
-        check(bench.size >= 2) { "sample has bench monsters" }
+        val base = sampleState()
+        val extra = listOf("Pebbles", "Sparky", "Bramble").mapIndexed { i, n ->
+            Monster.create(Bestiary.get("zapmouse"), 5 + i, Random(90 + i)).copy(nickname = n)
+        }
+        val v = vm(base.copy(monsters = base.monsters + extra))
+        val bench = extra
         val before = v.state.monsters.size
         shot("48_batch_release") { AppRoot(v, Tab.MONSTERS) }
         val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
