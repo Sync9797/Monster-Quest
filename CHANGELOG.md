@@ -20,7 +20,7 @@
   - Earth: Rollpip > Pangolurk > Ironscale (pangolins); Stubhorn > Rockrhino.
   - Each line has its own level-30 skill, and they all appear in the wild.
 - **Journal numbering:** regular monsters first, then the two mythics, then
-  the seven legendaries at the very end (now #111 to #119).
+  the seven legendaries at the very end (#111 to #119 together).
 
 ## 1.32.0
 
