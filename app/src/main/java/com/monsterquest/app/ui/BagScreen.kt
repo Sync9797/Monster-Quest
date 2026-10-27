@@ -46,6 +46,7 @@ import com.monsterquest.core.Hero
 import com.monsterquest.core.PROFICIENCY_BATTLES
 import com.monsterquest.core.SMELT_COST
 import com.monsterquest.core.Trait
+import com.monsterquest.core.PARTS_TO_FORGE
 import com.monsterquest.core.smeltParts
 
 @Composable
@@ -165,8 +166,19 @@ fun BagScreen(vm: GameViewModel) {
             Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 GIcon(type.icon(), Modifier.size(20.dp), SilverColor)
                 Spacer(Modifier.width(8.dp))
-                Text("${type.label} parts $n/${GameEngine.PARTS_TO_FORGE}", modifier = Modifier.weight(1f))
-                SmallButton("Forge", { vm.forge(type) }, enabled = n >= GameEngine.PARTS_TO_FORGE && !s.bagFull, outlined = true)
+                Text("${type.label} parts $n/${PARTS_TO_FORGE}", modifier = Modifier.weight(1f))
+                SmallButton("Forge", { vm.forge(type) }, enabled = n >= PARTS_TO_FORGE && !s.bagFull, outlined = true)
+            }
+        }
+        // Armor scrap: from thugs, villains and smelting armor.
+        SectionTitle("Armor scrap")
+        com.monsterquest.core.ArmorType.entries.forEach { type ->
+            val n = s.armorParts[type] ?: 0
+            Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                GIcon(type.icon(), Modifier.size(20.dp), SilverColor)
+                Spacer(Modifier.width(8.dp))
+                Text("${type.label} scrap $n/${PARTS_TO_FORGE}", modifier = Modifier.weight(1f))
+                SmallButton("Forge", { vm.forgeArmor(type) }, enabled = n >= PARTS_TO_FORGE && !s.bagFull, outlined = true)
             }
         }
         val pages = s.spellPages.filterValues { it > 0 }
@@ -245,8 +257,8 @@ private fun SellSection(vm: GameViewModel) {
     val s = vm.state
     SectionTitle("Sell")
     Text(
-        "The shop pays half price for items; rarer and higher-level gear pays more. Smelt a weapon for $SMELT_COST gold " +
-            "to get parts of its type (1 to 4 by rarity). Take gear off to sell it.",
+        "The shop pays half price for items; rarer and higher-level gear pays more. Smelt a weapon or armor for $SMELT_COST gold " +
+            "to get parts or scrap of its type (1 to 4 by rarity). Take gear off to sell it.",
         fontSize = 12.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -268,6 +280,8 @@ private fun SellSection(vm: GameViewModel) {
     }
     s.armor.sortedWith(compareByDescending<Armor> { it.rarity }.thenByDescending { it.level }).forEach { a ->
         SellRow(a.type.icon(), a.rarity.color(), "${a.rarity.label} ${a.name}", "Lv ${a.level} ${a.type.label}") {
+            SmallButton("Smelt +${a.rarity.smeltParts}", { vm.smeltArmor(a.id) }, enabled = s.gold >= SMELT_COST, outlined = true)
+            Spacer(Modifier.width(6.dp))
             SmallButton("Sell ${a.sellPrice}", { vm.sellArmor(a.id) }, outlined = true)
         }
     }
@@ -299,6 +313,13 @@ private fun GearCard(w: Gear, hero: Hero, equipped: Boolean, where: String = "eq
                 Text("Lv ${w.level} ${w.type.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 weaponClassNote(w, hero)?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
                 Text(w.summary(cls), fontSize = 12.sp)
+                w.curse?.let { c ->
+                    Text(
+                        if (w.cursed) "Cursed (${w.cursePct}% left) • ${c.label}: ${c.weaponText}" else "${c.label}: ${c.weaponText}",
+                        fontSize = 11.sp,
+                        color = if (w.cursed) XpPurple else HpGreen,
+                    )
+                }
                 w.effects.forEach { fx ->
                     Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)
                 }
@@ -324,6 +345,13 @@ private fun ArmorCard(a: Armor, cls: HeroClass, equipped: Boolean, actions: @Com
                     color = if (a.matches(cls)) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(a.summary(cls), fontSize = 12.sp)
+                a.curse?.let { c ->
+                    Text(
+                        if (a.cursed) "Cursed (${a.cursePct}% left) • ${c.label}: ${c.armorText}" else "${c.label}: ${c.armorText}",
+                        fontSize = 11.sp,
+                        color = if (a.cursed) XpPurple else HpGreen,
+                    )
+                }
                 a.effects.forEach { fx ->
                     Text("${fx.label}: ${fx.description}", fontSize = 11.sp, color = XpPurple)
                 }

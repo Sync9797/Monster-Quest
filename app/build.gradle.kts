@@ -12,8 +12,8 @@ android {
         applicationId = "com.monsterquest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 54
-        versionName = "1.20.0"
+        versionCode = 55
+        versionName = "1.21.0"
     }
 
     signingConfigs {
@@ -63,6 +63,9 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     // Boot splash on every Android version (the Android 12+ splash API, back-ported).
     implementation("androidx.core:core-splashscreen:1.0.1")
+    // Home-screen widget (Compose-style, Material 3 colors).
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

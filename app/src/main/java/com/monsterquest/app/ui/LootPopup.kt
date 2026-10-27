@@ -55,6 +55,11 @@ private fun look(r: Reward): RewardLook = when (r) {
         RewardLook(GameIcon.PAGE, (spell?.name ?: "Spell") + if (r.learned) " learned!" else " page", spell?.spellColor() ?: XpPurple)
     }
     is Reward.Parts -> RewardLook(r.type.icon(), "${r.type.label} part" + if (r.count > 1) " x${r.count}" else "", SilverColor)
+    is Reward.ArmorParts -> RewardLook(r.type.icon(), "${r.type.label} scrap" + if (r.count > 1) " x${r.count}" else "", SilverColor)
+    is Reward.SpellBook -> {
+        val spell = Spells.byId(r.spellId)
+        RewardLook(GameIcon.PAGE, "Spell book: ${spell?.name ?: "Spell"}" + if (r.rank > 1) " rank ${r.rank}" else " learned!", Gold)
+    }
 }
 
 /**

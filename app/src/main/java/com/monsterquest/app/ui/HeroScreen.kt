@@ -185,6 +185,7 @@ fun HeroScreen(vm: GameViewModel) {
         }
 
         SectionTitle("Equipment")
+        // Each slot is a dropdown: tap for full stats and to swap in something from the bag.
         val w = s.equippedGear
         EquipSlot(
             label = "Weapon",
@@ -193,8 +194,12 @@ fun HeroScreen(vm: GameViewModel) {
             title = w?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Bare-handed",
             detail = w?.let { it.summary(h.heroClass) } ?: "Find weapons at shrines and villain camps, or forge them from parts.",
             classNote = w?.let { weaponClassNote(it, h) },
-            effects = w?.effects.orEmpty().joinToString(" • ") { it.label },
+            effects = w?.effects.orEmpty().map { it.label to it.description },
+            curse = w?.curse?.let { CurseInfo(it.label, it.weaponText, w.cursePct, weapon = true) },
             onRemove = if (w != null) vm::unequip else null,
+            options = s.gear.sortedWith(compareByDescending<Gear> { it.rarity }.thenByDescending { it.level }).map { g ->
+                SwapOption(g.type.icon(), g.rarity.color(), "${g.rarity.label} ${g.name} (Lv ${g.level})", g.summary(h.heroClass)) { vm.equip(g.id) }
+            },
         )
         val klepto = h.rankOf(Trait.KLEPTOMANIAC)
         if (klepto > 0) {
@@ -204,41 +209,45 @@ fun HeroScreen(vm: GameViewModel) {
                 icon = o?.type?.icon() ?: GameIcon.FIST,
                 tint = o?.rarity?.color(),
                 title = o?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Empty",
-                detail = o?.let { it.summary(h.heroClass) } ?: "Kleptomaniac: carry a second weapon. Pick one in the Bag.",
+                detail = o?.let { it.summary(h.heroClass) } ?: "Kleptomaniac: carry a second weapon.",
                 classNote = o?.let { weaponClassNote(it, h) },
-                effects = if (klepto >= 3) o?.effects.orEmpty().joinToString(" • ") { it.label } else "",
+                effects = if (klepto >= 3) o?.effects.orEmpty().map { it.label to it.description } else emptyList(),
+                curse = null,
                 onRemove = if (o != null) vm::unequipOffhand else null,
+                options = s.gear.map { g ->
+                    SwapOption(g.type.icon(), g.rarity.color(), "${g.rarity.label} ${g.name} (Lv ${g.level})", g.summary(h.heroClass)) { vm.equipOffhand(g.id) }
+                },
             )
         }
-        val a = s.equippedArmor
-        EquipSlot(
-            label = "Armor",
-            icon = a?.type?.icon() ?: GameIcon.HERO,
-            tint = a?.rarity?.color(),
-            title = a?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "No armor",
-            detail = a?.let { it.summary(h.heroClass) } ?: "Traveler's clothes. Armor drops at shrines, villain camps and loot boxes.",
-            classNote = if (a?.matches(h.heroClass) == true) "Class bonus active (+20%)" to HpGreen else null,
-            effects = a?.effects.orEmpty().joinToString(" • ") { it.label },
-            onRemove = if (a != null) ({ vm.unequipArmor() }) else null,
-        )
-        listOf(ArmorSlot.HEAD to "a hood", ArmorSlot.BACK to "a cloak", ArmorSlot.LEGS to "pants", ArmorSlot.FEET to "boots").forEach { (slot, what) ->
-            val p = s.equippedPieces[slot]
+        // Head first, then body, back, legs and feet: top to toe.
+        listOf(
+            ArmorSlot.HEAD to "a hood",
+            ArmorSlot.BODY to "body armor",
+            ArmorSlot.BACK to "a cloak",
+            ArmorSlot.LEGS to "greaves",
+            ArmorSlot.FEET to "boots",
+        ).forEach { (slot, what) ->
+            val p = s.worn(slot)
             EquipSlot(
                 label = slot.label,
                 icon = p?.type?.icon() ?: GameIcon.HERO,
                 tint = p?.rarity?.color(),
-                title = p?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: "Nothing",
-                detail = p?.let { it.summary(h.heroClass) } ?: "Find $what at shrines, villain camps and loot boxes.",
+                title = p?.let { "${it.rarity.label} ${it.name} (Lv ${it.level})" } ?: if (slot == ArmorSlot.BODY) "Traveler's clothes" else "Nothing",
+                detail = p?.let { it.summary(h.heroClass) } ?: "Find $what at shrines, villain camps and loot boxes, or forge it from scrap.",
                 classNote = if (p?.matches(h.heroClass) == true) "Class bonus active (+20%)" to HpGreen else null,
-                effects = p?.effects.orEmpty().joinToString(" • ") { it.label },
+                effects = p?.effects.orEmpty().map { it.label to it.description },
+                curse = p?.curse?.let { CurseInfo(it.label, it.armorText, p.cursePct, weapon = false) },
                 onRemove = if (p != null) ({ vm.unequipArmor(slot) }) else null,
+                options = s.armor.filter { it.type.slot == slot }.sortedWith(compareByDescending<com.monsterquest.core.Armor> { it.rarity }.thenByDescending { it.level }).map { a ->
+                    SwapOption(a.type.icon(), a.rarity.color(), "${a.rarity.label} ${a.name} (Lv ${a.level})", a.summary(h.heroClass)) { vm.equipArmor(a.id) }
+                },
             )
         }
         Text(
             "A weapon of your class adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off " +
                 "until you've fought $PROFICIENCY_BATTLES battles with that weapon. Plate suits Warriors, Leather suits Rogues " +
-                "and Robes suit Mages (+20%). Hoods suit Mages and Rogues, cloaks Rogues, pants Warriors and boots anyone. " +
-                "Change gear from the Bag.",
+                "and Robes suit Mages (+20%). Hoods suit Mages and Rogues, cloaks Rogues, greaves Warriors and boots anyone. " +
+                "Better materials (wood or leather, bronze, iron, gold, diamond) add more to every bonus. Tap a slot to swap.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -432,6 +441,23 @@ private fun classEffects(cls: HeroClass, bonus: Double): String {
     }
 }
 
+/** A cursed piece: its power, and how much of the curse is left. */
+private data class CurseInfo(val label: String, val text: String, val pct: Int, val weapon: Boolean)
+
+/** Something in the bag that could go in a slot. */
+private data class SwapOption(
+    val icon: GameIcon,
+    val tint: androidx.compose.ui.graphics.Color,
+    val title: String,
+    val detail: String,
+    val onEquip: () -> Unit,
+)
+
+/**
+ * One equipment slot as a dropdown: the piece's name and stats, and its curse
+ * bar if it's cursed. Tap to open its full details and swap in any piece from
+ * the bag that fits the slot.
+ */
 @Composable
 private fun EquipSlot(
     label: String,
@@ -440,10 +466,13 @@ private fun EquipSlot(
     title: String,
     detail: String,
     classNote: Pair<String, androidx.compose.ui.graphics.Color>?,
-    effects: String,
+    effects: List<Pair<String, String>>,
+    curse: CurseInfo?,
     onRemove: (() -> Unit)?,
+    options: List<SwapOption>,
 ) {
-    GameCard(Modifier.padding(vertical = 3.dp), border = tint) {
+    var open by rememberSaveable(label) { mutableStateOf(false) }
+    GameCard(Modifier.padding(vertical = 3.dp).clickable { open = !open }, border = tint) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             GIcon(icon, Modifier.size(30.dp), tint ?: MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(10.dp))
@@ -451,10 +480,54 @@ private fun EquipSlot(
                 Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(title, fontWeight = FontWeight.SemiBold, color = tint ?: MaterialTheme.colorScheme.onSurface)
                 Text(detail, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (effects.isNotEmpty()) Text(effects, fontSize = 12.sp, color = Gold)
-                classNote?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
             }
-            if (onRemove != null) SmallButton("Remove", onRemove, outlined = true)
+            Text(
+                if (open) "▴" else if (options.isNotEmpty()) "${options.size} ▾" else "▾",
+                fontSize = 14.sp,
+                color = Gold,
+            )
+        }
+        // The curse shows like a health bar under the piece, always.
+        if (curse != null) {
+            Spacer(Modifier.height(6.dp))
+            if (curse.pct > 0) {
+                LabeledBar("Curse", curse.pct, 100, XpPurple)
+                Text(
+                    "${curse.label}: ${curse.text}. While cursed: " +
+                        (if (curse.weapon) "hits do ${com.monsterquest.core.CURSED_DAMAGE_CUT}% less, " else "") +
+                        "you lose ${com.monsterquest.core.CURSE_DRAIN_PCT}% HP each turn. Each " +
+                        (if (curse.weapon) "hit" else "hit you take") + " lifts ${com.monsterquest.core.CURSE_PER_USE}%.",
+                    fontSize = 11.sp,
+                    color = XpPurple,
+                )
+            } else {
+                Text("${curse.label}: ${curse.text} (curse lifted)", fontSize = 12.sp, color = HpGreen)
+            }
+        }
+        androidx.compose.animation.AnimatedVisibility(visible = open) {
+            Column(Modifier.padding(top = 6.dp)) {
+                effects.forEach { (name, text) -> Text("$name: $text", fontSize = 12.sp, color = Gold) }
+                classNote?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
+                if (onRemove != null) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { SmallButton("Take off", onRemove, outlined = true) }
+                }
+                if (options.isEmpty()) {
+                    Text("Nothing in your bag fits here.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text("Swap with:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                    options.forEach { o ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            GIcon(o.icon, Modifier.size(22.dp), o.tint)
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(o.title, fontSize = 13.sp, color = o.tint, fontWeight = FontWeight.SemiBold)
+                                Text(o.detail, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            SmallButton("Swap", o.onEquip)
+                        }
+                    }
+                }
+            }
         }
     }
 }

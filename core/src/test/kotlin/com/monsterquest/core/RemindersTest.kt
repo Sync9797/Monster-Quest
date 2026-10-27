@@ -86,3 +86,27 @@ class RemindersTest {
         assertEquals(1, Reminders.streak(u.state.reminders.single(), at(monday, 12), zone))
     }
 }
+
+class HomeWidgetTest {
+    @Test
+    fun widgetShowsTodaysRemindersCalendarAndTodos() {
+        val zone = java.time.ZoneOffset.UTC
+        val day = LocalDate.of(2026, 1, 5)
+        val now = day.atTime(9, 0).toInstant(zone).toEpochMilli()
+        var s = GameState()
+        s = Reminders.add(s, "Make bed", 6, 0, (1..7).toSet(), Random(1)).state
+        s = Reminders.add(s, "Gym", 18, 0, setOf(7), Random(2)).state // Sundays only: not today
+        s = GameEngine.addTask(s, "Water plants", Difficulty.EASY, Random(3), nowMs = now).state
+        s = GameEngine.addTask(s, "Report", Difficulty.HARD, Random(4), nowMs = now, dueMs = now + 2 * 3_600_000).state
+        val ev = CalendarEvent("e1", "Dentist", now + 3_600_000, now + 5_400_000, false, null)
+        s = GameEngine.syncCalendar(s, listOf(ev)).state
+        val w = HomeWidget.summary(s, now, zone)
+        assertEquals(listOf("Make bed"), w.reminders.map { it.title })
+        assertTrue(w.reminders.single().urgent)
+        assertEquals(listOf("Dentist"), w.calendar.map { it.title })
+        assertEquals("10:00 AM", w.calendar.single().time)
+        // Dated to-dos first, then tasks without a date.
+        assertEquals(listOf("Report", "Water plants"), w.todos.map { it.title })
+        assertFalse(w.isEmpty)
+    }
+}

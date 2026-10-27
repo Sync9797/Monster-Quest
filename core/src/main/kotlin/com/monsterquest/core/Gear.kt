@@ -56,6 +56,40 @@ enum class GearEffect(val label: String, val description: String) {
     FOCUSED("Focused", "+10% Magic"),
 }
 
+/**
+ * What gear is made of. Better materials add more to every bonus. Low-level
+ * heroes mostly find wooden weapons and leather armor, some bronze, and only
+ * very rarely anything better; the odds improve with level but stay capped.
+ */
+@Serializable
+enum class Material(val weaponLabel: String, val armorLabel: String, val multiplier: Double) {
+    BASIC("Wooden", "Leather", 1.0),
+    BRONZE("Bronze", "Bronze", 1.15),
+    IRON("Iron", "Iron", 1.3),
+    GOLD("Golden", "Gold", 1.5),
+    DIAMOND("Diamond", "Diamond", 1.8),
+}
+
+/**
+ * A curse on gear from the weekend Gold shrine: a strong power, but until the
+ * curse is lifted the gear hurts its owner and a weapon hits 25% softer.
+ * Using it lifts the curse ([CURSE_PER_USE]% a hit); then it becomes a normal
+ * Legendary, keeps the power and gains new effects.
+ */
+@Serializable
+enum class Curse(val label: String, val weaponText: String, val armorText: String) {
+    FROST("Frost", "Hits give the foe frostbite", "Physical attackers get frostbite"),
+    LIFE_DRAIN("Life Drain", "Heals you for 30% of the damage you deal", "Steals 10% of the damage when a physical attack hits you"),
+    FLAME("Flame", "Hits set the foe on fire", "Physical attackers get burned"),
+}
+
+/** Curse lifted per use (each weapon hit, or each physical hit taken in cursed armor). */
+const val CURSE_PER_USE = 2
+/** While cursed, weapon damage is cut by this much (percent). */
+const val CURSED_DAMAGE_CUT = 25
+/** While cursed, the gear drains this share of its owner's max HP each of their turns (percent). */
+const val CURSE_DRAIN_PCT = 3
+
 /** A weapon. Better rarity and level mean more power and more effects. */
 @Serializable
 data class Gear(
@@ -67,9 +101,16 @@ data class Gear(
     val effects: List<GearEffect> = emptyList(),
     /** Battles fought with this weapon (up to [PROFICIENCY_BATTLES]); each weapon is learned on its own. */
     val proficiency: Int = 0,
+    val material: Material = Material.BASIC,
+    /** A cursed weapon's power (it stays after the curse is lifted). */
+    val curse: Curse? = null,
+    /** How much of the curse is left, 0-100 (0 = lifted). */
+    val cursePct: Int = 0,
 ) {
     /** Raw weapon power before its type splits it between Attack and Magic. */
-    val power: Int get() = ((6 + level * 0.8) * rarity.multiplier).roundToInt()
+    val power: Int get() = ((6 + level * 0.8) * rarity.multiplier * material.multiplier).roundToInt()
+
+    val cursed: Boolean get() = curse != null && cursePct > 0
 
     fun matches(cls: HeroClass) = cls in type.classes
 
@@ -112,7 +153,8 @@ data class Gear(
                 Element.EARTH -> "Thorn "
                 Element.NEUTRAL -> ""
             }
-            return "$adjective${type.label}"
+            val cursedName = curse?.let { "${if (cursed) "Cursed " else ""}${it.label} " } ?: ""
+            return "$cursedName$adjective${material.weaponLabel} ${type.label}"
         }
 
     /** One-line summary, e.g. "+14 Attack • +3 Magic • Fire attacks". */
@@ -188,8 +230,13 @@ data class Armor(
     val rarity: GearRarity,
     val level: Int,
     val effects: List<GearEffect> = emptyList(),
+    val material: Material = Material.BASIC,
+    val curse: Curse? = null,
+    val cursePct: Int = 0,
 ) {
-    val power: Int get() = ((5 + level * 0.7) * rarity.multiplier).roundToInt()
+    val power: Int get() = ((5 + level * 0.7) * rarity.multiplier * material.multiplier).roundToInt()
+
+    val cursed: Boolean get() = curse != null && cursePct > 0
 
     fun matches(cls: HeroClass) = cls in type.classes
 
@@ -202,15 +249,19 @@ data class Armor(
     val sellPrice: Int get() = gearSellPrice(rarity, level)
 
     val name: String
-        get() = when (type) {
-            ArmorType.PLATE -> listOf("Iron Plate", "Knight's Plate", "Dragonscale Plate", "Aegis of Kings")
-            ArmorType.LEATHER -> listOf("Leather Vest", "Shadow Leathers", "Nightstalker Garb", "Phantom Mantle")
-            ArmorType.ROBE -> listOf("Cloth Robe", "Runed Robe", "Starweave Robe", "Archmage Vestments")
-            ArmorType.HOOD -> listOf("Wool Hood", "Seer's Hood", "Moonveil Cowl", "Crown of Whispers")
-            ArmorType.CLOAK -> listOf("Travel Cloak", "Elven Cloak", "Shadowweave Cloak", "Mantle of the Wind")
-            ArmorType.PANTS -> listOf("Linen Pants", "Ranger Breeches", "Warden Greaves", "Titanguard Legplates")
-            ArmorType.BOOTS -> listOf("Walking Boots", "Swiftfoot Boots", "Stormstride Boots", "Boots of the Far Road")
-        }[rarity.ordinal]
+        get() {
+            val noun = when (type) {
+                ArmorType.PLATE -> "Plate"
+                ArmorType.LEATHER -> "Jerkin"
+                ArmorType.ROBE -> "Robe"
+                ArmorType.HOOD -> "Hood"
+                ArmorType.CLOAK -> "Cloak"
+                ArmorType.PANTS -> "Greaves"
+                ArmorType.BOOTS -> "Boots"
+            }
+            val cursedName = curse?.let { "${if (cursed) "Cursed " else ""}${it.label} " } ?: ""
+            return "$cursedName${material.armorLabel} $noun"
+        }
 
     fun summary(cls: HeroClass): String = buildList {
         defenseBonus(cls).takeIf { it > 0 }?.let { add("+$it Defense") }
@@ -221,7 +272,42 @@ data class Armor(
     }.joinToString(" • ")
 }
 
+/** Five scrap pieces of one kind forge a new piece of that kind (weapons and armor alike). */
+const val PARTS_TO_FORGE = 5
+
 object Armory {
+    /**
+     * A material for gear found around [lvl]: mostly the basic kind early on,
+     * better ones getting likelier with level but capped, so even at level 100
+     * diamond stays rare (about 1 in 20) and at level 10 it's about 1 in 800.
+     */
+    fun rollMaterial(lvl: Int, rng: Random, luck: Int = 0): Material {
+        val boost = 1 + luck / 20.0
+        val weights = listOf(
+            Material.BASIC to (100.0 - lvl).coerceAtLeast(25.0),
+            Material.BRONZE to ((8 + lvl * 1.5) * boost).coerceAtMost(90.0),
+            Material.IRON to ((lvl - 8) * 1.2 * boost).coerceIn(0.6, 60.0),
+            Material.GOLD to ((0.5 + (lvl - 20).coerceAtLeast(0) * 0.5) * boost).coerceAtMost(30.0),
+            Material.DIAMOND to ((0.15 + (lvl - 35).coerceAtLeast(0) * 0.25) * boost).coerceAtMost(10.0),
+        )
+        var roll = rng.nextDouble() * weights.sumOf { it.second }
+        for ((m, w) in weights) {
+            roll -= w
+            if (roll < 0) return m
+        }
+        return Material.BASIC
+    }
+
+    fun randomArmorPartType(rng: Random): ArmorType = ArmorType.entries.random(rng)
+
+    /** A cursed weapon (Legendary) for the weekend Gold shrine. */
+    fun cursedWeapon(heroLevel: Int, rng: Random): Gear =
+        roll(heroLevel, rng, minimum = GearRarity.LEGENDARY, luck = 30).copy(curse = Curse.entries.random(rng), cursePct = 100)
+
+    /** A cursed armor piece (Legendary) for the weekend Gold shrine. */
+    fun cursedArmor(heroLevel: Int, rng: Random): Armor =
+        rollArmor(heroLevel, rng, minimum = GearRarity.LEGENDARY, luck = 30).copy(curse = Curse.entries.random(rng), cursePct = 100)
+
     private fun rollRarity(lvl: Int, rng: Random, luck: Int, minimum: GearRarity): GearRarity {
         val weights = listOf(
             GearRarity.NORMAL to (60 - lvl).coerceAtLeast(15),
@@ -245,7 +331,7 @@ object Armory {
         // Rare and better always carry the piece's signature buff, then random extras.
         val effects = if (rarity.effectCount == 0) emptyList()
         else listOf(t.signature) + (ARMOR_EFFECTS - t.signature).shuffled(rng).take(rarity.effectCount - 1)
-        return Armor(newId(rng), t, rarity, lvl, effects)
+        return Armor(newId(rng), t, rarity, lvl, effects, rollMaterial(lvl, rng, luck))
     }
 
     /**
@@ -264,6 +350,7 @@ object Armory {
             level = lvl,
             element = element,
             effects = pool.take(rarity.effectCount),
+            material = rollMaterial(lvl, rng, luck),
         )
     }
 

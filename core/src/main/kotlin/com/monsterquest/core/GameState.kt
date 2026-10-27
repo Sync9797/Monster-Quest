@@ -299,8 +299,10 @@ data class GameState(
     val lureUntilMs: Long = 0,
     /** Epoch day the free daily lure was last handed out. */
     val lastFreeLureDay: Long? = null,
-    /** Weapon parts by type; [GameEngine.PARTS_TO_FORGE] of one type forge that weapon. */
+    /** Weapon parts by type; [PARTS_TO_FORGE] of one type forge that weapon. */
     val parts: Map<WeaponType, Int> = emptyMap(),
+    /** Armor scrap by type; [PARTS_TO_FORGE] of one type forge that armor. From thugs and villains. */
+    val armorParts: Map<ArmorType, Int> = emptyMap(),
     /** Damage the hero carries between battles (healed by walking and potions). */
     val heroDamage: Int = 0,
     /** Energy the hero has spent and not yet recovered (back slowly over time, faster by walking, or with an Ether). */

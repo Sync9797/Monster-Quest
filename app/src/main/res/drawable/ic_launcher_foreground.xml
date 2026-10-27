@@ -5,6 +5,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Scaled into the adaptive icon's safe zone so launchers show the whole crest, ring and all. -->
+    <group android:scaleX="0.8" android:scaleY="0.8" android:pivotX="54" android:pivotY="54">
     <!-- rune rings and four diamond studs -->
     <path android:strokeColor="#EBC678" android:strokeAlpha="0.5" android:strokeWidth="1.4"
         android:pathData="M54,21a33,33 0,1 1,0 66a33,33 0,1 1,0 -66z" />
@@ -49,5 +51,6 @@
             android:pathData="M51.8,70 L56.2,72 M51.8,74 L56.2,76" />
         <path android:fillColor="#FFEBC678"
             android:pathData="M54,78.5a3,3 0,1 1,0 6a3,3 0,1 1,0 -6z" />
+    </group>
     </group>
 </vector>

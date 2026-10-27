@@ -173,13 +173,14 @@ fun QuestsScreen(vm: GameViewModel) {
                 Text("Syncing calendar…", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
             }
             Spacer(Modifier.height(10.dp))
+            // This week's goal first, then the calendar.
+            WeeklyCard(vm)
+            Spacer(Modifier.height(10.dp))
             DashboardCard(vm, selectedDay = selectedDay) { day ->
                 selectedDay = if (selectedDay == day) null else day
                 // On a phone the list is below the calendar: bring the day's quests into view.
                 if (!twoPane && selectedDay != null) scope.launch { listState.animateScrollToItem(1) }
             }
-            Spacer(Modifier.height(10.dp))
-            WeeklyCard(vm)
             Spacer(Modifier.height(10.dp))
             FocusCard(vm)
             Spacer(Modifier.height(10.dp))

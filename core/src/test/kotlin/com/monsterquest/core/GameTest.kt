@@ -560,7 +560,7 @@ class GameTest {
 
     @Test
     fun forgingWeapons() {
-        val s = started().copy(parts = mapOf(WeaponType.DAGGER to GameEngine.PARTS_TO_FORGE + 1, WeaponType.STAFF to 2))
+        val s = started().copy(parts = mapOf(WeaponType.DAGGER to PARTS_TO_FORGE + 1, WeaponType.STAFF to 2))
         val u = GameEngine.forge(s, WeaponType.DAGGER, rng)
         assertEquals(1, u.state.parts[WeaponType.DAGGER])
         assertEquals(WeaponType.DAGGER, u.state.gear.single().type)

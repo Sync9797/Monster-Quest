@@ -120,6 +120,18 @@ class Combatant(
     var touchStatus: Status? = null
     var touchPct: Int = 0
 
+    // Cursed gear (hero only).
+    var weaponCurse: Curse? = null
+    /** The weapon is still cursed: 25% less damage. */
+    var weaponCursed: Boolean = false
+    /** Curses on worn armor: they strike back at physical attackers. */
+    var armorCurses: List<Curse> = emptyList()
+    /** Max HP lost each turn while wearing or wielding cursed gear, in percent. */
+    var curseDrainPct: Int = 0
+    /** Weapon hits landed and physical hits taken (they wear the curses down). */
+    var weaponUses: Int = 0
+    var armorHits: Int = 0
+
     /** Applies a skill's effect on its owner. */
     fun gainTrait(t: Trait, rank: Int, hero: Boolean) {
         traits[t] = rank
@@ -274,6 +286,10 @@ class Combatant(
                     else -> null
                 }
                 tameBonus = 0.1 * fx.count { it == GearEffect.LUCKY } + perks.tamePct / 100.0
+                weaponCurse = gear?.curse
+                weaponCursed = gear?.cursed == true
+                armorCurses = armor.mapNotNull { it.curse }
+                curseDrainPct = CURSE_DRAIN_PCT * ((if (gear?.cursed == true) 1 else 0) + armor.count { it.cursed })
                 spellPct = perks.spellPct
                 healPct = perks.healPct
                 spellDrainPct = perks.spellDrainPct
@@ -426,6 +442,9 @@ data class BattleResult(
     val heroFell: Boolean = false,
     /** Energy the hero has spent by the end of the battle. */
     val heroEnergyUsed: Int = 0,
+    /** Weapon hits landed and physical hits taken: they wear curses down. */
+    val weaponUses: Int = 0,
+    val armorHits: Int = 0,
 )
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
@@ -440,6 +459,13 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY)
 
 private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT)
+
+/** Chance (percent) a cursed Frost or Flame piece afflicts the foe. */
+const val CURSE_STATUS_PCT = 35
+/** A cursed Life Drain weapon heals this share of the damage it deals (percent). */
+const val CURSE_DRAIN_HEAL = 30
+/** Cursed Life Drain armor steals this share of the damage taken back from the attacker (percent). */
+const val CURSE_ARMOR_STEAL = 10
 
 /** Monsters that wait in the swap slots, ready to be sent in. */
 const val MAX_SWAPS = 2
@@ -775,9 +801,13 @@ class Battle(
         when (c.status) {
             Status.POISON -> hurt(c, max(1, c.maxHp / 10), "is hurt by poison")
             Status.BURN -> hurt(c, max(1, c.maxHp * 6 / 100), "is hurt by its burn")
+            // A drought thaws frostbite out.
+            Status.FROSTBITE -> if (weather != Weather.DROUGHT) hurt(c, max(1, c.maxHp * 5 / 100), "is hurt by frostbite")
             else -> {}
         }
-        if (c.status == Status.POISON || c.status == Status.BURN) tickStatus(c)
+        if (c.status == Status.POISON || c.status == Status.BURN || c.status == Status.FROSTBITE) tickStatus(c)
+        // Cursed gear gnaws at its owner every turn until the curse is lifted.
+        if (c.curseDrainPct > 0 && c.alive) hurt(c, max(1, c.maxHp * c.curseDrainPct / 100), "is drained by a curse")
         if (!c.alive) return false
 
         if (c.status == Status.SLEEP) {
@@ -846,7 +876,9 @@ class Battle(
                     // Daggers strike twice.
                     repeat(actor.hits) {
                         if (enemy.alive && !floatsOver(actor, enemy, actor.attackElement) && rollHit(actor, enemy, 100)) {
-                            val dmg = strike(actor, enemy, 40, actor.attackElement, useMagic = false, verb = "attacks", style = StrikeStyle.SLASH)
+                            // A cursed weapon hits 25% softer until the curse is lifted.
+                            val power = if (actor.weaponCursed) 40 * (100 - CURSED_DAMAGE_CUT) / 100 else 40
+                            val dmg = strike(actor, enemy, power, actor.attackElement, useMagic = false, verb = "attacks", style = StrikeStyle.SLASH)
                             afterHeroHit(actor, enemy, dmg, basic = true)
                         }
                     }
@@ -1142,6 +1174,7 @@ class Battle(
                         Status.SHOCK -> "${d.name} is shocked!"
                         Status.POISON -> "${d.name} is poisoned!"
                         Status.BURN -> "${d.name} is burned!"
+                        Status.FROSTBITE -> "${d.name} has frostbite!"
                     }
                 } else if (move.power == 0 && d.status != null) {
                     log += "${d.name} is already ${d.status!!.label.lowercase()}."
@@ -1234,6 +1267,24 @@ class Battle(
 
     /** Weapon effects after the hero lands a hit: lifesteal and on-hit statuses (and Trickster feints on [basic] attacks). */
     private fun afterHeroHit(a: Combatant, d: Combatant, dmg: Int, basic: Boolean = false) {
+        // A cursed weapon's power: frostbite, life drain or flame. Every hit wears the curse down.
+        if (basic && dmg > 0) {
+            a.weaponUses++
+            when (a.weaponCurse) {
+                Curse.FROST -> if (d.alive && d.status == null && rng.nextInt(100) < CURSE_STATUS_PCT) {
+                    d.status = Status.FROSTBITE
+                    d.statusTurns = 4
+                    log += "${d.name} has frostbite!"
+                }
+                Curse.FLAME -> if (d.alive && d.status == null && rng.nextInt(100) < CURSE_STATUS_PCT) {
+                    d.status = Status.BURN
+                    d.statusTurns = 4
+                    log += "${d.name} is set on fire!"
+                }
+                Curse.LIFE_DRAIN -> if (a.alive && a.hp < a.maxHp) heal(a, maxOf(1, dmg * CURSE_DRAIN_HEAL / 100), "${a.name}'s weapon drinks life")
+                null -> {}
+            }
+        }
         if (basic && a.blindPct > 0 && d.alive && !d.accuracyDown && rng.nextInt(100) < a.blindPct) {
             d.accuracyDown = true
             log += "${a.name} feints! ${d.name} is thrown off balance."
@@ -1290,6 +1341,29 @@ class Battle(
         secondWind(d)
         // The team's borrowed hover breaks when the hero is hit (the hero keeps hovering).
         if (d.isHero && dmg > 0) breakTeamHover(d)
+        // Cursed armor strikes back at physical attackers (and every hit wears the curse down).
+        if (!useMagic && d.isHero && dmg > 0) {
+            d.armorHits++
+            for (c in d.armorCurses) when (c) {
+                Curse.FROST -> if (a.alive && a.status == null && rng.nextInt(100) < CURSE_STATUS_PCT) {
+                    a.status = Status.FROSTBITE
+                    a.statusTurns = 4
+                    log += "${d.name}'s frozen armor gives ${a.name} frostbite!"
+                }
+                Curse.FLAME -> if (a.alive && a.status == null && rng.nextInt(100) < CURSE_STATUS_PCT) {
+                    a.status = Status.BURN
+                    a.statusTurns = 4
+                    log += "${d.name}'s burning armor sets ${a.name} alight!"
+                }
+                Curse.LIFE_DRAIN -> if (a.alive && d.alive) {
+                    val stolen = maxOf(1, dmg * CURSE_ARMOR_STEAL / 100).coerceAtMost(a.hp)
+                    a.hp -= stolen
+                    d.hp = minOf(d.maxHp, d.hp + stolen)
+                    log += "${d.name}'s armor steals $stolen HP from ${a.name}."
+                    if (!a.alive) log += "${a.name} falls!"
+                }
+            }
+        }
         // Static, Flame Body and Poison Point punish whoever strikes in close.
         val touch = d.touchStatus
         if (touch != null && !useMagic && a.alive && a.status == null && rng.nextInt(100) < d.touchPct) {
@@ -1403,6 +1477,7 @@ class Battle(
         return BattleResult(
             outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
             damage, heroFell, allies.first().let { it.maxMp - it.mp },
+            allies.first().weaponUses, allies.first().armorHits,
         )
     }
 }

@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.21.0
+
+- **Materials:** weapons come in wooden, bronze, iron, golden and diamond;
+  armor in leather, bronze, iron, gold and diamond. Each better material
+  adds more to every bonus. Early on you mostly find wood and leather with
+  some bronze; better materials get likelier as you level, but capped: a
+  level 10 hero can find diamond (about 1 in 800), and even at level 100
+  it stays about 1 in 20.
+- **Armor scrap:** thugs and villains now drop armor scrap as well as weapon
+  parts. Five of one kind forge that armor, and armor can be smelted into
+  scrap like weapons. Scrap stays in the Bag.
+- **Equipment dropdowns:** on the Hero tab, tap any slot to see the piece's
+  full stats and effects and swap in anything from your bag that fits.
+  Slots now run top to toe: weapon, head, body, back, legs, feet.
+- **Weekend Gold shrine rewards:** beating a weekend guardian pays gold and
+  spell pages, with a 75% chance of a spell book (a whole spell learned at
+  once, or a rank up if you know them all) and a 40% chance of cursed
+  Legendary gear.
+- **Cursed gear:** Frost (gives frostbite: 5% HP a turn, none in a drought),
+  Life Drain (a weapon heals you 30% of its damage; armor steals 10% of a
+  physical hit back) or Flame (burns). Until the curse is lifted the gear
+  drains 3% of your HP each turn and a cursed weapon hits 25% softer. Every
+  hit lifts 2% of the curse (a curse bar shows under the piece on the Hero
+  tab). Once lifted it stays Legendary, keeps its power and gains two new
+  effects.
+- **This week** now sits above the calendar on the Quests screen.
+- **App icon:** the crest is sized to fit launcher icon shapes, so the
+  whole ring shows, matching the loading screen.
+- **Home-screen widget:** today's reminders, upcoming calendar quests and
+  your to-do list, in Material 3 colors (your wallpaper's on Android 12+).
+  Resize it freely: small shows the next few things, bigger shows each
+  section. Tap it to open the game.
+
 ## 1.20.0
 
 - **Daily reminders:** gentle alarms set in the game, at a time of day on

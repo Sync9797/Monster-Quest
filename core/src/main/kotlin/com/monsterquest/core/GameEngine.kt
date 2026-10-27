@@ -44,6 +44,9 @@ sealed interface Reward {
     data class ArmorDrop(val armor: Armor) : Reward
     data class Pages(val spellId: String, val count: Int, val learned: Boolean) : Reward
     data class Parts(val type: WeaponType, val count: Int) : Reward
+    data class ArmorParts(val type: ArmorType, val count: Int) : Reward
+    /** A spell learned (or ranked up) at once from a spell book. */
+    data class SpellBook(val spellId: String, val rank: Int) : Reward
 }
 
 /** An event read from the phone's calendar. */
@@ -969,6 +972,27 @@ object GameEngine {
         }
         // Fighting with a weapon makes you better with it (only unfamiliar ones need it).
         if (r.outcome != BattleOutcome.FLED) s = practiceWeapons(s, msg)
+        // Using cursed gear wears its curse down.
+        s = wearCurses(s, r.weaponUses, r.armorHits, msg)
+        // Thugs drop weapon parts and armor scrap.
+        val rewards = mutableListOf<Reward>()
+        if (r.encounter == EncounterType.THUG && r.outcome == BattleOutcome.WON) {
+            val rng = Random(nowMs)
+            val loot = Loot(parts = rollParts(1 + rng.nextInt(2), rng), armorParts = rollArmorParts(1 + rng.nextInt(2), rng))
+            val u = grantLoot(s, loot)
+            s = u.state
+            rewards += u.rewards
+            msg.append(" The thug dropped ${u.message}.")
+        }
+        // The weekend Gold shrine: a guardian beaten pays out big.
+        if ((r.encounter == EncounterType.BOSS_CHALLENGE || r.encounter == EncounterType.BOSS_TAMING) &&
+            (r.outcome == BattleOutcome.WON || r.outcome == BattleOutcome.CAPTURED)
+        ) {
+            val u = weekendReward(s, Random(nowMs xor 0x60D))
+            s = u.state
+            rewards += u.rewards
+            msg.append(" ${u.message}")
+        }
         // Damage carries over to the next battle. A fallen hero limps home at 10% HP.
         val heroMax = s.hero.maxHp
         s = s.copy(
@@ -1000,7 +1024,97 @@ object GameEngine {
             )
             lifted.forEach { msg.append(" $it's shadow curse is lifted! Choose a stat to perfect on its stat page.") }
         }
-        return Update(s, msg.toString(), levelUps = levelUps)
+        return Update(s, msg.toString(), rewards = rewards, levelUps = levelUps)
+    }
+
+    /**
+     * Each weapon hit or physical hit taken lifts [CURSE_PER_USE]% of a curse.
+     * Once it's gone the gear stays Legendary, keeps its power and gains new effects.
+     */
+    fun wearCurses(state: GameState, weaponUses: Int, armorHits: Int, msg: StringBuilder, rng: Random = Random(state.gold.toLong() + weaponUses)): GameState {
+        var s = state
+        val w = s.equippedGear
+        if (w != null && w.cursed && weaponUses > 0) {
+            val left = (w.cursePct - weaponUses * CURSE_PER_USE).coerceAtLeast(0)
+            var lifted = w.copy(cursePct = left)
+            if (left == 0) {
+                lifted = lifted.copy(effects = lifted.effects + (GearEffect.entries - lifted.effects.toSet()).shuffled(rng).take(2))
+                msg.append(" The curse on your ${w.name} is lifted! It keeps its ${w.curse!!.label} power and gains new effects.")
+            }
+            s = s.copy(equippedGear = lifted)
+        }
+        if (armorHits > 0) {
+            val pieces = s.wornArmor.filter { it.cursed }
+            for (a in pieces) {
+                val left = (a.cursePct - armorHits * CURSE_PER_USE).coerceAtLeast(0)
+                var lifted = a.copy(cursePct = left)
+                if (left == 0) {
+                    lifted = lifted.copy(effects = lifted.effects + (ARMOR_EFFECTS - lifted.effects.toSet()).shuffled(rng).take(2))
+                    msg.append(" The curse on your ${a.name} is lifted! It keeps its ${a.curse!!.label} power and gains new effects.")
+                }
+                s = if (a.type.slot == ArmorSlot.BODY) s.copy(equippedArmor = lifted)
+                else s.copy(equippedPieces = s.equippedPieces + (a.type.slot to lifted))
+            }
+        }
+        return s
+    }
+
+    /** Chances at the weekend Gold shrine: a spell book, and a piece of cursed gear. */
+    const val SPELL_BOOK_CHANCE = 0.75
+    const val CURSED_GEAR_CHANCE = 0.40
+
+    /**
+     * What beating a weekend Gold shrine guardian pays: gold, spell pages, a
+     * 75% chance of a spell book (a whole spell learned at once, or a rank up)
+     * and a 40% chance of cursed Legendary gear (usually a weapon).
+     */
+    fun weekendReward(state: GameState, rng: Random): Update {
+        val lvl = state.hero.level
+        val gold = 40 * lvl + 200
+        var s = state.copy(gold = state.gold + gold)
+        val rewards = mutableListOf<Reward>(Reward.Gold(gold))
+        val parts = mutableListOf("+$gold gold")
+        // Pages for spells you're still learning or ranking up.
+        val candidates = pageCandidates(s)
+        val pages = if (candidates.isEmpty()) emptyMap() else candidates.shuffled(rng).take(2).associate { it.id to 2 + rng.nextInt(3) }
+        if (pages.isNotEmpty()) {
+            val u = grantLoot(s, Loot(pages = pages))
+            s = u.state
+            rewards += u.rewards
+            parts += u.message
+        }
+        if (rng.nextDouble() < SPELL_BOOK_CHANCE) {
+            val h = s.hero
+            val unknown = Spells.all.filter { it.id !in h.knownSpells }
+            val book = unknown.randomOrNull(rng)
+            if (book != null) {
+                s = s.copy(hero = h.copy(knownSpells = h.knownSpells + book.id))
+                rewards += Reward.SpellBook(book.id, 1)
+                parts += "a spell book: you learned ${book.name}!"
+            } else {
+                Spells.all.filter { h.spellRank(it.id) < Spells.MAX_RANK }.randomOrNull(rng)?.let { sp ->
+                    val rank = h.spellRank(sp.id) + 1
+                    s = s.copy(hero = h.copy(spellRanks = h.spellRanks + (sp.id to rank)))
+                    rewards += Reward.SpellBook(sp.id, rank)
+                    parts += "a spell book: ${sp.name} is now rank $rank!"
+                }
+            }
+        }
+        if (rng.nextDouble() < CURSED_GEAR_CHANCE) {
+            // Cursed gear doesn't need bag space checks to be kept: it's the prize.
+            if (rng.nextDouble() < 0.7) {
+                val w = Armory.cursedWeapon(lvl, rng)
+                s = s.copy(gear = s.gear + w)
+                rewards += Reward.WeaponDrop(w)
+                parts += "a ${w.name} (Legendary)! Use it to lift the curse"
+            } else {
+                val a = Armory.cursedArmor(lvl, rng)
+                s = s.copy(armor = s.armor + a)
+                rewards += Reward.ArmorDrop(a)
+                parts += "a ${a.name} (Legendary)! Wear it to lift the curse"
+            }
+        }
+        return Update(s, "Weekend guardian's hoard: ${parts.joinToString("; ")}.", rewards)
     }
 
     // ---- shrines -----------------------------------------------------------
@@ -1023,6 +1137,7 @@ object GameEngine {
         /** Spell id -> pages. */
         val pages: Map<String, Int> = emptyMap(),
         val parts: Map<WeaponType, Int> = emptyMap(),
+        val armorParts: Map<ArmorType, Int> = emptyMap(),
     )
 
     /**
@@ -1096,6 +1211,10 @@ object GameEngine {
     fun rollParts(count: Int, rng: Random): Map<WeaponType, Int> =
         if (count <= 0) emptyMap() else mapOf(Armory.randomPartType(rng) to count)
 
+    /** Some armor scrap of one random armor type (from thugs and villains). */
+    fun rollArmorParts(count: Int, rng: Random): Map<ArmorType, Int> =
+        if (count <= 0) emptyMap() else mapOf(Armory.randomArmorPartType(rng) to count)
+
     /** Adds loot to the save (respecting bag space) and describes it. */
     fun grantLoot(state: GameState, loot: Loot): Update {
         var s = state
@@ -1128,6 +1247,11 @@ object GameEngine {
             s = s.copy(parts = s.parts + (type to (s.parts[type] ?: 0) + n))
             parts += "${type.label} part x$n"
             rewards += Reward.Parts(type, n)
+        }
+        for ((type, n) in loot.armorParts) {
+            s = s.copy(armorParts = s.armorParts + (type to (s.armorParts[type] ?: 0) + n))
+            parts += "${type.label} scrap x$n"
+            rewards += Reward.ArmorParts(type, n)
         }
         val learned = mutableListOf<String>()
         for ((spellId, n) in loot.pages) {
@@ -1173,7 +1297,6 @@ object GameEngine {
 
     // ---- weapons -----------------------------------------------------------
 
-    const val PARTS_TO_FORGE = 5
 
     /** Turns [PARTS_TO_FORGE] parts of one type into a weapon of that type (better odds than shrines). */
     fun forge(state: GameState, type: WeaponType, rng: Random = Random.Default): Update {
@@ -1184,6 +1307,34 @@ object GameEngine {
         return Update(
             state.copy(parts = state.parts + (type to have - PARTS_TO_FORGE), gear = state.gear + w),
             "You forged a ${w.rarity.label} ${w.name} (Lv ${w.level})!",
+        )
+    }
+
+    /** Turns [PARTS_TO_FORGE] armor scrap of one type into a piece of that armor. */
+    fun forgeArmor(state: GameState, type: ArmorType, rng: Random = Random.Default): Update {
+        val have = state.armorParts[type] ?: 0
+        if (have < PARTS_TO_FORGE) return Update(state, "Need $PARTS_TO_FORGE ${type.label.lowercase()} scrap to forge.")
+        if (state.bagFull) return Update(state, "Bag is full.")
+        val a = Armory.rollArmor(state.hero.level, rng, type, luck = 10)
+        return Update(
+            state.copy(armorParts = state.armorParts + (type to have - PARTS_TO_FORGE), armor = state.armor + a),
+            "You forged a ${a.rarity.label} ${a.name} (Lv ${a.level})!",
+        )
+    }
+
+    /** Melts armor down into scrap of its type (more for rarer pieces), for [SMELT_COST] gold. */
+    fun smeltArmor(state: GameState, id: String): Update {
+        val a = state.armor.find { it.id == id } ?: return Update(state, "Armor not found. Take it off first.")
+        if (state.gold < SMELT_COST) return Update(state, "Smelting costs $SMELT_COST gold.")
+        val n = a.rarity.smeltParts
+        return Update(
+            state.copy(
+                armor = state.armor.filterNot { it.id == id },
+                gold = state.gold - SMELT_COST,
+                armorParts = state.armorParts + (a.type to (state.armorParts[a.type] ?: 0) + n),
+            ),
+            "Smelted ${a.name} into $n ${a.type.label.lowercase()} scrap (−$SMELT_COST gold).",
+            listOf(Reward.ArmorParts(a.type, n)),
         )
     }
 

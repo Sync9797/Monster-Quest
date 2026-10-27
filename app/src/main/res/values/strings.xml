@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Monster Quest</string>
+    <string name="widget_name">Monster Quest</string>
+    <string name="widget_description">Today\'s reminders, calendar quests and to-dos</string>
 </resources>

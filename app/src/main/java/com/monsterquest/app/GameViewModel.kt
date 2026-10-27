@@ -89,7 +89,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            pendingSave.drop(1).collect { repo.save(it) }
+            var widgetKey: Any? = null
+            pendingSave.drop(1).collect {
+                repo.save(it)
+                // Keep the home-screen widget current when anything it shows changes.
+                val key = listOf(it.tasks, it.reminders, it.hero.level)
+                if (key != widgetKey) {
+                    widgetKey = key
+                    runCatching { com.monsterquest.app.widget.QuestWidget.refresh(getApplication()) }
+                }
+            }
         }
     }
 
@@ -407,6 +416,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun forge(type: WeaponType) = apply(GameEngine.forge(state, type))
+    fun forgeArmor(type: com.monsterquest.core.ArmorType) = apply(GameEngine.forgeArmor(state, type))
+    fun smeltArmor(id: String) = apply(GameEngine.smeltArmor(state, id))
     fun upgradeSpell(id: String) = apply(GameEngine.upgradeSpell(state, id))
     fun usePotion(item: Item, target: String) = apply(GameEngine.usePotion(state, item, target))
     fun perfectStat(uid: String, stat: Stat) = apply(GameEngine.perfectStat(state, uid, stat))

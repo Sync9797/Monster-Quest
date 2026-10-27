@@ -78,7 +78,7 @@ fun BootSplash(heroName: String, durationMs: Int = 1_600, onDone: () -> Unit) {
             Image(
                 painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                modifier = Modifier.size(220.dp).scale(pulse),
+                modifier = Modifier.size(260.dp).scale(pulse),
             )
             Text(
                 "Monster Quest",

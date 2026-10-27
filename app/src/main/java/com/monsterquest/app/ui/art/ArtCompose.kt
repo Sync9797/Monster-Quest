@@ -223,6 +223,7 @@ fun Status.icon(): GameIcon = when (this) {
     Status.SHOCK -> GameIcon.BOLT
     Status.POISON -> GameIcon.SKULL
     Status.BURN -> GameIcon.FLAME
+    Status.FROSTBITE -> GameIcon.CRYSTAL
 }
 
 fun Weather.icon(): GameIcon? = when (this) {
