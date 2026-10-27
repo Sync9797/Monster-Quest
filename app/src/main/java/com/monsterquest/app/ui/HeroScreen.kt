@@ -389,7 +389,7 @@ private fun ClassSection(vm: GameViewModel) {
     }
     // Preview what each class would do at the current level.
     val previewBonus = (3 + (h.level - CLASS_UNLOCK_LEVEL) * 1.5).coerceIn(0.0, 40.0)
-    androidx.compose.animation.AnimatedVisibility(visible = open || !h.classChosen) {
+    DropdownReveal(visible = open || !h.classChosen) {
     Column {
     HeroClass.entries.filter { !h.classChosen || it != h.heroClass }.forEach { cls ->
         GameCard(Modifier.padding(vertical = 3.dp)) {
@@ -504,7 +504,7 @@ private fun EquipSlot(
                 Text("${curse.label}: ${curse.text} (curse lifted)", fontSize = 12.sp, color = HpGreen)
             }
         }
-        androidx.compose.animation.AnimatedVisibility(visible = open) {
+        DropdownReveal(visible = open) {
             Column(Modifier.padding(top = 6.dp)) {
                 effects.forEach { (name, text) -> Text("$name: $text", fontSize = 12.sp, color = Gold) }
                 classNote?.let { (text, color) -> Text(text, fontSize = 12.sp, color = color) }
@@ -577,7 +577,7 @@ private fun SubclassSection(vm: GameViewModel) {
             Text(current.summary, fontSize = 12.sp)
         }
     }
-    androidx.compose.animation.AnimatedVisibility(visible = open || current == null) {
+    DropdownReveal(visible = open || current == null) {
         Column {
             Subclass.of(h.heroClass).filter { it != current }.forEach { sub ->
                 GameCard(Modifier.padding(vertical = 3.dp)) {

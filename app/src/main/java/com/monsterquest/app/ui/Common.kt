@@ -154,3 +154,17 @@ fun formatDuration(ms: Long): String {
     val m = ms / 60_000
     return if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m"
 }
+
+/**
+ * Shows or hides a dropdown's contents by growing down from (and shrinking
+ * back up to) its header, with a fade. Use it for every section that opens
+ * below its title, so they all move the same way.
+ */
+@Composable
+fun DropdownReveal(visible: Boolean, content: @Composable () -> Unit) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Top) + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top) + androidx.compose.animation.fadeOut(),
+    ) { content() }
+}

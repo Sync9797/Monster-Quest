@@ -2,18 +2,9 @@
 
 Ideas we've agreed to do later. Newest first.
 
-- [ ] **Sleep tracker:** fill in the "Coming soon" preview in the Health
-      card on Home (1.30.0). It syncs the same ways as the step tracker (Health
-      Connect, which covers Samsung Health, Google Fit, Fitbit and others;
-      manual entry when there's no source). Shows time asleep for last
-      night and recent nights, and the sleep stages (awake, light, deep,
-      REM) when a wearable recorded them, as a timeline bar.
-      - **Gameplay:** a night's sleep wakes fainted monsters and heals the
-        hero and the team. A full night (about 7 hours or more) is a full
-        recovery; shorter nights heal in proportion.
-      - **Limits:** only once per night, and only for a sleep session that
-        ends on or after the day it's claimed, so it can't be farmed.
-      - Needs the Health Connect sleep permission.
+- [ ] **Sleep and the team (optional):** sleep stats are in (1.34). Idea
+      for later: a full night (about 7 hours or more) heals the team and
+      wakes fainted monsters, once per night, for a night that ended today.
 - [ ] **Health card extras:** this week and a 30-day steps chart (today's
       steps by hour are done), and a short water history.
 - [ ] **Move store:** a store section for buying moves. A move costs candy of

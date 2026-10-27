@@ -142,7 +142,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun set(s: GameState) {
         val walked = s.stats.totalSteps - state.stats.totalSteps
-        state = s.withJournal()
+        // Add today's gains (levels, XP, loot, healing, tasks) for tomorrow's morning recap.
+        state = com.monsterquest.core.Recap.track(state, s, System.currentTimeMillis()).withJournal()
         pendingSave.value = s
         if (walked > 0) rollSecretEncounter(walked.toInt())
     }
@@ -347,6 +348,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         rescheduleReminders()
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
         GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
+        // Pull in last night's sleep, then show the morning recap if it's the first open today.
+        refreshSleep(thenRecap = true)
         val f = state.focus ?: return
         when (FocusStore.outcome(getApplication(), f.id)) {
             FocusStore.Outcome.FAILED -> endFocus(success = false)
@@ -489,6 +492,48 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             healthHourly = HealthSteps.stepsByHour(getApplication(), java.time.LocalDate.now(), samsungOnly = source == StepSource.SAMSUNG_HEALTH)
         }
+    }
+
+    // ---- sleep and the morning recap ---------------------------------------------
+
+    /** Whether Health Connect lets the game read sleep (null: Health Connect isn't available). */
+    var sleepAllowed by mutableStateOf<Boolean?>(null)
+        private set
+
+    /** Reads the last week's sleep from Health Connect into the log, then (on resume) checks for the morning recap. */
+    fun refreshSleep(thenRecap: Boolean = false) {
+        viewModelScope.launch {
+            val app = getApplication<android.app.Application>()
+            sleepAllowed = HealthSteps.sleepAllowed(app)
+            if (sleepAllowed == true) {
+                HealthSteps.recentSleep(app)?.let { nights ->
+                    var s = state
+                    nights.forEach { s = com.monsterquest.core.SleepLog.record(s, it) }
+                    if (s != state) set(s)
+                }
+            }
+            if (thenRecap && !showRecap && com.monsterquest.core.Recap.due(state, System.currentTimeMillis())) {
+                // Let the loading screen finish first.
+                kotlinx.coroutines.delay(2_200)
+                showRecap = true
+            }
+        }
+    }
+
+    /** Logs a night by hand (when there's no Health Connect sleep data). */
+    fun logSleep(startMs: Long, endMs: Long) =
+        set(com.monsterquest.core.SleepLog.record(state, com.monsterquest.core.SleepNight(startMs, endMs, manual = true)))
+
+    /** The morning recap is on screen. */
+    var showRecap by mutableStateOf(false)
+        private set
+
+    /** Opens the recap now (screenshots and tests). */
+    fun openRecap() { showRecap = true }
+
+    fun dismissRecap() {
+        showRecap = false
+        set(com.monsterquest.core.Recap.markShown(state, System.currentTimeMillis()))
     }
 
     /** Water tracker (no rewards): +1 / −1 glass today. */

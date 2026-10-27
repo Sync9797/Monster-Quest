@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -81,43 +82,29 @@ fun HealthCard(vm: GameViewModel, nowMs: Long) {
                 .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Heart(Modifier.size(22.dp))
+            GIcon(GameIcon.HEART, Modifier.size(22.dp), HpRed)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text("Health", style = MaterialTheme.typography.titleMedium)
+                val slept = com.monsterquest.core.SleepLog.lastNight(s, today)?.let { " • ${com.monsterquest.core.SleepLog.label(it.asleepMin)} sleep" } ?: ""
                 Text(
-                    "${"%,d".format(steps)} steps • $glasses of ${s.waterGoal} glasses",
+                    "${"%,d".format(steps)} steps • $glasses of ${s.waterGoal} glasses$slept",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(if (open) "▴" else "▾", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        AnimatedVisibility(open) {
+        DropdownReveal(open) {
             Column {
                 Spacer(Modifier.height(10.dp))
                 StepsSection(vm, today, steps, nowMs)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
                 WaterSection(vm, glasses)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                SleepPreview()
+                SleepSection(vm, today)
             }
         }
-    }
-}
-
-@Composable
-private fun Heart(modifier: Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val p = Path().apply {
-            moveTo(w / 2, h * 0.9f)
-            cubicTo(w * -0.05f, h * 0.55f, w * 0.1f, h * 0.02f, w / 2, h * 0.28f)
-            cubicTo(w * 0.9f, h * 0.02f, w * 1.05f, h * 0.55f, w / 2, h * 0.9f)
-            close()
-        }
-        drawPath(p, Brush.verticalGradient(listOf(Color(0xFFFF6B7A), Color(0xFFD93A55))))
     }
 }
 
@@ -244,53 +231,144 @@ private fun WaterSection(vm: GameViewModel, glasses: Int) {
 }
 
 /**
- * What the sleep tracker will look like. It shows sample data and is
- * clearly marked as a preview; nothing is tracked yet.
+ * Last night's sleep and the week, from Health Connect or logged by hand.
+ * Stages (deep, light, REM, awake) show when a watch or ring recorded them.
  */
 @Composable
-private fun SleepPreview() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        GIcon(GameIcon.SLEEP, Modifier.size(18.dp), SleepIndigo)
-        Spacer(Modifier.width(6.dp))
-        Text("Sleep", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        Text(
-            "Coming soon",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = SleepIndigo,
-            modifier = Modifier.border(1.dp, SleepIndigo, CircleShape).padding(horizontal = 8.dp, vertical = 2.dp),
-        )
-    }
-    Column(Modifier.alpha(0.55f).padding(top = 8.dp)) {
+private fun SleepSection(vm: GameViewModel, today: LocalDate) {
+    val s = vm.state
+    val night = com.monsterquest.core.SleepLog.lastNight(s, today)
+    var logging by remember { mutableStateOf(false) }
+    val permission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { vm.refreshSleep() }
+    LaunchedEffect(Unit) { vm.refreshSleep() }
+
+    SectionHeader(GameIcon.SLEEP, "Sleep", SleepIndigo, "Goal ${com.monsterquest.core.SleepLog.GOAL_MIN / 60}h")
+    Spacer(Modifier.height(6.dp))
+    if (night == null) {
+        Text("No sleep tracked for last night yet.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("7h 35m", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text("  last night", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
+            Text(com.monsterquest.core.SleepLog.label(night.asleepMin), fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(" last night", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
         }
-        Text("11:10 PM → 6:45 AM", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("${clock(night.startMs)} → ${clock(night.endMs)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(6.dp))
-        // The night as a band: light and deep sleep, with a short wake-up.
-        Row(Modifier.fillMaxWidth().height(12.dp).clip(CircleShape)) {
-            listOf(0.18f to 0.6f, 0.22f to 1f, 0.05f to 0.25f, 0.3f to 0.6f, 0.25f to 1f).forEach { (w, a) ->
-                Box(Modifier.weight(w).height(12.dp).background(SleepIndigo.copy(alpha = a)))
+        if (night.hasStages) {
+            // The night by stage: deep, REM, light and awake.
+            val parts = listOf(
+                Triple("Deep", night.deepMin, SleepIndigo),
+                Triple("REM", night.remMin, SleepIndigo.copy(alpha = 0.75f)),
+                Triple("Light", night.lightMin, SleepIndigo.copy(alpha = 0.5f)),
+                Triple("Awake", night.awakeMin, HpYellow.copy(alpha = 0.7f)),
+            ).filter { it.second > 0 }
+            Row(Modifier.fillMaxWidth().height(12.dp).clip(CircleShape)) {
+                parts.forEach { (_, m, c) -> Box(Modifier.weight(m.toFloat()).height(12.dp).background(c)) }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                parts.forEach { (label, m, c) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(c))
+                        Text(" $label ${com.monsterquest.core.SleepLog.label(m).replace("0h ", "")}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else {
+            val pct = (night.asleepMin.toFloat() / com.monsterquest.core.SleepLog.GOAL_MIN).coerceIn(0f, 1f)
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                Box(Modifier.fillMaxWidth(pct).height(6.dp).clip(CircleShape).background(SleepIndigo))
             }
         }
-        Spacer(Modifier.height(8.dp))
-        // The week at a glance.
-        Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
-            listOf("M" to 0.8f, "T" to 0.7f, "W" to 0.9f, "T" to 0.6f, "F" to 0.75f, "S" to 1f, "S" to 0.85f).forEach { (_, f) ->
-                Box(Modifier.weight(1f).fillMaxHeight(f).clip(RoundedCornerShape(4.dp)).background(SleepIndigo))
-            }
+    }
+    // The week at a glance.
+    val week = com.monsterquest.core.SleepLog.week(s, today)
+    Spacer(Modifier.height(10.dp))
+    Row(Modifier.fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+        week.forEach { (_, n) ->
+            val f = n?.let { (it.asleepMin.toFloat() / (10 * 60)).coerceIn(0.08f, 1f) } ?: 0.08f
+            Box(
+                Modifier.weight(1f).fillMaxHeight(f).clip(RoundedCornerShape(4.dp))
+                    .background(if (n != null) SleepIndigo else MaterialTheme.colorScheme.surfaceVariant),
+            )
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("M", "T", "W", "T", "F", "S", "S").forEach {
-                Text(it, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        week.forEach { (d, _) ->
+            Text(
+                d.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault()),
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
         }
+    }
+    com.monsterquest.core.SleepLog.weekAverage(s, today)?.let {
+        Text("This week: ${com.monsterquest.core.SleepLog.label(it)} a night on average", fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
     Text(
-        "Preview with sample numbers. Sleep tracking isn't on yet.",
+        when {
+            night != null && !night.manual -> "From Health Connect"
+            night != null -> "Logged by hand"
+            vm.sleepAllowed == null -> "Log your sleep by hand, or install Health Connect to sync it."
+            else -> "Sync it from Health Connect (Samsung Health, Fitbit, Google Fit...) or log it by hand."
+        },
         fontSize = 11.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 6.dp),
+    )
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (vm.sleepAllowed == false) {
+            SmallButton("Sync sleep", { permission.launch(com.monsterquest.app.data.HealthSteps.sleepPermissions) }, Modifier.weight(1f))
+        }
+        SmallButton("Log sleep", { logging = true }, Modifier.weight(1f), outlined = true)
+    }
+    if (logging) LogSleepDialog(onDismiss = { logging = false }) { start, end -> vm.logSleep(start, end); logging = false }
+}
+
+private fun clock(ms: Long): String {
+    val t = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalTime()
+    return "${if (t.hour % 12 == 0) 12 else t.hour % 12}:${"%02d".format(t.minute)} ${if (t.hour < 12) "AM" else "PM"}"
+}
+
+private fun clockOfMinutes(m: Int) = "${if ((m / 60) % 12 == 0) 12 else (m / 60) % 12}:${"%02d".format(m % 60)} ${if (m / 60 < 12) "AM" else "PM"}"
+
+/** A time of day with − and + buttons in 15-minute steps. */
+@Composable
+private fun TimeStepper(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f))
+        TextButton(onClick = { onChange((value - 15 + 1440) % 1440) }) { Text("−") }
+        Text(clockOfMinutes(value), fontWeight = FontWeight.SemiBold, modifier = Modifier.width(76.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        TextButton(onClick = { onChange((value + 15) % 1440) }) { Text("+") }
+    }
+}
+
+/** Log last night by hand: bedtime and wake-up time in 15-minute steps. */
+@Composable
+private fun LogSleepDialog(onDismiss: () -> Unit, onSave: (Long, Long) -> Unit) {
+    var bed by remember { mutableIntStateOf(23 * 60) }
+    var wake by remember { mutableIntStateOf(7 * 60) }
+    val asleep = ((wake - bed + 1440) % 1440).let { if (it == 0) 1440 else it }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Log last night") },
+        text = {
+            Column {
+                TimeStepper("Went to bed", bed) { bed = it }
+                TimeStepper("Woke up", wake) { wake = it }
+                Text("${com.monsterquest.core.SleepLog.label(asleep)} of sleep", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val zone = ZoneId.systemDefault()
+                val today = LocalDate.now(zone)
+                val end = today.atStartOfDay(zone).plusMinutes(wake.toLong())
+                val start = end.minusMinutes(asleep.toLong())
+                onSave(start.toInstant().toEpochMilli(), end.toInstant().toEpochMilli())
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

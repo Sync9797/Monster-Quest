@@ -317,6 +317,12 @@ data class GameState(
     /** Glasses of water logged per epoch day (Health card; no rewards). */
     val water: Map<Long, Int> = emptyMap(),
     val waterGoal: Int = Health.DEFAULT_WATER_GOAL,
+    /** Nights of sleep by wake-up epoch day (Health card; no rewards). */
+    val sleep: Map<Long, SleepNight> = emptyMap(),
+    /** What each recent day brought (levels, XP, loot, healing, tasks), for the morning recap. */
+    val tallies: Map<Long, DayTally> = emptyMap(),
+    /** Epoch day the morning recap was last shown. */
+    val recapShownDay: Long? = null,
     /** Epoch day [stepsToday] belongs to. */
     val stepsDay: Long? = null,
     /** Villain camp id -> epoch day defeated. */

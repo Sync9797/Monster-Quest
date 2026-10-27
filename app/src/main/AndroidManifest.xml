@@ -20,6 +20,8 @@
     <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
     <!-- Optional step source: Health Connect (Samsung Health, Google Fit, Fitbit, ...). -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <!-- Optional: last night's sleep for the Health card and the morning recap. -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />

@@ -113,6 +113,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
 
 
     if (state.villainSpoils.isNotEmpty()) SpoilsDialog(vm)
+    // Yesterday's gains and last night's sleep, on the first open each morning.
+    if (vm.showRecap) MorningRecap(vm)
     if (state.starterGiftPending && !vm.starterGiftLater) StarterGiftDialog(vm)
     state.pendingDenCatch?.let { DenCatchDialog(vm, it) }
 

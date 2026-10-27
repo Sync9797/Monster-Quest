@@ -58,7 +58,8 @@ private val topics = listOf(
         GameIcon.WALK, "Walking: monsters come to you",
         listOf(
             "Every 100 steps gives you and your battle party 10 XP and heals 10 HP.",
-            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count) and a water tracker. Tap its title to open or fold it. Water is just for you: it pays no rewards. Sleep tracking is coming.",
+            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count) and a water tracker. Tap its title to open or fold it. Water and sleep are just for you: they pay no rewards. Sleep syncs from Health Connect, or log it by hand.",
+            "Each morning, the first time you open the game, a recap shows what yesterday brought (levels, monster XP, loot, HP restored, tasks) and how you slept.",
             "Every 600 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 4 wait beside you on the map for 4 hours.",
             "Monsters hear you moving: while you walk, every monster nearby closes in on you much faster.",
             "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",

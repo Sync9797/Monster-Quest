@@ -743,6 +743,17 @@ abstract class ScreenshotBase(private val device: String) {
             stepsByHour = hours.mapKeys { com.monsterquest.core.Health.hourKey(today, it.key) },
         )
         base = com.monsterquest.core.Health.addWater(base, 5, now)
+        // Last night from a watch, with stages, and a few nights before it.
+        val wake = today.atTime(6, 45).atZone(zone)
+        base = com.monsterquest.core.SleepLog.record(
+            base,
+            com.monsterquest.core.SleepNight(wake.minusMinutes(455).toInstant().toEpochMilli(), wake.toInstant().toEpochMilli(), deepMin = 85, lightMin = 230, remMin = 95, awakeMin = 45),
+            zone,
+        )
+        listOf(1L to 420L, 2L to 380L, 4L to 500L).forEach { (back, mins) ->
+            val w = wake.minusDays(back)
+            base = com.monsterquest.core.SleepLog.record(base, com.monsterquest.core.SleepNight(w.minusMinutes(mins).toInstant().toEpochMilli(), w.toInstant().toEpochMilli(), manual = true), zone)
+        }
         val v = vm(base)
         shot("40_health_closed") { AppRoot(v, Tab.QUESTS) }
         rule.onNodeWithText("Health").assertExists()
@@ -751,7 +762,8 @@ abstract class ScreenshotBase(private val device: String) {
         v.updateSettings { it.copy(healthOpen = true) }
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
         capture("41_health_open", 1_000)
-        rule.onNodeWithText("Coming soon").assertExists()
+        rule.onNodeWithText("Log sleep").assertExists()
+        rule.onNodeWithText("6h 50m", substring = true).assertExists()
         rule.onNodeWithText("Daily goal").assertExists()
         // Water is just a tally: + adds a glass, no rewards.
         val gold = v.state.gold
@@ -761,6 +773,39 @@ abstract class ScreenshotBase(private val device: String) {
         rule.waitForIdle()
         check(com.monsterquest.core.Health.glasses(v.state, today.toEpochDay()) == 6) { "+ adds a glass" }
         check(v.state.gold == gold) { "water pays nothing" }
+    }
+
+    /** The morning recap: yesterday's gains and last night's sleep. */
+    @Test fun morningRecap() {
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        var base = sampleState().copy(
+            tallies = mapOf(
+                today.toEpochDay() - 1 to com.monsterquest.core.DayTally(
+                    heroLevels = 1, monsterLevels = 3, monsterXp = 1_240, gold = 380,
+                    items = mapOf(com.monsterquest.core.Item.POTION to 2, com.monsterquest.core.Item.TAMING_ORB to 3), gear = 1,
+                    hpRestored = 415, tasks = 6,
+                ),
+            ),
+        )
+        val wake = today.atTime(7, 10).atZone(zone)
+        base = com.monsterquest.core.SleepLog.record(
+            base,
+            com.monsterquest.core.SleepNight(wake.minusMinutes(470).toInstant().toEpochMilli(), wake.toInstant().toEpochMilli(), deepMin = 95, lightMin = 250, remMin = 100, awakeMin = 25),
+            zone,
+        )
+        val v = vm(base)
+        v.openRecap()
+        shot("42_morning_recap") { AppRoot(v, Tab.QUESTS) }
+        rule.onNodeWithText("Monster XP").assertExists()
+        rule.onNodeWithText("+1,240 (3 levels)").assertExists()
+        rule.onNodeWithText("380 gold, 5 items, 1 gear").assertExists()
+        rule.onNodeWithText("7h 25m").assertExists()
+        rule.onNodeWithText("Let's go").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(300)
+        rule.waitForIdle()
+        check(!v.showRecap) { "Let's go closes the recap" }
+        check(v.state.recapShownDay == today.toEpochDay()) { "shown once a day" }
     }
 
     /** Holding a move shows its accuracy and side effects. */

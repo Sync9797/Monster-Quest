@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.34.0
+
+- **Sleep stats (Health card):** last night's sleep, bedtime to wake-up,
+  and a bar of the night by stage (deep, REM, light, awake) when a watch or
+  ring recorded them; the last 7 nights as bars and the week's average.
+  Sync from Health Connect (Samsung Health, Fitbit, Google Fit...) with
+  "Sync sleep", or "Log sleep" by hand. No rewards: it's just for you.
+- **Morning recap:** the first time you open the game each morning (from
+  4 AM), a summary of yesterday: levels grown, monster XP (and levels),
+  loot (gold, items, gear), HP restored and tasks completed, plus last
+  night's sleep. It shows once a day, after the loading screen. Bought
+  items don't count as loot.
+- **Dropdowns open downward:** every section that opens below its title
+  (Health, class, subclass and skills) now grows down from the title and
+  folds back up, instead of sliding in from the side.
+- **New heart:** the Health card's heart is now a flat icon in the same
+  style as the rest of the game's icons.
+
 ## 1.33.0
 
 - **35 new monsters, five per type,** each with all-new artwork unlike
