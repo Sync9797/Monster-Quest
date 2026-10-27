@@ -3,6 +3,7 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -386,15 +387,22 @@ abstract class ScreenshotBase(private val device: String) {
         }
         click(rule.onNodeWithText("Release…"))
         rule.onNodeWithText("Tap monsters to release").assertExists()
+        // The collection grid is lazy: scroll each tile into view, then tap it.
+        val grid = rule.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
         bench.take(2).forEach { m ->
-            click(rule.onAllNodes(androidx.compose.ui.test.hasText(m.displayName, substring = true) and androidx.compose.ui.test.hasClickAction())[0])
+            val tile = androidx.compose.ui.test.hasText(m.displayName, substring = true) and androidx.compose.ui.test.hasClickAction()
+            grid.performScrollToNode(tile)
+            rule.waitForIdle()
+            click(rule.onAllNodes(tile)[0])
         }
-        rule.onNodeWithText("2 selected").assertExists()
         capture("48b_batch_release_picked", 100)
+        grid.performScrollToNode(androidx.compose.ui.test.hasText("Release 2"))
+        rule.waitForIdle()
         click(rule.onNodeWithText("Release 2"))
         rule.onNodeWithText("Release 2 monsters?").assertExists()
         click(rule.onNodeWithText("Release"))
         check(v.state.monsters.size == before - 2) { "released 2: ${v.state.monsters.size} of $before" }
+        check(bench.take(2).none { m -> v.state.monsters.any { it.uid == m.uid } }) { "the picked ones went" }
     }
 
     @Test fun focus() {
