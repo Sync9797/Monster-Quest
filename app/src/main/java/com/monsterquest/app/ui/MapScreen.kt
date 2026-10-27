@@ -156,7 +156,7 @@ fun MapScreen(vm: GameViewModel) {
             GIcon(GameIcon.MAP, Modifier.size(64.dp), Gold)
             Text(
                 "Explore the real world! Item shrines at cafes, restaurants and parks hold weapons, " +
-                    "spell pages, orbs and potions. Silver shrines (Tue/Thu) and Gold shrines (weekends) hold guardians " +
+                    "spell pages, Binding Crystals and potions. Silver shrines (Tue/Thu) and Gold shrines (weekends) hold guardians " +
                     "that unlock when you keep up with your quests. " +
                     "Monsters roam nearby too.",
                 textAlign = TextAlign.Center,
@@ -773,7 +773,7 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                 Text("${shrine.tier.label} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 when (shrine.tier) {
-                    ShrineTier.ITEM -> Text("Weapons, spell-book pages, capture orbs and potions.")
+                    ShrineTier.ITEM -> Text("Weapons, spell-book pages, Binding Crystals, berries and potions.")
                     ShrineTier.SILVER -> if (guardian != null) {
                         GuardianPreview(guardian)
                         Text("Level ${GameEngine.silverLevel(vm.state.hero.level)} • 1.5× HP • Acts twice per round")
@@ -998,7 +998,7 @@ private fun DenDialog(vm: GameViewModel, den: Den, onDismiss: () -> Unit) {
                     modifier = Modifier.padding(top = 6.dp),
                 )
                 Text(
-                    "It can't be tamed mid-fight. Beat it, and you get ${Dens.MIN_THROWS} to ${Dens.MAX_THROWS} throws to tame it. Each one is a long shot.",
+                    "It can't be tamed mid-fight. Beat it, and you get ${Dens.BASE_THROWS} Binding casts to tame it, plus 1 for each of your monsters still standing.",
                     fontSize = 13.sp,
                     color = HpYellow,
                     modifier = Modifier.padding(top = 4.dp),

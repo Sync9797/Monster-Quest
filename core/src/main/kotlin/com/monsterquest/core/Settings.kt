@@ -67,6 +67,8 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val colorStyle: ColorStyle = ColorStyle.GAME,
     val mapStyle: MapStyle = MapStyle.AUTO,
+    /** Binding casts with one tap (a Good trace) instead of tracing the glyph. */
+    val simpleCasting: Boolean = false,
     /** The Health card on Home is open (true) or folded to one line. */
     val healthOpen: Boolean = false,
 )

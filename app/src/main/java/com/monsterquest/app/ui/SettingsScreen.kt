@@ -139,6 +139,11 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     "Show distances in feet and miles. Turn off for meters and kilometers.",
                     prefs.imperialUnits,
                 ) { on -> vm.updateSettings { it.copy(imperialUnits = on) } }
+                ToggleRow(
+                    "Simple casting",
+                    "Cast Binding with one tap (a Good trace) instead of tracing the glyph. Handy one-handed or on the move.",
+                    prefs.simpleCasting,
+                ) { on -> vm.updateSettings { it.copy(simpleCasting = on) } }
             }
 
             // ---- Steps ----

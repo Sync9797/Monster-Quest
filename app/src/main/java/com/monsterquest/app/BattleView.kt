@@ -53,6 +53,8 @@ data class BattleView(
     val berries: List<Pair<Item, Int>> = emptyList(),
     /** The boost a berry the foe ate gives your next throw (1 = none). */
     val bait: Double = 1.0,
+    /** Settings > Simple casting: tap a crystal instead of tracing the glyph. */
+    val simpleCasting: Boolean = false,
     /** HP each of the current fighter's healing spells restores, by spell id. */
     val spellHeals: Map<String, Int> = emptyMap(),
 ) {
@@ -89,7 +91,7 @@ data class BattleView(
                 reversedOrder = b.reversedRounds > 0,
                 items = b.battleItems().map { it to b.count(it) },
                 // Odds shown include the 2% critical catch.
-                orbs = b.orbs().map { OrbOption(it, b.count(it), b.catchOdds(it)) },
+                orbs = b.orbs().map { o -> OrbOption(o, b.count(o), b.catchOdds(o), com.monsterquest.core.TraceGrade.entries.associateWith { g -> b.catchOdds(o, g) }) },
                 captureBlocked = b.captureBlockedReason(),
                 resultText = resultText,
                 nextOpponent = nextOpponent,
@@ -106,7 +108,8 @@ data class BattleView(
     }
 }
 
-data class OrbOption(val item: Item, val count: Int, val odds: Double)
+/** A crystal you can cast Binding with: its odds for a Good trace and for each grade. */
+data class OrbOption(val item: Item, val count: Int, val odds: Double, val gradeOdds: Map<com.monsterquest.core.TraceGrade, Double> = emptyMap())
 
 data class FighterView(
     val key: String,

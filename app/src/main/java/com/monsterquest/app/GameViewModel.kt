@@ -930,7 +930,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         startBattle(den.monster, EncounterType.DEN, den.id)
     }
 
-    fun denThrow() = apply(com.monsterquest.core.Dens.attempt(state))
+    fun denThrow(grade: com.monsterquest.core.TraceGrade = com.monsterquest.core.TraceGrade.GOOD) =
+        apply(com.monsterquest.core.Dens.attempt(state, grade = grade))
     fun denFeed(berry: com.monsterquest.core.Item) = apply(com.monsterquest.core.Dens.feed(state, berry))
     fun denGiveUp() = apply(com.monsterquest.core.Dens.giveUp(state))
 
@@ -1019,7 +1020,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         resultText: String?,
         nextOpponent: String? = null,
         levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
-    ) = BattleView.of(b, resultText, nextOpponent, levelUps).copy(caught = state.caught)
+    ) = BattleView.of(b, resultText, nextOpponent, levelUps).copy(caught = state.caught, simpleCasting = state.settings.simpleCasting)
 
     fun closeBattle() {
         lastBattleEndMs = System.currentTimeMillis()

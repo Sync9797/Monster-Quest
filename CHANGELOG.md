@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.0
+
+- **The Binding Tome: a new way to tame.** Taming is now a capture spell,
+  not a throw. It's under the Tame button and costs no Energy.
+  - Pick a Binding Crystal, then trace the glyph that appears in one
+    stroke, starting on the bright dot. The timer starts at your first
+    touch.
+  - Your trace is graded on speed and accuracy: **Faint** (0.8x odds),
+    **Good** (1x, the old odds), **Strong** (1.3x) or **Perfect** (1.6x).
+    The odds for each grade show before you trace.
+  - Each type has its own glyph (Flame, Bolt, Wave, Wing, Spiral, Crescent,
+    Peaks). Uncommon monsters add a flourish; rare and stronger ones double
+    back on themselves, with less time to trace.
+  - Dens work the same way: each of your casts is a trace (den casts don't
+    use crystals). Berries and the 2% critical catch still apply.
+  - **Simple casting** (Settings > General): one tap instead of tracing,
+    always a Good trace.
+- **Orbs are now Binding Crystals.** Same tiers, new names: Binding,
+  Resonant, Radiant, Prismatic, Sovereign and Perfect Crystal. Better
+  crystals tame more easily *and* give more time to trace. Your saved orbs
+  carry over as crystals. A Perfect Crystal still always tames, with no
+  trace.
+- **Renamed items:** Hi-Potion is now Greater Potion, Ether is now Mana
+  Draught, and Phoenix Down is now Ember Plume. Same effects.
+
 ## 1.38.1
 
 - **Heal preview for spells:** choosing who to heal with a healing spell

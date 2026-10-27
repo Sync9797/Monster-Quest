@@ -701,6 +701,25 @@ private fun ActionPanel(
     onMenu: (Menu) -> Unit,
     onAction: (BattleAction) -> Unit,
 ) {
+    // A Binding cast in progress: the crystal chosen on the Tame menu.
+    var casting by remember { mutableStateOf<com.monsterquest.app.OrbOption?>(null) }
+    casting?.let { o ->
+        val species = b.enemy.speciesId?.let { com.monsterquest.core.Bestiary.get(it) }
+        if (species == null) {
+            casting = null
+        } else {
+            val glyph = remember(o.item, species.id) { com.monsterquest.core.Binding.glyphFor(species, o.item) }
+            BindingCast(
+                title = "Binding with a ${o.item.label}",
+                glyph = glyph,
+                gradeOdds = o.gradeOdds.mapValues { (it.value * 100).toInt() },
+                onCancel = { casting = null },
+            ) { grade ->
+                casting = null
+                onAction(BattleAction.Capture(o.item, grade))
+            }
+        }
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -810,23 +829,37 @@ private fun ActionPanel(
                 val blocked = b.captureBlocked
                 // Berries first: feed one, then throw (it lasts one throw).
                 if (b.bait > 1.0) {
-                    Text("It ate a berry: your next throw is ${b.bait}x as likely.", fontSize = 12.sp, color = Gold)
+                    Text("It ate a berry: your next cast is ${b.bait}x as likely.", fontSize = 12.sp, color = Gold)
                 }
                 b.berries.forEach { (berry, count) ->
                     OutlinedButton(onClick = { onAction(BattleAction.UseItem(berry, actor.key)) }, modifier = Modifier.fillMaxWidth()) {
                         GIcon(berry.icon(), Modifier.size(18.dp), berry.color())
                         Spacer(Modifier.width(6.dp))
-                        Text("Feed ${berry.label} x$count  •  next throw ${berry.power}x")
+                        Text("Feed ${berry.label} x$count  •  next cast ${berry.power}x")
                     }
                 }
                 if (blocked != null) {
                     Text(blocked, color = HpYellow)
                 } else {
+                    // Binding Tome: pick a crystal, then trace the glyph (or one tap with Simple casting).
+                    Text("Cast Binding: choose a crystal, then trace the glyph", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     b.orbs.forEach { o ->
-                        OutlinedButton(onClick = { onAction(BattleAction.Capture(o.item)) }, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                if (b.simpleCasting || !com.monsterquest.core.Binding.needsTrace(o.item)) onAction(BattleAction.Capture(o.item))
+                                else casting = o
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             GIcon(o.item.icon(), Modifier.size(18.dp), o.item.color())
                             Spacer(Modifier.width(6.dp))
-                            Text("${o.item.label} x${o.count}  •  ${(o.odds * 100).toInt()}% chance")
+                            val perfect = o.gradeOdds[com.monsterquest.core.TraceGrade.PERFECT]
+                            Text(
+                                "${o.item.label} x${o.count}  •  ${(o.odds * 100).toInt()}%" +
+                                    if (perfect != null && perfect > o.odds && !b.simpleCasting) " (Perfect ${(perfect * 100).toInt()}%)" else "",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }

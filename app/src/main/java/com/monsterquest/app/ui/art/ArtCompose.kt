@@ -151,10 +151,11 @@ fun Element.color(): Color = Color(palette(this).light)
 fun Item.icon(): GameIcon = when (this) {
     Item.POTION -> GameIcon.POTION
     Item.HI_POTION -> GameIcon.HI_POTION
-    Item.ETHER -> GameIcon.CRYSTAL
+    Item.ETHER -> GameIcon.POTION
     Item.PHOENIX_DOWN -> GameIcon.FEATHER
     Item.RESTORE_POTION -> GameIcon.RESTORE
-    Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB -> GameIcon.ORB
+    // Binding Crystals.
+    Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB -> GameIcon.CRYSTAL
     Item.TREAT -> GameIcon.TREAT
     Item.LURE -> GameIcon.LURE
     Item.SWEET_BERRY, Item.GOLDEN_BERRY -> GameIcon.BERRY

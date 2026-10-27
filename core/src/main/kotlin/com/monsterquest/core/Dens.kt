@@ -80,7 +80,8 @@ object Dens {
     }
 
     /** A throw's real chance, with a berry's boost ([bait]) and the critical catch. */
-    fun throwOdds(m: Monster, bait: Double = 1.0): Double = withCriticalCatch((throwChance(m) * bait).coerceAtMost(0.95))
+    fun throwOdds(m: Monster, bait: Double = 1.0, grade: TraceGrade = TraceGrade.GOOD): Double =
+        withCriticalCatch((throwChance(m) * bait * grade.multiplier).coerceAtMost(0.95))
 
     /** The chance of taming it with [throws] throws left (a berry only helps the next one). */
     fun oddsOver(m: Monster, throws: Int, bait: Double = 1.0): Double =
@@ -96,7 +97,7 @@ object Dens {
                 inventory = GameEngine.removeItems(state.inventory, mapOf(berry to 1)),
                 pendingDenCatch = c.copy(bait = berry.power),
             ),
-            "${c.monster.displayName} eats the ${berry.label}. Your next throw is ${berry.power}x as likely!",
+            "${c.monster.displayName} eats the ${berry.label}. Your next cast is ${berry.power}x as likely!",
         )
     }
 
@@ -148,12 +149,12 @@ object Dens {
     }
 
     /** One taming throw at a beaten den monster. */
-    fun attempt(state: GameState, rng: Random = Random.Default): Update {
+    fun attempt(state: GameState, rng: Random = Random.Default, grade: TraceGrade = TraceGrade.GOOD): Update {
         val c = state.pendingDenCatch ?: return Update(state, "Nothing to tame.")
         val m = c.monster
         if (state.storageFull) return Update(state, "Monster storage is full. Release a monster or upgrade storage first.")
         val critical = rng.nextDouble() < CRITICAL_CATCH
-        if (critical || rng.nextDouble() < (throwChance(m) * c.bait).coerceAtMost(0.95)) {
+        if (critical || rng.nextDouble() < (throwChance(m) * c.bait * grade.multiplier).coerceAtMost(0.95)) {
             val tamed = m.copy(uid = newId(rng), xp = 0)
             var s = state.copy(
                 pendingDenCatch = null,
@@ -170,7 +171,7 @@ object Dens {
         return if (left <= 0) {
             Update(state.copy(pendingDenCatch = null), "${m.displayName} broke free and slipped back into the wild.")
         } else {
-            Update(state.copy(pendingDenCatch = c.copy(throwsLeft = left, bait = 1.0)), "${m.displayName} broke free! $left ${if (left == 1) "throw" else "throws"} left.")
+            Update(state.copy(pendingDenCatch = c.copy(throwsLeft = left, bait = 1.0)), "${m.displayName} broke free (${grade.label.lowercase()} trace)! $left ${if (left == 1) "cast" else "casts"} left.")
         }
     }
 

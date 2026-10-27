@@ -188,6 +188,20 @@ private fun DrivingWarning(onDismiss: () -> Unit) {
 private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch) {
     val m = c.monster
     val pct = (com.monsterquest.core.Dens.throwOdds(m, c.bait) * 100).toInt()
+    val perfectPct = (com.monsterquest.core.Dens.throwOdds(m, c.bait, com.monsterquest.core.TraceGrade.PERFECT) * 100).toInt()
+    var casting by remember { mutableStateOf(false) }
+    if (casting) {
+        val glyph = remember(m.uid) { com.monsterquest.core.Binding.glyphFor(m.species) }
+        BindingCast(
+            title = "Binding the ${m.species.name}",
+            glyph = glyph,
+            gradeOdds = com.monsterquest.core.TraceGrade.entries.associateWith { (com.monsterquest.core.Dens.throwOdds(m, c.bait, it) * 100).toInt() },
+            onCancel = { casting = false },
+        ) { grade ->
+            casting = false
+            vm.denThrow(grade)
+        }
+    }
     val overall = (com.monsterquest.core.Dens.oddsOver(m, c.throwsLeft, c.bait) * 100).toInt()
     val berries = com.monsterquest.core.Item.entries.filter { it.kind == com.monsterquest.core.ItemKind.BAIT && vm.state.count(it) > 0 && c.bait < it.power }
     val bonus = c.throwsTotal - com.monsterquest.core.Dens.BASE_THROWS
@@ -199,15 +213,15 @@ private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch)
                 MonsterArt(m.species, Modifier.size(110.dp), shiny = m.shiny)
                 Text("Lv ${m.level} • ${com.monsterquest.core.GameEngine.perfectStatCount(m)} perfect stats", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Catch rate: $pct%" + if (c.bait > 1.0) " on this throw (berry ${c.bait}x)" else " per throw",
+                    "Catch rate: $pct%" + if (c.bait > 1.0) " on this cast (berry ${c.bait}x)" else " per cast",
                     fontWeight = FontWeight.SemiBold,
                     color = Gold,
                     modifier = Modifier.padding(top = 6.dp),
                 )
                 Text(
-                    "$overall% to tame it with your ${c.throwsLeft} throw${if (c.throwsLeft == 1) "" else "s"} left " +
-                        "(including a 2% critical catch on every throw)." +
-                        if (bonus > 0) " +$bonus throw${if (bonus == 1) "" else "s"} for your monsters still standing." else "",
+                    "$overall% to tame it with your ${c.throwsLeft} cast${if (c.throwsLeft == 1) "" else "s"} left, at a Good trace " +
+                        "(including a 2% critical catch on every cast). A Perfect trace gives ${perfectPct}%." +
+                        if (bonus > 0) " +$bonus cast${if (bonus == 1) "" else "s"} for your monsters still standing." else "",
                     fontSize = 13.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
@@ -227,7 +241,12 @@ private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch)
                 if (vm.state.storageFull) Text("Monster storage is full: make room first.", color = HpRed, fontSize = 12.sp)
             }
         },
-        confirmButton = { Button(onClick = vm::denThrow, enabled = !vm.state.storageFull) { Text("Throw") } },
+        confirmButton = {
+            Button(
+                onClick = { if (vm.state.settings.simpleCasting) vm.denThrow() else casting = true },
+                enabled = !vm.state.storageFull,
+            ) { Text("Cast Binding") }
+        },
         dismissButton = { TextButton(onClick = vm::denGiveUp) { Text("Let it go") } },
     )
 }

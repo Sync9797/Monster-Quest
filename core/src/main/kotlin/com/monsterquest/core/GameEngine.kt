@@ -1002,7 +1002,7 @@ object GameEngine {
                         s = Dens.defeated(s, r.shrineId, r.enemy, nowMs, r.standing)
                         s.pendingDenCatch?.let {
                             val bonus = it.throwsTotal - Dens.BASE_THROWS
-                            msg.append(" ${r.enemy.displayName} is worn out! You have ${it.throwsTotal} throws to tame it" +
+                            msg.append(" ${r.enemy.displayName} is worn out! You have ${it.throwsTotal} binding casts to tame it" +
                                 (if (bonus > 0) " (+$bonus for your monsters still standing)." else "."))
                         }
                     }

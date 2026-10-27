@@ -91,9 +91,9 @@ private val topics = listOf(
             "The tracker bar at the top (or the Nearby list beside the map on big screens) shows monsters farther out, with their distance (feet and miles, or meters) and the direction to walk. Tap one to see what landmark it is near and whether it is heading your way.",
             "Get within 330 ft (100 m) of a monster to battle it. The phone buzzes when one comes into range.",
             "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",
-            "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 throws to tame it, plus 1 for each of your monsters still standing (up to 10). The den screen shows your catch rate and overall odds. Dens move every day.",
-            "Every taming throw has a 2% critical catch: the monster is tamed whatever the odds. The Tame button shows your best catch rate.",
-            "Berries: feed a Sweet Berry (1.5x) or a rare Golden Berry (2.5x) before a throw to make it likelier. They're only found in the wild (item shrines and wild monsters). In battle they're on the Tame menu; at a den, feeding doesn't use a throw. One berry per throw.",
+            "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 Binding casts to tame it, plus 1 for each of your monsters still standing (up to 10). Den casts don't use crystals. The den screen shows your catch rate and overall odds. Dens move every day.",
+            "Every Binding cast has a 2% critical catch: the monster is tamed whatever the odds. The Tame button shows your best catch rate.",
+            "Berries: feed a Sweet Berry (1.5x) or a rare Golden Berry (2.5x) before a cast to make it likelier. They're only found in the wild (item shrines and wild monsters). In battle they're on the Tame menu; at a den, feeding doesn't use a cast. One berry per cast.",
             "Some monsters are aggressive (more at night). If one reaches you it ambushes (never in your first 30 seconds on the map): the fight starts on its own and it strikes first. Turn ambushes off in Settings.",
             "Hold the phone upside down on the map for battery saver; turn it upright to return.",
             "Keep your eyes open while you walk with the map open: now and then a monster (sometimes 2 or 3 of the same kind, each weaker) leaps out in front of you. The phone gives a long buzz and the fight starts. Turn this off with Ambushes in Settings.",
@@ -105,7 +105,7 @@ private val topics = listOf(
         listOf(
             "Blue crystal beacons are item shrines at real places (cafes, shops, parks, art, fountains) plus Waystones in between. Tap one to see the real place and street, e.g. Supply Cache: Barnes & Noble on Wards Road.",
             "Tap Walk here on any shrine, monster or villain for walking directions in your map app.",
-            "Walk within 60 m and tap one to collect gold, potions, orbs, spell pages, weapons, armor and lures. A pop-up shows what you got.",
+            "Walk within 60 m and tap one to collect gold, potions, Binding Crystals, berries, spell pages, weapons, armor and lures. A pop-up shows what you got.",
             "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; upgrade it every 5 levels or for 1,000 gold.",
         ),
     ),
@@ -129,7 +129,8 @@ private val topics = listOf(
     HelpTopic(
         GameIcon.ORB, "Taming and candy",
         listOf(
-            "Get a monster below 50% HP, then use Tame and throw an orb. Sleep, shock, poison and burn make it easier.",
+            "Taming uses the Binding Tome, a capture spell that costs no Energy. Get a monster below 50% HP, press Tame, pick a Binding Crystal, then trace the glyph that appears in one stroke. Its shape follows the monster's type; rarer monsters have longer glyphs and less time.",
+            "Your trace is graded on speed and accuracy: Faint (0.8x odds), Good (1x), Strong (1.3x) or Perfect (1.6x). The odds for each grade show before you trace. Better crystals tame more easily and give more time to trace. Sleep, shock, poison and burn make it easier too. Prefer tapping? Turn on Simple casting in Settings (always a Good trace).",
             "Taming gives 3 candy for that monster's line and hero XP (more than beating it); beating one gives 1 candy (3 for bosses and den monsters); releasing one gives more. Spend candy on a monster's page to level it up.",
             "Monsters don't evolve on their own. Once one reaches its evolution level, an Evolve button appears on its page: it costs 10 candy of its line for the first evolution, 25 for the second and 50 for the third.",
             "Leveling never changes a monster's stat points (0 to 15 per stat). Better ones come from taming more monsters.",
@@ -160,9 +161,9 @@ private val topics = listOf(
         listOf(
             "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
             "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mud Shot (weak, but each hit lowers the foe's accuracy 10%, stacking), Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
-            "Every level gives a small box of items that gets better as you level. Better orbs unlock in the shop at levels 10 (Great), 25 (Mega), 50 (Ultra) and 75 (Perfect: always tames, 2,000 gold; you also get one at level 100).",
+            "Every level gives a small box of items that gets better as you level. Better Binding Crystals unlock in the shop at levels 10 (Resonant), 25 (Radiant), 50 (Prismatic) and 75 (Perfect: always tames with no trace, 2,000 gold; you also get one at level 100).",
             "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
-            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), at once with an Ether, or with a full night's sleep (7 hours or more, synced or logged on the Health card, once a day).",
+            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), at once with a Mana Draught, or with a full night's sleep (7 hours or more, synced or logged on the Health card, once a day).",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
             "A weapon of your class also adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off until you've fought 10 battles with that particular weapon.",
             "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",

@@ -52,7 +52,8 @@ sealed interface BattleAction {
     data class UseItem(val item: Item, val targetKey: String) : BattleAction
     /** Send in a monster from the swap slots, in place of [outKey] (null: into a free spot). */
     data class Swap(val inUid: String, val outKey: String?) : BattleAction
-    data class Capture(val orb: Item) : BattleAction
+    /** Cast Binding with a crystal ([orb]); [grade] is how well its glyph was traced. */
+    data class Capture(val orb: Item, val grade: TraceGrade = TraceGrade.GOOD) : BattleAction
     data object Flee : BattleAction
     /** A fainted monster's turn passes (when the player doesn't swap it out). */
     data object Skip : BattleAction
@@ -464,7 +465,10 @@ data class BattleResult(
     val standing: Int = 0,
 )
 
-/** Every taming throw has this chance to be a critical catch: tamed, whatever the odds. */
+/** " (strong trace)" for the battle log; nothing for a Perfect Crystal, which needs no trace. */
+private fun traceNote(a: BattleAction.Capture) = if (Binding.needsTrace(a.orb)) " (${a.grade.label.lowercase()} trace)" else ""
+
+/** Every taming cast has this chance to be a critical catch: tamed, whatever the odds. */
 const val CRITICAL_CATCH = 0.02
 
 /** The real chance of a throw with base odds [p], counting the critical catch. */
@@ -709,23 +713,23 @@ class Battle(
     /** Null when capture is allowed, otherwise a reason to show the player. */
     fun captureBlockedReason(): String? = when {
         encounter == EncounterType.VILLAIN -> "Shadow-bound monsters can't be tamed. Defeat the whole team."
-        encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your taming throws."
+        encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your binding casts."
         encounter == EncounterType.THUG -> "A thug's monsters won't leave their master. Beat the whole crew."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         storageFull -> "Monster storage is full. Release a monster or upgrade storage."
-        orbs().isEmpty() -> "No orbs left."
+        orbs().isEmpty() -> "No Binding Crystals left."
         itemsRemainingThisBattle <= 0 -> "Item limit reached for this battle ($MAX_ITEMS_PER_BATTLE)."
         enemy.hpFraction > 0.5 && count(Item.PERFECT_ORB) <= 0 -> "Too strong to tame. Get it below 50% HP."
         else -> null
     }
 
     /** The odds shown for [orb]: its taming chance plus the 2% critical catch. */
-    fun catchOdds(orb: Item): Double = withCriticalCatch(captureOdds(orb))
+    fun catchOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = withCriticalCatch(captureOdds(orb, grade))
 
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
-    fun captureOdds(orb: Item): Double = if (orb == Item.PERFECT_ORB) 1.0 else
+    fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
-            captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait *
+            captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))
             ).coerceIn(0.0, 0.95)
 
@@ -1018,7 +1022,7 @@ class Battle(
                 when (action.item.kind) {
                     ItemKind.BAIT -> {
                         bait = action.item.power
-                        log += "${actor.name} tosses a ${action.item.label} to ${enemy.name}. Your next throw is ${action.item.power}x as likely to tame it!"
+                        log += "${actor.name} feeds a ${action.item.label} to ${enemy.name}. Your next Binding cast is ${action.item.power}x as likely to tame it!"
                     }
                     ItemKind.HEAL_HP -> {
                         if (!target.alive) return refund(action.item)
@@ -1041,7 +1045,7 @@ class Battle(
             is BattleAction.Capture -> {
                 if (captureBlockedReason() != null) return false
                 if (action.orb.kind != ItemKind.CAPTURE || !useItem(action.orb)) return false
-                val chance = captureOdds(action.orb)
+                val chance = captureOdds(action.orb, action.grade)
                 // A berry only lasts for one throw.
                 bait = 1.0
                 val critical = chance < 1.0 && rng.nextDouble() < CRITICAL_CATCH
@@ -1049,10 +1053,10 @@ class Battle(
                     outcome = BattleOutcome.CAPTURED
                     capturedKey = enemy.key
                     if (critical) log += "Critical catch!"
-                    log += "${actor.name} throws a ${action.orb.label}... ${enemy.name} was tamed!"
+                    log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${enemy.name} was tamed!"
                     if (enemies.count { it.alive } > 1) log += "The rest of the pack scatters!"
                 } else {
-                    log += "${actor.name} throws a ${action.orb.label}... ${enemy.name} broke free!"
+                    log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${enemy.name} broke free!"
                 }
             }
             is BattleAction.Swap -> if (!swapIn(action)) return false

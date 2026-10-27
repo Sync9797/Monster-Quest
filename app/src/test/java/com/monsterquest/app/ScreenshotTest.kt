@@ -3,6 +3,7 @@ package com.monsterquest.app
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
@@ -301,6 +302,32 @@ abstract class ScreenshotBase(private val device: String) {
         check(rule.onAllNodes(androidx.compose.ui.test.hasText(" → ", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview text" }
         capture("44b_battle_potion_targets", 300)
         check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("after healing", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview bar" }
+    }
+
+    /** Binding: tracing the glyph along its lines, quickly, grades well and resolves the cast. */
+    @Test fun bindingTrace() {
+        val glyph = com.monsterquest.core.Binding.glyphFor(Bestiary.get("zapmouse"))
+        var got: com.monsterquest.core.TraceGrade? = null
+        shot("45_binding_trace") {
+            androidx.compose.foundation.layout.Box(Modifier.background(androidx.compose.ui.graphics.Color(0xFF0D171A)).padding(24.dp)) {
+                com.monsterquest.app.ui.TracePad(glyph, Modifier.size(300.dp)) { got = it }
+            }
+        }
+        // Many points along each line, so the finger follows the glyph closely.
+        val path = glyph.points.zipWithNext().flatMap { (a, b) ->
+            (0 until 8).map { i -> com.monsterquest.core.GlyphPoint(a.x + (b.x - a.x) * i / 8f, a.y + (b.y - a.y) * i / 8f) }
+        } + glyph.points.last()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Binding glyph: Bolt")).performTouchInput {
+            down(androidx.compose.ui.geometry.Offset(path[0].x * width, path[0].y * height))
+            path.drop(1).forEach { moveTo(androidx.compose.ui.geometry.Offset(it.x * width, it.y * height)) }
+            up()
+        }
+        rule.mainClock.advanceTimeBy(100)
+        rule.waitForIdle()
+        capture("45b_binding_traced", 100)
+        rule.mainClock.advanceTimeBy(1_000)
+        rule.waitForIdle()
+        check(got != null && got!! >= com.monsterquest.core.TraceGrade.GOOD) { "graded $got" }
     }
 
     @Test fun focus() {
@@ -665,7 +692,7 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm(sampleState().let { st -> st.copy(pendingDenCatch = com.monsterquest.core.DenCatch("den:1:2:3", m, 6, 8), inventory = st.inventory + (com.monsterquest.core.Item.SWEET_BERRY to 2)) })
         shot("30_den_catch") { AppRoot(v) }
         rule.onNodeWithText("Tame the", substring = true).assertExists()
-        rule.onNodeWithText("Throw").assertExists()
+        rule.onNodeWithText("Cast Binding").assertExists()
         // The catch rate per throw and the overall odds with the throws left.
         rule.onNodeWithText("Catch rate:", substring = true).assertExists()
         rule.onNodeWithText("with your 6 throws left", substring = true).assertExists()
