@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.28.0
+
+- **Hold a move to see what it does:** in battle, press and hold any move
+  button for its type, power, accuracy (or "Never misses"), how it does
+  against the current foe, and its side effects.
+- **Scare and Intimidate split up:** they used to do the same thing.
+  Intimidate is now only a skill (dragons and some heroes): every foe's
+  Attack drops to 67% as the battle starts, with extra drops at ranks 3
+  and 5. Scare is now a Normal attack (power 50, learned at level 9) that
+  hits and drops the foe's Attack to 67%. The two don't stack. Brute thugs
+  now have the Intimidate skill.
+- **Moves reworked so none overlap:** within each type, no two attacks do
+  the same job any more.
+  - Normal: Bite 50; Quick Strike 35 (never misses); Slam became Body Slam
+    (75, 30% chance to lower Defense).
+  - Fire: Fire Fang 55 (burn and flinch chance); Fire Storm 90 and hits
+    every foe.
+  - Electric: Shock 25; Thunder Shock 55 (20% shock); Thunder Wave hits
+    every foe.
+  - Water: Water Shot pierces guards; Tidal Slam 80 with flinch; Hydro Blast
+    120 at 80% accuracy; Hydro Surprise 90 with a high critical-hit chance.
+  - Flight: Wind Tunnel hits every foe; Flying Kick 95 with recoil.
+  - Gas: Puff can make the foe miss; Gunk Shot 85 at 80% accuracy with a 30%
+    poison chance (now learned at 25); Toxic Wave hits every foe.
+  - Corrupt: Dark Wave hits every foe; Shadow Claw pierces guards.
+  - Earth: Sap heals half the damage dealt; Rock Throw and Vine Whip lower
+    Defense and Speed; Earthquake 90 and hits every foe.
+
 ## 1.27.0
 
 - **Moves fit on screen:** on phones the battle log is smaller (compact

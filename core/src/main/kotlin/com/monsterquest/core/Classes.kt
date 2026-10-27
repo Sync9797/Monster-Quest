@@ -180,8 +180,8 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     fun offhandPct(rank: Int) = 40 + 15 * (rank - 1)
     /** Insomnia: turns of sleep shaken off (rank 5: can't be put to sleep). */
     fun sleepCut(rank: Int) = (rank + 1) / 2
-    /** Intimidate: Attack stages taken from every foe. */
-    fun intimidateStages(rank: Int) = 1 + (rank - 1) / 2
+    /** Intimidate: Attack stages taken from every foe on top of the 66.7% cut (one more at ranks 3 and 5). */
+    fun intimidateStages(rank: Int) = (rank - 1) / 2
     /** Quick Step: dodge chance, in percent. */
     fun dodgePct(rank: Int) = 4 + 3 * rank
     fun goldPct(rank: Int) = 10 * rank
@@ -220,7 +220,8 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
                 if (r >= 3) ", and its effects work too" else ""
             INSOMNIA -> if (r >= MAX_SKILL_RANK) "Can't be put to sleep" + (if (team) ", and your team wakes ${sleepCut(r - 1)} turns sooner" else "")
             else "Wakes ${sleepCut(r)} turn${if (sleepCut(r) > 1) "s" else ""} sooner from sleep" + if (team) " (whole team)" else ""
-            INTIMIDATE -> "Lowers every foe's Attack by ${intimidateStages(r)} stage${if (intimidateStages(r) > 1) "s" else ""} as the battle starts"
+            INTIMIDATE -> "Every foe's Attack drops to 67% as the battle starts" +
+                (if (intimidateStages(r) > 0) ", then ${intimidateStages(r)} stage${if (intimidateStages(r) > 1) "s" else ""} more" else "")
             HOVER -> "Earth moves can't touch you" + when {
                 r >= MAX_SKILL_RANK -> "; your whole team hovers too, until you take a hit (then ${hoverTeamPct(r)}% less Earth damage)"
                 team -> "; your team takes ${hoverTeamPct(r)}% less Earth damage"

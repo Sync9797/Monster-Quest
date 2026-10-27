@@ -93,6 +93,8 @@ private val topics = listOf(
             "Fights are turn-based in Speed order. The turn order strip shows who acts next; the fighter whose turn it is pulses gold.",
             "You fight with your hero plus up to 5 party monsters. On the Monsters tab, long-press a monster and drag it onto a party slot.",
             "Each monster has 4 moves. Spells and typed moves throw bolts of their type; swords and Normal moves slash.",
+            "Hold a move button to see its type, power, accuracy and side effects.",
+            "Scare (an attack) and Intimidate (a skill) both drop the foe's Attack to 67% for the battle. They don't stack.",
             "Seven types, each strong against two and weak to two: Water > Fire & Gas, Fire > Earth & Electric, Corrupt > Fire & Flight, Gas > Corrupt & Electric, Earth > Water & Corrupt, Flight > Earth & Gas, Electric > Water & Flight. Super-effective hits do 1.5x; the Type chart on the Monsters tab shows it all.",
             "Wild monsters grow stronger the more fighters you bring, and pay more: x0.6 alone, x2.75 with 4 fighters, up to x4 with a full team of 6.",
             "Packs: nearby monsters may team up (2 vs 4, 3 vs 3, 4 vs 4...). Tap a pack member to target it. Packs are tougher and pay up to 2.1x more. Not every monster joins in.",

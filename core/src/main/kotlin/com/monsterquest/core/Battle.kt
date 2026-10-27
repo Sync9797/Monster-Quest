@@ -204,6 +204,7 @@ class Combatant(
     val stages: MutableMap<BattleStat, Int> = mutableMapOf()
     /** Steel Wing stacks, in percent. */
     var powerUp: Int = 0
+    /** Scared or Intimidated: Attack drops to [SCARED_ATTACK] (66.7%) for the battle. Doesn't stack. */
     var scared: Boolean = false
 
     val alive: Boolean get() = hp > 0
@@ -219,7 +220,7 @@ class Combatant(
         if (scorchTurns > 0) add("Scorched")
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
         if (powerUp > 0) add("Power +$powerUp%")
-        if (scared) add("Scared")
+        if (scared) add("Scared (Atk 67%)")
         if (immuneEarth) add("Hovering")
         if (grounded) add("Grounded")
         traits.forEach { (t, r) -> add("${t.label} ${"★".repeat(r)}") }
@@ -313,7 +314,7 @@ class Combatant(
             val lv = t.level
             data class Build(val hp: Int, val atk: Int, val def: Int, val spd: Int, val element: Element, val moves: List<String>, val dodge: Double)
             val b = when (t.cls) {
-                HeroClass.WARRIOR -> Build(70 + lv * 12, 18 + lv * 2, 15 + lv * 2, 8 + lv * 3 / 4, Element.NEUTRAL, listOf("headbutt", "ground_pound", "intimidate", "bite"), 0.0)
+                HeroClass.WARRIOR -> Build(70 + lv * 12, 18 + lv * 2, 15 + lv * 2, 8 + lv * 3 / 4, Element.NEUTRAL, listOf("headbutt", "ground_pound", "slam", "bite"), 0.0)
                 HeroClass.MAGE -> Build(45 + lv * 8, 18 + lv * 5 / 2, 10 + lv, 12 + lv, Element.CORRUPT, listOf("hex_barrage", "dark_wave", "nightmare", "soul_drain"), 0.0)
                 else -> Build(50 + lv * 9, 16 + lv * 2, 12 + lv * 3 / 2, 14 + lv * 5 / 4, Element.NEUTRAL, listOf("sucker_punch", "night_slash", "fury_swipes", "scare"), 0.1)
             }
@@ -322,6 +323,8 @@ class Combatant(
             ).apply {
                 thug = true
                 heroClass = t.cls
+                // Brutes glare their foes down as the fight starts.
+                if (t.cls == HeroClass.WARRIOR) gainTrait(Trait.INTIMIDATE, 1, hero = false)
                 evasion = b.dodge
             }
         }
@@ -473,6 +476,9 @@ const val CURSE_ARMOR_STEAL = 10
 
 /** Monsters that wait in the swap slots, ready to be sent in. */
 const val MAX_SWAPS = 2
+
+/** Scare and Intimidate: the foe's Attack drops to 66.7% (two thirds). */
+const val SCARED_ATTACK = 2.0 / 3.0
 
 /** Pay for a thug fight, per fighter on their side (thug included). */
 const val THUG_REWARD = 0.9
@@ -637,14 +643,16 @@ class Battle(
         for (c in allies + enemies) {
             val r = c.traits[Trait.INTIMIDATE] ?: continue
             if (!c.alive) continue
-            val stages = Trait.INTIMIDATE.intimidateStages(r)
+            // The same Attack cut as Scare (66.7%), plus extra stages at higher ranks.
+            val extra = Trait.INTIMIDATE.intimidateStages(r)
             log += "${c.name}'s Intimidate!"
             for (foe in foesOf(c).filter { it.alive }) {
                 if (foe.oblivious) {
                     log += "${foe.name} doesn't even notice."
                 } else {
-                    foe.stages[BattleStat.ATTACK] = ((foe.stages[BattleStat.ATTACK] ?: 0) - stages).coerceAtLeast(-4)
-                    log += "${foe.name}'s Attack fell!"
+                    foe.scared = true
+                    if (extra > 0) foe.stages[BattleStat.ATTACK] = ((foe.stages[BattleStat.ATTACK] ?: 0) - extra).coerceAtLeast(-4)
+                    log += "${foe.name}'s Attack fell to 67%!"
                 }
             }
         }
@@ -1293,11 +1301,14 @@ class Battle(
                     a.powerUp += fx.percent
                     log += "${a.name}'s power rises! (+${a.powerUp}%)"
                 }
-                MoveEffect.Scare -> if (d.oblivious) {
-                    log += "${d.name} is too oblivious to be scared."
-                } else {
-                    d.scared = true
-                    log += "${d.name} is scared and will deal less damage!"
+                MoveEffect.Scare -> when {
+                    !d.alive -> {}
+                    d.oblivious -> log += "${d.name} is too oblivious to be scared."
+                    d.scared -> log += "${d.name} is already shaken."
+                    else -> {
+                        d.scared = true
+                        log += "${d.name} is scared! Its Attack drops to 67%."
+                    }
                 }
                 MoveEffect.ReverseOrder -> {
                     reversedRounds = 4
@@ -1349,7 +1360,7 @@ class Battle(
         /** Ignores the target's raised Defense and its brace. */
         pierce: Boolean = false,
     ): Int {
-        val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK))
+        val atk = (if (useMagic) a.magic.toDouble() else a.attack * a.stageMultiplier(BattleStat.ATTACK) * (if (a.scared) SCARED_ATTACK else 1.0))
         val defStage = d.stageMultiplier(BattleStat.DEFENSE).let { if (pierce) minOf(it, 1.0) else it }
         val def = d.defense * defStage
         val typeMult = type.multiplierAgainst(d.element)
@@ -1359,7 +1370,6 @@ class Battle(
             (1 + a.level * 0.08) *
             typeMult * sameType * weather.multiplier(type) *
             (1 + a.powerUp / 100.0) *
-            (if (a.scared) 0.75 else 1.0) *
             (0.85 + rng.nextDouble() * 0.15) *
             (if (crit) 1.5 + a.critDamagePct / 100.0 else 1.0) *
             (if (d.defending && !pierce) 0.5 else 1.0) *
@@ -1433,7 +1443,6 @@ class Battle(
                 m.isDamaging -> true
                 m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.Nightmare } -> target.status == null
                 m.effects.any { it is MoveEffect.SetWeather } -> m.effects.filterIsInstance<MoveEffect.SetWeather>().none { it.weather == weather }
-                m.effects.contains(MoveEffect.Scare) -> !target.scared
                 m.effects.contains(MoveEffect.ReverseOrder) -> reversedRounds == 0
                 m.effects.contains(MoveEffect.CureSelf) && m.effects.none { it is MoveEffect.RaiseSelf } -> enemy.status != null
                 m.effects.any { it is MoveEffect.HealSelf } && !m.isDamaging -> enemy.hpFraction < 0.6

@@ -113,8 +113,31 @@ class ClassesTest {
         val b = GameEngine.newBattle(leader, foe, EncounterType.WILD, rng = Random(1))
         // Rank 3 Morale Master: +6%.
         assertTrue(b.allies[1].attack > plain.allies[1].attack)
-        assertTrue(b.enemies.all { (it.stages[BattleStat.ATTACK] ?: 0) < 0 })
+        // Intimidate: every foe's Attack drops to 66.7%, the same cut as the Scare attack.
+        assertTrue(b.enemies.all { it.scared })
         assertTrue(b.log.any { "Intimidate" in it })
+    }
+
+    @Test
+    fun scareIsAnAttackThatCutsAttackToTwoThirdsOnce() {
+        val scare = Moves.get("scare")
+        assertTrue(scare.isDamaging)
+        assertEquals(null, Moves.find("intimidate"))
+        val foe = Monster.create(Bestiary.get("emberkit"), 20, rng)
+        val me = Monster.create(Bestiary.get("zapmouse"), 20, rng)
+        val s = started().copy(monsters = listOf(me), party = listOf(me.uid))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(2))
+        val target = b.enemies.first()
+        assertFalse(target.scared)
+        // Same damage formula with and without the cut: a scared foe hits for about 2/3 the Attack.
+        assertEquals(2.0 / 3.0, SCARED_ATTACK, 1e-9)
+        target.scared = true
+        assertTrue(target.tags().any { "Scared" in it })
+        // No two moves of a type do the same thing.
+        Moves.all.groupBy { it.type }.forEach { (_, moves) ->
+            val shapes = moves.filter { it.isDamaging }.map { Triple(it.power, it.accuracy, it.effects) }
+            assertEquals(shapes.size, shapes.toSet().size)
+        }
     }
 
     @Test

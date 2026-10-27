@@ -717,6 +717,16 @@ abstract class ScreenshotBase(private val device: String) {
     }
 
     /** Two monsters wait in the swap slots; Swap sends one in. */
+    /** Holding a move shows its accuracy and side effects. */
+    @Test fun moveDetails() {
+        shot("39_move_details") {
+            com.monsterquest.app.ui.MoveDetailsDialog(com.monsterquest.core.Moves.get("scare"), com.monsterquest.core.Element.FIRE) {}
+        }
+        rule.onNodeWithText("Accuracy").assertExists()
+        rule.onNodeWithText("100%").assertExists()
+        rule.onNodeWithText("Got it").assertExists()
+    }
+
     @Test fun battleSwap() {
         val base = sampleState()
         val r = Random(30)

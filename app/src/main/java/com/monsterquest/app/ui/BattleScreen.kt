@@ -12,6 +12,9 @@ import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import com.monsterquest.core.MoveEffect
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -577,26 +580,37 @@ private fun FighterArt(f: FighterView, modifier: Modifier) {
 
 /** A move button: type-colored, with power and a hint when it's super effective. */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick: () -> Unit) {
     val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyType) else 1.0
-    Button(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 52.dp),
-        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = typeColor(mv.type), contentColor = Color(0xFFF5F2EA)),
+    // Hold a move to see its accuracy and side effects.
+    var details by remember { mutableStateOf(false) }
+    if (details) MoveDetailsDialog(mv, enemyType) { details = false }
+    Surface(
+        modifier = modifier
+            .heightIn(min = 52.dp)
+            .clip(RoundedCornerShape(50))
+            .combinedClickable(onLongClickLabel = "Move details", onLongClick = { details = true }, onClick = onClick),
+        shape = RoundedCornerShape(50),
+        color = typeColor(mv.type),
+        contentColor = Color(0xFFF5F2EA),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GIcon(mv.type.icon(), Modifier.size(14.dp), Color.White)
                 Spacer(Modifier.width(4.dp))
-            Text(
-                mv.name,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = Color.White,
-            )
+                Text(
+                    mv.name,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = Color.White,
+                )
             }
             Text(
                 when {
@@ -611,6 +625,50 @@ private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick
             )
         }
     }
+}
+
+@Composable
+private fun MoveStat(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** A move's numbers and side effects, shown when its button is held. */
+@Composable
+fun MoveDetailsDialog(mv: Move, enemyType: Element, onDismiss: () -> Unit) {
+    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyType) else 1.0
+    val sureHit = MoveEffect.SureHit in mv.effects
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(mv.type.icon(), Modifier.size(22.dp), typeColor(mv.type))
+                Spacer(Modifier.width(8.dp))
+                Text(mv.name)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                MoveStat("Type", mv.type.label)
+                MoveStat("Power", if (mv.isDamaging) mv.power.toString() else "— (status move)")
+                MoveStat("Accuracy", if (sureHit) "Never misses" else "${mv.accuracy}%")
+                if (mv.isDamaging) MoveStat(
+                    "Vs this foe",
+                    when {
+                        mult > 1.0 -> "Super effective (×${"%.1f".format(mult)})"
+                        mult < 1.0 -> "Weak (×${"%.1f".format(mult)})"
+                        else -> "Normal"
+                    },
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Effect", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Text(mv.description)
+            }
+        },
+    )
 }
 
 @Composable
