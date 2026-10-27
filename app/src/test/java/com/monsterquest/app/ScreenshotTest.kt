@@ -259,7 +259,10 @@ abstract class ScreenshotBase(private val device: String) {
         v.hunt()
         rule.setContent { MonsterQuestTheme(com.monsterquest.core.ThemeMode.DARK) { AppRoot(v) } }
         rule.waitForIdle()
-        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Already caught")).fetchSemanticsNodes().isEmpty())
+        // Monsters you own count as caught, so the foe may still be marked if it's one of your species.
+        val foeCaught = v.battle!!.enemies.any { v.battle!!.alreadyCaught(it) }
+        val marks = rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Already caught")).fetchSemanticsNodes()
+        check(marks.isNotEmpty() == foeCaught) { "mark shown: ${marks.isNotEmpty()}, foe caught: $foeCaught" }
     }
 
     @Test fun focus() {
