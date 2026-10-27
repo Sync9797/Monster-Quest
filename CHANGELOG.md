@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.26.2
+
+- **Widget glass everywhere:** the larger list widget now uses the same
+  see-through, glossy glass as the 2x2 card; urgent lines get a soft light
+  band instead of a solid block.
+- **Softer color:** both widgets use the wallpaper's gentle neutral tone,
+  slightly less colorful than before.
+- **Tall widgets show the list:** taller-than-wide sizes (like 2x3 or 2x4)
+  now show the list, with as many lines as fit, instead of the 2x2 card.
+
 ## 1.26.1
 
 - **App icon refresh:** the sword-and-quill crest (as on the loading screen)

@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 class QuestWidget : GlanceAppWidget() {
     /** Small: the next few things. Wider or taller: every section. */
     override val sizeMode = SizeMode.Responsive(
-        setOf(SMALL, SQUARE, WIDE, LARGE),
+        setOf(SMALL, SQUARE, TALL, TALL_WIDE, WIDE, LARGE),
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -62,6 +62,9 @@ class QuestWidget : GlanceAppWidget() {
         val SMALL = DpSize(110.dp, 110.dp)
         /** About 2x2 cells: the card with what's next and today's date. */
         val SQUARE = DpSize(160.dp, 160.dp)
+        /** Taller-than-wide rectangles (like 2x3 or 2x4) get the list. */
+        val TALL = DpSize(110.dp, 210.dp)
+        val TALL_WIDE = DpSize(160.dp, 260.dp)
         val WIDE = DpSize(250.dp, 110.dp)
         val LARGE = DpSize(250.dp, 250.dp)
 
@@ -83,8 +86,9 @@ private sealed interface Entry {
 private fun WidgetBody(state: GameState) {
     val size = LocalSize.current
     val summary = HomeWidget.summary(state, System.currentTimeMillis())
-    // Around 2x2: a card with what's next at the top and today's date at the bottom.
-    if (size.width < 220.dp && size.height < 220.dp) {
+    // Around 2x2 (roughly square): a card with what's next at the top and today's date at the bottom.
+    // Anything taller than it is wide gets the list.
+    if (size.width < 220.dp && size.height < 220.dp && size.height < size.width * 1.25f) {
         DateCard(summary.next)
         return
     }
@@ -92,7 +96,9 @@ private fun WidgetBody(state: GameState) {
     val colors = GlanceTheme.colors
     // Small widgets get one combined list; bigger ones get a section per kind.
     val rows: List<Entry> = if (compact) {
-        (summary.reminders.filter { !it.done } + summary.calendar + summary.todos).take(4).map { Entry.Item(it) }
+        // As many lines as fit the height.
+        val fits = ((size.height.value - 48f) / 26f).toInt().coerceIn(3, 10)
+        (summary.reminders.filter { !it.done } + summary.calendar + summary.todos).take(fits).map { Entry.Item(it) }
     } else {
         buildList {
             if (summary.reminders.isNotEmpty()) {
@@ -112,9 +118,10 @@ private fun WidgetBody(state: GameState) {
     Column(
         GlanceModifier
             .fillMaxSize()
-            .background(colors.widgetBackground)
-            .cornerRadius(20.dp)
-            .padding(12.dp)
+            // The same frosted glass as the 2x2 card.
+            .background(androidx.glance.ImageProvider(com.monsterquest.app.R.drawable.widget_glass))
+            .cornerRadius(28.dp)
+            .padding(14.dp)
             .clickable(actionStartActivity<MainActivity>()),
     ) {
         androidx.glance.layout.Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -148,12 +155,10 @@ private fun WidgetBody(state: GameState) {
 @Composable
 private fun LineRow(line: HomeWidget.Line) {
     val colors = GlanceTheme.colors
+    // Lines sit straight on the glass; urgent ones get a soft light band.
+    val base = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp)
     androidx.glance.layout.Row(
-        GlanceModifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .background(if (line.urgent) colors.secondaryContainer else colors.widgetBackground)
-            .cornerRadius(8.dp)
+        (if (line.urgent) base.background(androidx.glance.ImageProvider(com.monsterquest.app.R.drawable.widget_row_highlight)) else base)
             .padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -164,7 +169,7 @@ private fun LineRow(line: HomeWidget.Line) {
         Text(
             (if (line.done) "✓ " else "") + line.title,
             style = TextStyle(
-                color = if (line.done) colors.onSurfaceVariant else if (line.urgent) colors.onSecondaryContainer else colors.onSurface,
+                color = if (line.done) colors.onSurfaceVariant else colors.onSecondaryContainer,
                 fontSize = 13.sp,
             ),
             maxLines = 1,
