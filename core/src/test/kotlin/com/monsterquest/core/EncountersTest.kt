@@ -366,4 +366,47 @@ class EncountersTest {
         assertEquals(rich, GameEngine.buy(rich, Item.POTION).state)
         assertEquals(rich.inventory, GameEngine.addItems(rich, mapOf(Item.ETHER to 1)).first.inventory)
     }
+
+    @Test
+    fun aFaintedMonsterCanBeReplacedRightAwayOrOnItsTurn() {
+        var s = withMonsters(7)
+        s = GameEngine.setSwapSlot(s, s.monsters[5].uid, 0).state
+        s = GameEngine.setSwapSlot(s, s.monsters[6].uid, 1).state
+        val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(21))
+        // Knock out the first party monster.
+        val fallen = b.allies[1]
+        fallen.hp = 0
+        assertTrue(b.awaitsSwap(fallen))
+        // Right away, for free: the first swap monster takes its place.
+        val turnBefore = b.current?.key
+        assertTrue(b.replaceFainted(s.monsters[5].uid, fallen.key))
+        assertTrue(b.allies.any { it.key == s.monsters[5].uid })
+        assertEquals(turnBefore, b.current?.key)
+
+        // Declined: on the fallen monster's turn the only choices are Swap or Skip.
+        val second = b.allies[2]
+        second.hp = 0
+        var guard = 0
+        while (b.current?.key != second.key && b.outcome == BattleOutcome.ONGOING && guard++ < 40) {
+            b.enemies.forEach { it.hp = it.maxHp }
+            b.act(BattleAction.Defend)
+        }
+        assertEquals(second.key, b.current?.key)
+        // Attacking from the grave does nothing; skipping passes the turn.
+        b.act(BattleAction.Attack)
+        assertEquals(second.key, b.current?.key)
+        b.act(BattleAction.Skip)
+        assertTrue(b.log.any { "turn passes" in it })
+        // Next time round it can swap in the last waiting monster.
+        guard = 0
+        while (b.current?.key != second.key && b.outcome == BattleOutcome.ONGOING && guard++ < 40) {
+            b.enemies.forEach { it.hp = it.maxHp }
+            b.act(BattleAction.Defend)
+        }
+        b.act(BattleAction.Swap(s.monsters[6].uid, null))
+        assertTrue(b.allies.any { it.key == s.monsters[6].uid })
+        // With nobody left to swap in, fallen monsters stop getting turns.
+        assertFalse(b.allies.any { b.awaitsSwap(it) })
+    }
 }

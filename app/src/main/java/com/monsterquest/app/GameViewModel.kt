@@ -801,6 +801,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         mapOpenedAtMs = System.currentTimeMillis()
     }
 
+    /** Sends a swap monster in for one that just fainted (doesn't use a turn). */
+    fun replaceFainted(inUid: String, outKey: String) {
+        val b = activeBattle ?: return
+        if (!b.replaceFainted(inUid, outKey)) return
+        battle = battle?.let { BattleView.of(b, it.resultText, it.nextOpponent) }
+    }
+
     fun selectTarget(key: String) {
         val b = activeBattle ?: return
         b.selectTarget(key)

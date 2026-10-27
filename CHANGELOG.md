@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.27.0
+
+- **Moves fit on screen:** on phones the battle log is smaller (compact
+  lines), and your team and moves get more of the screen, so the four moves
+  and the Items / Tame / Swap / Flee row fit without scrolling.
+- **Swap after a faint:** when one of your monsters faints and someone is
+  waiting in a swap slot, the game asks whether to send them in. It's free:
+  it doesn't use anyone's turn. Say "Not now" and, when the fainted
+  monster's turn comes round, it gets two choices: Swap or Skip.
+
 ## 1.26.2
 
 - **Widget glass everywhere:** the larger list widget now uses the same

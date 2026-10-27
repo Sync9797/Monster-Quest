@@ -50,6 +50,7 @@ import com.monsterquest.core.MAX_PARTY_SIZE
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,16 +109,48 @@ fun BattleScreen(
     onNext: () -> Unit = {},
     outfit: HeroOutfit? = null,
     onTarget: (String) -> Unit = {},
+    /** Send a swap monster in for one that just fainted (incoming uid, fallen key). */
+    onReplace: (String, String) -> Unit = { _, _ -> },
 ) {
-    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget) }
+    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace) }
 }
 
 /** What the hero is wearing, so their battle sprite matches their equipment. */
 private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
 
 @Composable
-private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClose: () -> Unit, onNext: () -> Unit, onTarget: (String) -> Unit) {
+private fun BattleContent(
+    b: BattleView,
+    onAction: (BattleAction) -> Unit,
+    onClose: () -> Unit,
+    onNext: () -> Unit,
+    onTarget: (String) -> Unit,
+    onReplace: (String, String) -> Unit,
+) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
+    // When a monster faints and someone waits in a swap slot, offer to send them in (once per faint).
+    val asked = remember { mutableStateListOf<String>() }
+    val fallen = b.allies.firstOrNull { !it.isHero && !it.alive && it.key !in asked }
+    if (fallen != null && b.outcome == BattleOutcome.ONGOING && b.swaps.any { it.alive }) {
+        AlertDialog(
+            onDismissRequest = { asked += fallen.key },
+            title = { Text("${fallen.name} fainted!") },
+            text = {
+                Column {
+                    Text("Send in a monster from your swap slots? It won't use a turn.", fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
+                    b.swaps.filter { it.alive }.forEach { w ->
+                        OutlinedButton(onClick = { asked += fallen.key; onReplace(w.key, fallen.key) }, modifier = Modifier.fillMaxWidth()) {
+                            FighterArt(w, Modifier.size(24.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("${w.name}  Lv ${w.level}  ${w.hp}/${w.maxHp} HP")
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { asked += fallen.key }) { Text("Not now") } },
+        )
+    }
     val fx = rememberBattleFx(b)
     // Back closes a sub-menu (Magic, Items, Tame...). It never quits a fight in
     // progress (use Flee), and leaves the result screen once the fight is over.
@@ -171,10 +204,10 @@ private fun BattleContent(b: BattleView, onAction: (BattleAction) -> Unit, onClo
                 AdaptivePanes(
                     modifier = Modifier.safeDrawingPadding().padding(12.dp),
                     compact = {
-                        // Commands may use at most ~55% of the height; the enemy and log
-                        // shrink (and clip) instead of being drawn underneath them.
+                        // Your team and the moves come first: they may use up to ~68% of the
+                        // height so the moves fit without scrolling; the log shrinks instead.
                         BoxWithConstraints(Modifier.fillMaxSize()) {
-                            val controlsMax = maxHeight * 0.55f
+                            val controlsMax = maxHeight * 0.68f
                             Column(Modifier.fillMaxSize()) {
                                 Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) { top() }
                                 Spacer(Modifier.height(8.dp))
@@ -308,14 +341,16 @@ private fun BattleLog(log: List<String>, modifier: Modifier) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .padding(10.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
+        // Compact lines: the newest stay bright and it scrolls to them.
         itemsIndexed(log) { i, line ->
             Text(
                 line,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
                 color = if (i >= log.size - 3) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 2.dp),
+                modifier = Modifier.padding(vertical = 1.dp),
             )
         }
     }
@@ -594,6 +629,28 @@ private fun ActionPanel(
             .padding(10.dp)
             .verticalScroll(rememberScrollState()),
     ) {
+        if (!actor.alive) {
+            // A fainted monster's turn: send someone in from the swap slots, or let it pass.
+            Text("${actor.name} has fainted.", fontWeight = FontWeight.Bold, color = HpRed, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(6.dp))
+            if (menu is Menu.Swap) {
+                Text("Who takes ${actor.name}'s place?", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                b.swaps.filter { it.alive }.forEach { w ->
+                    OutlinedButton(onClick = { onAction(BattleAction.Swap(w.key, actor.key)) }, modifier = Modifier.fillMaxWidth()) {
+                        FighterArt(w, Modifier.size(24.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("${w.name}  Lv ${w.level}  ${w.hp}/${w.maxHp} HP")
+                    }
+                }
+                BackButton(onMenu)
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ActionButton("Swap", Modifier.weight(1f), icon = GameIcon.PAW) { onMenu(Menu.Swap()) }
+                    ActionButton("Skip", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Skip) }
+                }
+            }
+            return@Column
+        }
         Text("What will ${actor.name} do?", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(6.dp))
         when (menu) {

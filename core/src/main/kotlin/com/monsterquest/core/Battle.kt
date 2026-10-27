@@ -54,6 +54,8 @@ sealed interface BattleAction {
     data class Swap(val inUid: String, val outKey: String?) : BattleAction
     data class Capture(val orb: Item) : BattleAction
     data object Flee : BattleAction
+    /** A fainted monster's turn passes (when the player doesn't swap it out). */
+    data object Skip : BattleAction
 }
 
 class Combatant(
@@ -702,7 +704,14 @@ class Battle(
             if (queue.isEmpty()) startRound()
             val key = queue.removeFirst()
             val c = combatant(key) ?: continue
-            if (!c.alive) continue
+            if (!c.alive) {
+                // A fallen monster's turn: the player can swap someone in or skip it.
+                if (awaitsSwap(c)) {
+                    current = c
+                    return
+                }
+                continue
+            }
             val canAct = beginTurn(c)
             checkEnd()
             if (!canAct || outcome != BattleOutcome.ONGOING) continue
@@ -738,7 +747,8 @@ class Battle(
     private fun startRound() {
         round++
         if (reversedRounds > 0) reversedRounds--
-        val everyone = (allies + enemies).filter { it.alive }
+        // Fallen monsters keep their turn while a swap is waiting (to swap or skip).
+        val everyone = (allies + enemies).filter { it.alive || awaitsSwap(it) }
         val bySpeed = everyone.sortedByDescending { it.effectiveSpeed + rng.nextDouble() }
         val ordered = if (reversedRounds > 0) bySpeed.reversed() else bySpeed
         // An ambush: the monsters all act before you in the first round.
@@ -872,7 +882,19 @@ class Battle(
 
     /** Returns false if the action was invalid (turn not used). */
     private fun perform(actor: Combatant, action: BattleAction): Boolean {
+        // A fallen monster can only be swapped out, or let its turn pass.
+        if (!actor.alive) {
+            return when (action) {
+                is BattleAction.Swap -> swapIn(action.copy(outKey = actor.key))
+                BattleAction.Skip -> {
+                    log += "${actor.name} can't fight. Its turn passes."
+                    true
+                }
+                else -> false
+            }
+        }
         when (action) {
+            BattleAction.Skip -> return false
             BattleAction.Attack -> {
                 if (actor.isHero) {
                     // Daggers strike twice.
@@ -985,6 +1007,25 @@ class Battle(
                 }
             }
         }
+        return true
+    }
+
+    /** A fallen monster on your side that a waiting swap could replace. */
+    fun awaitsSwap(c: Combatant): Boolean =
+        !c.alive && !c.isHero && !Combatant.isEnemy(c.key) && c in team && reserve.any { it.alive }
+
+    /**
+     * Replaces a monster that has just fainted with one from the swap slots,
+     * without using anyone's turn (like sending in the next one after a faint).
+     */
+    fun replaceFainted(inUid: String, outKey: String): Boolean {
+        if (outcome != BattleOutcome.ONGOING) return false
+        val out = team.find { it.key == outKey } ?: return false
+        if (out.alive || out.isHero) return false
+        val wasTurn = current?.key == outKey
+        if (!swapIn(BattleAction.Swap(inUid, outKey))) return false
+        // If it was the fallen monster's turn, the newcomer takes it.
+        if (wasTurn) current = team.find { it.key == inUid }
         return true
     }
 
