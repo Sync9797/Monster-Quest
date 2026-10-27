@@ -799,7 +799,9 @@ abstract class ScreenshotBase(private val device: String) {
         v.openRecap()
         shot("42_morning_recap") { AppRoot(v, Tab.QUESTS) }
         rule.onNodeWithText("Monster XP").assertExists()
-        rule.onNodeWithText("9,874").assertExists()
+        // In the recap (the Home dashboard behind it also shows this week's steps).
+        check(rule.onAllNodesWithText("9,874").fetchSemanticsNodes().isNotEmpty())
+        rule.onNodeWithText("Steps").assertExists()
         rule.onNodeWithText("+1,240 (3 levels)").assertExists()
         rule.onNodeWithText("380 gold, 5 items, 1 gear").assertExists()
         rule.onNodeWithText("7h 25m").assertExists()
