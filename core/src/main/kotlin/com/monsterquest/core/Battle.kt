@@ -985,7 +985,7 @@ class Battle(
                 when (action.item.kind) {
                     ItemKind.HEAL_HP -> {
                         if (!target.alive) return refund(action.item)
-                        heal(target, max(50, (target.maxHp * action.item.power).roundToInt()), "${actor.name} uses ${action.item.label}")
+                        heal(target, GameEngine.potionHeal(action.item, target.maxHp), "${actor.name} uses ${action.item.label}")
                     }
                     ItemKind.HEAL_MP -> {
                         if (!target.isHero || !target.alive) return refund(action.item)

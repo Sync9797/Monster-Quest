@@ -862,7 +862,21 @@ private fun ActionPanel(
                     ) {
                         FighterArt(a, Modifier.size(24.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("${a.name}  ${a.hp}/${a.maxHp} HP" + if (a.isHero) "  ${a.mp}/${a.maxMp} EN" else "")
+                        if (item?.kind == ItemKind.HEAL_HP && a.alive) {
+                            // How far this potion would fill their HP bar.
+                            val after = minOf(a.maxHp, a.hp + com.monsterquest.core.GameEngine.potionHeal(item, a.maxHp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    a.name + if (after > a.hp) "  ${a.hp} → $after HP (+${after - a.hp})" else "  Full HP",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(Modifier.height(3.dp))
+                                HealPreviewBar(a.hp, after, a.maxHp)
+                            }
+                        } else {
+                            Text("${a.name}  ${a.hp}/${a.maxHp} HP" + if (a.isHero) "  ${a.mp}/${a.maxMp} EN" else "")
+                        }
                     }
                 }
                 BackButton(onMenu)

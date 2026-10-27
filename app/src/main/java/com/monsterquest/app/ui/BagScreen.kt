@@ -428,20 +428,3 @@ private fun TargetRow(name: String, hp: Int, maxHp: Int, heal: Int, onPick: () -
     }
 }
 
-/** HP now (solid), what the potion adds (lighter), and the rest (track). */
-@Composable
-private fun HealPreviewBar(hp: Int, after: Int, maxHp: Int) {
-    val now = hp.toFloat() / maxHp
-    val healed = after.toFloat() / maxHp
-    val color = hpColor(now)
-    val track = MaterialTheme.colorScheme.surfaceVariant
-    val gain = HpGreen
-    androidx.compose.foundation.Canvas(
-        Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
-            .semantics { contentDescription = "HP $hp of $maxHp, $after after the potion" },
-    ) {
-        drawRect(track)
-        if (healed > now) drawRect(gain.copy(alpha = 0.4f), size = size.copy(width = size.width * healed))
-        drawRect(color, size = size.copy(width = size.width * now))
-    }
-}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.35.3
+
+- **Potion preview in battle:** after picking a healing potion in battle,
+  each target shows an HP bar with the part the potion will fill and the
+  result ("120 → 245 HP (+125)"). Potions heal the same amount in and out
+  of battle.
+
 ## 1.35.2
 
 - **Potion preview:** when you use a potion from the Bag, every row now has

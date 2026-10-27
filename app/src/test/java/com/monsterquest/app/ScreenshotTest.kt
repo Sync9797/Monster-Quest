@@ -283,6 +283,24 @@ abstract class ScreenshotBase(private val device: String) {
         check(names.isNotEmpty())
     }
 
+    /** In battle, choosing a potion's target shows the same heal preview. */
+    @Test fun battlePotionPreview() {
+        val base = sampleState()
+        // Hurt the whole party so whoever is listed has something to heal.
+        val v = vm(base.copy(heroDamage = 120, monsters = base.monsters.map { it.copy(damage = it.stats.hp / 2) }))
+        v.hunt()
+        shot("44_battle_potion") { AppRoot(v) }
+        val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
+            n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.mainClock.advanceTimeBy(300)
+            rule.waitForIdle()
+        }
+        click(rule.onNodeWithText("Items", substring = true))
+        click(rule.onNodeWithText("${com.monsterquest.core.Item.POTION.label} x", substring = true))
+        check(rule.onAllNodes(androidx.compose.ui.test.hasText(" → ", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview text" }
+        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("after the potion", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview bar" }
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

@@ -23,6 +23,8 @@ import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -167,4 +169,22 @@ fun DropdownReveal(visible: Boolean, content: @Composable () -> Unit) {
         enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Top) + androidx.compose.animation.fadeIn(),
         exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top) + androidx.compose.animation.fadeOut(),
     ) { content() }
+}
+
+/** HP now (solid), what the potion adds (lighter), and the rest (track). */
+@Composable
+fun HealPreviewBar(hp: Int, after: Int, maxHp: Int) {
+    val now = hp.toFloat() / maxHp
+    val healed = after.toFloat() / maxHp
+    val color = hpColor(now)
+    val track = MaterialTheme.colorScheme.surfaceVariant
+    val gain = HpGreen
+    androidx.compose.foundation.Canvas(
+        Modifier.fillMaxWidth().height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+            .semantics { contentDescription = "HP $hp of $maxHp, $after after the potion" },
+    ) {
+        drawRect(track)
+        if (healed > now) drawRect(gain.copy(alpha = 0.4f), size = size.copy(width = size.width * healed))
+        drawRect(color, size = size.copy(width = size.width * now))
+    }
 }
