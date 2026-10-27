@@ -255,10 +255,10 @@ object Moves {
         m("flare_rush", "Flare Rush", Element.FIRE, 75, desc = "A burning tackle. 30% chance of 10 recoil.", fx = *arrayOf(MoveEffect.Recoil(10, 0.3))),
         m("searing_blade", "Searing Blade", Element.FIRE, 80, desc = "A white-hot edge that cuts through guards and raised Defense.", fx = *arrayOf(MoveEffect.Pierce)),
         m("magma_fist", "Magma Fist", Element.FIRE, 95, 90, "A fist of molten rock. 15% chance to burn.", MoveEffect.Inflict(Status.BURN, 0.15, 4, 4)),
-        m("flare_blitz", "Flare Blitz", Element.FIRE, 110, desc = "An all-out blazing charge. Always costs 25 recoil.", fx = *arrayOf(MoveEffect.Recoil(25, 1.0))),
+        m("flare_blitz", "Flare Blitz", Element.FIRE, 120, desc = "An all-out blazing charge. Always costs 25 recoil.", fx = *arrayOf(MoveEffect.Recoil(25, 1.0))),
         m("meteor_flame", "Meteor Flame", Element.FIRE, 110, 90, "Burning rocks rain on every foe. 20% chance to burn each.", MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.BURN, 0.2, 4, 4)),
         m("sunfire", "Sunfire", Element.FIRE, 100, desc = "A beam of sunlight that never misses. 50% chance of a drought.", fx = *arrayOf(MoveEffect.SureHit, MoveEffect.SetWeather(Weather.DROUGHT, 0.5))),
-        m("supernova", "Supernova", Element.FIRE, 120, 90, "Explodes over every foe. The user must rest next turn.", MoveEffect.HitsAllFoes, MoveEffect.Recharge),
+        m("supernova", "Supernova", Element.FIRE, 150, 90, "Explodes over every foe. The user must rest next turn.", MoveEffect.HitsAllFoes, MoveEffect.Recharge),
 
         // Electric: status first. Shocks, and punishes foes that are already hurting.
         m("static_jolt", "Static Jolt", Element.ELECTRIC, 35, desc = "30% chance to shock.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
@@ -278,7 +278,7 @@ object Moves {
         m("undertow", "Undertow", Element.WATER, 80, desc = "Drags the foe under: 50% chance to lower its Speed.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 0.5))),
         m("torrent_rush", "Torrent Rush", Element.WATER, 95, desc = "A rushing torrent: the user moves first next round.", fx = *arrayOf(MoveEffect.Swift)),
         m("tidal_wave", "Tidal Wave", Element.WATER, 105, 90, "A towering wave over every foe.", MoveEffect.HitsAllFoes),
-        m("tsunami", "Tsunami", Element.WATER, 100, 95, "The sea itself strikes: raises Speed and moves first next round.", MoveEffect.Swift, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1)),
+        m("tsunami", "Tsunami", Element.WATER, 120, 95, "The sea itself strikes: raises Speed and moves first next round.", MoveEffect.Swift, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1)),
 
         // Flight: balanced attacks that power the user up.
         m("wing_flick", "Wing Flick", Element.FLIGHT, 40, desc = "A light flick of the wings: raises the user's Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
@@ -288,7 +288,7 @@ object Moves {
         m("soaring_strike", "Soaring Strike", Element.FLIGHT, 85, desc = "The user's damage rises 10% for the rest of the battle.", fx = *arrayOf(MoveEffect.PowerUp(10))),
         m("ascent", "Ascent", Element.FLIGHT, 95, desc = "Climbs high and dives: raises the user's Attack and Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1))),
         m("hurricane", "Hurricane", Element.FLIGHT, 110, 80, "A storm that tears at every foe.", MoveEffect.HitsAllFoes),
-        m("talon_storm", "Talon Storm", Element.FLIGHT, 95, desc = "A flurry of talons: high critical-hit chance, raises the user's Speed.", fx = *arrayOf(MoveEffect.HighCrit, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
+        m("talon_storm", "Talon Storm", Element.FLIGHT, 115, desc = "A flurry of talons: high critical-hit chance, raises the user's Speed.", fx = *arrayOf(MoveEffect.HighCrit, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
 
         // Gas: status first. Poison and sleep, and punishes foes that are already hurting.
         m("noxious_spit", "Noxious Spit", Element.GAS, 35, desc = "30% chance to poison.", fx = *arrayOf(MoveEffect.Inflict(Status.POISON, 0.3, 5, 5))),
@@ -324,13 +324,13 @@ object Moves {
 
         // ---- Starter signature moves: only the four starter lines learn these ----
         m("storm_antlers", "Storm Antlers", Element.ELECTRIC, 85, desc = "Lightning leaps from its antlers to every foe. 30% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
-        m("heavens_charge", "Heaven's Charge", Element.ELECTRIC, 110, 95, "A divine charge that pierces guards and raised Defense, then raises the user's Speed.", MoveEffect.Pierce, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1)),
+        m("heavens_charge", "Heaven's Charge", Element.ELECTRIC, 130, 95, "A divine charge that pierces guards and raised Defense, then raises the user's Speed.", MoveEffect.Pierce, MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1)),
         m("wyrmfire", "Wyrmfire", Element.FIRE, 90, desc = "Dragonfire that always burns and keeps scorching for 3 turns.", fx = *arrayOf(MoveEffect.Inflict(Status.BURN, 1.0, 4, 4), MoveEffect.Scorch(8, 3))),
-        m("inferno_wings", "Inferno Wings", Element.FIRE, 100, 90, "Sweeps every foe with burning wings, then the user's Attack rises.", MoveEffect.HitsAllFoes, MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1)),
+        m("inferno_wings", "Inferno Wings", Element.FIRE, 125, 90, "Sweeps every foe with burning wings, then the user's Attack rises.", MoveEffect.HitsAllFoes, MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1)),
         m("tidal_embrace", "Tidal Embrace", Element.WATER, 80, desc = "Wraps the foe in the tide and heals half the damage dealt.", fx = *arrayOf(MoveEffect.LifeDrain(50))),
-        m("maelstrom_vortex", "Maelstrom Vortex", Element.WATER, 100, 95, "A crushing whirlpool: brings rain and traps the foe for 10 damage a turn for 4 turns.", MoveEffect.SetWeather(Weather.RAIN, 1.0), MoveEffect.Scorch(10, 4, "is battered by the whirlpool")),
+        m("maelstrom_vortex", "Maelstrom Vortex", Element.WATER, 115, 95, "A crushing whirlpool: brings rain and traps the foe for 10 damage a turn for 4 turns.", MoveEffect.SetWeather(Weather.RAIN, 1.0), MoveEffect.Scorch(10, 4, "is battered by the whirlpool")),
         m("grove_guardian", "Grove Guardian", Element.EARTH, 0, desc = "The ancient grove shelters the team: every ally heals 20% and gains Defense.", fx = *arrayOf(MoveEffect.TeamHeal(20), MoveEffect.TeamRaise(listOf(BattleStat.DEFENSE), 1))),
-        m("tectonic_fury", "Tectonic Fury", Element.EARTH, 100, 90, "Splits the earth under every foe. 20% chance each loses its turn.", MoveEffect.HitsAllFoes, MoveEffect.Flinch(0.2)),
+        m("tectonic_fury", "Tectonic Fury", Element.EARTH, 120, 90, "Splits the earth under every foe. 30% chance each loses its turn.", MoveEffect.HitsAllFoes, MoveEffect.Flinch(0.3)),
     )
 
     private val byId = all.associateBy { it.id }
