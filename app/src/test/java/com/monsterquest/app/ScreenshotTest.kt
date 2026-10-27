@@ -840,7 +840,8 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun levelUps() {
         val v = vm()
         v.hunt()
-        val b0 = v.battle!!
+        // A lone wild monster is the hero alone now: put a bench monster on the field for the banner.
+        val b0 = v.battle!!.let { it.copy(allies = it.allies + it.swaps.first()) }
         val pal = b0.allies[1]
         fun stats(vararg s: Pair<String, Pair<Int, Int>>) = s.map { (l, ba) -> com.monsterquest.core.StatLine(l, ba.first, ba.second) }
         val ups = listOf(
@@ -911,8 +912,11 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Make bed").assertExists()
         rule.onNodeWithText("9:30 PM • Weekdays").assertExists()
         // The open one has Done and Skip right on it.
-        rule.onNodeWithText("Done").performClick()
-        rule.waitForIdle()
+        // Late in the evening Take vitamins (9:30 PM) is open too: tick off whatever is open.
+        while (rule.onAllNodesWithText("Done").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onAllNodesWithText("Done")[0].performClick()
+            rule.waitForIdle()
+        }
         check(com.monsterquest.core.Reminders.streak(v.state.reminders.first { it.title == "Make bed" }, System.currentTimeMillis()) == 1)
     }
 
@@ -1040,7 +1044,7 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Swap").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.mainClock.advanceTimeBy(300)
         rule.waitForIdle()
-        rule.onNodeWithText("Send in from the swap slots").assertExists()
+        rule.onNodeWithText("Send in from the bench").assertExists()
         // The entry in the swap menu (the name alone also shows elsewhere on big screens).
         rule.onAllNodes(
             androidx.compose.ui.test.hasText("${extra[0].displayName}  Lv ${extra[0].level}", substring = true) and
@@ -1050,6 +1054,13 @@ abstract class ScreenshotBase(private val device: String) {
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${extra[0].displayName} takes whose place?").assertExists()
         capture("39_swap_pick", 300)
+        // One on one, the hero steps back and the monster fights in their place.
+        rule.onAllNodes(androidx.compose.ui.test.hasText("Aaronimus", substring = true) and androidx.compose.ui.test.hasClickAction())
+            .onLast().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(300)
+        check(v.battle!!.allies.none { it.isHero }) { "the hero stepped back" }
+        check(v.battle!!.swaps.any { it.isHero }) { "the hero waits on the bench" }
     }
 
     @Test fun drivingWarning() {
