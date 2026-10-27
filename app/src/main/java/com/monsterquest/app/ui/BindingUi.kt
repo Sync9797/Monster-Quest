@@ -211,53 +211,105 @@ fun BindingCast(
 }
 
 /**
- * The crystal after a Binding cast: it shakes once per [CastRoll.shakes]
- * (a dot lights up for each), then seals with a flash ("Bound!") or breaks
- * apart ("Broke free!"). [onFinished] runs when it's done.
+ * The binding energy after a cast: a glowing core of swirling energy that
+ * shakes once per [CastRoll.shakes] (a dot lights up for each), then either
+ * seals with a bright flash ("Bound!") or bursts in a harmless blast of
+ * energy ("Broke free!") before returning to the fight. [onFinished] runs
+ * when it's done.
  */
 @Composable
-fun SealAnimation(roll: com.monsterquest.core.CastRoll, tint: Color, onFinished: () -> Unit) {
+fun SealAnimation(
+    roll: com.monsterquest.core.CastRoll,
+    tint: Color,
+    failNote: String = "The binding burst apart (no harm done). Back to the battle!",
+    onFinished: () -> Unit,
+) {
     val finished by rememberUpdatedState(onFinished)
-    val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
-    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+    val wobble = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scale = remember { androidx.compose.animation.core.Animatable(0.6f) }
+    val blast = remember { androidx.compose.animation.core.Animatable(0f) }
+    val flash = remember { androidx.compose.animation.core.Animatable(0f) }
     var shaken by remember { mutableStateOf(0) }
     var outcome by remember { mutableStateOf<Boolean?>(null) }
+    // The energy swirls the whole time.
+    val spin by androidx.compose.animation.core.rememberInfiniteTransition(label = "binding").animateFloat(
+        0f, 360f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "spin",
+    )
     LaunchedEffect(roll) {
-        kotlinx.coroutines.delay(350)
+        scale.animateTo(1f, androidx.compose.animation.core.tween(300))
         repeat(roll.shakes) {
-            rotation.animateTo(-20f, androidx.compose.animation.core.tween(110))
-            rotation.animateTo(20f, androidx.compose.animation.core.tween(170))
-            rotation.animateTo(0f, androidx.compose.animation.core.tween(110))
+            wobble.animateTo(-1f, androidx.compose.animation.core.tween(110))
+            wobble.animateTo(1f, androidx.compose.animation.core.tween(170))
+            wobble.animateTo(0f, androidx.compose.animation.core.tween(110))
             shaken++
             kotlinx.coroutines.delay(380)
         }
         outcome = roll.success
         if (roll.success) {
-            scale.animateTo(1.3f, androidx.compose.animation.core.tween(160))
-            scale.animateTo(1f, androidx.compose.animation.core.tween(200))
+            // Sealed: the energy pulls in tight and flashes.
+            scale.animateTo(0.75f, androidx.compose.animation.core.tween(150))
+            flash.animateTo(1f, androidx.compose.animation.core.tween(120))
+            scale.animateTo(1.1f, androidx.compose.animation.core.tween(220))
+            flash.animateTo(0f, androidx.compose.animation.core.tween(400))
+            kotlinx.coroutines.delay(500)
         } else {
-            scale.animateTo(0f, androidx.compose.animation.core.tween(240))
+            // Broke free: the energy bursts outward. It's only light; nobody is hurt.
+            blast.animateTo(1f, androidx.compose.animation.core.tween(650, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+            kotlinx.coroutines.delay(900)
         }
-        kotlinx.coroutines.delay(750)
         finished()
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         if (roll.critical) Text("Critical catch!", color = Gold, fontWeight = FontWeight.Black, fontSize = 20.sp)
-        Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
-            if (outcome == true) {
-                Box(Modifier.size(140.dp).background(Brushes.glow(tint), androidx.compose.foundation.shape.CircleShape))
+        Canvas(Modifier.size(220.dp).semantics { contentDescription = "Binding energy" }) {
+            val c = center
+            val r = size.minDimension * 0.2f
+            val b = blast.value
+            val core = if (b > 0f) (1f - b * 1.6f).coerceAtLeast(0f) else 1f
+            // Shake: a quick side-to-side jolt.
+            val dx = wobble.value * size.minDimension * 0.06f
+            val o = androidx.compose.ui.geometry.Offset(c.x + dx, c.y)
+            val rs = r * scale.value * core
+            if (rs > 0.5f) {
+                // Outer glow, bright core and a white-hot heart.
+                drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(tint.copy(alpha = 0.55f), tint.copy(alpha = 0f)), o, rs * 2.6f), rs * 2.6f, o)
+                drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.White, tint, tint.copy(alpha = 0.6f)), o, rs), rs, o)
+                // Swirling arcs of energy around the core.
+                for (i in 0 until 3) {
+                    val start = spin + i * 120f
+                    val ring = rs * (1.35f + i * 0.22f)
+                    drawArc(
+                        tint.copy(alpha = 0.85f - i * 0.2f),
+                        start, 110f, false,
+                        topLeft = androidx.compose.ui.geometry.Offset(o.x - ring, o.y - ring),
+                        size = androidx.compose.ui.geometry.Size(ring * 2, ring * 2),
+                        style = Stroke(size.minDimension * 0.018f, cap = StrokeCap.Round),
+                    )
+                }
+                // Sparks orbiting the core.
+                for (i in 0 until 6) {
+                    val a = Math.toRadians((spin * 1.6f + i * 60f).toDouble())
+                    val d = rs * 1.9f
+                    drawCircle(Color.White.copy(alpha = 0.8f), size.minDimension * 0.012f, androidx.compose.ui.geometry.Offset(o.x + (d * kotlin.math.cos(a)).toFloat(), o.y + (d * kotlin.math.sin(a)).toFloat()))
+                }
             }
-            GIcon(
-                GameIcon.CRYSTAL,
-                Modifier
-                    .size(96.dp)
-                    .graphicsLayer {
-                        rotationZ = rotation.value
-                        scaleX = scale.value
-                        scaleY = scale.value
-                    },
-                tint,
-            )
+            // The seal's flash.
+            if (flash.value > 0f) drawCircle(Color.White.copy(alpha = 0.7f * flash.value), size.minDimension * 0.5f * flash.value, c)
+            // The harmless blast: expanding rings and sparks flying out, fading as they go.
+            if (b > 0f) {
+                val fade = (1f - b).coerceIn(0f, 1f)
+                for (k in 0 until 2) {
+                    val rr = size.minDimension * (0.15f + 0.4f * b) * (1f + k * 0.25f)
+                    drawCircle(tint.copy(alpha = fade * (0.8f - k * 0.3f)), rr, c, style = Stroke(size.minDimension * 0.03f * fade + 1f))
+                }
+                for (i in 0 until 14) {
+                    val a = Math.toRadians((i * 360.0 / 14) + 9)
+                    val d = size.minDimension * (0.12f + 0.42f * b)
+                    val p = androidx.compose.ui.geometry.Offset(c.x + (d * kotlin.math.cos(a)).toFloat(), c.y + (d * kotlin.math.sin(a)).toFloat())
+                    drawCircle(Color.White.copy(alpha = fade), size.minDimension * 0.014f, p)
+                }
+            }
         }
         // A dot for each shake, like a held breath.
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -281,22 +333,32 @@ fun SealAnimation(roll: com.monsterquest.core.CastRoll, tint: Color, onFinished:
             fontSize = 30.sp,
             fontWeight = FontWeight.Black,
         )
+        if (outcome == false) {
+            Text(
+                failNote,
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
-}
-
-private object Brushes {
-    fun glow(c: Color) = androidx.compose.ui.graphics.Brush.radialGradient(listOf(c.copy(alpha = 0.55f), c.copy(alpha = 0f)))
 }
 
 /** [SealAnimation] full-screen over everything (battle or the den dialog); it can't be skipped. */
 @Composable
-fun BindingSeal(roll: com.monsterquest.core.CastRoll, tint: Color, onFinished: () -> Unit) {
+fun BindingSeal(
+    roll: com.monsterquest.core.CastRoll,
+    tint: Color,
+    failNote: String = "The binding burst apart (no harm done). Back to the battle!",
+    onFinished: () -> Unit,
+) {
     Dialog(
         onDismissRequest = {},
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.82f)), contentAlignment = Alignment.Center) {
-            SealAnimation(roll, tint, onFinished)
+            SealAnimation(roll, tint, failNote, onFinished)
         }
     }
 }

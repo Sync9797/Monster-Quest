@@ -348,6 +348,24 @@ abstract class ScreenshotBase(private val device: String) {
         check(done) { "the seal finishes" }
     }
 
+    /** A failed cast: the energy bursts harmlessly, says so, and hands back to the fight. */
+    @Test fun bindingBurst() {
+        var done = false
+        shot("47_binding_burst", advanceMs = 1_000) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF0D171A)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                com.monsterquest.app.ui.SealAnimation(com.monsterquest.core.CastRoll(success = false, shakes = 1), com.monsterquest.app.ui.Gold) { done = true }
+            }
+        }
+        rule.mainClock.advanceTimeBy(500)
+        rule.waitForIdle()
+        capture("47b_binding_burst_blast", 120)
+        rule.onNodeWithText("Broke free!").assertExists()
+        rule.onNodeWithText("Back to the battle", substring = true).assertExists()
+        rule.mainClock.advanceTimeBy(2_500)
+        rule.waitForIdle()
+        check(done) { "returns to the battle" }
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

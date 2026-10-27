@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.2
+
+- **Binding energy:** after a cast, a glowing core of swirling energy (not
+  the crystal icon) shakes before the result. A tame pulls in tight and
+  flashes ("Bound!"). A failed cast bursts in a harmless blast of rings and
+  sparks, says it broke free (no harm done), and returns you to the battle
+  (or to your next cast at a den).
+
 ## 2.0.1
 
 - **Shake suspense:** after a Binding cast, the crystal shakes before the
