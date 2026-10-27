@@ -1657,4 +1657,19 @@ class GameTest {
         b.act(BattleAction.CastSpell("mend", hero.key))
         assertEquals(expected, hero.hp)
     }
+
+    @Test
+    fun batchReleaseKeepsOneAndPaysCandy() {
+        val s0 = started()
+        val extra = (1..4).map { Monster.create(Bestiary.get("zapmouse"), 5, Random(it)) }
+        val s = s0.copy(monsters = s0.monsters + extra)
+        val u = GameEngine.releaseMany(s, extra.map { it.uid })
+        assertEquals(s0.monsters.size, u.state.monsters.size)
+        val family = Bestiary.get("zapmouse").family
+        assertEquals(extra.sumOf { GameEngine.releaseCandy(it) }, u.state.candy[family])
+        assertTrue("Released 4" in u.message)
+        // Never the last monster.
+        val all = GameEngine.releaseMany(s, s.monsters.map { it.uid }).state
+        assertEquals(1, all.monsters.size)
+    }
 }

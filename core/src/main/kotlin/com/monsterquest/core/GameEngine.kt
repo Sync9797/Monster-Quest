@@ -510,6 +510,33 @@ object GameEngine {
         )
     }
 
+    /**
+     * Releases several monsters at once (from the collection). Monsters on
+     * adventures are skipped, and at least one monster always stays.
+     */
+    fun releaseMany(state: GameState, uids: Collection<String>): Update {
+        val away = Adventures.awayUids(state)
+        var s = state
+        var released = 0
+        var candy = 0
+        for (uid in uids.distinct()) {
+            val m = s.monsters.find { it.uid == uid } ?: continue
+            if (uid in away || s.monsters.size <= 1) continue
+            val gained = releaseCandy(m)
+            val family = m.species.family
+            s = s.copy(
+                monsters = s.monsters.filterNot { it.uid == uid },
+                party = s.party - uid,
+                swaps = s.swaps - uid,
+                candy = s.candy + (family to (s.candy[family] ?: 0) + gained),
+            )
+            released++
+            candy += gained
+        }
+        if (released == 0) return Update(state, "Nobody was released.")
+        return Update(s, "Released $released monster${if (released == 1) "" else "s"} into the wild. +$candy candy.")
+    }
+
     // ---- candy ----------------------------------------------------------------
 
     /** Every evolution line has its own candy, named after its first form. */

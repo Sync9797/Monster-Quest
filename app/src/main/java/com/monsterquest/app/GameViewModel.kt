@@ -643,6 +643,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (u.message.isNotEmpty()) message = u.message
     }
     fun release(uid: String) = apply(GameEngine.release(state, uid))
+    fun releaseMany(uids: List<String>) = apply(GameEngine.releaseMany(state, uids))
     fun candyLevelUp(uid: String) = apply(GameEngine.candyLevelUp(state, uid))
     fun evolve(uid: String) = apply(GameEngine.evolve(state, uid))
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))

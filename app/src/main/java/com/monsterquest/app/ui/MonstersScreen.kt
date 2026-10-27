@@ -66,6 +66,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -175,6 +176,11 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
             SortBy.POTENTIAL -> list.sortedWith(compareByDescending<Monster> { it.potential }.thenByDescending { it.level })
         }
     }
+    // Batch release: pick monsters from the collection, then release them together.
+    var picking by rememberSaveable { mutableStateOf(false) }
+    val picked = remember { mutableStateListOf<String>() }
+    var confirmRelease by remember { mutableStateOf(false) }
+    BackHandler(enabled = picking) { picking = false; picked.clear() }
     val drag = remember { PartyDrag() }
     var listOrigin by remember { mutableStateOf(Offset.Zero) }
     fun drop() {
@@ -299,6 +305,24 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Collection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
                         Text("${s.monsters.size}/${s.monsterCapacity}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!picking && bench.isNotEmpty()) {
+                            Spacer(Modifier.width(8.dp))
+                            SmallButton("Release…", { picking = true }, outlined = true)
+                        }
+                    }
+                    if (picking) {
+                        // Pick mode: tap monsters to choose who goes; the party and adventurers are safe.
+                        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (picked.isEmpty()) "Tap monsters to release" else "${picked.size} selected",
+                                fontSize = 13.sp,
+                                color = HpRed,
+                                modifier = Modifier.weight(1f),
+                            )
+                            SmallButton("Cancel", { picking = false; picked.clear() }, outlined = true)
+                            Spacer(Modifier.width(6.dp))
+                            SmallButton("Release ${picked.size}", { confirmRelease = true }, enabled = picked.isNotEmpty())
+                        }
                     }
                     Bar(s.monsters.size.toFloat() / s.monsterCapacity, if (s.storageFull) HpRed else Mint, Modifier.fillMaxWidth().padding(vertical = 4.dp), heightDp = 4)
                     Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -313,12 +337,21 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
             }
             items(bench, key = { it.uid }) { m ->
                 MonsterTile(
-                    m, inParty = false, away = m.uid in away, selected = m.uid == selectedUid,
+                    m, inParty = false, away = m.uid in away, selected = !picking && m.uid == selectedUid,
                     showPotential = sortBy == SortBy.POTENTIAL,
-                    modifier = Modifier
+                    picked = m.uid in picked,
+                    modifier = if (picking) Modifier.alpha(if (m.uid in away) 0.4f else 1f)
+                    else Modifier
                         .dragSource(drag, m.uid, ::drop)
                         .alpha(if (drag.uid == m.uid) 0.35f else 1f),
-                ) { onSelect(m.uid) }
+                ) {
+                    when {
+                        !picking -> onSelect(m.uid)
+                        m.uid in away -> {}
+                        m.uid in picked -> picked.remove(m.uid)
+                        else -> picked.add(m.uid)
+                    }
+                }
             }
             item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(24.dp)) }
         }
@@ -338,6 +371,37 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                 MonsterArt(dragged.species, Modifier.size(66.dp), shiny = dragged.shiny)
             }
         }
+    }
+    if (confirmRelease) {
+        val chosen = s.monsters.filter { it.uid in picked }
+        val candy = chosen.sumOf { GameEngine.releaseCandy(it) }
+        val shinies = chosen.filter { it.shiny }
+        AlertDialog(
+            onDismissRequest = { confirmRelease = false },
+            title = { Text("Release ${chosen.size} monster${if (chosen.size == 1) "" else "s"}?") },
+            text = {
+                Column {
+                    Text("They go back to the wild for good. You get $candy candy for their lines.")
+                    if (shinies.isNotEmpty()) {
+                        Text(
+                            "Including shiny: ${shinies.joinToString { it.displayName }}",
+                            color = HpRed,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.releaseMany(picked.toList())
+                    picked.clear()
+                    picking = false
+                    confirmRelease = false
+                }) { Text("Release", color = HpRed) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRelease = false }) { Text("Keep them") } },
+        )
     }
     if (showChart) {
         AlertDialog(
@@ -424,10 +488,13 @@ private fun MonsterTile(
     modifier: Modifier = Modifier,
     /** Show the monster's potential (when the list is sorted by it). */
     showPotential: Boolean = false,
+    /** Chosen for batch release. */
+    picked: Boolean = false,
     onClick: () -> Unit,
 ) {
     val sp = m.species
     val border = when {
+        picked -> HpRed
         selected -> MpBlue
         m.fainted -> HpRed
         m.cursed -> XpPurple
@@ -460,6 +527,7 @@ private fun MonsterTile(
         val hpMax = m.stats.hp
         Bar(m.currentHp.toFloat() / hpMax, hpColor(m.currentHp.toFloat() / hpMax), Modifier.fillMaxWidth(), heightDp = 4)
         val badge = when {
+            picked -> "Release" to HpRed
             m.fainted -> "Fainted" to HpRed
             away -> "Away" to MpBlue
             m.cureReady -> "Cured!" to Gold

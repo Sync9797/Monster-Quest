@@ -366,6 +366,31 @@ abstract class ScreenshotBase(private val device: String) {
         check(done) { "returns to the battle" }
     }
 
+    /** Batch release: pick monsters from the collection, confirm, and they're gone (with candy). */
+    @Test fun batchRelease() {
+        val v = vm()
+        val bench = v.state.monsters.filter { it.uid !in v.state.team && it.uid !in com.monsterquest.core.Adventures.awayUids(v.state) }
+        check(bench.size >= 2) { "sample has bench monsters" }
+        val before = v.state.monsters.size
+        shot("48_batch_release") { AppRoot(v, Tab.MONSTERS) }
+        val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
+            n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.mainClock.advanceTimeBy(300)
+            rule.waitForIdle()
+        }
+        click(rule.onNodeWithText("Release…"))
+        rule.onNodeWithText("Tap monsters to release").assertExists()
+        bench.take(2).forEach { m ->
+            click(rule.onAllNodes(androidx.compose.ui.test.hasText(m.displayName, substring = true) and androidx.compose.ui.test.hasClickAction())[0])
+        }
+        rule.onNodeWithText("2 selected").assertExists()
+        capture("48b_batch_release_picked", 100)
+        click(rule.onNodeWithText("Release 2"))
+        rule.onNodeWithText("Release 2 monsters?").assertExists()
+        click(rule.onNodeWithText("Release"))
+        check(v.state.monsters.size == before - 2) { "released 2: ${v.state.monsters.size} of $before" }
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

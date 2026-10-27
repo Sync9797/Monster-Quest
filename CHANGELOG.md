@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0
+
+- **Batch release:** a "Release…" button next to the Collection header on
+  the Monsters tab. Tap monsters to pick them (they're outlined in red),
+  then "Release N". The confirmation shows the candy you'll get and warns
+  if a shiny is included. Your battle party and monsters out on adventures
+  can't be picked, and you always keep at least one monster.
+
 ## 2.0.2
 
 - **Binding energy:** after a cast, a glowing core of swirling energy (not
