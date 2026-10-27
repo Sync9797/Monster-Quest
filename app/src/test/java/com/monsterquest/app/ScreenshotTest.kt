@@ -624,6 +624,31 @@ abstract class ScreenshotBase(private val device: String) {
         capture("37_thug_battle", 1_000)
     }
 
+    /** Daily reminders on the Quests list: one waiting to be done, one switched on for later. */
+    @Test fun reminders() {
+        val now = System.currentTimeMillis()
+        val t = java.time.LocalTime.now()
+        val base = sampleState()
+        var s = com.monsterquest.core.Reminders.add(base, "Make bed", t.minusMinutes(20).hour, t.minusMinutes(20).minute, (1..7).toSet(), Random(1)).state
+        s = com.monsterquest.core.Reminders.add(s, "Take vitamins", 21, 30, (1..5).toSet(), Random(2)).state
+        val v = vm(s)
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            MonsterQuestTheme(com.monsterquest.core.ThemeMode.DARK) {
+                androidx.compose.foundation.layout.Column(Modifier.background(androidx.compose.material3.MaterialTheme.colorScheme.background)) {
+                    com.monsterquest.app.ui.RemindersSection(v, now)
+                }
+            }
+        }
+        capture("43_reminders", 500)
+        rule.onNodeWithText("Make bed").assertExists()
+        rule.onNodeWithText("9:30 PM • Weekdays").assertExists()
+        // The open one has Done and Skip right on it.
+        rule.onNodeWithText("Done").performClick()
+        rule.waitForIdle()
+        check(com.monsterquest.core.Reminders.streak(v.state.reminders.first { it.title == "Make bed" }, System.currentTimeMillis()) == 1)
+    }
+
     /** The loading screen at start-up: crest, title and loading bar. */
     @Test fun bootSplash() {
         shot("42_splash", advanceMs = 900) { com.monsterquest.app.ui.BootSplash("Aaronimus", durationMs = 1_600) {} }

@@ -93,6 +93,44 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- daily reminders -------------------------------------------------------
+
+    /** Kept so the preferences listener isn't garbage-collected. */
+    private val reminderTapListener = com.monsterquest.app.reminders.ReminderActions.listen(app) { applyReminderTaps() }
+
+    /** Applies Done / Skip taps from notifications, each at the time it was tapped. */
+    fun applyReminderTaps() {
+        val taps = com.monsterquest.app.reminders.ReminderActions.drain(getApplication())
+        if (taps.isEmpty()) return
+        var s = state
+        val notes = mutableListOf<String>()
+        for ((id, done, at) in taps) {
+            val u = if (done) com.monsterquest.core.Reminders.complete(s, id, at) else com.monsterquest.core.Reminders.skip(s, id, at)
+            s = u.state
+            notes += u.message
+        }
+        set(s)
+        message = notes.joinToString(" ")
+    }
+
+    private fun rescheduleReminders() {
+        runCatching { com.monsterquest.app.reminders.ReminderAlarms.scheduleAll(getApplication(), state.reminders) }
+    }
+
+    private fun applyReminders(u: Update) {
+        apply(u)
+        rescheduleReminders()
+    }
+
+    fun addReminder(title: String, hour: Int, minute: Int, days: Set<Int>) =
+        applyReminders(com.monsterquest.core.Reminders.add(state, title, hour, minute, days))
+    fun editReminder(id: String, title: String, hour: Int, minute: Int, days: Set<Int>) =
+        applyReminders(com.monsterquest.core.Reminders.edit(state, id, title, hour, minute, days))
+    fun setReminderEnabled(id: String, on: Boolean) = applyReminders(com.monsterquest.core.Reminders.setEnabled(state, id, on))
+    fun deleteReminder(id: String) = applyReminders(com.monsterquest.core.Reminders.delete(state, id))
+    fun completeReminder(id: String) = apply(com.monsterquest.core.Reminders.complete(state, id, System.currentTimeMillis()))
+    fun skipReminder(id: String) = apply(com.monsterquest.core.Reminders.skip(state, id, System.currentTimeMillis()))
+
     private fun set(s: GameState) {
         val walked = s.stats.totalSteps - state.stats.totalSteps
         state = s.withJournal()
@@ -295,6 +333,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onAppResumed() {
         regenerate()
+        // Done / Skip taps from reminder notifications while the game was closed, then re-arm the alarms.
+        applyReminderTaps()
+        rescheduleReminders()
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
         GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
         val f = state.focus ?: return

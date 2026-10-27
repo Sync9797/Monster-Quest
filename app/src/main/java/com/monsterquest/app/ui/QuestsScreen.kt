@@ -217,6 +217,8 @@ fun QuestsScreen(vm: GameViewModel) {
                 )
             }
         }
+        // Daily reminders (gentle alarms), then tasks, then the calendar.
+        item(key = "reminders") { RemindersSection(vm, now) }
         // Tasks first: things without a due date (only shown when there are some), then the calendar.
         if (tasks.isNotEmpty()) {
             item(key = "tasks_header") {

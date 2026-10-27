@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.20.0
+
+- **Daily reminders:** gentle alarms set in the game, at a time of day on
+  the days you pick ("6:00 AM, make the bed, every day but Saturday").
+  Add them with "+ Reminder" on the Quests screen.
+  - At its time you get one notification with **Done**, **Skip** and
+    **Snooze 15 min** buttons, so you never have to open the game. Taps
+    are added to your save the next time the game is open.
+  - **On-time rewards:** marking one done within 3 hours of its time pays
+    like an Easy quest (+15 XP, +8 gold) and shares the daily quest
+    allowance. Ticking it early or late pays nothing.
+  - **Streaks:** each reminder keeps a streak over the days it rings. 7 days
+    in a row gives a Monster Treat; every 30 days, a Restore Potion and
+    150 gold. Skipping a busy day doesn't break the streak.
+  - **No penalty:** missing one costs nothing; its streak just starts over.
+  - Alarms come back after the phone restarts or the time zone changes.
+
 ## 1.19.1
 
 - **Tasks first:** on the Quests screen, your Tasks (things without a due
