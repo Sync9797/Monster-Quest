@@ -295,5 +295,10 @@ class ClassesTest {
         // Galvanize: double power on a statused foe; Bedrock Press: Defense does the hitting.
         assertEquals(2.0, Moves.get("galvanize").effects.filterIsInstance<MoveEffect.StatusBonus>().single().multiplier)
         assertTrue(MoveEffect.DefenseStrike in Moves.get("bedrock_press").effects)
+        // Life Absorb: Corrupt's dark power, 80 power, heals 25% of the damage, learned late.
+        val absorb = Moves.get("life_absorb")
+        assertEquals(80, absorb.power)
+        assertEquals(25, absorb.effects.filterIsInstance<MoveEffect.LifeDrain>().single().percent)
+        assertEquals(48, Moves.learnsets.getValue(Element.CORRUPT).single { it.second == "life_absorb" }.first)
     }
 }

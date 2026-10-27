@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.31.0
+
+- **Life Absorb (new Corrupt attack):** dark power, not just dirty tricks.
+  80 power, and the user heals 25% of the damage it deals. Corrupt monsters
+  learn it at level 48.
+
 ## 1.30.0
 
 - **Health card on Home:** a card at the top of the Home screen. It folds
