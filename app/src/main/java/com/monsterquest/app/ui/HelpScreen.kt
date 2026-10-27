@@ -139,6 +139,7 @@ private val topics = listOf(
             "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), or at once with an Ether.",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
             "A weapon of your class also adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off until you've fought 10 battles with that particular weapon.",
+            "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",
             "At level 15 pick a subclass: three per class, each with its own perks. Switching costs gold.",
             "Skills open at levels 30, 45 and 60 (Intimidate, Hover, Kleptomaniac and more) and rank up every 10 levels; from rank 3 some cover your whole team. Monsters get one skill of their own at level 30.",
             "The shop buys items at half price and gear by rarity and level. Smelt a weapon for 50 gold to get its parts back.",

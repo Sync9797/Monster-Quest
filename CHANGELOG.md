@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.26.0
+
+- **Gear tiers by level:** better materials now unlock at milestones
+  instead of creeping up slowly toward level 100.
+
+  | From level | What you find |
+  |---|---|
+  | 1 | Mostly wood and leather |
+  | 10 | Bronze turns up often |
+  | 20 | Bronze is usual; iron appears |
+  | 30 | Iron is as common as bronze |
+  | 40 | Iron is usual; gold appears |
+  | 50 | Gold turns up often |
+  | 65 | Gold is usual |
+  | 80 | Mostly gold, with the best diamond odds |
+
+  Diamond stays rare at every level (at most about 1 in 20). The Bag shows
+  your current tier and the next milestone, and the level-up pop-up tells
+  you when you reach one.
+
 ## 1.25.1
 
 - The 2x2 widget card is now frosted glass: slightly see-through so your

@@ -104,6 +104,15 @@ fun BagScreen(vm: GameViewModel) {
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // What materials turn up at this level, and the next milestone.
+        val tier = com.monsterquest.core.Armory.materialTier(s.hero.level)
+        val nextTier = com.monsterquest.core.Armory.nextMaterialTier(s.hero.level)
+        Text(
+            "Gear you find now: ${tier.note.lowercase()}." + (nextTier?.let { " At level ${it.fromLevel}: ${it.note.lowercase()}." } ?: ""),
+            fontSize = 12.sp,
+            color = Gold,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
         s.equippedGear?.let { w ->
             GearCard(w, s.hero, equipped = true) {
                 TextButton(onClick = vm::unequip) { Text("Remove") }

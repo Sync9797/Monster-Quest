@@ -277,19 +277,35 @@ const val PARTS_TO_FORGE = 5
 
 object Armory {
     /**
-     * A material for gear found around [lvl]: mostly the basic kind early on,
-     * better ones getting likelier with level but capped, so even at level 100
-     * diamond stays rare (about 1 in 20) and at level 10 it's about 1 in 800.
+     * Material odds by level tier: each milestone makes a better material the
+     * usual find, so iron, gold and diamond turn up long before level 100.
+     * Diamond stays rare at every level (capped at about 1 in 20).
      */
+    data class MaterialTier(val fromLevel: Int, val weights: Map<Material, Double>, val note: String) {
+        /** The most likely material in this tier. */
+        val usual: Material get() = weights.maxBy { it.value }.key
+    }
+
+    val MATERIAL_TIERS = listOf(
+        MaterialTier(1, mapOf(Material.BASIC to 85.0, Material.BRONZE to 14.0, Material.IRON to 1.0, Material.GOLD to 0.1, Material.DIAMOND to 0.05), "Mostly wood and leather"),
+        MaterialTier(10, mapOf(Material.BASIC to 66.0, Material.BRONZE to 28.0, Material.IRON to 5.0, Material.GOLD to 0.5, Material.DIAMOND to 0.12), "Bronze turns up often"),
+        MaterialTier(20, mapOf(Material.BASIC to 38.0, Material.BRONZE to 40.0, Material.IRON to 19.0, Material.GOLD to 2.5, Material.DIAMOND to 0.3), "Bronze is usual; iron appears"),
+        MaterialTier(30, mapOf(Material.BASIC to 22.0, Material.BRONZE to 34.0, Material.IRON to 35.0, Material.GOLD to 8.0, Material.DIAMOND to 0.8), "Iron is as common as bronze"),
+        MaterialTier(40, mapOf(Material.BASIC to 12.0, Material.BRONZE to 24.0, Material.IRON to 44.0, Material.GOLD to 18.0, Material.DIAMOND to 1.8), "Iron is usual; gold appears"),
+        MaterialTier(50, mapOf(Material.BASIC to 7.0, Material.BRONZE to 16.0, Material.IRON to 40.0, Material.GOLD to 33.0, Material.DIAMOND to 3.5), "Gold turns up often"),
+        MaterialTier(65, mapOf(Material.BASIC to 5.0, Material.BRONZE to 11.0, Material.IRON to 34.0, Material.GOLD to 45.5, Material.DIAMOND to 4.5), "Gold is usual"),
+        MaterialTier(80, mapOf(Material.BASIC to 3.0, Material.BRONZE to 7.0, Material.IRON to 28.0, Material.GOLD to 57.0, Material.DIAMOND to 5.0), "Mostly gold, with the best diamond odds"),
+    )
+
+    fun materialTier(lvl: Int): MaterialTier = MATERIAL_TIERS.last { lvl >= it.fromLevel }
+
+    /** The next milestone after [lvl], or null at the top tier. */
+    fun nextMaterialTier(lvl: Int): MaterialTier? = MATERIAL_TIERS.firstOrNull { it.fromLevel > lvl }
+
+    /** A material for gear found around [lvl]; [luck] (forging, bosses) favors the better ones. */
     fun rollMaterial(lvl: Int, rng: Random, luck: Int = 0): Material {
         val boost = 1 + luck / 20.0
-        val weights = listOf(
-            Material.BASIC to (100.0 - lvl).coerceAtLeast(25.0),
-            Material.BRONZE to ((8 + lvl * 1.5) * boost).coerceAtMost(90.0),
-            Material.IRON to ((lvl - 8) * 1.2 * boost).coerceIn(0.6, 60.0),
-            Material.GOLD to ((0.5 + (lvl - 20).coerceAtLeast(0) * 0.5) * boost).coerceAtMost(30.0),
-            Material.DIAMOND to ((0.15 + (lvl - 35).coerceAtLeast(0) * 0.25) * boost).coerceAtMost(10.0),
-        )
+        val weights = materialTier(lvl).weights.map { (m, w) -> m to if (m == Material.BASIC) w else w * boost }
         var roll = rng.nextDouble() * weights.sumOf { it.second }
         for ((m, w) in weights) {
             roll -= w

@@ -675,6 +675,7 @@ object GameEngine {
             if (gain.boxItems.isNotEmpty()) add("Level-up box: ${boxText(gain.boxItems)}.")
             if (gain.state.bagCount > gain.state.bagCapacity) add("Your bag is over full: use, sell or drop items before picking up more.")
             Item.entries.filter { it.minLevel in (before.level + 1)..h.level }.forEach { add("${it.label}s are now in the shop!") }
+            Armory.MATERIAL_TIERS.filter { it.fromLevel in (before.level + 1)..h.level }.forEach { add("Better gear: ${it.note.lowercase()} from now on.") }
             if (before.level < SUBCLASS_UNLOCK_LEVEL && h.level >= SUBCLASS_UNLOCK_LEVEL) add("Subclasses unlocked! Pick one on the Hero tab.")
             HERO_SKILL_LEVELS.forEachIndexed { i, at ->
                 if (before.level < at && h.level >= at) add("Skill slot ${i + 1} opened! Pick a skill on the Hero tab.")

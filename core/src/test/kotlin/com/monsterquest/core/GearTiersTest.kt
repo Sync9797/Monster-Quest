@@ -33,6 +33,15 @@ class GearTiersTest {
         assertTrue((low[Material.BRONZE] ?: 0.0) in 0.1..0.3)
         assertTrue((low[Material.DIAMOND] ?: 0.0) < 0.005)
         assertTrue(Material.DIAMOND in (1..200_000).map { Armory.rollMaterial(10, Random(it)) }.toSet(), "diamond can happen at level 10")
+        // Milestones on the way: iron is the usual find from 40, gold from 65; nothing waits for 100.
+        assertEquals(Material.BRONZE, Armory.materialTier(20).usual)
+        assertEquals(Material.IRON, Armory.materialTier(40).usual)
+        assertEquals(Material.GOLD, Armory.materialTier(65).usual)
+        assertTrue((shares(30)[Material.IRON] ?: 0.0) > 0.25)
+        assertTrue((shares(50)[Material.GOLD] ?: 0.0) > 0.25)
+        assertEquals(30, Armory.nextMaterialTier(25)?.fromLevel)
+        // Diamond never passes the cap.
+        assertTrue(Armory.MATERIAL_TIERS.all { t -> t.weights.getValue(Material.DIAMOND) / t.weights.values.sum() <= 0.051 })
         // Level 100: better gear common, but diamond is capped.
         val high = shares(100)
         assertTrue((high[Material.BASIC] ?: 0.0) < 0.2)
