@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import com.monsterquest.core.trait
+import com.monsterquest.core.canEvolveTo
 
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.offset
@@ -534,7 +535,43 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Spacer(Modifier.height(4.dp))
             }
             LabeledBar("XP", m.xp, m.xpToNext, XpPurple)
-            sp.evolveLevel?.let { lvl -> if (m.level < lvl) Text("Evolves at Lv $lvl", fontSize = 12.sp, color = XpPurple) }
+            sp.evolveLevel?.let { lvl -> if (m.level < lvl) Text("Can evolve at Lv $lvl", fontSize = 12.sp, color = XpPurple) }
+        }
+
+        // Evolution is the player's choice, paid for with candy of the monster's line.
+        val into = m.canEvolveTo
+        if (into != null) {
+            val cost = GameEngine.evolveCost(m)
+            val have = GameEngine.candyOf(s, sp)
+            var confirmEvolve by remember { mutableStateOf(false) }
+            Spacer(Modifier.height(8.dp))
+            GameCard(border = Gold) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MonsterArt(into, Modifier.size(56.dp), silhouette = into.id !in s.seen)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Ready to evolve!", fontWeight = FontWeight.Bold, color = Gold)
+                        Text(
+                            "Into ${if (into.id in s.seen) into.name else "a new creature"} • $cost ${GameEngine.candyName(sp)} (you have $have)",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (have < cost) {
+                            Text("Tame or beat more of its kind for candy.", fontSize = 11.sp, color = HpYellow)
+                        }
+                    }
+                    SmallButton("Evolve", { confirmEvolve = true }, enabled = have >= cost)
+                }
+            }
+            if (confirmEvolve) {
+                AlertDialog(
+                    onDismissRequest = { confirmEvolve = false },
+                    title = { Text("Evolve ${m.displayName}?") },
+                    text = { Text("It becomes ${into.name}, with much stronger stats and new moves. Costs $cost ${GameEngine.candyName(sp)}.") },
+                    confirmButton = { TextButton(onClick = { vm.evolve(m.uid); confirmEvolve = false }) { Text("Evolve") } },
+                    dismissButton = { TextButton(onClick = { confirmEvolve = false }) { Text("Not yet") } },
+                )
+            }
         }
 
         if (m.cursed) {

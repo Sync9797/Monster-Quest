@@ -407,8 +407,17 @@ fun Monster.gainXp(amount: Int): Monster {
         lvl++
     }
     if (lvl >= MAX_MONSTER_LEVEL) x = 0
-    return copy(level = lvl, xp = x).evolved()
+    // Levelling never evolves a monster on its own: the player chooses to, for candy (see GameEngine.evolve).
+    return copy(level = lvl, xp = x)
 }
+
+/** The species this monster can evolve into right now (its level is high enough), or null. */
+val Monster.canEvolveTo: Species?
+    get() {
+        val next = species.evolvesTo ?: return null
+        val at = species.evolveLevel ?: return null
+        return if (level >= at) Bestiary.get(next) else null
+    }
 
 /** Applies every evolution this monster's level qualifies for. */
 fun Monster.evolved(): Monster {

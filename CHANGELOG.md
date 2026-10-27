@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.23.0
+
+- **Evolving is your choice:** monsters no longer evolve on their own when
+  they level up. When one reaches its evolution level it shows "Ready to
+  evolve!" (and the level-up pop-up says so), and an **Evolve** button
+  appears on its page. Evolving costs candy of its line: 10 for the first
+  evolution, 25 for the second and 50 for the third. Wild monsters still
+  appear already evolved for their level.
+- **Candy for beating monsters:** every monster you defeat gives 1 candy of
+  its line (3 for bosses and den monsters), on top of the 3 for taming one.
+
 ## 1.22.0
 
 - **The map follows you** like Pokemon GO: it stays centered on your hero

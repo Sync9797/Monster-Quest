@@ -124,4 +124,36 @@ class GearTiersTest {
         // Cursed weapons are the usual cursed prize.
         assertTrue(results.count { u -> u.state.gear.any { it.cursed } } > results.count { u -> u.state.armor.any { it.cursed } })
     }
+
+    @Test
+    fun evolvingTakesTheButtonAndCandy() {
+        val kit = Monster.create(Bestiary.get("emberkit"), 13, Random(11)).copy(level = 14)
+        var s = hero(14).copy(monsters = listOf(kit), party = listOf(kit.uid))
+        val family = kit.species.family
+        // Not enough candy.
+        assertEquals(s, GameEngine.evolve(s.copy(candy = mapOf(family to 9)), kit.uid).state.copy(candy = s.candy))
+        s = s.copy(candy = mapOf(family to GameEngine.evolveCost(kit) + 2))
+        val u = GameEngine.evolve(s, kit.uid)
+        assertEquals("blazecat", u.state.monsters.single().speciesId)
+        assertEquals(2, u.state.candy[family])
+        assertTrue("evolved" in u.message)
+        // Too low a level can't evolve.
+        val young = Monster.create(Bestiary.get("emberkit"), 5, Random(12))
+        val s2 = hero(5).copy(monsters = listOf(young), candy = mapOf(family to 999))
+        assertEquals("emberkit", GameEngine.evolve(s2, young.uid).state.monsters.single().speciesId)
+        // Later stages cost more.
+        assertTrue(GameEngine.EVOLVE_CANDY.zipWithNext().all { (a, b) -> b > a })
+    }
+
+    @Test
+    fun beatingMonstersGivesCandy() {
+        val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(13))
+        val pack = listOf(Monster.create(Bestiary.get("zapmouse"), 5, Random(14)))
+        val s = hero(10)
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(15), pack = pack)
+        b.enemies.forEach { it.hp = 0 }
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        val after = GameEngine.applyBattleResult(s, b.result(), 1_000).state
+        assertEquals(2 * GameEngine.DEFEAT_CANDY, after.candy[foe.species.family])
+    }
 }

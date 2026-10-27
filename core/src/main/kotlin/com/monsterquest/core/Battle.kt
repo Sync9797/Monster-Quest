@@ -445,6 +445,8 @@ data class BattleResult(
     /** Weapon hits landed and physical hits taken: they wear curses down. */
     val weaponUses: Int = 0,
     val armorHits: Int = 0,
+    /** Species of every monster beaten (each gives candy of its line). */
+    val defeated: List<String> = emptyList(),
 )
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
@@ -1478,6 +1480,7 @@ class Battle(
             outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
             damage, heroFell, allies.first().let { it.maxMp - it.mp },
             allies.first().weaponUses, allies.first().armorHits,
+            if (outcome == BattleOutcome.WON) enemyMonsters.map { it.speciesId } else emptyList(),
         )
     }
 }

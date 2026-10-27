@@ -286,8 +286,12 @@ class GameTest {
     fun monstersEvolveAtLevels() {
         val kit = Monster.create(Bestiary.get("emberkit"), 13, rng)
         assertEquals("emberkit", kit.speciesId)
-        val evolved = kit.gainXp(monsterXpForNext(13))
-        assertEquals("blazecat", evolved.speciesId)
+        // Levelling past the evolution level doesn't evolve it: the player chooses to.
+        val grown = kit.gainXp(monsterXpForNext(13))
+        assertEquals("emberkit", grown.speciesId)
+        assertEquals("blazecat", grown.canEvolveTo?.id)
+        assertNull(kit.canEvolveTo)
+        // Wild monsters still turn up already evolved for their level.
         val all3 = Monster.create(Bestiary.get("emberkit"), 45, rng)
         assertEquals("solar_tiger", all3.speciesId)
         val hound = Monster.create(Bestiary.get("ember_pup"), 32, rng)
@@ -1052,14 +1056,15 @@ class GameTest {
 
     @Test
     fun levelUpsReportStatsMovesAndEvolution() {
-        // A level 13 Emberkit levels to 14 and evolves into Cinderfang.
+        // A level 13 Emberkit levels to 14: it doesn't evolve by itself, but it's ready to.
         val m = Monster.create(Bestiary.get("emberkit"), 13, Random(3))
         val (after, up) = GameEngine.growDetailed(m, monsterXpForNext(13))
         assertNotNull(up)
         assertEquals(13, up.fromLevel)
         assertEquals(14, up.toLevel)
-        assertEquals("blazecat", after.speciesId)
-        assertEquals("Emberkit", up.evolvedFrom)
+        assertEquals("emberkit", after.speciesId)
+        assertNull(up.evolvedFrom)
+        assertTrue(up.notes.any { "Ready to evolve" in it })
         assertEquals(listOf("HP", "Attack", "Magic", "Defense", "Speed"), up.stats.map { it.label })
         assertTrue(up.stats.all { it.gain > 0 })
         assertEquals(after.stats.hp, up.stats.first().after)
@@ -1300,9 +1305,11 @@ class GameTest {
         // Not enough candy: nothing happens.
         val broke = leveled.copy(candy = emptyMap())
         assertEquals(broke, GameEngine.candyLevelUp(broke, kit.uid).state)
-        // Evolving through candy keeps stat points too.
+        // Evolving (with the button, for candy) keeps stat points too.
         var m = released.copy(candy = mapOf(family to 999))
         repeat(15) { m = GameEngine.candyLevelUp(m, kit.uid).state }
+        assertEquals("emberkit", m.monsters.single().speciesId)
+        m = GameEngine.evolve(m, kit.uid).state
         assertEquals("blazecat", m.monsters.single().speciesId)
         assertEquals(kit.ivs, m.monsters.single().ivs)
     }

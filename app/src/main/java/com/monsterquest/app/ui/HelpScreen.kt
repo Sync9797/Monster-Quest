@@ -104,7 +104,8 @@ private val topics = listOf(
         GameIcon.ORB, "Taming and candy",
         listOf(
             "Get a monster below 50% HP, then use Tame and throw an orb. Sleep, shock, poison and burn make it easier.",
-            "Taming gives 3 candy for that monster's line and hero XP (more than beating it); releasing one gives more candy. Spend candy on a monster's page to level it up.",
+            "Taming gives 3 candy for that monster's line and hero XP (more than beating it); beating one gives 1 candy (3 for bosses and den monsters); releasing one gives more. Spend candy on a monster's page to level it up.",
+            "Monsters don't evolve on their own. Once one reaches its evolution level, an Evolve button appears on its page: it costs 10 candy of its line for the first evolution, 25 for the second and 50 for the third.",
             "Leveling never changes a monster's stat points (0 to 15 per stat). Better ones come from taming more monsters.",
             "The Journal records every monster you've seen and caught.",
             "Shinies: about 1 in 200 wild monsters (1 in 100 with a lure) has rare colors and sparkles. They're marked in battle, on the map up close, and in your Journal.",

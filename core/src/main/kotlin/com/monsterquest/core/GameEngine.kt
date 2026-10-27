@@ -523,6 +523,46 @@ object GameEngine {
     fun addCandy(state: GameState, sp: Species, n: Int): GameState =
         state.copy(candy = state.candy + (sp.family to candyOf(state, sp) + n))
 
+    private val BOSS_ENCOUNTERS = setOf(
+        EncounterType.BOSS_CHALLENGE, EncounterType.BOSS_TAMING, EncounterType.SILVER_BOSS, EncounterType.BOX_BOSS, EncounterType.DEN,
+    )
+
+    /** Candy for defeating a wild (or thug's) monster; bosses give more. */
+    const val DEFEAT_CANDY = 1
+    const val BOSS_DEFEAT_CANDY = 3
+
+    /** Candy to evolve from each stage: 1 to 2, 2 to 3, 3 to 4. */
+    val EVOLVE_CANDY = listOf(10, 25, 50)
+
+    fun evolveCost(m: Monster): Int = EVOLVE_CANDY[(m.species.stage - 1).coerceIn(0, EVOLVE_CANDY.size - 1)]
+
+    /**
+     * Evolves a monster that has reached its evolution level, for candy of its
+     * line (from taming, beating and releasing monsters of that line).
+     */
+    fun evolve(state: GameState, uid: String): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        val into = m.species.evolvesTo?.let { Bestiary.get(it) } ?: return Update(state, "${m.displayName} doesn't evolve.")
+        val at = m.species.evolveLevel ?: return Update(state, "${m.displayName} doesn't evolve.")
+        if (m.level < at) return Update(state, "${m.displayName} can evolve at level $at.")
+        val cost = evolveCost(m)
+        val have = candyOf(state, m.species)
+        if (have < cost) return Update(state, "Evolving needs $cost ${candyName(m.species)} (you have $have). Tame or beat more of its kind.")
+        val before = m.learnedMoves.map { it.id }.toSet()
+        var evolved = m.copy(speciesId = into.id)
+        // New moves fill empty slots of a custom loadout.
+        val fresh = evolved.learnedMoves.filter { it.id !in before }
+        val custom = evolved.moves
+        if (custom != null) evolved = evolved.copy(moves = (custom + fresh.map { it.id }).take(Moves.MAX_MOVES))
+        val family = m.species.family
+        val s = state.copy(
+            monsters = state.monsters.map { if (it.uid == uid) evolved else it },
+            candy = state.candy + (family to have - cost),
+        ).withJournal()
+        val learned = if (fresh.isNotEmpty()) " It learned ${fresh.joinToString { it.name }}!" else ""
+        return Update(s, "${m.displayName} evolved into ${into.name}! (−$cost candy)$learned")
+    }
+
     /** Releasing gives more candy for evolved and higher-level monsters. */
     fun releaseCandy(m: Monster): Int = m.species.stage + m.level / 15
 
@@ -605,7 +645,11 @@ object GameEngine {
             learned = learned,
             canLearn = canLearn,
             evolvedFrom = if (after.speciesId != m.speciesId) m.species.name else null,
-            notes = traitNotes(m, after),
+            notes = traitNotes(m, after) + listOfNotNull(
+                after.canEvolveTo?.takeIf { m.canEvolveTo == null }?.let {
+                    "Ready to evolve into ${it.name}! Evolve it on its page (${evolveCost(after)} candy)."
+                },
+            ),
         )
     }
 
@@ -901,6 +945,13 @@ object GameEngine {
                 if (r.outcome == BattleOutcome.WON) {
                     msg.append("Victory! +${r.heroXp} XP, +${r.goldWon} gold.")
                     s = s.copy(gold = s.gold + r.goldWon, stats = s.stats.copy(battlesWon = s.stats.battlesWon + 1))
+                    // Beating monsters gives candy of their lines (bosses give more).
+                    val perMonster = if (r.encounter in BOSS_ENCOUNTERS) BOSS_DEFEAT_CANDY else DEFEAT_CANDY
+                    val won = r.defeated.map { Bestiary.get(it) }.groupBy { it.family }
+                    won.forEach { (_, list) -> s = addCandy(s, list.first(), perMonster * list.size) }
+                    if (won.isNotEmpty()) {
+                        msg.append(" ").append(won.values.joinToString { list -> "+${perMonster * list.size} ${candyName(list.first())}" }).append(".")
+                    }
                 } else {
                     msg.append("${r.enemy.displayName} was tamed! +${r.heroXp} XP.")
                 }
