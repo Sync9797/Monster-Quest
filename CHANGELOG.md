@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.35.1
+
+- **Much smoother scrolling everywhere:** the downloadable APK was a debug
+  build, which Android runs without its usual speed-ups (and Compose's
+  built-in performance profiles don't apply). It's now a release build,
+  signed with the same key, so it installs over your current version and
+  keeps your save.
+- **Open phone:** each side of the screen draws in its own layer, so
+  scrolling the schedule doesn't redraw the left side too.
+
 ## 1.35.0
 
 - **Caught mark in battle:** a small gold taming orb next to a foe's name

@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -106,23 +107,24 @@ private fun SplitPanes(
         if (tabletopOk && tabletopTop != null) {
             // Tabletop: split at the horizontal hinge.
             Column(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxWidth().height(with(density) { tabletopTop.toDp() })) { first() }
+                Box(Modifier.fillMaxWidth().height(with(density) { tabletopTop.toDp() }).graphicsLayer()) { first() }
                 Spacer(Modifier.height(with(density) { tabletopGap.toDp() }))
-                Box(Modifier.fillMaxWidth().weight(1f)) { second() }
+                Box(Modifier.fillMaxWidth().weight(1f).graphicsLayer()) { second() }
             }
         } else if (bookOk && bookLeft != null) {
             // Book: split at the vertical hinge.
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxHeight().width(with(density) { bookLeft.toDp() })) { first() }
+                // Each pane in its own layer: scrolling one doesn't redraw the other.
+                Box(Modifier.fillMaxHeight().width(with(density) { bookLeft.toDp() }).graphicsLayer()) { first() }
                 Spacer(Modifier.width(with(density) { bookGap.toDp() }))
-                Box(Modifier.fillMaxHeight().weight(1f)) { second() }
+                Box(Modifier.fillMaxHeight().weight(1f).graphicsLayer()) { second() }
             }
         } else {
             // Large screen, flat: simple side-by-side.
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxHeight().weight(firstWeight)) { first() }
+                Box(Modifier.fillMaxHeight().weight(firstWeight).graphicsLayer()) { first() }
                 Spacer(Modifier.width(12.dp))
-                Box(Modifier.fillMaxHeight().weight(1f - firstWeight)) { second() }
+                Box(Modifier.fillMaxHeight().weight(1f - firstWeight).graphicsLayer()) { second() }
             }
         }
     }
