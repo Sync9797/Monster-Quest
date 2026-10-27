@@ -882,9 +882,14 @@ private fun ActionPanel(
                     ) {
                         FighterArt(a, Modifier.size(24.dp))
                         Spacer(Modifier.width(6.dp))
-                        if (item?.kind == ItemKind.HEAL_HP && a.alive) {
-                            // How far this potion would fill their HP bar.
-                            val after = minOf(a.maxHp, a.hp + com.monsterquest.core.GameEngine.potionHeal(item, a.maxHp))
+                        // How far a healing potion or spell would fill their HP bar.
+                        val healAmount = when {
+                            item?.kind == ItemKind.HEAL_HP -> com.monsterquest.core.GameEngine.potionHeal(item, a.maxHp)
+                            spell?.kind == com.monsterquest.core.SkillKind.HEAL -> b.spellHeals[spell.id]
+                            else -> null
+                        }
+                        if (healAmount != null && a.alive) {
+                            val after = minOf(a.maxHp, a.hp + healAmount)
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     a.name + if (after > a.hp) "  ${a.hp} → $after HP (+${after - a.hp})" else "  Full HP",

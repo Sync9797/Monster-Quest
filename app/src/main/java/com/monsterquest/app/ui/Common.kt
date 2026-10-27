@@ -181,7 +181,7 @@ fun HealPreviewBar(hp: Int, after: Int, maxHp: Int) {
     val gain = HpGreen
     androidx.compose.foundation.Canvas(
         Modifier.fillMaxWidth().height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-            .semantics { contentDescription = "HP $hp of $maxHp, $after after the potion" },
+            .semantics { contentDescription = "HP $hp of $maxHp, $after after healing" },
     ) {
         drawRect(track)
         if (healed > now) drawRect(gain.copy(alpha = 0.4f), size = size.copy(width = size.width * healed))

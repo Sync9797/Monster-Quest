@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.38.1
+
+- **Heal preview for spells:** choosing who to heal with a healing spell
+  (like Mend) now shows the same HP bar and "82 → 152 HP (+70)" preview as
+  potions. The preview uses the exact formula the spell does.
+
 ## 1.38.0
 
 - **Berries (new, wild-only):** feed one to a monster before a throw and

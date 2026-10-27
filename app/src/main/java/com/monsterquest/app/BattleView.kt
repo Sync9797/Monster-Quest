@@ -53,6 +53,8 @@ data class BattleView(
     val berries: List<Pair<Item, Int>> = emptyList(),
     /** The boost a berry the foe ate gives your next throw (1 = none). */
     val bait: Double = 1.0,
+    /** HP each of the current fighter's healing spells restores, by spell id. */
+    val spellHeals: Map<String, Int> = emptyMap(),
 ) {
     /** True if you've already caught a monster of [f]'s species. */
     fun alreadyCaught(f: FighterView): Boolean = f.speciesId != null && f.speciesId in caught
@@ -98,6 +100,7 @@ data class BattleView(
                 swaps = b.swapsWaiting.map { FighterView.of(it) },
                 berries = b.berries().filter { b.canFeed(it) }.map { it to b.count(it) },
                 bait = b.bait,
+                spellHeals = cur?.let { c -> b.spellsFor(c).filter { it.kind == com.monsterquest.core.SkillKind.HEAL }.associate { it.id to b.spellHeal(c, it) } }.orEmpty(),
             )
         }
     }

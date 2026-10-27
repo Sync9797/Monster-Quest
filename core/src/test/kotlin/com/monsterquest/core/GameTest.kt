@@ -1640,4 +1640,21 @@ class GameTest {
         val s = started().copy(settings = Settings(imperialUnits = false))
         assertTrue(!GameState.fromJson(s.toJson()).settings.imperialUnits)
     }
+
+    @Test
+    fun healingSpellHealsWhatThePreviewSays() {
+        val s0 = started()
+        val s = s0.copy(hero = s0.hero.copy(level = 20, knownSpells = s0.hero.knownSpells + "mend"))
+        val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(6))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(7))
+        var guard = 0
+        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
+        val hero = b.current!!
+        val mend = b.spellsFor(hero).first { it.id == "mend" }
+        hero.hp = 1
+        hero.mp = hero.maxMp
+        val expected = minOf(hero.maxHp, 1 + b.spellHeal(hero, mend))
+        b.act(BattleAction.CastSpell("mend", hero.key))
+        assertEquals(expected, hero.hp)
+    }
 }

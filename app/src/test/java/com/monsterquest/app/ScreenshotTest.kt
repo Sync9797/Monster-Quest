@@ -277,7 +277,7 @@ abstract class ScreenshotBase(private val device: String) {
         val after = minOf(max, now + heal)
         shot("43_potion_preview") { com.monsterquest.app.ui.PotionTargetDialog(v, com.monsterquest.core.Item.POTION) {} }
         rule.onNodeWithText("$now → $after HP (+${after - now})").assertExists()
-        rule.onNode(androidx.compose.ui.test.hasContentDescription("HP $now of $max, $after after the potion")).assertExists()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("HP $now of $max, $after after healing")).assertExists()
         // Hurt monsters come first, right after you.
         val names = rule.onAllNodes(androidx.compose.ui.test.hasText("Heal") or androidx.compose.ui.test.hasText("Full HP")).fetchSemanticsNodes()
         check(names.isNotEmpty())
@@ -300,7 +300,7 @@ abstract class ScreenshotBase(private val device: String) {
         click(rule.onNodeWithText("${com.monsterquest.core.Item.POTION.label} x${v.state.count(com.monsterquest.core.Item.POTION)}"))
         check(rule.onAllNodes(androidx.compose.ui.test.hasText(" → ", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview text" }
         capture("44b_battle_potion_targets", 300)
-        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("after the potion", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview bar" }
+        check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("after healing", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview bar" }
     }
 
     @Test fun focus() {

@@ -686,6 +686,9 @@ class Battle(
     fun battleItems(): List<Item> =
         Item.entries.filter { it.usableInBattle && it.kind != ItemKind.CAPTURE && it.kind != ItemKind.BAIT && count(it) > 0 }
 
+    /** HP a healing spell restores when [caster] casts it (before capping at full). */
+    fun spellHeal(caster: Combatant, skill: Skill): Int = ((skill.power + caster.magic * 1.5) * (1 + caster.healPct / 100.0)).roundToInt()
+
     /** Berries you could feed the foe (on the Tame menu). */
     fun berries(): List<Item> = Item.entries.filter { it.kind == ItemKind.BAIT && count(it) > 0 }
 
@@ -984,7 +987,7 @@ class Battle(
                             log += "${actor.name} casts ${skill.name}: ${target.name}'s Defense rises!"
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL)
                         }
-                        else -> heal(target, ((skill.power + actor.magic * 1.5) * (1 + actor.healPct / 100.0)).roundToInt(), "${actor.name} casts ${skill.name}")
+                        else -> heal(target, spellHeal(actor, skill), "${actor.name} casts ${skill.name}")
                     }
                 } else {
                     actor.mp -= skill.mpCost
