@@ -224,6 +224,8 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Potential").assertExists()
     }
     @Test fun bag() { val v = vm(); shot("05_bag") { AppRoot(v, Tab.BAG) } }
+        // Storage is in the shop now: free upgrades and pricey expansions.
+        check(rule.onAllNodesWithText("Bag expansion").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("Shop", substring = true).fetchSemanticsNodes().isEmpty()) { "storage in the shop" }
 
     @Test fun map() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -323,9 +325,10 @@ abstract class ScreenshotBase(private val device: String) {
             path.drop(1).forEach { moveTo(androidx.compose.ui.geometry.Offset(it.x * width, it.y * height)) }
             up()
         }
-        rule.mainClock.advanceTimeBy(100)
+        // Mid-flare: the glyph lights up and throws sparks.
+        rule.mainClock.advanceTimeBy(250)
         rule.waitForIdle()
-        capture("45b_binding_traced", 100)
+        capture("45b_binding_traced", 50)
         rule.mainClock.advanceTimeBy(1_000)
         rule.waitForIdle()
         check(got != null && got!! >= com.monsterquest.core.TraceGrade.GOOD) { "graded $got" }

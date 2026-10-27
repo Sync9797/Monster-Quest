@@ -215,6 +215,7 @@ fun BagScreen(vm: GameViewModel) {
     }
     val shop: @Composable () -> Unit = {
         SectionTitle("Shop  •  ${s.gold} gold")
+        StorageShop(vm)
         Item.entries.filter { it.price > 0 }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -428,3 +429,56 @@ private fun TargetRow(name: String, hp: Int, maxHp: Int, heal: Int, onPick: () -
     }
 }
 
+/**
+ * Storage in the shop: claim the free upgrade earned every few levels, or buy
+ * more room. Bought expansions add a little and get pricier each time, so
+ * storage grows slowly.
+ */
+@Composable
+private fun StorageShop(vm: GameViewModel) {
+    val s = vm.state
+    GameCard(Modifier.padding(vertical = 3.dp), border = if (s.pendingUpgrades > 0) Gold else null) {
+        Text("Storage", fontWeight = FontWeight.SemiBold)
+        Text(
+            "Bag ${s.bagCount}/${s.bagCapacity}   •   Monsters ${s.monsters.size}/${s.monsterCapacity}",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (s.pendingUpgrades > 0) {
+            Text("Free upgrade earned! (${s.pendingUpgrades} to claim)", color = Gold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            SmallButton(
+                "Claim: bag +${com.monsterquest.core.BAG_UPGRADE_AMOUNT} and monsters +${com.monsterquest.core.STORAGE_UPGRADE_AMOUNT}",
+                vm::upgrade,
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+            )
+        } else {
+            val next = (s.hero.level / com.monsterquest.core.UPGRADE_LEVEL_INTERVAL + 1) * com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
+            Text(
+                "Next free upgrade at level $next.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+    listOf(true, false).forEach { bag ->
+        val cost = com.monsterquest.core.GameEngine.expansionCost(s, bag)
+        GameCard(Modifier.padding(vertical = 3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(if (bag) GameIcon.BAG else GameIcon.MONSTERS, Modifier.size(28.dp), Gold)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(if (bag) "Bag expansion" else "Monster storage expansion", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "+${com.monsterquest.core.PAID_UPGRADE_AMOUNT} ${if (bag) "bag slots" else "monster spaces"}. Each one costs more than the last.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Button(onClick = { vm.buyStorage(bag) }, enabled = s.gold >= cost) {
+                    IconText(GameIcon.COIN, "%,d".format(cost))
+                }
+            }
+        }
+    }
+}

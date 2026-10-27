@@ -76,6 +76,8 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
     var startedAt by remember(glyph) { mutableLongStateOf(-1L) }
     var elapsed by remember(glyph) { mutableLongStateOf(0L) }
     var result by remember(glyph) { mutableStateOf<TraceGrade?>(null) }
+    // The magic flare when the glyph is matched: 0 → 1 over its life.
+    val flare = remember(glyph) { androidx.compose.animation.core.Animatable(0f) }
     val gold = Gold
     val track = MaterialTheme.colorScheme.surfaceVariant
 
@@ -94,10 +96,11 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
             if (elapsed >= glyph.timeLimitMs) finish(glyph.timeLimitMs)
         }
     }
-    // Show the grade for a moment, then resolve the cast.
+    // The glyph flares with magic while the grade shows, then the cast resolves.
     LaunchedEffect(result) {
         val r = result ?: return@LaunchedEffect
-        kotlinx.coroutines.delay(650)
+        flare.animateTo(1f, androidx.compose.animation.core.tween(if (r == TraceGrade.FAINT) 450 else 750, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+        kotlinx.coroutines.delay(150)
         done(r)
     }
 
@@ -144,6 +147,40 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
                 drawPath(path, gold.copy(alpha = 0.12f), style = Stroke(w * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round))
                 drawPath(path, gold.copy(alpha = 0.45f), style = Stroke(w * 0.025f, cap = StrokeCap.Round, join = StrokeJoin.Round))
                 drawCircle(gold, w * 0.04f, toPx(glyph.points.first()))
+                // Matched: the glyph flares with magic. Stronger grades burn brighter and throw more sparks.
+                val f = flare.value
+                val grade = result
+                if (grade != null && f > 0f) {
+                    val col = grade.color()
+                    val power = when (grade) {
+                        TraceGrade.FAINT -> 0.35f
+                        TraceGrade.GOOD -> 0.6f
+                        TraceGrade.STRONG -> 0.85f
+                        TraceGrade.PERFECT -> 1f
+                    }
+                    val fade = 1f - f
+                    // The glyph lights up from within.
+                    drawPath(path, col.copy(alpha = 0.55f * power * fade), style = Stroke(w * (0.06f + 0.08f * f) * power, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(path, Color.White.copy(alpha = 0.8f * power * fade), style = Stroke(w * 0.012f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    // Sparks lift off along the strokes, spinning outward.
+                    val sparks = glyph.points.zipWithNext().flatMap { (a, b) -> (0 until 4).map { i -> GlyphPoint(a.x + (b.x - a.x) * i / 4f, a.y + (b.y - a.y) * i / 4f) } }
+                    val count = (sparks.size * power).toInt().coerceAtLeast(4)
+                    sparks.take(count).forEachIndexed { i, p ->
+                        val ang = i * 2.39996 // golden angle: an even scatter
+                        val dist = w * 0.18f * f * power
+                        val o = toPx(p)
+                        drawCircle(
+                            if (i % 3 == 0) Color.White.copy(alpha = fade) else col.copy(alpha = fade),
+                            w * 0.012f * (1f + power),
+                            Offset(o.x + (dist * kotlin.math.cos(ang)).toFloat(), o.y + (dist * kotlin.math.sin(ang)).toFloat() - w * 0.08f * f),
+                        )
+                    }
+                    // A ring of light rolls out from the center.
+                    if (grade != TraceGrade.FAINT) {
+                        drawCircle(col.copy(alpha = 0.7f * fade), w * (0.1f + 0.45f * f), center, style = Stroke(w * 0.015f * (1f + power) * fade + 0.5f))
+                        if (grade == TraceGrade.PERFECT) drawCircle(Color.White.copy(alpha = 0.5f * fade), w * (0.05f + 0.6f * f), center, style = Stroke(w * 0.008f + 0.5f))
+                    }
+                }
                 // Your trace.
                 if (trace.size > 1) {
                     val t = Path().apply {

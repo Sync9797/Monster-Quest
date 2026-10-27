@@ -270,14 +270,31 @@ object GameEngine {
         return Update(s, "Bag expanded to ${s.bagCapacity} slots and monster storage to ${s.monsterCapacity}.")
     }
 
-    /** Pay [PAID_UPGRADE_COST] gold for [PAID_UPGRADE_AMOUNT] more bag slots or monster storage. */
+    /**
+     * The next bought expansion's price: it starts high and grows by
+     * [PAID_UPGRADE_GROWTH] each time, rounded to 50 gold, so storage grows slowly.
+     */
+    fun expansionCost(state: GameState, bag: Boolean): Int {
+        val (base, bought) = if (bag) BAG_EXPANSION_COST to state.bagExpansionsBought else STORAGE_EXPANSION_COST to state.storageExpansionsBought
+        val raw = base * Math.pow(PAID_UPGRADE_GROWTH, bought.toDouble())
+        return (Math.round(raw / 50).toInt() * 50).coerceAtMost(1_000_000)
+    }
+
+    /** Buy [PAID_UPGRADE_AMOUNT] more bag slots or monster storage in the shop. */
     fun buyStorage(state: GameState, bag: Boolean): Update {
-        if (state.gold < PAID_UPGRADE_COST) return Update(state, "Expanding storage costs $PAID_UPGRADE_COST gold.")
-        val s = state.copy(gold = state.gold - PAID_UPGRADE_COST)
+        val cost = expansionCost(state, bag)
+        if (state.gold < cost) return Update(state, "This expansion costs ${"%,d".format(cost)} gold.")
+        val s = state.copy(gold = state.gold - cost)
         return if (bag) {
-            Update(s.copy(bagCapacity = s.bagCapacity + PAID_UPGRADE_AMOUNT), "Bag expanded to ${s.bagCapacity + PAID_UPGRADE_AMOUNT} slots.")
+            Update(
+                s.copy(bagCapacity = s.bagCapacity + PAID_UPGRADE_AMOUNT, bagExpansionsBought = s.bagExpansionsBought + 1),
+                "Bag expanded to ${s.bagCapacity + PAID_UPGRADE_AMOUNT} slots (−${"%,d".format(cost)} gold).",
+            )
         } else {
-            Update(s.copy(monsterCapacity = s.monsterCapacity + PAID_UPGRADE_AMOUNT), "Monster storage expanded to ${s.monsterCapacity + PAID_UPGRADE_AMOUNT}.")
+            Update(
+                s.copy(monsterCapacity = s.monsterCapacity + PAID_UPGRADE_AMOUNT, storageExpansionsBought = s.storageExpansionsBought + 1),
+                "Monster storage expanded to ${s.monsterCapacity + PAID_UPGRADE_AMOUNT} (−${"%,d".format(cost)} gold).",
+            )
         }
     }
 

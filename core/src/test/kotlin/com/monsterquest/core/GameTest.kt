@@ -38,12 +38,16 @@ class GameTest {
         assertEquals(STARTING_BAG_CAPACITY + BAG_UPGRADE_AMOUNT, s.bagCapacity)
         assertEquals(STARTING_MONSTER_CAPACITY + STORAGE_UPGRADE_AMOUNT, s.monsterCapacity)
         assertEquals(20, STARTING_MONSTER_CAPACITY)
-        // Paying gold expands by 50.
-        val rich = s.copy(gold = 2500)
+        // Buying in the shop: +5 each, expensive, and pricier every time.
+        assertEquals(1_500, GameEngine.expansionCost(s, bag = true))
+        assertEquals(2_000, GameEngine.expansionCost(s, bag = false))
+        val rich = s.copy(gold = 4_000)
         val bought = GameEngine.buyStorage(GameEngine.buyStorage(rich, bag = true).state, bag = false).state
         assertEquals(s.bagCapacity + PAID_UPGRADE_AMOUNT, bought.bagCapacity)
         assertEquals(s.monsterCapacity + PAID_UPGRADE_AMOUNT, bought.monsterCapacity)
         assertEquals(500, bought.gold)
+        assertEquals(2_250, GameEngine.expansionCost(bought, bag = true))
+        assertEquals(3_000, GameEngine.expansionCost(bought, bag = false))
         assertEquals(bought, GameEngine.buyStorage(bought, bag = true).state)
         // Older saves with 6 slots move up to the new 20.
         val old = GameState.fromJson(GameState(version = 4, monsterCapacity = 9).toJson())

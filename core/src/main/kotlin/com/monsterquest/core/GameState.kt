@@ -23,9 +23,12 @@ const val STARTING_ATTRIBUTE = 8
 const val UPGRADE_LEVEL_INTERVAL = 5
 const val BAG_UPGRADE_AMOUNT = 5
 const val STORAGE_UPGRADE_AMOUNT = 5
-/** Gold to buy a big storage expansion, and how many slots it adds. */
-const val PAID_UPGRADE_COST = 1000
-const val PAID_UPGRADE_AMOUNT = 50
+/** Slots one bought expansion adds (bag or monster storage). */
+const val PAID_UPGRADE_AMOUNT = 5
+/** First bought expansion's price; each one after costs [PAID_UPGRADE_GROWTH]x the last. */
+const val BAG_EXPANSION_COST = 1_500
+const val STORAGE_EXPANSION_COST = 2_000
+const val PAID_UPGRADE_GROWTH = 1.5
 
 /**
  * Hero classes, chosen at [CLASS_UNLOCK_LEVEL]. The effect starts small and
@@ -353,6 +356,9 @@ data class GameState(
     val lastStepCount: Long? = null,
     val bagCapacity: Int = STARTING_BAG_CAPACITY,
     val monsterCapacity: Int = STARTING_MONSTER_CAPACITY,
+    /** Bag and monster-storage expansions bought in the shop (each one costs more). */
+    val bagExpansionsBought: Int = 0,
+    val storageExpansionsBought: Int = 0,
     /** Storage upgrades earned (one per [UPGRADE_LEVEL_INTERVAL] levels) but not yet spent. */
     val pendingUpgrades: Int = 0,
     /** Earned by completing tasks; spent to start a wild encounter from anywhere. */

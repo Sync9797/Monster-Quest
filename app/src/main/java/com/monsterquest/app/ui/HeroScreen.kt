@@ -52,7 +52,6 @@ import com.monsterquest.core.Spells
 import com.monsterquest.core.STORAGE_UPGRADE_AMOUNT
 import com.monsterquest.core.MAX_PARTY_SIZE
 import com.monsterquest.core.PAID_UPGRADE_AMOUNT
-import com.monsterquest.core.PAID_UPGRADE_COST
 import com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
 import com.monsterquest.core.Gear
 import com.monsterquest.core.Hero
@@ -143,36 +142,11 @@ fun HeroScreen(vm: GameViewModel) {
 
     }
     val progress: @Composable () -> Unit = {
-        SectionTitle("Storage upgrades")
-        GameCard(border = if (s.pendingUpgrades > 0) Gold else null) {
-            Text("Bag ${s.bagCount}/${s.bagCapacity}   •   Monster storage ${s.monsters.size}/${s.monsterCapacity}")
-            if (s.pendingUpgrades > 0) {
-                Text("You have ${s.pendingUpgrades} upgrade(s) to claim!", color = Gold, modifier = Modifier.padding(vertical = 6.dp))
-                SmallButton("Claim: bag +$BAG_UPGRADE_AMOUNT and monsters +$STORAGE_UPGRADE_AMOUNT", vm::upgrade, Modifier.fillMaxWidth())
-            } else {
-                val next = (h.level / UPGRADE_LEVEL_INTERVAL + 1) * UPGRADE_LEVEL_INTERVAL
-                Text(
-                    "Next free upgrade at level $next: bag +$BAG_UPGRADE_AMOUNT and monsters +$STORAGE_UPGRADE_AMOUNT.",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        // Bag and monster storage upgrades (free ones every few levels, and bought ones) live in the Bag's shop.
+        if (s.pendingUpgrades > 0) {
+            GameCard(border = Gold) {
+                Text("You have ${s.pendingUpgrades} free storage upgrade(s) to claim in the Bag's shop.", color = Gold, fontSize = 13.sp)
             }
-            Text(
-                "Or expand now for $PAID_UPGRADE_COST gold each:",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallButton("Bag +$PAID_UPGRADE_AMOUNT", { vm.buyStorage(bag = true) }, Modifier.weight(1f), enabled = s.gold >= PAID_UPGRADE_COST, outlined = true)
-                SmallButton("Monsters +$PAID_UPGRADE_AMOUNT", { vm.buyStorage(bag = false) }, Modifier.weight(1f), enabled = s.gold >= PAID_UPGRADE_COST, outlined = true)
-            }
-            Text(
-                "Up to $MAX_PARTY_SIZE monsters fight in battle, however many you keep.",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
-            )
         }
 
         SectionTitle("Hunt")

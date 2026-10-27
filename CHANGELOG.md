@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.0
+
+- **Storage moves to the shop:** the Bag's shop now has a Storage section.
+  Claim the free upgrade you earn every 5 levels there (bag +5 and
+  monsters +5), or buy more room: a **Bag expansion** (+5 slots, from
+  1,500 gold) or a **Monster storage expansion** (+5, from 2,000 gold).
+  Each expansion costs 1.5x the last, so storage grows slowly. (It was
+  1,000 gold for +50 on the Hero page.) The Hero page just reminds you
+  when a free upgrade is waiting.
+- **Magic when you match the glyph:** finishing a Binding trace makes the
+  glyph flare: it lights up from within, sparks lift off the strokes and
+  a ring of light rolls out. Stronger grades burn brighter; a Perfect
+  trace adds a second ring.
+
 ## 2.1.0
 
 - **Batch release:** a "Release…" button next to the Collection header on
