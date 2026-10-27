@@ -876,7 +876,7 @@ abstract class ScreenshotBase(private val device: String) {
     /** Holding a move shows its accuracy and side effects. */
     @Test fun moveDetails() {
         shot("39_move_details") {
-            com.monsterquest.app.ui.MoveDetailsDialog(com.monsterquest.core.Moves.get("scare"), com.monsterquest.core.Element.FIRE) {}
+            com.monsterquest.app.ui.MoveDetailsDialog(com.monsterquest.core.Moves.get("scare"), listOf(com.monsterquest.core.Element.FIRE)) {}
         }
         rule.onNodeWithText("Accuracy").assertExists()
         rule.onNodeWithText("100%").assertExists()

@@ -241,7 +241,7 @@ private fun StarterGiftDialog(vm: GameViewModel) {
                         Column(Modifier.weight(1f)) {
                             Text(sp.name, fontWeight = FontWeight.SemiBold)
                             Text(
-                                "${sp.element.label} • " + com.monsterquest.core.Bestiary.lineOf(sp).drop(1).joinToString(" > ") { it.name },
+                                "${sp.typeLabel} • " + com.monsterquest.core.Bestiary.lineOf(sp).drop(1).joinToString(" > ") { it.name },
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -277,7 +277,7 @@ private fun SpoilsDialog(vm: GameViewModel) {
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(m.displayName, fontWeight = FontWeight.SemiBold)
-                            Text("Lv ${m.level} ${m.species.element.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Lv ${m.level} ${m.species.typeLabel}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         SmallButton("Restore", { vm.redeemVillainMonster(i) }, enabled = potions > 0 && !s.storageFull)
                     }

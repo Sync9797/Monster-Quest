@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.37.0
+
+- **Dual types:** 14 final forms gain a second type (earlier forms keep one).
+  - Starters: Thunderhorn (Electric / Earth), Infernodrake (Fire / Flight),
+    Maelstrom Serpent (Water / Flight), Terraursa (Earth / Fire).
+  - Strong finals: Thunderbird (Electric / Flight), Magma Colossus
+    (Fire / Earth), Bastion Tortoise (Water / Earth), Archfiend
+    (Corrupt / Fire), Leviathan (Water / Corrupt), Inferno Cerberus
+    (Fire / Corrupt), Plague Mantis (Gas / Flight), Torrentoad (Water / Gas),
+    Elder Strix (Flight / Corrupt), Widowmaw (Corrupt / Gas).
+  - Both types count in battle: hitting two weaknesses does 2.25x, two
+    resistances about 0.45x, and a weakness plus a resistance cancel out.
+    They get the same-type bonus for moves of either type, and learn moves
+    from both types.
+  - Battle, the Journal, monster pages, the map and the starter screen
+    show both types; "Strong vs / Weak to" counts both.
+
 ## 1.36.0
 
 - **Critical catch:** every taming throw (any orb, in battle or at a den)

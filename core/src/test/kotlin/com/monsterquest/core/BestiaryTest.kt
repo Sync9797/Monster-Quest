@@ -44,3 +44,40 @@ class BestiaryTest {
         assertTrue(Bestiary.number(Bestiary.get("stubhorn")) < Bestiary.number(Bestiary.get("mimic")))
     }
 }
+
+class DualTypeTest {
+    @Test
+    fun finalFormsAndStartersGainSecondTypes() {
+        val duals = Bestiary.all.filter { it.secondary != null }
+        assertTrue(duals.size >= 10)
+        // Only final evolutions (or single forms), never legendaries, and the second type differs.
+        assertTrue(duals.all { it.stage == it.stages && it.rarity != Rarity.LEGENDARY && it.secondary != it.element })
+        // Every starter's final form is dual-typed; earlier forms aren't.
+        GameEngine.starters.forEach { id ->
+            val line = Bestiary.lineOf(Bestiary.get(id))
+            assertTrue(line.last().secondary != null, line.last().name)
+            assertTrue(line.dropLast(1).all { it.secondary == null })
+        }
+        val bird = Bestiary.get("thunderbird")
+        assertEquals(listOf(Element.ELECTRIC, Element.FLIGHT), bird.types)
+        assertEquals("Electric / Flight", bird.typeLabel)
+    }
+
+    @Test
+    fun bothTypesCountInBattle() {
+        // Two weaknesses stack; a weakness and a resistance cancel out.
+        val horn = Bestiary.get("thunderhorn") // Electric / Earth: Fire beats both
+        assertEquals(2.25, Element.FIRE.multiplierAgainst(horn.types), 1e-9)
+        assertTrue(Element.FIRE in horn.weakTo)
+        assertTrue(Element.WATER.multiplierAgainst(horn.types) < 1.5)
+        // Same-type bonus and moves from the second type too.
+        val bird = Bestiary.get("thunderbird")
+        assertTrue(Moves.learned(bird, 60).any { it.type == Element.FLIGHT && it.isDamaging })
+        val m = Monster.create(bird, 40, kotlin.random.Random(1))
+        val c = Combatant.fromMonster(m, "x")
+        assertEquals(listOf(Element.ELECTRIC, Element.FLIGHT), c.types)
+        // A dual-type foe takes its double weakness in a real fight.
+        val horned = Monster.create(horn, 40, kotlin.random.Random(2))
+        assertEquals(listOf(Element.ELECTRIC, Element.EARTH), Combatant.fromMonster(horned, "y").types)
+    }
+}

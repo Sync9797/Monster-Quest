@@ -24,7 +24,21 @@ data class Species(
     val evolveLevel: Int? = null,
     /** Lowest level this species can be found at in the wild. */
     val minWildLevel: Int = 1,
-)
+    /** A second type (mostly final evolutions): both count for matchups, same-type bonus and moves. */
+    val secondary: Element? = null,
+) {
+    /** One or two types, main type first. */
+    val types: List<Element> get() = listOfNotNull(element, secondary)
+
+    /** "Electric" or "Electric / Flight". */
+    val typeLabel: String get() = types.joinToString(" / ") { it.label }
+
+    /** Types its attacks are strong against (either of its types). */
+    val strongAgainst: List<Element> get() = types.flatMap { it.beats }.distinct()
+
+    /** Attack types that hit it harder than normal, counting both its types. */
+    val weakTo: List<Element> get() = Element.typed.filter { it.multiplierAgainst(types) > 1.0 }
+}
 
 /**
  * All 119 monsters, numbered in this order (mythics and legendaries last):
@@ -160,6 +174,29 @@ object Bestiary {
         "venom_pup" to "Venom Wolfcub", "shadow_pup" to "Shadow Wolfcub", "moss_pup" to "Moss Wolfcub",
         "cinder_hound" to "Cinder Warg", "volt_hound" to "Volt Warg", "sky_hound" to "Sky Warg", "surf_hound" to "Surf Warg",
         "toxic_hound" to "Toxic Warg", "dusk_hound" to "Dusk Warg", "thorn_hound" to "Thorn Warg",
+    )
+
+    /**
+     * Dual types: the starters' final forms and some of the strongest final
+     * evolutions gain a second type that suits them.
+     */
+    private val dualTypes: Map<String, Element> = mapOf(
+        // Starters
+        "thunderhorn" to Element.EARTH,           // a storm stag that shakes the ground
+        "infernodrake" to Element.FLIGHT,         // a winged fire dragon
+        "maelstrom_serpent" to Element.FLIGHT,    // a sea dragon that rides the storm
+        "terraursa" to Element.FIRE,              // a volcanic elder bear
+        // Strong final evolutions
+        "thunderbird" to Element.FLIGHT,          // the electric bird
+        "magma_colossus" to Element.EARTH,        // molten rock
+        "bastion_tortoise" to Element.EARTH,      // a fortress of a shell
+        "archfiend" to Element.FIRE,              // a demon
+        "leviathan" to Element.CORRUPT,           // a monster of the deep
+        "inferno_fenrir" to Element.CORRUPT,      // the hellhound (Inferno Cerberus)
+        "basilisk" to Element.FLIGHT,             // a winged mantis (Plague Mantis)
+        "torrentoad" to Element.GAS,              // a poisonous giant toad
+        "elder_strix" to Element.CORRUPT,         // an owl of the night
+        "widowmaw" to Element.GAS,                // a venomous widow
     )
 
     val all: List<Species> = buildList<Species> {
@@ -349,6 +386,7 @@ object Bestiary {
         add(single("dread_lich", "Dread Lich", Element.CORRUPT, Rarity.LEGENDARY, StatBlock(70, 14, 28, 18, 16), "Death Knell", SkillKind.MAGICAL, 62, true))
         add(single("worldroot_colossus", "Worldroot Colossus", Element.EARTH, Rarity.LEGENDARY, StatBlock(88, 26, 16, 24, 8), "Worldsplitter", SkillKind.PHYSICAL, 60, true))
     }.map { sp -> evolvedNames[sp.id]?.let { sp.copy(name = it) } ?: sp }
+        .map { sp -> dualTypes[sp.id]?.let { sp.copy(secondary = it) } ?: sp }
 
     private val byId = all.associateBy { it.id }
 

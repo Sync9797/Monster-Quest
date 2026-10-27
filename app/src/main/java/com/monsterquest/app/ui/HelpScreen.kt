@@ -100,6 +100,7 @@ private val topics = listOf(
             "Each type fights its own way: Fire hits hardest; Water is quick (some moves let it go first next round); Flight powers itself up; Earth builds Defense and some moves hit with Defense instead of Attack; Electric and Gas spread status and hit statused foes harder; Corrupt fights dirty and tears down stats.",
             "Scare (an attack) and Intimidate (a skill) both drop the foe's Attack to 67% for the battle. They don't stack.",
             "Seven types, each strong against two and weak to two: Water > Fire & Gas, Fire > Earth & Electric, Corrupt > Fire & Flight, Gas > Corrupt & Electric, Earth > Water & Corrupt, Flight > Earth & Gas, Electric > Water & Flight. Super-effective hits do 1.5x; the Type chart on the Monsters tab shows it all.",
+            "Dual types: every starter's final form and some of the strongest final evolutions have two types (like Thunderbird, Electric / Flight). Both count: two weaknesses stack to 2.25x, and they get the same-type bonus and learn moves for both types.",
             "Wild monsters grow stronger the more fighters you bring, and pay more: x0.6 alone, x2.75 with 4 fighters, up to x4 with a full team of 6.",
             "Packs: nearby monsters may team up (2 vs 4, 3 vs 3, 4 vs 4...). Tap a pack member to target it. Packs are tougher and pay up to 2.1x more. Not every monster joins in.",
             "Everyone rests: each hour the hero and every monster heal 5% of their max HP. Walking heals too (10 HP per 100 steps).",

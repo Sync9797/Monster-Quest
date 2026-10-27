@@ -228,7 +228,7 @@ private fun TeamPicker(vm: GameViewModel, adv: Adventure, onDismiss: () -> Unit,
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(m.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("Lv ${m.level} ${m.species.element.label}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Lv ${m.level} ${m.species.typeLabel}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

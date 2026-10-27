@@ -669,7 +669,7 @@ private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.co
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    "Lv ${group.first().level} • ${sp.element.label}" + if (group.size > 1) " • each one weaker as a pack" else "",
+                    "Lv ${group.first().level} • ${sp.typeLabel}" + if (group.size > 1) " • each one weaker as a pack" else "",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -852,7 +852,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
             Column {
                 MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = spawn.shiny)
                 if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
-                Text("Level ${spawn.level} • ${sp.element.label} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
+                Text("Level ${spawn.level} • ${sp.typeLabel} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
                 if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
                 Text(distanceText(dist, vm.state.settings.imperialUnits), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
@@ -932,7 +932,7 @@ private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () ->
             Column {
                 MonsterArt(sp, Modifier.size(96.dp).align(Alignment.CenterHorizontally), silhouette = !seen)
                 if (seen) {
-                    IconText(sp.element.icon(), "${sp.element.label} • ${sp.rarity.label}", tint = sp.element.color(), fontSize = 13.sp)
+                    IconText(sp.element.icon(), "${sp.typeLabel} • ${sp.rarity.label}", tint = sp.element.color(), fontSize = 13.sp)
                 } else {
                     Text("You've never met this kind of monster. Find it to add it to your Journal.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -987,7 +987,7 @@ private fun DenDialog(vm: GameViewModel, den: Den, onDismiss: () -> Unit) {
             Column {
                 MonsterArt(den.species, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = m.shiny, silhouette = !seen)
                 Text(
-                    (if (seen) m.species.name else "Something big") + " • Lv ${m.level} • ${den.species.element.label}",
+                    (if (seen) m.species.name else "Something big") + " • Lv ${m.level} • ${den.species.typeLabel}",
                     fontWeight = FontWeight.SemiBold,
                     color = rarityColor(den.species.rarity),
                 )
@@ -1071,7 +1071,7 @@ private fun GuardianPreview(sp: com.monsterquest.core.Species) {
         Spacer(Modifier.width(8.dp))
         Column {
             Text("Guardian: ${sp.name}", fontWeight = FontWeight.SemiBold)
-            Text("${sp.element.label} type", fontSize = 12.sp, color = sp.element.color())
+            Text("${sp.typeLabel} type", fontSize = 12.sp, color = sp.element.color())
         }
     }
 }

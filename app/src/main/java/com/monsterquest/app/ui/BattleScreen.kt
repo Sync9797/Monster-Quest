@@ -282,7 +282,14 @@ private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
                     )
                     if (b.alreadyCaught(e)) CaughtMark(Modifier.padding(start = 6.dp).size(18.dp))
                 }
-                IconText(e.element.icon(), "${e.element.label} type", tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconText(e.element.icon(), e.element.label, tint = e.element.color(), fontSize = 13.sp, size = 14.dp)
+                    e.element2?.let { t ->
+                        Text(" / ", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        IconText(t.icon(), t.label, tint = t.color(), fontSize = 13.sp, size = 14.dp)
+                    }
+                    Text(" type", fontSize = 13.sp)
+                }
                 if (b.encounter == EncounterType.WILD) {
                     val reward = "%.2g".format(com.monsterquest.core.TeamScaling.reward(b.teamSize))
                     Text(
@@ -596,11 +603,11 @@ private fun CaughtMark(modifier: Modifier) {
 /** A move button: type-colored, with power and a hint when it's super effective. */
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun MoveButton(mv: Move, enemyType: Element, modifier: Modifier, onClick: () -> Unit) {
-    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyType) else 1.0
+private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, onClick: () -> Unit) {
+    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyTypes) else 1.0
     // Hold a move to see its accuracy and side effects.
     var details by remember { mutableStateOf(false) }
-    if (details) MoveDetailsDialog(mv, enemyType) { details = false }
+    if (details) MoveDetailsDialog(mv, enemyTypes) { details = false }
     Surface(
         modifier = modifier
             .heightIn(min = 52.dp)
@@ -652,8 +659,8 @@ private fun MoveStat(label: String, value: String) {
 
 /** A move's numbers and side effects, shown when its button is held. */
 @Composable
-fun MoveDetailsDialog(mv: Move, enemyType: Element, onDismiss: () -> Unit) {
-    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyType) else 1.0
+fun MoveDetailsDialog(mv: Move, enemyTypes: List<Element>, onDismiss: () -> Unit) {
+    val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyTypes) else 1.0
     val sureHit = MoveEffect.SureHit in mv.effects
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -739,7 +746,7 @@ private fun ActionPanel(
                     b.moves.chunked(2).forEach { row ->
                         Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEach { mv ->
-                                MoveButton(mv, b.enemy.element, Modifier.weight(1f)) { onAction(BattleAction.UseMove(mv.id)) }
+                                MoveButton(mv, b.enemy.types, Modifier.weight(1f)) { onAction(BattleAction.UseMove(mv.id)) }
                             }
                             if (row.size == 1) Spacer(Modifier.weight(1f))
                         }

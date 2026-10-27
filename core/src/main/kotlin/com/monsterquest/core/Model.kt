@@ -55,6 +55,9 @@ enum class Element(val label: String) {
         else -> 1.0
     }
 
+    /** Against a dual-type monster both matchups count: two weaknesses 2.25x, two resistances about 0.45x. */
+    fun multiplierAgainst(defender: List<Element>): Double = defender.fold(1.0) { m, t -> m * multiplierAgainst(t) }
+
     companion object {
         val typed: List<Element> = entries.filter { it != NEUTRAL }
     }

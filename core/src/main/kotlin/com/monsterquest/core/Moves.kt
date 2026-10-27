@@ -402,7 +402,9 @@ object Moves {
 
     /** Moves a monster of [species] knows at [level], with the level each was learned. */
     fun learnable(species: Species): List<Pair<Int, Move>> =
-        (learnsets.getValue(species.element) + learnsets.getValue(Element.NEUTRAL) + familyMovesFor(species) + smackDownFor(species))
+        // Dual types also learn their second type's moves.
+        (learnsets.getValue(species.element) + (species.secondary?.let { learnsets.getValue(it) } ?: emptyList()) +
+            learnsets.getValue(Element.NEUTRAL) + familyMovesFor(species) + smackDownFor(species))
             .distinctBy { it.second }
             .map { (lvl, id) -> lvl to get(id) }
             .sortedBy { it.first }

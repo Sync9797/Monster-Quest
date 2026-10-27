@@ -494,7 +494,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Column(Modifier.weight(1f)) {
                     Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (m.shiny) IconText(GameIcon.SPARK, "Shiny", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp, size = 14.dp)
-                    IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.element.label}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
+                    IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.typeLabel}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
                     Row {
                         Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
                         if (sp.stages > 1) Text("  • Stage ${sp.stage}/${sp.stages}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -708,7 +708,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         val active = m.activeMoves
         (0 until Moves.MAX_MOVES).forEach { i ->
             val mv = active.getOrNull(i)
-            MoveCard(mv, sp.element, onClick = { editingSlot = i })
+            MoveCard(mv, sp.types, onClick = { editingSlot = i })
         }
         if (m.moves != null) {
             TextButton(onClick = { vm.resetMoves(m.uid) }) { Text("Reset to automatic") }
@@ -728,7 +728,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Type & evolution ----
         SectionTitle("Type")
         Text(
-            "Strong vs ${sp.element.beats.joinToString(" & ") { it.label }} • Weak to ${sp.element.weakTo.joinToString(" & ") { it.label }}",
+            "Strong vs ${sp.strongAgainst.joinToString(" & ") { it.label }} • Weak to ${sp.weakTo.joinToString(" & ") { it.label }}",
             fontSize = 13.sp,
         )
         val line = Bestiary.lineOf(sp)
@@ -775,7 +775,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     if (options.isEmpty()) Text("${m.displayName} hasn't learned any other moves yet.")
                     options.forEach { mv ->
-                        MoveCard(mv, sp.element) {
+                        MoveCard(mv, sp.types) {
                             val ids = current.map { it.id }.toMutableList()
                             if (slot < ids.size) ids[slot] = mv.id else ids += mv.id
                             vm.setMoves(m.uid, ids)
@@ -876,7 +876,7 @@ private fun statColor(stat: Stat): Color = when (stat) {
 }
 
 @Composable
-private fun MoveCard(mv: Move?, ownType: Element, onClick: () -> Unit) {
+private fun MoveCard(mv: Move?, ownTypes: List<Element>, onClick: () -> Unit) {
     GameCard(Modifier.padding(vertical = 3.dp).clickable(onClick = onClick), border = mv?.let { typeColor(it.type) }) {
         if (mv == null) {
             Text("— Empty slot —", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -887,7 +887,7 @@ private fun MoveCard(mv: Move?, ownType: Element, onClick: () -> Unit) {
                 Text(mv.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Text(
                     (if (mv.isDamaging) "Pow ${mv.power}" else "Status") + " • Acc ${mv.accuracy}" +
-                        if (mv.type == ownType && mv.isDamaging) " • +20%" else "",
+                        if (mv.type in ownTypes && mv.isDamaging) " • +20%" else "",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

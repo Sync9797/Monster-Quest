@@ -125,7 +125,7 @@ private fun JournalCell(number: Int, sp: Species, seen: Boolean, caught: Boolean
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GIcon(sp.element.icon(), Modifier.size(11.dp), sp.element.color())
                     Spacer(Modifier.width(3.dp))
-                    Text(sp.element.label, fontSize = 10.sp, color = sp.element.color())
+                    Text(sp.typeLabel, fontSize = 10.sp, color = sp.element.color(), maxLines = 1)
                 }
             }
         }
@@ -154,7 +154,7 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
                 }
                 if (sp.id in s.shinyCaught) IconText(GameIcon.SPARK, "Shiny caught", tint = Gold, textColor = Gold, fontSize = 12.sp)
                 Text(
-                    "${sp.element.label} type • ${sp.rarity.label}" + (sp.breed?.let { " • $it breed" } ?: ""),
+                    "${sp.typeLabel} type • ${sp.rarity.label}" + (sp.breed?.let { " • $it breed" } ?: ""),
                     color = rarityColor(sp.rarity),
                 )
                 Text(

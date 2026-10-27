@@ -69,12 +69,12 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                                 Text("#%03d  ".format(number) + sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Text(line.joinToString(" > ") { it.name }, fontSize = 11.sp, color = Gold)
                                 Text(
-                                    "${sp.element.label} type • Moves: " +
+                                    "${sp.typeLabel} type • Moves: " +
                                         Moves.autoLoadout(sp, 3).joinToString { it.name },
                                     fontSize = 13.sp,
                                 )
                                 Text(
-                                    "Strong vs ${sp.element.beats.joinToString(" & ") { it.label }} • Weak to ${sp.element.weakTo.joinToString(" & ") { it.label }}",
+                                    "Strong vs ${sp.strongAgainst.joinToString(" & ") { it.label }} • Weak to ${sp.weakTo.joinToString(" & ") { it.label }}",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

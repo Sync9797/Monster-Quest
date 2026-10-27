@@ -78,6 +78,10 @@ class Combatant(
 ) {
     /** For artwork: the monster's species, or the hero's class. */
     var speciesId: String? = null
+    /** A dual-type monster's second type. */
+    var element2: Element? = null
+    /** One or two types, for matchups and the same-type bonus. */
+    val types: List<Element> get() = listOfNotNull(element, element2)
     /** An enemy thug (a person fighting with their monsters). */
     var thug: Boolean = false
     var shiny: Boolean = false
@@ -348,6 +352,7 @@ class Combatant(
                 atk, atk, (s.defense * defenseMultiplier).toInt(), (s.speed * speedMultiplier).toInt().coerceAtLeast(1), 0, 0, false, m.activeMoves,
             ).apply {
                 speciesId = m.speciesId
+                element2 = m.species.secondary
                 cursed = m.cursed
                 shiny = m.shiny
                 m.trait?.let { (t, r) -> gainTrait(t, r, hero = false) }
@@ -1400,8 +1405,8 @@ class Battle(
         }
         val defStage = d.stageMultiplier(BattleStat.DEFENSE).let { if (pierce) minOf(it, 1.0) else it }
         val def = d.defense * defStage
-        val typeMult = type.multiplierAgainst(d.element)
-        val sameType = if (type != Element.NEUTRAL && type == a.element) 1.2 else 1.0
+        val typeMult = type.multiplierAgainst(d.types)
+        val sameType = if (type != Element.NEUTRAL && type in a.types) 1.2 else 1.0
         val crit = rng.nextDouble() < 0.06 + a.critBonus + extraCrit
         val raw = power * atk / (atk + def) *
             (1 + a.level * 0.08) *
@@ -1494,8 +1499,8 @@ class Battle(
                 when {
                     !m.isDamaging -> 25.0
                     // Earth moves pass under a hovering target, except Smack Down, which hits harder.
-                    m.type == Element.EARTH && target.immuneEarth -> if (smack != null) smack.groundedPower * m.type.multiplierAgainst(target.element) else 0.0
-                    else -> m.expectedPower * m.type.multiplierAgainst(target.element)
+                    m.type == Element.EARTH && target.immuneEarth -> if (smack != null) smack.groundedPower * m.type.multiplierAgainst(target.types) else 0.0
+                    else -> m.expectedPower * m.type.multiplierAgainst(target.types)
                 }
             }
         } else {
