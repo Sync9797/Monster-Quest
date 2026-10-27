@@ -405,7 +405,7 @@ private fun HeroMenuBubbles(onPick: (Tab) -> Unit, onDismiss: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.35f))
+            .background(Color.Black.copy(alpha = 0.6f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
     ) {
         AnimatedVisibility(
@@ -430,10 +430,14 @@ private fun HeroMenuBubbles(onPick: (Tab) -> Unit, onDismiss: () -> Unit) {
                         ) { GIcon(t.icon, Modifier.size(30.dp), MaterialTheme.colorScheme.primary) }
                         Text(
                             t.label,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier
+                                .padding(top = 6.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(horizontal = 10.dp, vertical = 3.dp),
                         )
                     }
                 }

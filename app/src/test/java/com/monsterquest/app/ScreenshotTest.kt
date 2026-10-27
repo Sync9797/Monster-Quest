@@ -253,7 +253,7 @@ abstract class ScreenshotBase(private val device: String) {
         rule.waitForIdle()
         rule.mainClock.advanceTimeBy(600)
         rule.waitForIdle()
-        rule.onNodeWithText("Release…").assertExists()
+        rule.onNodeWithText("Type chart").assertExists()
     }
 
     @Test fun map() {
