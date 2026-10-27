@@ -105,6 +105,19 @@ class EncountersTest {
     }
 
     @Test
+    fun benchedPartyMonstersStillEarnXp() {
+        val s = withMonsters(4)
+        val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
+        b.enemies.forEach { it.hp = 0 }
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        val xp = b.result().monsterXp
+        // The whole party sat on the bench in a one-on-one win: each gets half, like a swap slot.
+        assertEquals(s.party.toSet(), xp.keys)
+        assertTrue(xp.values.all { it > 0 })
+    }
+
+    @Test
     fun theHeroCanStepBackAndAMonsterFights() {
         val s = withMonsters(3).let { it.copy(hero = it.hero.copy(level = 60)) }
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
