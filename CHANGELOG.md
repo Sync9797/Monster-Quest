@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.26.1
+
+- **App icon refresh:** the sword-and-quill crest (as on the loading screen)
+  under a new icon name, so launchers that kept showing a cached old icon
+  pick it up. Adds a round icon for launchers that use one, and a proper
+  one-color crest for Android 13+ themed icons.
+
 ## 1.26.0
 
 - **Gear tiers by level:** better materials now unlock at milestones

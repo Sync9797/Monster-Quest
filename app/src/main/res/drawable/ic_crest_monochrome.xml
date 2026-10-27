@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed (single-color) app icon. Monster Quest crest: a sword crossed with a quill pen (adventure and to-do lists) inside a rune ring. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Scaled into the adaptive icon's safe zone so launchers show the whole crest, ring and all. -->
+    <group android:scaleX="0.88" android:scaleY="0.88" android:pivotX="54" android:pivotY="54">
+    <!-- rune rings and four diamond studs -->
+    <path android:strokeColor="#FFFFFFFF" android:strokeAlpha="0.5" android:strokeWidth="1.4"
+        android:pathData="M54,21a33,33 0,1 1,0 66a33,33 0,1 1,0 -66z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeAlpha="0.2" android:strokeWidth="0.8"
+        android:pathData="M54,24.5a29.5,29.5 0,1 1,0 59a29.5,29.5 0,1 1,0 -59z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,18.5l2,2.5l-2,2.5l-2,-2.5z M54,84.5l2,2.5l-2,2.5l-2,-2.5z M18.5,54l2.5,-2l2.5,2l-2.5,2z M84.5,54l2.5,-2l2.5,2l-2.5,2z" />
+    <!-- quill pen: feather to the top left, nib to the bottom right -->
+    <group android:rotation="-42" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M55,15 C64,21 65,42 56.8,63 L51.5,63 C46,46 45,30 49,23 L51,25 L50.5,20 C52,18 53.5,16 55,15 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M55,15 C64,21 65,42 56.8,63 L54,63 L54,17 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M51.5,63 H56.8 L55.6,72.5 L54,79 L52.5,72.5 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M54.1,68.1a0.9,0.9 0,1 1,0 1.8a0.9,0.9 0,1 1,0 -1.8z" />
+    </group>
+    <!-- sword: tip to the top right, hilt to the bottom left -->
+    <group android:rotation="42" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M50.5,28 L54,19 L57.5,28 L57.5,64 L50.5,64 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M54,19 L57.5,28 L57.5,64 L54,64 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M42,63.5 H66 Q67.5,65.5 66,67.5 H42 Q40.5,65.5 42,63.5 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M54,63.9a1.6,1.6 0,1 1,0 3.2a1.6,1.6 0,1 1,0 -3.2z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M51.8,67.5 H56.2 V79 H51.8 Z" />
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M54,78.5a3,3 0,1 1,0 6a3,3 0,1 1,0 -6z" />
+    </group>
+    </group>
+</vector>

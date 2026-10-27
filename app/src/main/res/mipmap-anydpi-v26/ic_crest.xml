@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon: the sword-and-quill crest from the loading screen. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_bg" />
+    <foreground android:drawable="@drawable/ic_crest_foreground" />
+    <monochrome android:drawable="@drawable/ic_crest_monochrome" />
+</adaptive-icon>
