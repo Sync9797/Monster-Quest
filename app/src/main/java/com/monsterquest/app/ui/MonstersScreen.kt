@@ -297,7 +297,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Collection", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                        Text("Collection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
                         Text("${s.monsters.size}/${s.monsterCapacity}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Bar(s.monsters.size.toFloat() / s.monsterCapacity, if (s.storageFull) HpRed else Mint, Modifier.fillMaxWidth().padding(vertical = 4.dp), heightDp = 4)
