@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.24.1
+
+- On a single screen (a closed phone) the home page keeps just the welcome
+  header; the "To-do & events" header shows over the right pane when the
+  phone is unfolded or on a tablet.
+
 ## 1.24.0
 
 - **Home page headers:** a welcome header ("Good morning" and "Welcome

@@ -258,9 +258,9 @@ fun QuestsScreen(vm: GameViewModel) {
         firstWeight = 0.46f,
         compact = {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                // A single screen (a closed phone) keeps just the welcome header.
                 item(key = "welcome") { WelcomeHeader(vm, now) }
                 item(key = "overview") { overview() }
-                item(key = "agenda") { AgendaHeader(vm, now) { addTask = true } }
                 taskList()
             }
         },
