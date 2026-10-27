@@ -1051,7 +1051,41 @@ class GameTest {
             while (t.pendingDenCatch != null) t = Dens.attempt(t, r).state
             if (t.monsters.size > s.monsters.size) tamed++
         }
-        assertTrue(tamed in 40..160, "tamed $tamed of 200")
+        assertTrue(tamed in 60..190, "tamed $tamed of 200")
+    }
+
+    @Test
+    fun berriesBoostTheNextThrow() {
+        val now = 1_700_000_000_000L
+        val foe = Monster.create(Bestiary.get("zapmouse"), 8, Random(4))
+        val s = started().copy(inventory = mapOf(Item.TAMING_ORB to 5, Item.SWEET_BERRY to 2, Item.GOLDEN_BERRY to 1))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5))
+        b.enemy.hp = b.enemy.maxHp / 3
+        val before = b.captureOdds(Item.TAMING_ORB)
+        // Berries are on the Tame menu, not with the potions.
+        assertTrue(Item.SWEET_BERRY in b.berries() && Item.SWEET_BERRY !in b.battleItems())
+        val me = b.current!!
+        b.act(BattleAction.UseItem(Item.SWEET_BERRY, me.key))
+        assertEquals(1.5, b.bait)
+        assertTrue(b.captureOdds(Item.TAMING_ORB) > before)
+        assertTrue(b.log.any { "Sweet Berry" in it })
+        // Not in the shop; sold for a little.
+        assertEquals(0, Item.SWEET_BERRY.price)
+        assertTrue(Item.GOLDEN_BERRY.sellPrice in 1..100)
+
+        // At a den: a berry doesn't use a throw, boosts only the next one, and doesn't stack.
+        val den = Dens.near(s, 40.0, -75.0, now, java.time.ZoneOffset.UTC).first()
+        var d = Dens.defeated(s, den.id, den.monster, now, 0, java.time.ZoneOffset.UTC)
+        val plain = Dens.throwOdds(den.monster)
+        d = Dens.feed(d, Item.GOLDEN_BERRY).state
+        assertEquals(2.5, d.pendingDenCatch!!.bait)
+        assertEquals(5, d.pendingDenCatch!!.throwsLeft)
+        assertEquals(0, d.count(Item.GOLDEN_BERRY))
+        assertTrue(Dens.throwOdds(den.monster, 2.5) > plain)
+        assertTrue(Dens.oddsOver(den.monster, 5, 2.5) > Dens.oddsOver(den.monster, 5))
+        assertEquals(d, Dens.feed(d, Item.SWEET_BERRY).state)
+        // Den odds went up a little: a common one is now 15% a throw (before the critical catch).
+        assertTrue(Dens.throwChance(Monster.create(Bestiary.get("zapmouse"), 5, Random(1))) >= 0.15)
     }
 
     @Test

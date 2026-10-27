@@ -93,6 +93,7 @@ private val topics = listOf(
             "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",
             "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 throws to tame it, plus 1 for each of your monsters still standing (up to 10). The den screen shows your catch rate and overall odds. Dens move every day.",
             "Every taming throw has a 2% critical catch: the monster is tamed whatever the odds. The Tame button shows your best catch rate.",
+            "Berries: feed a Sweet Berry (1.5x) or a rare Golden Berry (2.5x) before a throw to make it likelier. They're only found in the wild (item shrines and wild monsters). In battle they're on the Tame menu; at a den, feeding doesn't use a throw. One berry per throw.",
             "Some monsters are aggressive (more at night). If one reaches you it ambushes (never in your first 30 seconds on the map): the fight starts on its own and it strikes first. Turn ambushes off in Settings.",
             "Hold the phone upside down on the map for battery saver; turn it upright to return.",
             "Keep your eyes open while you walk with the map open: now and then a monster (sometimes 2 or 3 of the same kind, each weaker) leaps out in front of you. The phone gives a long buzz and the fight starts. Turn this off with Ambushes in Settings.",

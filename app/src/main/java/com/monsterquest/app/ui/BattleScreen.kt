@@ -808,6 +808,17 @@ private fun ActionPanel(
             }
             Menu.Tame -> {
                 val blocked = b.captureBlocked
+                // Berries first: feed one, then throw (it lasts one throw).
+                if (b.bait > 1.0) {
+                    Text("It ate a berry: your next throw is ${b.bait}x as likely.", fontSize = 12.sp, color = Gold)
+                }
+                b.berries.forEach { (berry, count) ->
+                    OutlinedButton(onClick = { onAction(BattleAction.UseItem(berry, actor.key)) }, modifier = Modifier.fillMaxWidth()) {
+                        GIcon(berry.icon(), Modifier.size(18.dp), berry.color())
+                        Spacer(Modifier.width(6.dp))
+                        Text("Feed ${berry.label} x$count  •  next throw ${berry.power}x")
+                    }
+                }
                 if (blocked != null) {
                     Text(blocked, color = HpYellow)
                 } else {

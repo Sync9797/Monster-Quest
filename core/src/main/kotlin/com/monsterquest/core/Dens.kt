@@ -24,6 +24,8 @@ data class DenCatch(
     val monster: Monster,
     val throwsLeft: Int,
     val throwsTotal: Int,
+    /** A berry it has eaten: the next throw's odds are multiplied by this (1 = none). */
+    val bait: Double = 1.0,
 )
 
 /**
@@ -71,17 +73,32 @@ object Dens {
 
     /** Base per-throw taming chance: rarer monsters are harder. Over 5-10 throws that's roughly a coin flip. */
     fun throwChance(m: Monster): Double = when (m.species.rarity) {
-        Rarity.COMMON -> 0.12
-        Rarity.UNCOMMON -> 0.10
-        Rarity.RARE -> 0.08
-        else -> 0.06
+        Rarity.COMMON -> 0.15
+        Rarity.UNCOMMON -> 0.13
+        Rarity.RARE -> 0.11
+        else -> 0.09
     }
 
-    /** A throw's real chance, with the critical catch. */
-    fun throwOdds(m: Monster): Double = withCriticalCatch(throwChance(m))
+    /** A throw's real chance, with a berry's boost ([bait]) and the critical catch. */
+    fun throwOdds(m: Monster, bait: Double = 1.0): Double = withCriticalCatch((throwChance(m) * bait).coerceAtMost(0.95))
 
-    /** The chance of taming it with [throws] throws left. */
-    fun oddsOver(m: Monster, throws: Int): Double = 1 - Math.pow(1 - throwOdds(m), throws.toDouble())
+    /** The chance of taming it with [throws] throws left (a berry only helps the next one). */
+    fun oddsOver(m: Monster, throws: Int, bait: Double = 1.0): Double =
+        if (throws <= 0) 0.0 else 1 - (1 - throwOdds(m, bait)) * Math.pow(1 - throwOdds(m), (throws - 1).toDouble())
+
+    /** Feed the beaten den monster a berry before the next throw (doesn't use a throw). */
+    fun feed(state: GameState, berry: Item): Update {
+        val c = state.pendingDenCatch ?: return Update(state, "Nothing to feed.")
+        if (berry.kind != ItemKind.BAIT || state.count(berry) <= 0) return Update(state, "No ${berry.label} left.")
+        if (c.bait >= berry.power) return Update(state, "${c.monster.displayName} has already eaten a berry.")
+        return Update(
+            state.copy(
+                inventory = GameEngine.removeItems(state.inventory, mapOf(berry to 1)),
+                pendingDenCatch = c.copy(bait = berry.power),
+            ),
+            "${c.monster.displayName} eats the ${berry.label}. Your next throw is ${berry.power}x as likely!",
+        )
+    }
 
     /** Throws earned: [BASE_THROWS] plus one per monster of yours still standing. */
     fun throwsFor(standing: Int): Int = (BASE_THROWS + standing).coerceIn(MIN_THROWS, MAX_THROWS)
@@ -136,7 +153,7 @@ object Dens {
         val m = c.monster
         if (state.storageFull) return Update(state, "Monster storage is full. Release a monster or upgrade storage first.")
         val critical = rng.nextDouble() < CRITICAL_CATCH
-        if (critical || rng.nextDouble() < throwChance(m)) {
+        if (critical || rng.nextDouble() < (throwChance(m) * c.bait).coerceAtMost(0.95)) {
             val tamed = m.copy(uid = newId(rng), xp = 0)
             var s = state.copy(
                 pendingDenCatch = null,
@@ -153,7 +170,7 @@ object Dens {
         return if (left <= 0) {
             Update(state.copy(pendingDenCatch = null), "${m.displayName} broke free and slipped back into the wild.")
         } else {
-            Update(state.copy(pendingDenCatch = c.copy(throwsLeft = left)), "${m.displayName} broke free! $left ${if (left == 1) "throw" else "throws"} left.")
+            Update(state.copy(pendingDenCatch = c.copy(throwsLeft = left, bait = 1.0)), "${m.displayName} broke free! $left ${if (left == 1) "throw" else "throws"} left.")
         }
     }
 

@@ -49,6 +49,10 @@ data class BattleView(
     val swaps: List<FighterView> = emptyList(),
     /** Species you've already caught: marked next to the foe's name. */
     val caught: Set<String> = emptySet(),
+    /** Berries you can feed the foe now, with how many you have. */
+    val berries: List<Pair<Item, Int>> = emptyList(),
+    /** The boost a berry the foe ate gives your next throw (1 = none). */
+    val bait: Double = 1.0,
 ) {
     /** True if you've already caught a monster of [f]'s species. */
     fun alreadyCaught(f: FighterView): Boolean = f.speciesId != null && f.speciesId in caught
@@ -92,6 +96,8 @@ data class BattleView(
                 teamSize = b.teamSize,
                 levelUps = levelUps,
                 swaps = b.swapsWaiting.map { FighterView.of(it) },
+                berries = b.berries().filter { b.canFeed(it) }.map { it to b.count(it) },
+                bait = b.bait,
             )
         }
     }

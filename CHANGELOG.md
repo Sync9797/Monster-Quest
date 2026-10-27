@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.38.0
+
+- **Berries (new, wild-only):** feed one to a monster before a throw and
+  your next throw is likelier to tame it, like a Razz Berry.
+  - **Sweet Berry:** next throw 1.5x as likely.
+  - **Golden Berry (rare):** next throw 2.5x as likely.
+  - Found at item shrines and dropped by wild monsters, never sold in the
+    shop. In battle they're on the Tame menu (feeding uses your turn and an
+    item use); at a den, feeding doesn't use a throw. A berry lasts one
+    throw and two don't stack. The odds shown include it.
+- **Den taming a little easier:** per throw, Common 15% (was 12%), Uncommon
+  13% (10%), Rare 11% (8%), Epic 9% (6%), plus the 2% critical catch.
+
 ## 1.37.2
 
 - **How to play:** a new first section, "What is Monster Quest?", explains

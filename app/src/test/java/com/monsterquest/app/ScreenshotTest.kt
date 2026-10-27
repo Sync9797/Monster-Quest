@@ -662,7 +662,7 @@ abstract class ScreenshotBase(private val device: String) {
     /** A den's monster after the fight: the taming throws. */
     @Test fun denCatch() {
         val m = Monster.create(Bestiary.get("ember_pup"), 16, Random(4))
-        val v = vm(sampleState().copy(pendingDenCatch = com.monsterquest.core.DenCatch("den:1:2:3", m, 6, 8)))
+        val v = vm(sampleState().let { st -> st.copy(pendingDenCatch = com.monsterquest.core.DenCatch("den:1:2:3", m, 6, 8), inventory = st.inventory + (com.monsterquest.core.Item.SWEET_BERRY to 2)) })
         shot("30_den_catch") { AppRoot(v) }
         rule.onNodeWithText("Tame the", substring = true).assertExists()
         rule.onNodeWithText("Throw").assertExists()
@@ -670,6 +670,11 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Catch rate:", substring = true).assertExists()
         rule.onNodeWithText("with your 6 throws left", substring = true).assertExists()
         rule.onNodeWithText("+3 throws for your monsters still standing", substring = true).assertExists()
+        // Feed a berry: it doesn't use a throw, and the next one is likelier.
+        rule.onNodeWithText("Feed Sweet Berry x2", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(300)
+        rule.waitForIdle()
+        check(v.state.pendingDenCatch?.bait == 1.5 && v.state.pendingDenCatch?.throwsLeft == 6) { "berry fed, no throw used" }
     }
 
     /** Every evolution line, first form to last, to review the evolved creatures. */

@@ -931,6 +931,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun denThrow() = apply(com.monsterquest.core.Dens.attempt(state))
+    fun denFeed(berry: com.monsterquest.core.Item) = apply(com.monsterquest.core.Dens.feed(state, berry))
     fun denGiveUp() = apply(com.monsterquest.core.Dens.giveUp(state))
 
     fun villainsNear(nowMs: Long): List<VillainCamp> {

@@ -381,7 +381,7 @@ object GameEngine {
         return state.copy(inventory = inv) to lost
     }
 
-    private fun removeItems(inv: Map<Item, Int>, used: Map<Item, Int>): Map<Item, Int> {
+    internal fun removeItems(inv: Map<Item, Int>, used: Map<Item, Int>): Map<Item, Int> {
         val out = inv.toMutableMap()
         for ((item, n) in used) {
             val left = (out[item] ?: 0) - n
@@ -1219,9 +1219,14 @@ object GameEngine {
                     val sp = unknownSpells.random(rng)
                     pages[sp.id] = (pages[sp.id] ?: 0) + 1
                 }
-                r < 0.71 -> {
+                r < 0.60 -> {
                     val orb = if (rng.nextDouble() < 0.75) Item.TAMING_ORB else Item.GREAT_ORB
                     items[orb] = (items[orb] ?: 0) + 1
+                }
+                // Berries: only found out in the world (shrines and wild monsters), never in the shop.
+                r < 0.71 -> {
+                    val berry = if (rng.nextDouble() < 0.15) Item.GOLDEN_BERRY else Item.SWEET_BERRY
+                    items[berry] = (items[berry] ?: 0) + 1
                 }
                 else -> {
                     // Restore Potions are deliberately rare.

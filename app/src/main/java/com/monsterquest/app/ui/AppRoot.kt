@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
+import com.monsterquest.app.ui.art.icon
+import com.monsterquest.app.ui.art.color
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
@@ -184,8 +187,9 @@ private fun DrivingWarning(onDismiss: () -> Unit) {
 @Composable
 private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch) {
     val m = c.monster
-    val pct = (com.monsterquest.core.Dens.throwOdds(m) * 100).toInt()
-    val overall = (com.monsterquest.core.Dens.oddsOver(m, c.throwsLeft) * 100).toInt()
+    val pct = (com.monsterquest.core.Dens.throwOdds(m, c.bait) * 100).toInt()
+    val overall = (com.monsterquest.core.Dens.oddsOver(m, c.throwsLeft, c.bait) * 100).toInt()
+    val berries = com.monsterquest.core.Item.entries.filter { it.kind == com.monsterquest.core.ItemKind.BAIT && vm.state.count(it) > 0 && c.bait < it.power }
     val bonus = c.throwsTotal - com.monsterquest.core.Dens.BASE_THROWS
     AlertDialog(
         onDismissRequest = {},
@@ -195,7 +199,7 @@ private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch)
                 MonsterArt(m.species, Modifier.size(110.dp), shiny = m.shiny)
                 Text("Lv ${m.level} • ${com.monsterquest.core.GameEngine.perfectStatCount(m)} perfect stats", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Catch rate: $pct% per throw",
+                    "Catch rate: $pct%" + if (c.bait > 1.0) " on this throw (berry ${c.bait}x)" else " per throw",
                     fontWeight = FontWeight.SemiBold,
                     color = Gold,
                     modifier = Modifier.padding(top = 6.dp),
@@ -210,6 +214,14 @@ private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch)
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     repeat(c.throwsTotal) { i ->
                         GIcon(GameIcon.ORB, Modifier.size(18.dp), if (i < c.throwsLeft) Gold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                    }
+                }
+                // Feed a berry before the next throw (it doesn't use a throw).
+                berries.forEach { berry ->
+                    OutlinedButton(onClick = { vm.denFeed(berry) }, modifier = Modifier.padding(top = 4.dp)) {
+                        GIcon(berry.icon(), Modifier.size(16.dp), berry.color())
+                        Spacer(Modifier.width(6.dp))
+                        Text("Feed ${berry.label} x${vm.state.count(berry)}  •  ${berry.power}x", fontSize = 13.sp)
                     }
                 }
                 if (vm.state.storageFull) Text("Monster storage is full: make room first.", color = HpRed, fontSize = 12.sp)

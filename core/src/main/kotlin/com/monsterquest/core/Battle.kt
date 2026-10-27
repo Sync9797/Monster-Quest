@@ -684,7 +684,19 @@ class Battle(
     fun spellsFor(actor: Combatant): List<Skill> = if (actor.isHero) heroSkills else emptyList()
 
     fun battleItems(): List<Item> =
-        Item.entries.filter { it.usableInBattle && it.kind != ItemKind.CAPTURE && count(it) > 0 }
+        Item.entries.filter { it.usableInBattle && it.kind != ItemKind.CAPTURE && it.kind != ItemKind.BAIT && count(it) > 0 }
+
+    /** Berries you could feed the foe (on the Tame menu). */
+    fun berries(): List<Item> = Item.entries.filter { it.kind == ItemKind.BAIT && count(it) > 0 }
+
+    /** True if [berry] can be fed now: the foe can be tamed in this fight, and it hasn't eaten as good a berry. */
+    fun canFeed(berry: Item): Boolean =
+        berry.kind == ItemKind.BAIT && count(berry) > 0 && itemsRemainingThisBattle > 0 && bait < berry.power &&
+            encounter != EncounterType.VILLAIN && encounter != EncounterType.DEN && encounter != EncounterType.THUG && !captureLocked
+
+    /** A berry the foe has eaten: the next throw's odds are multiplied by this (1 = none). */
+    var bait: Double = 1.0
+        private set
 
     /** Orbs you can throw now: above half HP only a Perfect Orb works. */
     fun orbs(): List<Item> = Item.entries.filter {
@@ -710,7 +722,7 @@ class Battle(
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
     fun captureOdds(orb: Item): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
-            captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) *
+            captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))
             ).coerceIn(0.0, 0.95)
 
@@ -997,8 +1009,14 @@ class Battle(
             }
             is BattleAction.UseItem -> {
                 val target = combatant(action.targetKey)?.takeIf { !Combatant.isEnemy(it.key) } ?: return false
+                // A berry for the foe: only when it can be tamed, and it doesn't stack.
+                if (action.item.kind == ItemKind.BAIT && !canFeed(action.item)) return false
                 if (!useItem(action.item)) return false
                 when (action.item.kind) {
+                    ItemKind.BAIT -> {
+                        bait = action.item.power
+                        log += "${actor.name} tosses a ${action.item.label} to ${enemy.name}. Your next throw is ${action.item.power}x as likely to tame it!"
+                    }
                     ItemKind.HEAL_HP -> {
                         if (!target.alive) return refund(action.item)
                         heal(target, GameEngine.potionHeal(action.item, target.maxHp), "${actor.name} uses ${action.item.label}")
@@ -1021,6 +1039,8 @@ class Battle(
                 if (captureBlockedReason() != null) return false
                 if (action.orb.kind != ItemKind.CAPTURE || !useItem(action.orb)) return false
                 val chance = captureOdds(action.orb)
+                // A berry only lasts for one throw.
+                bait = 1.0
                 val critical = chance < 1.0 && rng.nextDouble() < CRITICAL_CATCH
                 if (critical || rng.nextDouble() < chance) {
                     outcome = BattleOutcome.CAPTURED
@@ -1554,7 +1574,9 @@ class Battle(
             } else {
                 // Stronger (team-scaled) monsters drop more, and better.
                 if (rng.nextDouble() < (0.25 * rewardMult).coerceAtMost(0.9)) {
-                    drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER).random(rng)] = 1
+                    drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER, Item.SWEET_BERRY).random(rng)] = 1
+                    // Now and then a wild monster drops a rare Golden Berry.
+                    if (rng.nextDouble() < 0.03) drops[Item.GOLDEN_BERRY] = 1
                 }
                 if (teamSize >= 3 && rng.nextDouble() < (0.2 * (teamSize - 2)).coerceAtMost(0.75)) {
                     val bonus = if (rng.nextDouble() < 0.04 * (teamSize - 1)) Item.RESTORE_POTION

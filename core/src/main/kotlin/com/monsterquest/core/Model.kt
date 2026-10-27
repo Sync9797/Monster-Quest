@@ -444,7 +444,7 @@ fun newId(rng: Random = Random.Default): String =
 const val MASTER_ORB_SELL_PRICE = 200
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT }
 
 @Serializable
 enum class Item(
@@ -473,10 +473,24 @@ enum class Item(
         minLevel = 75,
     ),
     TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost."),
-    LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day.");
+    LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day."),
+    // Berries: fed to a monster before a throw, like a Razz Berry. Only found in the wild.
+    SWEET_BERRY(
+        "Sweet Berry", ItemKind.BAIT, 1.5, 0,
+        "Toss it to a monster before you throw: your next throw is 1.5x as likely to tame it. Found in the wild.",
+    ),
+    GOLDEN_BERRY(
+        "Golden Berry", ItemKind.BAIT, 2.5, 0,
+        "A rare berry: your next throw is 2.5x as likely to tame the monster. Found in the wild.",
+    );
 
-    val usableInBattle: Boolean get() = kind in setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.CAPTURE)
+    val usableInBattle: Boolean get() = kind in setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.CAPTURE, ItemKind.BAIT)
 
-    /** What the shop pays: half the price (Master Orbs, which aren't sold, fetch a fixed sum). */
-    val sellPrice: Int get() = if (price > 0) price / 2 else MASTER_ORB_SELL_PRICE
+    /** What the shop pays: half the price (Master Orbs, which aren't sold, fetch a fixed sum; berries a little). */
+    val sellPrice: Int get() = when {
+        price > 0 -> price / 2
+        this == SWEET_BERRY -> 10
+        this == GOLDEN_BERRY -> 40
+        else -> MASTER_ORB_SELL_PRICE
+    }
 }
