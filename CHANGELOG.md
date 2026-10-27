@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.34.3
+
+- **Smoother schedule:** the to-do and events list (the right side when the
+  phone is open) was redrawing every task card on every frame: each card
+  ran its own "due soon" pulse animation, even when it wasn't due. Now only
+  cards due within the hour pulse, and only their border redraws. The list
+  also stops re-sorting on every step or location update, and its rows are
+  reused more efficiently while scrolling.
+
 ## 1.34.2
 
 - **Morning recap: steps.** The recap now starts with yesterday's total

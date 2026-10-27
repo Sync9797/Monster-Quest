@@ -58,6 +58,7 @@ import com.monsterquest.core.Planner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -106,10 +107,12 @@ fun QuestsScreen(vm: GameViewModel) {
         if (hasCalendar && state.settings.calendarAutoSync) vm.syncCalendar(quiet = true)
     }
 
-    val pending = state.tasks.filter { !it.completed }
-    val sections = Planner.sections(state.tasks, now)
-    val dueSoon = pending.filter { Planner.isDueSoon(it, now) }
-    val done = state.tasks.filter { it.completed }.sortedByDescending { it.completedAtMs }
+    // Sorting only reruns when the tasks or the clock change, not on every step or map update.
+    val tasks = state.tasks
+    val pending = remember(tasks) { tasks.filter { !it.completed } }
+    val sections = remember(tasks, now) { Planner.sections(tasks, now) }
+    val dueSoon = remember(pending, now) { pending.filter { Planner.isDueSoon(it, now) } }
+    val done = remember(tasks) { tasks.filter { it.completed }.sortedByDescending { it.completedAtMs } }
 
     // Tapping a day on the calendar shows just that day's quests; tapping it again goes back.
     var selectedDay by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -200,12 +203,12 @@ fun QuestsScreen(vm: GameViewModel) {
                     Text("Nothing on this day.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
-            items(view.due, key = { it.id }) { task ->
+            items(view.due, key = { it.id }, contentType = { "quest" }) { task ->
                 QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
             if (view.completed.isNotEmpty()) {
                 item(key = "day_done") { SectionTitle("Completed (${view.completed.size})") }
-                items(view.completed, key = { "dd_" + it.id }) { DoneLine(it) }
+                items(view.completed, key = { "dd_" + it.id }, contentType = { "done" }) { DoneLine(it) }
             }
             return
         }
@@ -231,7 +234,7 @@ fun QuestsScreen(vm: GameViewModel) {
                     Text("No due date: get to them whenever you can.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            items(tasks, key = { it.id }) { task ->
+            items(tasks, key = { it.id }, contentType = { "quest" }) { task ->
                 QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
         }
@@ -240,7 +243,7 @@ fun QuestsScreen(vm: GameViewModel) {
         }
         scheduled.forEach { sec ->
             item(key = "sec_${sec.group}") { GroupHeader(sec.group, sec.tasks.size) }
-            items(sec.tasks, key = { it.id }) { task ->
+            items(sec.tasks, key = { it.id }, contentType = { "quest" }) { task ->
                 QuestRow(task, now, onClick = { editing = task }, onComplete = { vm.completeTask(task.id) }, onDelete = { vm.deleteTask(task.id) })
             }
         }
@@ -251,7 +254,7 @@ fun QuestsScreen(vm: GameViewModel) {
                 TextButton(onClick = { showDone = !showDone }) { Text(if (showDone) "Hide" else "Show") }
             }
         }
-        if (showDone) items(done.take(50), key = { "done_" + it.id }) { DoneLine(it) }
+        if (showDone) items(done.take(50), key = { "done_" + it.id }, contentType = { "done" }) { DoneLine(it) }
         item(key = "bottom") { Spacer(Modifier.height(24.dp)) }
     }
 
@@ -393,16 +396,9 @@ private fun dueText(task: QuestTask, now: Long): String? {
 internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplete: () -> Unit, onDelete: () -> Unit) {
     val soon = Planner.isDueSoon(task, now) || (task.source == TaskSource.CALENDAR && Planner.groupOf(task, now) == Planner.Group.HAPPENING)
     val overdue = Planner.isOverdue(task, now)
-    // Due within the hour: an amber card that gently pulses. Overdue: red.
-    val pulse by rememberInfiniteTransition(label = "due").animateFloat(
-        0.45f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "duePulse",
-    )
-    val border = when {
-        overdue -> HpRed
-        soon -> HpYellow.copy(alpha = pulse)
-        else -> null
-    }
-    GameCard(Modifier.padding(vertical = 4.dp).clickable(onClick = onClick), border = border) {
+    // Due within the hour: an amber border that gently pulses. Overdue: red.
+    val pulse = if (soon && !overdue) Modifier.pulsingBorder(HpYellow) else Modifier
+    GameCard(Modifier.padding(vertical = 4.dp).then(pulse).clickable(onClick = onClick), border = if (overdue) HpRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Priority stripe.
             Box(Modifier.width(4.dp).height(44.dp).clip(RoundedCornerShape(2.dp)).background(task.priority.color()))
@@ -449,6 +445,29 @@ internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplet
             }
             SmallButton("Done", onComplete)
         }
+    }
+}
+
+/**
+ * A border that fades in and out, for cards due within the hour. Only the
+ * border redraws each frame (the card's contents don't recompose), and only
+ * the cards that need it run the animation, so the list scrolls smoothly.
+ */
+@Composable
+private fun Modifier.pulsingBorder(color: androidx.compose.ui.graphics.Color): Modifier {
+    val alpha = rememberInfiniteTransition(label = "due").animateFloat(
+        0.45f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "duePulse",
+    )
+    return drawWithContent {
+        drawContent()
+        val w = 2.dp.toPx()
+        drawRoundRect(
+            color.copy(alpha = alpha.value),
+            topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+            size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(w),
+        )
     }
 }
 
