@@ -108,9 +108,9 @@ class ClassesTest {
     fun moraleMasterBoostsMonstersAndIntimidateLowersFoes() {
         val s = started()
         val foe = Monster.create(Bestiary.get("emberkit"), 5, rng)
-        val plain = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1))
+        val plain = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1), fullTeam = true)
         val leader = s.copy(hero = s.hero.copy(level = 50, skills = listOf(Trait.MORALE_MASTER, Trait.INTIMIDATE)))
-        val b = GameEngine.newBattle(leader, foe, EncounterType.WILD, rng = Random(1))
+        val b = GameEngine.newBattle(leader, foe, EncounterType.WILD, rng = Random(1), fullTeam = true)
         // Rank 3 Morale Master: +6%.
         assertTrue(b.allies[1].attack > plain.allies[1].attack)
         // Intimidate: every foe's Attack drops to 66.7%, the same cut as the Scare attack.
@@ -156,7 +156,7 @@ class ClassesTest {
         // An Earth move against a levitating monster never lands.
         val s = started()
         val earthUser = Monster.create(Bestiary.get("terraursa"), 40, rng)
-        val battle = Battle(Hero(level = 40), listOf(earthUser), flier, EncounterType.WILD, emptyMap(), false, rng = Random(3))
+        val battle = Battle(Hero(level = 40), listOf(earthUser), flier, EncounterType.WILD, emptyMap(), false, rng = Random(3), fullTeam = true)
         val hp = battle.enemy.hp
         val earthMove = earthUser.activeMoves.firstOrNull { it.type == Element.EARTH && it.isDamaging && it.effects.none { e -> e is MoveEffect.SmackDown } }
         assertNotNull(earthMove)
@@ -280,7 +280,7 @@ class ClassesTest {
         val me = Monster.create(Bestiary.get("bubblefin"), 30, rng).copy(moves = listOf("ripple_dart"))
         val foe = Monster.create(Bestiary.get("goopling"), 30, rng)
         val s = started().copy(monsters = listOf(me), party = listOf(me.uid))
-        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3), fullTeam = true)
         var guard = 0
         while (b.outcome == BattleOutcome.ONGOING && guard++ < 40 && b.log.none { "move first next round" in it }) {
             b.allies.forEach { it.hp = it.maxHp }

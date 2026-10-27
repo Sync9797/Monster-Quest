@@ -68,7 +68,7 @@ class EncountersTest {
         assertTrue(Adventures.available(s).none { it.uid in s.swaps })
 
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
-        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4), fullTeam = true)
         assertEquals(6, b.allies.size)
         assertEquals(2, b.swapsWaiting.size)
         // Swap in on the first ally turn, in place of a party monster.
@@ -84,6 +84,44 @@ class EncountersTest {
         val r = b.result()
         val full = r.monsterXp.getValue(extra[0].uid)
         assertEquals(full / 2, r.monsterXp.getValue(extra[1].uid))
+    }
+
+    @Test
+    fun yourSideMatchesTheirsOutsideDens() {
+        val s = withMonsters(7)
+        val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
+        // One wild monster: the hero alone, the party waits on the bench.
+        val one = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
+        assertEquals(1, one.allies.size)
+        assertTrue(one.allies.single().isHero)
+        assertEquals(s.party.size, one.swapsWaiting.size)
+        // A pack of 3: the hero and 2 monsters.
+        val pack = (1..2).map { Monster.create(Bestiary.get("emberkit"), 10, rng) }
+        val three = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4), pack = pack)
+        assertEquals(3, three.allies.size)
+        // Bosses and villains match too; dens bring the whole team.
+        assertEquals(1, GameEngine.newBattle(s, foe, EncounterType.BOSS_CHALLENGE, rng = Random(4)).allies.size)
+        assertEquals(1 + s.party.size, GameEngine.newBattle(s, foe, EncounterType.DEN, rng = Random(4)).allies.size)
+    }
+
+    @Test
+    fun theHeroCanStepBackAndAMonsterFights() {
+        val s = withMonsters(3).let { it.copy(hero = it.hero.copy(level = 60)) }
+        val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
+        val sub = s.party.first()
+        b.act(BattleAction.Swap(sub, Combatant.HERO_KEY))
+        assertEquals(listOf(sub), b.allies.map { it.key })
+        assertTrue(b.swapsWaiting.any { it.isHero })
+        assertTrue(b.log.any { "steps back" in it })
+        // The monster falls: the hero steps back in instead of losing.
+        b.allies.single().hp = 0
+        while (b.current != null && b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Skip)
+        // Let the enemy act so the end-of-fight check runs.
+        if (b.current?.isHero != true) b.act(BattleAction.Defend)
+        assertEquals(BattleOutcome.ONGOING, b.outcome, b.log.joinToString("\n"))
+        assertTrue(b.allies.single().isHero)
+        assertTrue(b.log.any { "steps back into the fight" in it })
     }
 
     @Test
@@ -149,7 +187,7 @@ class EncountersTest {
         // Against a levitating bird: it connects, and afterwards Earth moves land.
         val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng)
         val bear = Monster.create(Bestiary.get("terraursa"), 40, rng).copy(moves = listOf("smack_down"))
-        val b = Battle(Hero(level = 40), listOf(bear), bird, EncounterType.WILD, emptyMap(), false, rng = Random(12))
+        val b = Battle(Hero(level = 40), listOf(bear), bird, EncounterType.WILD, emptyMap(), false, rng = Random(12), fullTeam = true)
         assertTrue(b.enemy.immuneEarth)
         var tries = 0
         while (b.enemy.immuneEarth && b.outcome == BattleOutcome.ONGOING && tries++ < 20) {
@@ -167,12 +205,12 @@ class EncountersTest {
         val hero = s.hero.copy(level = 70, skills = listOf(Trait.HOVER))
         assertEquals(5, hero.rankOf(Trait.HOVER))
         val foe = Monster.create(Bestiary.get("goopling"), 70, rng) // no Smack Down: only a hit on the hero ends the hover
-        val b = GameEngine.newBattle(s.copy(hero = hero), foe, EncounterType.WILD, rng = Random(3))
+        val b = GameEngine.newBattle(s.copy(hero = hero), foe, EncounterType.WILD, rng = Random(3), fullTeam = true)
         // Everyone hovers (unless a faster foe already hit the hero before your first turn).
         assertTrue(b.allies.all { it.immuneEarth } || b.log.any { "hover breaks" in it })
         assertTrue(b.allies.first().immuneEarth)
         // Rank 4 only softens Earth damage for the team.
-        val r4 = GameEngine.newBattle(s.copy(hero = hero.copy(level = 69)), foe, EncounterType.WILD, rng = Random(3))
+        val r4 = GameEngine.newBattle(s.copy(hero = hero.copy(level = 69)), foe, EncounterType.WILD, rng = Random(3), fullTeam = true)
         assertFalse(r4.allies[1].immuneEarth)
         assertEquals(50, r4.allies[1].earthResistPct)
         // Fight until the hero takes a hit: the team drops, the hero keeps floating.
@@ -373,7 +411,7 @@ class EncountersTest {
         s = GameEngine.setSwapSlot(s, s.monsters[5].uid, 0).state
         s = GameEngine.setSwapSlot(s, s.monsters[6].uid, 1).state
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
-        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(21))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(21), fullTeam = true)
         // Knock out the first party monster.
         val fallen = b.allies[1]
         fallen.hp = 0

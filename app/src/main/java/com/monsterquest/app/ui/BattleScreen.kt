@@ -49,7 +49,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.ThugArt
 import com.monsterquest.core.HeroClass
-import com.monsterquest.core.MAX_PARTY_SIZE
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -298,7 +297,14 @@ private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
                     }
                     Text(" type", fontSize = 13.sp)
                 }
-                if (b.encounter == EncounterType.WILD) {
+                if (!b.fullTeam) {
+                    // Outside dens your side matches theirs: one on one here, the rest on the bench.
+                    Text(
+                        if (b.swaps.isNotEmpty()) "One on one • Swap to send a monster in" else "One on one",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (b.encounter == EncounterType.WILD) {
                     val reward = "%.2g".format(com.monsterquest.core.TeamScaling.reward(b.teamSize))
                     Text(
                         if (b.teamSize > 1) "Stronger vs your team of ${b.teamSize} • Rewards x$reward"
@@ -876,7 +882,7 @@ private fun ActionPanel(
             is Menu.Swap -> {
                 val incoming = menu.inKey?.let { k -> b.swaps.find { it.key == k } }
                 if (incoming == null) {
-                    Text("Send in from the swap slots", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (b.fullTeam) "Send in from the swap slots" else "Send in from the bench", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     b.swaps.forEach { w ->
                         OutlinedButton(onClick = { onMenu(Menu.Swap(w.key)) }, enabled = w.alive, modifier = Modifier.fillMaxWidth()) {
                             FighterArt(w, Modifier.size(24.dp))
@@ -886,7 +892,8 @@ private fun ActionPanel(
                     }
                 } else {
                     Text("${incoming.name} takes whose place?", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val mons = b.allies.filter { !it.isHero }
+                    // The hero can step back too (while standing), and a monster fights in their place.
+                    val mons = b.allies.filter { !it.isHero || it.alive }
                     // The fallen first: that's what the swap is for.
                     mons.sortedBy { it.alive }.forEach { a ->
                         OutlinedButton(onClick = { onAction(BattleAction.Swap(incoming.key, a.key)) }, modifier = Modifier.fillMaxWidth()) {
@@ -895,7 +902,7 @@ private fun ActionPanel(
                             Text(if (a.alive) "${a.name}  ${a.hp}/${a.maxHp} HP" else "${a.name}  (fainted)")
                         }
                     }
-                    if (mons.size < MAX_PARTY_SIZE) {
+                    if (b.allies.size < b.slots) {
                         OutlinedButton(onClick = { onAction(BattleAction.Swap(incoming.key, null)) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Join the fight (free spot)")
                         }

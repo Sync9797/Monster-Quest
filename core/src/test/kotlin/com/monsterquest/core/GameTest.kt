@@ -338,7 +338,7 @@ class GameTest {
     fun earthMovesHealAndRecharge() {
         val treant = Monster.create(Bestiary.get("ancient_treant"), 45, Random(1)).copy(moves = listOf("mega_sap", "mulch", "leaf_storm"))
         val s = started().let { it.copy(monsters = listOf(treant), party = listOf(treant.uid)) }
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 10, Random(2)), EncounterType.WILD, rng = Random(3))
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 10, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
         val me = b.allies.first { it.key == treant.uid }
         me.hp = me.maxHp / 2
         var guard = 0
@@ -389,7 +389,7 @@ class GameTest {
     @Test
     fun wardAbsorbsAndFortifyRaisesDefense() {
         val s = started().let { it.copy(hero = it.hero.copy(knownSpells = it.hero.knownSpells + "fortify")) }
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 5, Random(2)), EncounterType.WILD, rng = Random(3))
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 5, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
         var guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
         val pal = b.allies.first { !it.isHero }
@@ -743,7 +743,7 @@ class GameTest {
         var s = started().copy(gold = 100)
         val starter = s.monsters.single()
         val brute = Monster.create(Bestiary.get("thunder_titan"), 60, rng)
-        val b = GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng)
+        val b = GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng, fullTeam = true)
         var guard = 0
         while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Defend)
         val r = b.result()
@@ -751,7 +751,7 @@ class GameTest {
         s = GameEngine.applyBattleResult(s, r, 0).state
         assertTrue(s.monsters.single().fainted)
         // Fainted monsters sit out battles.
-        assertEquals(1, GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng).allies.size)
+        assertEquals(1, GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng, fullTeam = true).allies.size)
         val restored = GameEngine.restore(s, starter.uid).state
         assertTrue(!restored.monsters.single().fainted)
         assertEquals(0, restored.count(Item.RESTORE_POTION))
@@ -1203,8 +1203,8 @@ class GameTest {
         // Groups are proportionally weaker each, so a trio isn't overwhelming.
         val trio = groups.first { it.size == 3 }
         val s = started()
-        val one = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), ambush = true)
-        val three = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), pack = trio.drop(1), ambush = true)
+        val one = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), ambush = true, fullTeam = true)
+        val three = GameEngine.newBattle(s, trio[0], EncounterType.WILD, rng = Random(2), pack = trio.drop(1), ambush = true, fullTeam = true)
         assertTrue(three.enemies.all { it.maxHp < one.enemy.maxHp })
         assertTrue(three.enemies.sumOf { it.maxHp } < one.enemy.maxHp * 1.2)
     }
@@ -1222,7 +1222,7 @@ class GameTest {
         // Multi-hit, sure-hit, self-buff and cure all work in battle.
         val user = Monster.create(Bestiary.get("cinder_hound"), 30, Random(3)).copy(moves = listOf("fury_swipes", "focus", "kindle", "quick_strike"))
         val s = started().let { it.copy(monsters = listOf(user), party = listOf(user.uid)) }
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5))
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }
         fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
         myTurn(); b.act(BattleAction.UseMove("fury_swipes"))
@@ -1256,7 +1256,7 @@ class GameTest {
             val m = Monster.create(Bestiary.get(starterId), 40, Random(3)).copy(moves = listOf(move))
             val s = started().let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
             val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)) }
-            val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1))
+            val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1), fullTeam = true)
             var g = 0
             while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
             return b to b.allies.first { it.key == m.uid }
@@ -1293,7 +1293,7 @@ class GameTest {
     fun packsAndAmbushes() {
         val s = started()
         val foes = (1..3).map { Monster.create(Bestiary.get("zapmouse"), 3, Random(it)) }
-        val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1), pack = foes.drop(1), ambush = true)
+        val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1), pack = foes.drop(1), ambush = true, fullTeam = true)
         assertEquals(3, b.enemies.size)
         assertEquals(listOf("enemy", "enemy2", "enemy3"), b.enemies.map { it.key })
         // In an ambush every monster acts before you in round 1.
@@ -1314,7 +1314,7 @@ class GameTest {
             assertTrue(TeamScaling.reward(b.teamSize) * TeamScaling.packReward(3) > solo)
         }
         // Each pack member is weaker than a lone monster would be.
-        val single = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1))
+        val single = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(1), fullTeam = true)
         assertTrue(b.enemies.first().maxHp < single.enemy.maxHp)
     }
 
@@ -1444,7 +1444,7 @@ class GameTest {
         val base = GameState(hero = Hero(level = 15), monsters = party, starterChosen = true)
         val foe = Monster.create(Bestiary.get("zapmouse"), 15, Random(2))
         fun battle(n: Int, type: EncounterType) =
-            GameEngine.newBattle(base.copy(party = party.take(n - 1).map { it.uid }), foe, type, rng = Random(3))
+            GameEngine.newBattle(base.copy(party = party.take(n - 1).map { it.uid }), foe, type, rng = Random(3), fullTeam = true)
         val hp = (1..4).map { battle(it, EncounterType.WILD).enemy.maxHp }
         assertEquals(hp.sorted(), hp)
         assertTrue(hp[3] > hp[0] * 5)
@@ -1650,7 +1650,7 @@ class GameTest {
         val s0 = started()
         val s = s0.copy(hero = s0.hero.copy(level = 20, knownSpells = s0.hero.knownSpells + "mend"))
         val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(6))
-        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(7))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(7), fullTeam = true)
         var guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
         val hero = b.current!!

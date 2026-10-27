@@ -43,6 +43,9 @@ data class BattleView(
     val turnOrder: List<String> = emptyList(),
     /** Fighters on your side (hero + monsters); wild enemies scale with it. */
     val teamSize: Int = 1,
+    /** How many of your side can fight at once (theirs, or the whole team in a den). */
+    val slots: Int = 6,
+    val fullTeam: Boolean = true,
     /** Who levelled up in this fight (shown once it's over). */
     val levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
     /** Monsters in the swap slots, ready to be sent in. */
@@ -101,6 +104,8 @@ data class BattleView(
                 events = b.events.toList(),
                 turnOrder = if (b.outcome == BattleOutcome.ONGOING) b.turnOrder() else emptyList(),
                 teamSize = b.teamSize,
+                slots = b.slots,
+                fullTeam = b.fullTeam,
                 levelUps = levelUps,
                 swaps = b.swapsWaiting.map { FighterView.of(it) },
                 berries = b.berries().filter { b.canFeed(it) }.map { it to b.count(it) },

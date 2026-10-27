@@ -965,6 +965,7 @@ object GameEngine {
         pack: List<Monster> = emptyList(),
         ambush: Boolean = false,
         thug: Thug? = null,
+        fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -976,6 +977,7 @@ object GameEngine {
         swaps = state.swapMonsters.filter { it.uid !in Adventures.awayUids(state) },
         heroEnergyUsed = state.heroEnergyUsed,
         thug = thug,
+        fullTeam = fullTeam,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */

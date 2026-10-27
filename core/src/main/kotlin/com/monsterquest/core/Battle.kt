@@ -395,8 +395,13 @@ data class BattleEvent(
 object TeamScaling {
     data class Factors(val hp: Double, val attack: Double, val defense: Double)
 
-    fun factors(teamSize: Int, encounter: EncounterType): Factors =
-        if (encounter == EncounterType.WILD || encounter == EncounterType.DEN) {
+    /**
+     * Wild monsters and dens grow with your team. Bosses and villains are built
+     * for a full team of 4 and scale from there; in a matched fight (where your
+     * side is as big as theirs) they scale like a wild monster instead.
+     */
+    fun factors(teamSize: Int, encounter: EncounterType, fullTeam: Boolean = true): Factors =
+        if (encounter == EncounterType.WILD || encounter == EncounterType.DEN || !fullTeam) {
             Factors(hp(teamSize), attack(teamSize), defense(teamSize))
         } else {
             Factors(hp(teamSize) / hp(4), attack(teamSize) / attack(4), defense(teamSize) / defense(4))
@@ -497,6 +502,13 @@ const val CURSE_ARMOR_STEAL = 10
 /** Monsters that wait in the swap slots, ready to be sent in. */
 const val MAX_SWAPS = 2
 
+/**
+ * Fights where you bring your full team (hero, party and swaps). Everywhere
+ * else your side matches theirs: as many fighters as they have, the hero
+ * included, and the rest of the party waits on the bench to swap in.
+ */
+val FULL_TEAM_ENCOUNTERS = setOf(EncounterType.DEN)
+
 /** Scare and Intimidate: the foe's Attack drops to 66.7% (two thirds). */
 const val SCARED_ATTACK = 2.0 / 3.0
 
@@ -531,22 +543,29 @@ class Battle(
     heroEnergyUsed: Int = 0,
     /** A thug fighting alongside the enemy monsters. */
     val thug: Thug? = null,
+    /** Whether you bring the whole team; otherwise your side matches theirs (see [FULL_TEAM_ENCOUNTERS]). */
+    val fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
 ) {
-    private val fighters = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
-    private val swapMonsters = swaps.filter { !it.fainted }.take(MAX_SWAPS)
+    /** How many of your side fight at once, the hero included: theirs, or the whole team. */
+    val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
+    private val able = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
+    private val fighters = able.take(slots - 1)
+    // In a matched fight the party members who don't fit wait on the bench, ahead of the swap slots.
+    private val swapMonsters = able.drop(slots - 1) + swaps.filter { !it.fainted }.take(MAX_SWAPS)
     private val heroPerks = hero.perks
     /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
     private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
     private fun ally(m: Monster) =
         Combatant.fromMonster(m, hpMultiplier = teamBoost, attackMultiplier = teamBoost, defenseMultiplier = teamBoost, speedMultiplier = teamBoost)
 
-    private val team: MutableList<Combatant> =
-        (listOf(Combatant.fromHero(hero, gear, heroDamage, armor, offhand, heroEnergyUsed)) + fighters.map { ally(it) }).toMutableList()
+    /** The hero, whether fighting or stepped back to let a monster fight. */
+    private val heroFighter = Combatant.fromHero(hero, gear, heroDamage, armor, offhand, heroEnergyUsed)
+    private val team: MutableList<Combatant> = (listOf(heroFighter) + fighters.map { ally(it) }).toMutableList()
 
     /** Your side as it stands: the hero, then the monsters fighting (swaps change who's here). */
     val allies: List<Combatant> get() = team
 
-    /** Monsters waiting in the swap slots (and any swapped out). */
+    /** Monsters waiting in the swap slots (and any swapped out, the hero too). */
     private val reserve: MutableList<Combatant> = swapMonsters.map { ally(it) }.toMutableList()
     val swapsWaiting: List<Combatant> get() = reserve
 
@@ -558,7 +577,7 @@ class Battle(
     val enemyMonsters: List<Monster> = listOf(enemyMonster) + extraEnemies.take(3)
     // A thug's crew is an even match already: no extra scaling.
     private val scaling = if (encounter == EncounterType.THUG) TeamScaling.Factors(1.0, 1.0, 1.0)
-    else TeamScaling.pack(TeamScaling.factors(teamSize, encounter), enemyMonsters.size)
+    else TeamScaling.pack(TeamScaling.factors(teamSize, encounter, fullTeam), enemyMonsters.size)
     private val enemyBoost = 1 + packLeader(enemyMonsters) / 100.0
     val enemies: List<Combatant> = enemyMonsters.mapIndexed { i, m ->
         // Legendaries are built stronger to own; as shrine guardians they're scaled back to their usual challenge.
@@ -652,7 +671,7 @@ class Battle(
 
     /** Skills that act as the battle starts: team-wide hero skills, wards and Intimidate. */
     private fun openingSkills(hero: Hero) {
-        val me = allies.first()
+        val me = heroFighter
         for ((t, r) in hero.skillRanks) {
             if (t.teamRange(r, hero = true)) (allies.drop(1) + reserve).forEach { it.shareTrait(t, r) }
         }
@@ -736,7 +755,7 @@ class Battle(
     fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
-                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + (allies.firstOrNull()?.tameBonus ?: 0.0))
+                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus)
             ).coerceIn(0.0, 0.95)
 
     // ---- turn handling ------------------------------------------------------
@@ -807,7 +826,7 @@ class Battle(
         // An ambush: the monsters all act before you in the first round.
         var order = if (ambush && round == 1) ordered.sortedBy { !Combatant.isEnemy(it.key) } else ordered
         // First Strike: the hero (or, at team range, the whole team) opens the battle.
-        val strike = allies.first().traits[Trait.FIRST_STRIKE]
+        val strike = heroFighter.traits[Trait.FIRST_STRIKE]
         if (round == 1 && strike != null) {
             val first = if (Trait.FIRST_STRIKE.teamRange(strike, hero = true)) order.filter { !Combatant.isEnemy(it.key) }
             else order.filter { it.key == Combatant.HERO_KEY }
@@ -933,6 +952,13 @@ class Battle(
         if (enemies.none { it.alive }) {
             outcome = BattleOutcome.WON
             log += if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
+        } else if (allies.none { it.alive } && heroFighter.alive && heroFighter in reserve) {
+            // The monster fighting for the hero fell: the hero steps back in.
+            val i = team.indexOfFirst { !it.alive }
+            reserve.remove(heroFighter)
+            reserve += team[i]
+            team[i] = heroFighter
+            log += "${heroFighter.name} steps back into the fight!"
         } else if (allies.none { it.alive }) {
             outcome = BattleOutcome.LOST
             log += "Your party has fallen..."
@@ -1107,19 +1133,26 @@ class Battle(
         val incoming = reserve.find { it.key == a.inUid && it.alive } ?: return false
         val outKey = a.outKey
         if (outKey == null) {
-            if (team.size - 1 >= MAX_PARTY_SIZE) return false
+            if (team.size >= slots) return false
             reserve.remove(incoming)
             team += incoming
             log += "Go, ${incoming.name}!"
         } else {
             val i = team.indexOfFirst { it.key == outKey }
-            if (i <= 0) return false
+            if (i < 0) return false
             val out = team[i]
+            // The hero can step back (and a monster fights in their place), but not while down.
+            if (out.isHero && !out.alive) return false
             team[i] = incoming
             reserve.remove(incoming)
             reserve += out
             queue.remove(outKey)
-            log += if (out.alive) "${out.name}, come back! Go, ${incoming.name}!" else "${incoming.name} takes ${out.name}'s place!"
+            log += when {
+                out.isHero -> "${out.name} steps back. Go, ${incoming.name}!"
+                incoming.isHero -> "${out.name}, come back! ${incoming.name} steps in!"
+                out.alive -> "${out.name}, come back! Go, ${incoming.name}!"
+                else -> "${incoming.name} takes ${out.name}'s place!"
+            }
         }
         fought += incoming.key
         record(incoming, incoming, StrikeStyle.WARD, Element.NEUTRAL)
@@ -1553,7 +1586,8 @@ class Battle(
         val lvl = enemies.maxOf { it.level }
         val bossMult = if (isBoss) 3 else 1
         val rewardMult = when (encounter) {
-            EncounterType.WILD -> TeamScaling.reward(teamSize) * TeamScaling.packReward(enemies.size)
+            // Matched fights are short, so a lone hero is paid like a team of 2 (x1.25, not x0.6).
+            EncounterType.WILD -> TeamScaling.reward(if (fullTeam) teamSize else maxOf(teamSize, 2)) * TeamScaling.packReward(enemies.size)
             EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
             // A thug's crew grows with your team, so the pay follows its size.
             EncounterType.THUG -> enemies.size * THUG_REWARD
@@ -1606,11 +1640,11 @@ class Battle(
         val fainted = partyUids.filter { combatant(it)?.alive == false }.toSet()
         // Damage carries over: remember how hurt everyone still standing is.
         val damage = (allies + reserve).filter { it.alive }.associate { it.key to (it.maxHp - it.hp) }
-        val heroFell = allies.first().let { !it.alive }
+        val heroFell = !heroFighter.alive
         return BattleResult(
             outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
-            damage, heroFell, allies.first().let { it.maxMp - it.mp },
-            allies.first().weaponUses, allies.first().armorHits,
+            damage, heroFell, heroFighter.maxMp - heroFighter.mp,
+            heroFighter.weaponUses, heroFighter.armorHits,
             if (outcome == BattleOutcome.WON) enemyMonsters.map { it.speciesId } else emptyList(),
             standing = allies.count { !it.isHero && it.alive },
         )
