@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.34.1
+
+- **Widget sizes fixed:** the date card now only shows when the widget is
+  about 2x2 and tall enough for it, and its big date scales to fit, so it's
+  never cut off. Shorter widgets (like 2x1 or 3x1) and taller ones show the
+  list instead.
+
 ## 1.34.0
 
 - **Sleep stats (Health card):** last night's sleep, bedtime to wake-up,

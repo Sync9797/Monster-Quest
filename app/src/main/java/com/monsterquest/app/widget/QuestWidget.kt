@@ -44,9 +44,9 @@ import kotlinx.coroutines.withContext
  * 12+), resizes freely, and opens the game when tapped.
  */
 class QuestWidget : GlanceAppWidget() {
-    /** Small: the next few things. Wider or taller: every section. */
+    /** Small or short: the next few things as a list. About 2x2: the date card. Bigger: every section. */
     override val sizeMode = SizeMode.Responsive(
-        setOf(SMALL, SQUARE, TALL, TALL_WIDE, WIDE, LARGE),
+        setOf(SMALL, SHORT, SQUARE, TALL, TALL_WIDE, WIDE, LARGE),
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -60,6 +60,8 @@ class QuestWidget : GlanceAppWidget() {
 
     companion object {
         val SMALL = DpSize(110.dp, 110.dp)
+        /** Wider than tall but not very tall (like 2x1 or 3x1): the list, since the date card won't fit. */
+        val SHORT = DpSize(160.dp, 110.dp)
         /** About 2x2 cells: the card with what's next and today's date. */
         val SQUARE = DpSize(160.dp, 160.dp)
         /** Taller-than-wide rectangles (like 2x3 or 2x4) get the list. */
@@ -77,6 +79,12 @@ class QuestWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = QuestWidget()
 }
 
+/** The date card needs a roughly square widget at least [DATE_CARD_MIN_HEIGHT] tall; everything else gets the list. */
+internal val DATE_CARD_MIN_HEIGHT = 150.dp
+
+internal fun isDateCardSize(size: DpSize): Boolean =
+    size.height >= DATE_CARD_MIN_HEIGHT && size.width < 220.dp && size.height < 220.dp && size.height < size.width * 1.25f
+
 private sealed interface Entry {
     data class Header(val text: String) : Entry
     data class Item(val line: HomeWidget.Line) : Entry
@@ -86,9 +94,9 @@ private sealed interface Entry {
 private fun WidgetBody(state: GameState) {
     val size = LocalSize.current
     val summary = HomeWidget.summary(state, System.currentTimeMillis())
-    // Around 2x2 (roughly square): a card with what's next at the top and today's date at the bottom.
-    // Anything taller than it is wide gets the list.
-    if (size.width < 220.dp && size.height < 220.dp && size.height < size.width * 1.25f) {
+    // Around 2x2 (roughly square, and tall enough to fit it): a card with what's next at the
+    // top and today's date at the bottom. Shorter or taller than that, the list.
+    if (isDateCardSize(size)) {
         DateCard(summary.next)
         return
     }
@@ -184,6 +192,10 @@ private fun LineRow(line: HomeWidget.Line) {
 @Composable
 private fun DateCard(next: HomeWidget.Line?) {
     val colors = GlanceTheme.colors
+    // Scale the big date (and how many title lines fit) to the height, so nothing gets cut off.
+    val h = LocalSize.current.height.value
+    val dateSp = (h * 0.28f).coerceIn(36f, 52f)
+    val titleLines = if (h >= 180f) 2 else 1
     val today = java.time.LocalDate.now()
     val locale = java.util.Locale.getDefault()
     Column(
@@ -198,7 +210,7 @@ private fun DateCard(next: HomeWidget.Line?) {
         Text(
             next?.title ?: "All clear",
             style = TextStyle(color = colors.onSecondaryContainer, fontSize = 18.sp, fontWeight = FontWeight.Bold),
-            maxLines = 2,
+            maxLines = titleLines,
         )
         Text(
             next?.time ?: "Nothing planned",
@@ -208,7 +220,7 @@ private fun DateCard(next: HomeWidget.Line?) {
         Spacer(GlanceModifier.defaultWeight())
         Text(
             today.dayOfMonth.toString(),
-            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 52.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = colors.onSecondaryContainer, fontSize = dateSp.sp, fontWeight = FontWeight.Bold),
         )
         Text(
             "${today.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)}, " +
