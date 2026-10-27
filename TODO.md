@@ -2,9 +2,9 @@
 
 Ideas we've agreed to do later. Newest first.
 
-- [ ] **Sleep and the team (optional):** sleep stats are in (1.34). Idea
-      for later: a full night (about 7 hours or more) heals the team and
-      wakes fainted monsters, once per night, for a night that ended today.
+- [ ] **Sleep and the team (optional):** a full night already refills the
+      hero's Energy (1.37.1). Idea for later: it could also heal the team and
+      wake fainted monsters.
 - [ ] **Health card extras:** this week and a 30-day steps chart (today's
       steps by hour are done), and a short water history.
 - [ ] **Move store:** a store section for buying moves. A move costs candy of
