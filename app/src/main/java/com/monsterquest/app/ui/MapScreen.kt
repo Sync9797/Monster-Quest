@@ -494,7 +494,6 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
 /** How long the map stays on something picked from the Nearby list before returning to the hero. */
 private const val LOOK_AWAY_MS = 10_000L
 
-@Composable
 /** A small rounded count under the map ("8 near", "3 dens"...). */
 @Composable
 private fun MapCount(text: String) {
@@ -542,6 +541,7 @@ private fun applyMapStyle(map: MapView, dark: Boolean) {
     map.invalidate()
 }
 
+@Composable
 private fun rememberMapView(): MapView {
     val context = LocalContext.current
     val mapView = remember {
