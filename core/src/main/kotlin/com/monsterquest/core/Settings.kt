@@ -63,6 +63,8 @@ data class Settings(
     val includeAllDayEvents: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val colorStyle: ColorStyle = ColorStyle.GAME,
+    /** The Health card on Home is open (true) or folded to one line. */
+    val healthOpen: Boolean = false,
 )
 
 val CALENDAR_DAYS_AHEAD_OPTIONS = listOf(1, 3, 7, 14)

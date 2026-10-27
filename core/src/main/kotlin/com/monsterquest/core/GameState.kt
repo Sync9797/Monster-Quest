@@ -312,6 +312,11 @@ data class GameState(
     /** Steps not yet turned into a reward (rewards come every 100 steps). */
     val stepBank: Int = 0,
     val stepsToday: Int = 0,
+    /** Steps per local hour (key: [Health.hourKey]), for the Health card's chart. About a week is kept. */
+    val stepsByHour: Map<Long, Int> = emptyMap(),
+    /** Glasses of water logged per epoch day (Health card; no rewards). */
+    val water: Map<Long, Int> = emptyMap(),
+    val waterGoal: Int = Health.DEFAULT_WATER_GOAL,
     /** Epoch day [stepsToday] belongs to. */
     val stepsDay: Long? = null,
     /** Villain camp id -> epoch day defeated. */

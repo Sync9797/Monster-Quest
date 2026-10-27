@@ -717,6 +717,38 @@ abstract class ScreenshotBase(private val device: String) {
     }
 
     /** Two monsters wait in the swap slots; Swap sends one in. */
+    /** The Health card on Home: folded to one line, then open with steps by hour, water and the sleep preview. */
+    @Test fun health() {
+        val now = System.currentTimeMillis()
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val hours = mapOf(7 to 420, 8 to 1_350, 9 to 210, 12 to 980, 13 to 400, 17 to 1_800, 18 to 650)
+        var base = sampleState().copy(
+            stepsToday = hours.values.sum(),
+            stepsDay = today.toEpochDay(),
+            stepsByHour = hours.mapKeys { com.monsterquest.core.Health.hourKey(today, it.key) },
+        )
+        base = com.monsterquest.core.Health.addWater(base, 5, now)
+        val v = vm(base)
+        shot("40_health_closed") { AppRoot(v, Tab.QUESTS) }
+        rule.onNodeWithText("Health").assertExists()
+        rule.onNodeWithText("5 of 8 glasses", substring = true).assertExists()
+        rule.onNodeWithText("Steps by hour").assertDoesNotExist()
+        v.updateSettings { it.copy(healthOpen = true) }
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        capture("41_health_open", 1_000)
+        rule.onNodeWithText("Coming soon").assertExists()
+        rule.onNodeWithText("Daily goal").assertExists()
+        // Water is just a tally: + adds a glass, no rewards.
+        val gold = v.state.gold
+        // The first "+" is the add-a-glass button (the second raises the goal).
+        rule.onAllNodesWithText("+")[0].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(300)
+        rule.waitForIdle()
+        check(com.monsterquest.core.Health.glasses(v.state, today.toEpochDay()) == 6) { "+ adds a glass" }
+        check(v.state.gold == gold) { "water pays nothing" }
+    }
+
     /** Holding a move shows its accuracy and side effects. */
     @Test fun moveDetails() {
         shot("39_move_details") {

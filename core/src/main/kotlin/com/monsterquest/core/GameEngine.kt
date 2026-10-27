@@ -1672,6 +1672,7 @@ object GameEngine {
             activityAtMs = nowMs,
             stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
         )
+        s = Health.recordSteps(s, steps, nowMs, zone)
         val (withFollowers, followed) = drawFollowers(s, steps, nowMs)
         s = withFollowers
         val followText = when (followed.size) {

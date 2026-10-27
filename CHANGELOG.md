@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.30.0
+
+- **Health card on Home:** a card at the top of the Home screen. It folds
+  to one line (today's steps and water) and opens with a tap; it remembers
+  whether you left it open.
+  - **Steps by hour:** today's steps, progress toward 5,000, and a bar for
+    every hour. Tap a bar for that hour's count; the busiest hour is
+    named. With Health Connect as the step source, the hours come straight
+    from Health Connect (including before you opened the game); otherwise
+    the game counts them as steps come in.
+  - **Water tracker:** + and − a glass at a time (8 oz, or 250 ml with
+    metric units), against a daily goal you can set from 4 to 16 glasses.
+    It's just for you: no rewards.
+  - **Sleep (coming soon):** a preview of the sleep tracker with sample
+    numbers, so you can see what it will look like. Nothing is tracked yet.
+
 ## 1.29.0
 
 - **56 new attacks: 8 more for every type**, learned at levels 6, 14, 21,

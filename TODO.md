@@ -2,16 +2,8 @@
 
 Ideas we've agreed to do later. Newest first.
 
-- [ ] **Health section:** a new Health screen for steps, sleep and water.
-      Open it from the top-left corner of the header, which shows "LV 12"
-      today: a heart icon with today's steps, for example. The hero's
-      level moves next to the portrait in the welcome header and stays on
-      the Hero tab, so nothing is lost. The screen shows details for:
-      - **Steps:** today, this week and a 30-day chart, plus the step
-        source (phone, Health Connect or GPS).
-      - **Sleep:** see below.
-      - **Water:** see below.
-- [ ] **Sleep tracker:** syncs the same ways as the step tracker (Health
+- [ ] **Sleep tracker:** fill in the "Coming soon" preview in the Health
+      card on Home (1.30.0). It syncs the same ways as the step tracker (Health
       Connect, which covers Samsung Health, Google Fit, Fitbit and others;
       manual entry when there's no source). Shows time asleep for last
       night and recent nights, and the sleep stages (awake, light, deep,
@@ -22,9 +14,8 @@ Ideas we've agreed to do later. Newest first.
       - **Limits:** only once per night, and only for a sleep session that
         ends on or after the day it's claimed, so it can't be farmed.
       - Needs the Health Connect sleep permission.
-- [ ] **Water tracker:** log water with quick + buttons (a glass or a
-      bottle, in oz or ml to match the units setting). Shows today's total
-      against a daily goal you set, with a short history. No game rewards.
+- [ ] **Health card extras:** this week and a 30-day steps chart (today's
+      steps by hour are done), and a short water history.
 - [ ] **Move store:** a store section for buying moves. A move costs candy of
       a monster whose type matches the move, plus gold, both depending on
       the move's quality.

@@ -473,10 +473,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { healthStatus = runCatching { HealthSteps.status(getApplication()) }.getOrNull() }
     }
 
+    /**
+     * Today's steps by hour from Health Connect (when that's the step source),
+     * or null to use the game's own hourly count.
+     */
+    var healthHourly by mutableStateOf<List<Int>?>(null)
+        private set
+
+    fun refreshHourlySteps() {
+        val source = state.settings.stepSource
+        if (!source.usesHealthConnect) {
+            healthHourly = null
+            return
+        }
+        viewModelScope.launch {
+            healthHourly = HealthSteps.stepsByHour(getApplication(), java.time.LocalDate.now(), samsungOnly = source == StepSource.SAMSUNG_HEALTH)
+        }
+    }
+
+    /** Water tracker (no rewards): +1 / −1 glass today. */
+    fun addWater(delta: Int) = set(com.monsterquest.core.Health.addWater(state, delta, System.currentTimeMillis()))
+    fun setWaterGoal(goal: Int) = set(com.monsterquest.core.Health.setWaterGoal(state, goal))
+
     /** Reads today's steps from Health Connect when that's the chosen source. */
     fun refreshHealthSteps() {
         val source = state.settings.stepSource
         if (!source.usesHealthConnect) return
+        refreshHourlySteps()
         viewModelScope.launch {
             val total = HealthSteps.stepsToday(getApplication(), samsungOnly = source == StepSource.SAMSUNG_HEALTH) ?: return@launch
             val u = GameEngine.onDailyStepTotal(state, GameEngine.epochDay(System.currentTimeMillis()), total)

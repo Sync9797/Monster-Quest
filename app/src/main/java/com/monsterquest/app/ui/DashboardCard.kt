@@ -144,7 +144,7 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
     }
 }
 
-private const val STEP_GOAL = 5_000
+private const val STEP_GOAL = com.monsterquest.core.Health.STEP_GOAL
 
 @Composable
 private fun DashStat(icon: GameIcon, value: String, label: String, tint: Color) {

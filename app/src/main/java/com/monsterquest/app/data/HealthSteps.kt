@@ -7,8 +7,10 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.metadata.DataOrigin
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -62,5 +64,32 @@ object HealthSteps {
             ),
         )
         result[StepsRecord.COUNT_TOTAL] ?: 0L
+    }.getOrNull()
+
+    /**
+     * Steps in each hour (0..23) of [day], straight from Health Connect, so
+     * the chart also shows hours from before the game was opened. Null if
+     * Health Connect can't be read.
+     */
+    suspend fun stepsByHour(context: Context, day: LocalDate, samsungOnly: Boolean): List<Int>? = runCatching {
+        if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return null
+        val zone = ZoneId.systemDefault()
+        val start = day.atStartOfDay(zone).toInstant()
+        val end = minOf(day.plusDays(1).atStartOfDay(zone).toInstant(), Instant.now())
+        if (!end.isAfter(start)) return List(24) { 0 }
+        val groups = HealthConnectClient.getOrCreate(context).aggregateGroupByDuration(
+            AggregateGroupByDurationRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, end),
+                timeRangeSlicer = Duration.ofHours(1),
+                dataOriginFilter = if (samsungOnly) setOf(DataOrigin(SAMSUNG_HEALTH)) else emptySet(),
+            ),
+        )
+        val hours = IntArray(24)
+        for (g in groups) {
+            val h = g.startTime.atZone(zone).hour
+            hours[h] += (g.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt()
+        }
+        hours.toList()
     }.getOrNull()
 }
