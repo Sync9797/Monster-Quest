@@ -843,6 +843,9 @@ object GameEngine {
     }
 
     /** Heal the hero ([Combatant.HERO_KEY]) or a monster with a potion outside battle. */
+    /** How much a healing potion restores for someone with [maxHp] (before capping at full). */
+    fun potionHeal(item: Item, maxHp: Int): Int = maxOf(50, (maxHp * item.power).toInt())
+
     fun usePotion(state: GameState, item: Item, target: String): Update {
         if (state.count(item) <= 0) return Update(state, "No ${item.label} left.")
         val spent = state.copy(inventory = removeItems(state.inventory, mapOf(item to 1)))
@@ -855,13 +858,13 @@ object GameEngine {
         if (item.kind != ItemKind.HEAL_HP) return Update(state, "${item.label} can't be used here.")
         if (target == Combatant.HERO_KEY) {
             if (state.heroDamage <= 0) return Update(state, "You're already at full health.")
-            val heal = maxOf(50, (state.hero.maxHp * item.power).toInt())
+            val heal = potionHeal(item, state.hero.maxHp)
             return Update(spent.copy(heroDamage = (state.heroDamage - heal).coerceAtLeast(0)), "${item.label}: you recover $heal HP.")
         }
         val m = state.monsters.find { it.uid == target } ?: return Update(state, "Monster not found.")
         if (m.fainted) return Update(state, "${m.displayName} has fainted. Only a Restore Potion can help.")
         if (m.damage <= 0) return Update(state, "${m.displayName} is already at full health.")
-        val heal = maxOf(50, (m.stat(Stat.HP) * item.power).toInt())
+        val heal = potionHeal(item, m.stat(Stat.HP))
         return Update(
             spent.copy(monsters = state.monsters.map { if (it.uid == target) it.copy(damage = (it.damage - heal).coerceAtLeast(0)) else it }),
             "${item.label}: ${m.displayName} recovers $heal HP.",

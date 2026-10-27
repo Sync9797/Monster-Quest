@@ -20,6 +20,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -382,29 +386,62 @@ fun PotionTargetDialog(vm: GameViewModel, item: Item, onDone: () -> Unit) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 val heroHp = s.hero.maxHp - s.heroDamage
-                TargetRow("You", "HP $heroHp/${s.hero.maxHp}", s.heroDamage > 0) {
+                TargetRow("You", heroHp, s.hero.maxHp, com.monsterquest.core.GameEngine.potionHeal(item, s.hero.maxHp)) {
                     vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY)
                     onDone()
                 }
-                s.monsters.filter { !it.fainted }.forEach { m ->
-                    TargetRow(m.displayName, "HP ${m.currentHp}/${m.stats.hp}", m.damage > 0) {
-                        vm.usePotion(item, m.uid)
-                        onDone()
+                // Hurt monsters first, most hurt at the top; those at full HP after.
+                s.monsters.filter { !it.fainted }
+                    .sortedWith(compareBy<com.monsterquest.core.Monster> { it.damage <= 0 }.thenBy { it.currentHp.toFloat() / it.stats.hp })
+                    .forEach { m ->
+                        TargetRow(m.displayName, m.currentHp, m.stats.hp, com.monsterquest.core.GameEngine.potionHeal(item, m.stats.hp)) {
+                            vm.usePotion(item, m.uid)
+                            onDone()
+                        }
                     }
-                }
             }
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Cancel") } },
     )
 }
 
+/**
+ * One potion target: name, an HP bar and, if hurt, how far this potion would
+ * fill it (the lighter part of the bar) and the HP it would end on.
+ */
 @Composable
-private fun TargetRow(name: String, hp: String, hurt: Boolean, onPick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+private fun TargetRow(name: String, hp: Int, maxHp: Int, heal: Int, onPick: () -> Unit) {
+    val hurt = hp < maxHp
+    val after = minOf(maxHp, hp + heal)
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(name, fontWeight = FontWeight.SemiBold)
-            Text(hp, fontSize = 12.sp, color = if (hurt) HpYellow else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (hurt) "$hp → $after HP (+${after - hp})" else "$hp/$maxHp HP",
+                fontSize = 12.sp,
+                color = if (hurt) HpGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            HealPreviewBar(hp, after, maxHp)
         }
         SmallButton(if (hurt) "Heal" else "Full HP", onPick, enabled = hurt)
+    }
+}
+
+/** HP now (solid), what the potion adds (lighter), and the rest (track). */
+@Composable
+private fun HealPreviewBar(hp: Int, after: Int, maxHp: Int) {
+    val now = hp.toFloat() / maxHp
+    val healed = after.toFloat() / maxHp
+    val color = hpColor(now)
+    val track = MaterialTheme.colorScheme.surfaceVariant
+    val gain = HpGreen
+    androidx.compose.foundation.Canvas(
+        Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+            .semantics { contentDescription = "HP $hp of $maxHp, $after after the potion" },
+    ) {
+        drawRect(track)
+        if (healed > now) drawRect(gain.copy(alpha = 0.4f), size = size.copy(width = size.width * healed))
+        drawRect(color, size = size.copy(width = size.width * now))
     }
 }

@@ -265,6 +265,24 @@ abstract class ScreenshotBase(private val device: String) {
         check(marks.isNotEmpty() == foeCaught) { "mark shown: ${marks.isNotEmpty()}, foe caught: $foeCaught" }
     }
 
+    /** The potion picker shows HP bars and how much the potion would heal. */
+    @Test fun potionPreview() {
+        val base = sampleState()
+        val hurt = base.monsters.first()
+        val max = hurt.stats.hp
+        val dmg = max * 3 / 4
+        val v = vm(base.copy(monsters = base.monsters.map { if (it.uid == hurt.uid) it.copy(damage = dmg) else it }))
+        val heal = com.monsterquest.core.GameEngine.potionHeal(com.monsterquest.core.Item.POTION, max)
+        val now = max - dmg
+        val after = minOf(max, now + heal)
+        shot("43_potion_preview") { com.monsterquest.app.ui.PotionTargetDialog(v, com.monsterquest.core.Item.POTION) {} }
+        rule.onNodeWithText("$now → $after HP (+${after - now})").assertExists()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("HP $now of $max, $after after the potion")).assertExists()
+        // Hurt monsters come first, right after you.
+        val names = rule.onAllNodes(androidx.compose.ui.test.hasText("Heal") or androidx.compose.ui.test.hasText("Full HP")).fetchSemanticsNodes()
+        check(names.isNotEmpty())
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

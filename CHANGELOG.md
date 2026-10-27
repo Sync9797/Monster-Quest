@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.35.2
+
+- **Potion preview:** when you use a potion from the Bag, every row now has
+  an HP bar. For anyone who's hurt, a lighter section shows how much the
+  potion will fill, with the result in text (for example "98 → 357 HP
+  (+259)"). Hurt monsters are listed first, most hurt at the top.
+
 ## 1.35.1
 
 - **Much smoother scrolling everywhere:** the downloadable APK was a debug
