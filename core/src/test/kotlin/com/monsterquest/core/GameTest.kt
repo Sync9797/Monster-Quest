@@ -1014,10 +1014,26 @@ class GameTest {
         val b = GameEngine.newBattle(s, den.monster, EncounterType.DEN, den.id, rng = Random(2))
         assertTrue(b.captureLocked)
         assertFalse(b.isBoss)
-        // Beating it clears the den and starts 5-10 taming throws.
-        var won = Dens.defeated(s, den.id, den.monster, now, Random(3), java.time.ZoneOffset.UTC)
+        // Beating it clears the den and starts the taming throws: 5, plus one per monster still standing.
+        var won = Dens.defeated(s, den.id, den.monster, now, 3, java.time.ZoneOffset.UTC)
         val c = won.pendingDenCatch!!
-        assertTrue(c.throwsTotal in Dens.MIN_THROWS..Dens.MAX_THROWS)
+        assertEquals(8, c.throwsTotal)
+        assertEquals(5, Dens.throwsFor(0))
+        assertEquals(10, Dens.throwsFor(5))
+        assertEquals(10, Dens.throwsFor(9))
+        // Always a real chance: odds shown include the 2% critical catch.
+        assertTrue(Dens.oddsOver(den.monster, 5) > 0.2)
+        assertTrue(Dens.oddsOver(den.monster, 10) > Dens.oddsOver(den.monster, 5))
+        // About 2% of throws are critical catches.
+        val critRng = Random(77)
+        var crits = 0
+        repeat(5_000) {
+            val one = Dens.defeated(s, den.id, den.monster, now, 0, java.time.ZoneOffset.UTC)
+            if ("Critical catch" in Dens.attempt(one, critRng).message) crits++
+        }
+        assertTrue(crits in 60..140, "crits $crits of 5000")
+        assertEquals(1.0, withCriticalCatch(1.0))
+        assertEquals(0.02 + 0.98 * 0.5, withCriticalCatch(0.5), 1e-9)
         assertTrue(Dens.near(won, 40.0, -75.0, now, java.time.ZoneOffset.UTC).none { it.id == den.id })
         // Hard but possible: keep throwing until it's tamed or escapes.
         val rng = Random(9)
@@ -1030,7 +1046,7 @@ class GameTest {
         // Over many dens, some are tamed and some get away.
         var tamed = 0
         repeat(200) { i ->
-            var t = Dens.defeated(s, den.id, den.monster, now, Random(i), java.time.ZoneOffset.UTC)
+            var t = Dens.defeated(s, den.id, den.monster, now, i % 6, java.time.ZoneOffset.UTC)
             val r = Random(1000 + i)
             while (t.pendingDenCatch != null) t = Dens.attempt(t, r).state
             if (t.monsters.size > s.monsters.size) tamed++

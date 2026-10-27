@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.36.0
+
+- **Critical catch:** every taming throw (any orb, in battle or at a den)
+  has a 2% chance to tame the monster outright, whatever the odds. The log
+  says "Critical catch!".
+- **Den throws follow your team:** after beating a den monster you get 5
+  throws plus 1 for each of your monsters still standing (up to 10),
+  instead of a random 5-10.
+- **See your odds:** the Tame button shows your best catch rate right now
+  ("Tame 34%"), each orb shows its chance, and the den screen shows the
+  catch rate per throw plus your overall odds with the throws you have
+  left. All of them include the critical catch.
+
 ## 1.35.3
 
 - **Potion preview in battle:** after picking a healing potion in battle,

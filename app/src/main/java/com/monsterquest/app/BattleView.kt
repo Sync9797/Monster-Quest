@@ -82,7 +82,8 @@ data class BattleView(
                 weather = b.weather,
                 reversedOrder = b.reversedRounds > 0,
                 items = b.battleItems().map { it to b.count(it) },
-                orbs = b.orbs().map { OrbOption(it, b.count(it), b.captureOdds(it)) },
+                // Odds shown include the 2% critical catch.
+                orbs = b.orbs().map { OrbOption(it, b.count(it), b.catchOdds(it)) },
                 captureBlocked = b.captureBlockedReason(),
                 resultText = resultText,
                 nextOpponent = nextOpponent,

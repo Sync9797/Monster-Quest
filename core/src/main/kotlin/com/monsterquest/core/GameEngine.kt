@@ -999,8 +999,12 @@ object GameEngine {
                 } else if (r.shrineId != null && r.encounter == EncounterType.DEN) {
                     // A den is beaten, not tamed: now come the taming throws.
                     if (r.outcome == BattleOutcome.WON) {
-                        s = Dens.defeated(s, r.shrineId, r.enemy, nowMs, Random(nowMs))
-                        s.pendingDenCatch?.let { msg.append(" ${r.enemy.displayName} is worn out! You have ${it.throwsTotal} throws to tame it.") }
+                        s = Dens.defeated(s, r.shrineId, r.enemy, nowMs, r.standing)
+                        s.pendingDenCatch?.let {
+                            val bonus = it.throwsTotal - Dens.BASE_THROWS
+                            msg.append(" ${r.enemy.displayName} is worn out! You have ${it.throwsTotal} throws to tame it" +
+                                (if (bonus > 0) " (+$bonus for your monsters still standing)." else "."))
+                        }
                     }
                 } else if (r.shrineId != null && r.encounter != EncounterType.WILD) {
                     val rec = s.shrines[r.shrineId] ?: ShrineRecord()

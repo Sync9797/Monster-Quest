@@ -666,6 +666,10 @@ abstract class ScreenshotBase(private val device: String) {
         shot("30_den_catch") { AppRoot(v) }
         rule.onNodeWithText("Tame the", substring = true).assertExists()
         rule.onNodeWithText("Throw").assertExists()
+        // The catch rate per throw and the overall odds with the throws left.
+        rule.onNodeWithText("Catch rate:", substring = true).assertExists()
+        rule.onNodeWithText("with your 6 throws left", substring = true).assertExists()
+        rule.onNodeWithText("+3 throws for your monsters still standing", substring = true).assertExists()
     }
 
     /** Every evolution line, first form to last, to review the evolved creatures. */

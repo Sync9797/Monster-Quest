@@ -752,8 +752,10 @@ private fun ActionPanel(
                         Modifier.weight(1f),
                         enabled = b.itemsLeft > 0 && b.items.isNotEmpty(),
                     ) { onMenu(Menu.Items) }
+                    // Your best odds right now, so you can see when it's worth a throw.
+                    val best = if (b.captureBlocked == null) b.orbs.maxOfOrNull { it.odds } else null
                     ActionButton(
-                        "Tame",
+                        if (best != null) "Tame ${(best * 100).toInt()}%" else "Tame",
                         Modifier.weight(1f),
                         color = if (b.captureBlocked == null) Color(0xFF5B4580) else null,
 

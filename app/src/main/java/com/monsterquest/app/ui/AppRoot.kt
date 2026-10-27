@@ -184,7 +184,9 @@ private fun DrivingWarning(onDismiss: () -> Unit) {
 @Composable
 private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch) {
     val m = c.monster
-    val pct = (com.monsterquest.core.Dens.throwChance(m) * 100).toInt()
+    val pct = (com.monsterquest.core.Dens.throwOdds(m) * 100).toInt()
+    val overall = (com.monsterquest.core.Dens.oddsOver(m, c.throwsLeft) * 100).toInt()
+    val bonus = c.throwsTotal - com.monsterquest.core.Dens.BASE_THROWS
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Tame the ${m.species.name}!") },
@@ -193,10 +195,17 @@ private fun DenCatchDialog(vm: GameViewModel, c: com.monsterquest.core.DenCatch)
                 MonsterArt(m.species, Modifier.size(110.dp), shiny = m.shiny)
                 Text("Lv ${m.level} • ${com.monsterquest.core.GameEngine.perfectStatCount(m)} perfect stats", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "It's worn out from the fight. Each throw has about a $pct% chance. " +
-                        "Throws left: ${c.throwsLeft} of ${c.throwsTotal}.",
-                    fontSize = 13.sp,
+                    "Catch rate: $pct% per throw",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold,
                     modifier = Modifier.padding(top = 6.dp),
+                )
+                Text(
+                    "$overall% to tame it with your ${c.throwsLeft} throw${if (c.throwsLeft == 1) "" else "s"} left " +
+                        "(including a 2% critical catch on every throw)." +
+                        if (bonus > 0) " +$bonus throw${if (bonus == 1) "" else "s"} for your monsters still standing." else "",
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     repeat(c.throwsTotal) { i ->

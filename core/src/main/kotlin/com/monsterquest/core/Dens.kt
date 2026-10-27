@@ -29,12 +29,15 @@ data class DenCatch(
 /**
  * Dens are lairs of strong ordinary monsters (never legendaries), a few levels
  * above you with great stats. They can't be tamed during the fight: beat the
- * monster first, then you get [MIN_THROWS]..[MAX_THROWS] throws to tame it,
- * each one a long shot. Dens move every day; a cleared den stays empty until then.
+ * monster first, then you get [BASE_THROWS] throws plus one for each of your
+ * monsters still standing (up to [MAX_THROWS]), each one a long shot (with a
+ * 2% critical catch). Dens move every day; a cleared den stays empty until then.
  */
 object Dens {
     const val RANGE_M = 100.0
-    const val MIN_THROWS = 5
+    /** Throws you always get after beating a den. */
+    const val BASE_THROWS = 5
+    const val MIN_THROWS = BASE_THROWS
     const val MAX_THROWS = 10
     /** Den monsters fight with this much more HP than usual. */
     const val HP_MULTIPLIER = 1.7
@@ -66,13 +69,22 @@ object Dens {
         Element.NEUTRAL -> "Beast Den"
     }
 
-    /** Per-throw taming chance: rarer monsters are harder. Over 5-10 throws that's roughly a coin flip. */
+    /** Base per-throw taming chance: rarer monsters are harder. Over 5-10 throws that's roughly a coin flip. */
     fun throwChance(m: Monster): Double = when (m.species.rarity) {
         Rarity.COMMON -> 0.12
         Rarity.UNCOMMON -> 0.10
         Rarity.RARE -> 0.08
         else -> 0.06
     }
+
+    /** A throw's real chance, with the critical catch. */
+    fun throwOdds(m: Monster): Double = withCriticalCatch(throwChance(m))
+
+    /** The chance of taming it with [throws] throws left. */
+    fun oddsOver(m: Monster, throws: Int): Double = 1 - Math.pow(1 - throwOdds(m), throws.toDouble())
+
+    /** Throws earned: [BASE_THROWS] plus one per monster of yours still standing. */
+    fun throwsFor(standing: Int): Int = (BASE_THROWS + standing).coerceIn(MIN_THROWS, MAX_THROWS)
 
     /** Today's dens around a location (cleared ones excluded). */
     fun near(state: GameState, lat: Double, lon: Double, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Den> {
@@ -109,9 +121,9 @@ object Dens {
     }
 
     /** The den's monster is beaten: the den is cleared and the taming throws begin. */
-    fun defeated(state: GameState, denId: String, monster: Monster, nowMs: Long, rng: Random, zone: ZoneId = ZoneId.systemDefault()): GameState {
+    fun defeated(state: GameState, denId: String, monster: Monster, nowMs: Long, standing: Int, zone: ZoneId = ZoneId.systemDefault()): GameState {
         val day = epochDay(nowMs, zone)
-        val throws = rng.nextInt(MIN_THROWS, MAX_THROWS + 1)
+        val throws = throwsFor(standing)
         return state.copy(
             densCleared = state.densCleared.filterValues { it >= day - 2 } + (denId to day),
             pendingDenCatch = DenCatch(denId, monster.copy(damage = 0), throws, throws),
@@ -123,7 +135,8 @@ object Dens {
         val c = state.pendingDenCatch ?: return Update(state, "Nothing to tame.")
         val m = c.monster
         if (state.storageFull) return Update(state, "Monster storage is full. Release a monster or upgrade storage first.")
-        if (rng.nextDouble() < throwChance(m)) {
+        val critical = rng.nextDouble() < CRITICAL_CATCH
+        if (critical || rng.nextDouble() < throwChance(m)) {
             val tamed = m.copy(uid = newId(rng), xp = 0)
             var s = state.copy(
                 pendingDenCatch = null,
@@ -134,7 +147,7 @@ object Dens {
             s = GameEngine.addCandy(s, tamed.species, GameEngine.TAME_CANDY)
             val xp = GameEngine.captureXp(tamed.level) * 2
             val gain = GameEngine.addHeroXp(s, xp)
-            return Update(gain.state, "Got it! ${m.displayName} from the den was tamed! +$xp XP, +${GameEngine.TAME_CANDY} ${GameEngine.candyName(tamed.species)}.${GameEngine.levelUpText(gain)}")
+            return Update(gain.state, (if (critical) "Critical catch! " else "") + "Got it! ${m.displayName} from the den was tamed! +$xp XP, +${GameEngine.TAME_CANDY} ${GameEngine.candyName(tamed.species)}.${GameEngine.levelUpText(gain)}")
         }
         val left = c.throwsLeft - 1
         return if (left <= 0) {

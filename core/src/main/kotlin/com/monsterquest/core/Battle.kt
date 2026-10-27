@@ -455,7 +455,15 @@ data class BattleResult(
     val armorHits: Int = 0,
     /** Species of every monster beaten (each gives candy of its line). */
     val defeated: List<String> = emptyList(),
+    /** Your monsters still standing at the end (each one earns an extra taming throw at a den). */
+    val standing: Int = 0,
 )
+
+/** Every taming throw has this chance to be a critical catch: tamed, whatever the odds. */
+const val CRITICAL_CATCH = 0.02
+
+/** The real chance of a throw with base odds [p], counting the critical catch. */
+fun withCriticalCatch(p: Double): Double = if (p >= 1.0) 1.0 else CRITICAL_CATCH + (1 - CRITICAL_CATCH) * p
 
 /** Chance (0..1) that throwing [orb] tames the enemy right now. 0 = not allowed. */
 fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item): Double {
@@ -690,6 +698,9 @@ class Battle(
         enemy.hpFraction > 0.5 && count(Item.PERFECT_ORB) <= 0 -> "Too strong to tame. Get it below 50% HP."
         else -> null
     }
+
+    /** The odds shown for [orb]: its taming chance plus the 2% critical catch. */
+    fun catchOdds(orb: Item): Double = withCriticalCatch(captureOdds(orb))
 
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
     fun captureOdds(orb: Item): Double = if (orb == Item.PERFECT_ORB) 1.0 else
@@ -1005,9 +1016,11 @@ class Battle(
                 if (captureBlockedReason() != null) return false
                 if (action.orb.kind != ItemKind.CAPTURE || !useItem(action.orb)) return false
                 val chance = captureOdds(action.orb)
-                if (rng.nextDouble() < chance) {
+                val critical = chance < 1.0 && rng.nextDouble() < CRITICAL_CATCH
+                if (critical || rng.nextDouble() < chance) {
                     outcome = BattleOutcome.CAPTURED
                     capturedKey = enemy.key
+                    if (critical) log += "Critical catch!"
                     log += "${actor.name} throws a ${action.orb.label}... ${enemy.name} was tamed!"
                     if (enemies.count { it.alive } > 1) log += "The rest of the pack scatters!"
                 } else {
@@ -1555,6 +1568,7 @@ class Battle(
             damage, heroFell, allies.first().let { it.maxMp - it.mp },
             allies.first().weaponUses, allies.first().armorHits,
             if (outcome == BattleOutcome.WON) enemyMonsters.map { it.speciesId } else emptyList(),
+            standing = allies.count { !it.isHero && it.alive },
         )
     }
 }
