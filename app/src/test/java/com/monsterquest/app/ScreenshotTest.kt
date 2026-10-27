@@ -695,8 +695,8 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Cast Binding").assertExists()
         // The catch rate per throw and the overall odds with the throws left.
         rule.onNodeWithText("Catch rate:", substring = true).assertExists()
-        rule.onNodeWithText("with your 6 throws left", substring = true).assertExists()
-        rule.onNodeWithText("+3 throws for your monsters still standing", substring = true).assertExists()
+        rule.onNodeWithText("with your 6 casts left", substring = true).assertExists()
+        rule.onNodeWithText("+3 casts for your monsters still standing", substring = true).assertExists()
         // Feed a berry: it doesn't use a throw, and the next one is likelier.
         rule.onNodeWithText("Feed Sweet Berry x2", substring = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.mainClock.advanceTimeBy(300)
