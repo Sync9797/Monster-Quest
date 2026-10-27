@@ -184,7 +184,8 @@ private fun DateCard(next: HomeWidget.Line?) {
     Column(
         GlanceModifier
             .fillMaxSize()
-            .background(colors.secondaryContainer)
+            // Frosted, glossy glass tinted from the wallpaper (see drawable/widget_glass.xml).
+            .background(androidx.glance.ImageProvider(com.monsterquest.app.R.drawable.widget_glass))
             .cornerRadius(28.dp)
             .padding(16.dp)
             .clickable(actionStartActivity<MainActivity>()),

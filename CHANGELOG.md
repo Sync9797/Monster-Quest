@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.25.1
+
+- The 2x2 widget card is now frosted glass: slightly see-through so your
+  wallpaper shows through, with a glossy sheen at the top, a soft glow at
+  the bottom and a thin bright rim. Still tinted from your wallpaper on
+  Android 12+.
+
 ## 1.25.0
 
 - **2x2 widget card:** at about 2x2 the home-screen widget becomes a card:
