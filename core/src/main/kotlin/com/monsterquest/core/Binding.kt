@@ -12,6 +12,22 @@ enum class TraceGrade(val label: String, val multiplier: Double) {
     PERFECT("Perfect", 1.6),
 }
 
+/**
+ * How a Binding cast played out, for the shake animation: the crystal shakes
+ * [shakes] times, then seals ([success]) or breaks. A tame always shakes 3
+ * times (a critical catch once); a near miss shakes twice, a clear miss less.
+ */
+data class CastRoll(val success: Boolean, val shakes: Int, val critical: Boolean = false)
+
+/** Shakes for a cast that rolled [roll] (0..1) against [chance]. */
+fun shakesFor(success: Boolean, critical: Boolean, roll: Double, chance: Double): Int = when {
+    critical -> 1
+    success -> 3
+    roll < chance * 1.5 -> 2
+    roll < chance * 2.5 -> 1
+    else -> 0
+}
+
 /** A point in a glyph's unit square (0..1 on both axes, y down). */
 data class GlyphPoint(val x: Float, val y: Float)
 

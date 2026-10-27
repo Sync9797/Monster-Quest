@@ -930,8 +930,20 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         startBattle(den.monster, EncounterType.DEN, den.id)
     }
 
-    fun denThrow(grade: com.monsterquest.core.TraceGrade = com.monsterquest.core.TraceGrade.GOOD) =
-        apply(com.monsterquest.core.Dens.attempt(state, grade = grade))
+    /** A den cast's result waits here while the crystal shakes; [finishDenSeal] applies it. */
+    var denSeal by mutableStateOf<Pair<com.monsterquest.core.CastRoll, com.monsterquest.core.Update>?>(null)
+        private set
+
+    fun denThrow(grade: com.monsterquest.core.TraceGrade = com.monsterquest.core.TraceGrade.GOOD) {
+        val (u, roll) = com.monsterquest.core.Dens.cast(state, grade = grade)
+        if (roll == null) apply(u) else denSeal = roll to u
+    }
+
+    fun finishDenSeal() {
+        val (_, u) = denSeal ?: return
+        denSeal = null
+        apply(u)
+    }
     fun denFeed(berry: com.monsterquest.core.Item) = apply(com.monsterquest.core.Dens.feed(state, berry))
     fun denGiveUp() = apply(com.monsterquest.core.Dens.giveUp(state))
 

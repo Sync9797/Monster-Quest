@@ -53,6 +53,9 @@ data class BattleView(
     val berries: List<Pair<Item, Int>> = emptyList(),
     /** The boost a berry the foe ate gives your next throw (1 = none). */
     val bait: Double = 1.0,
+    /** The last Binding cast (for the shake animation) and how many there have been. */
+    val castRoll: com.monsterquest.core.CastRoll? = null,
+    val castId: Int = 0,
     /** Settings > Simple casting: tap a crystal instead of tracing the glyph. */
     val simpleCasting: Boolean = false,
     /** HP each of the current fighter's healing spells restores, by spell id. */
@@ -102,6 +105,8 @@ data class BattleView(
                 swaps = b.swapsWaiting.map { FighterView.of(it) },
                 berries = b.berries().filter { b.canFeed(it) }.map { it to b.count(it) },
                 bait = b.bait,
+                castRoll = b.lastCast,
+                castId = b.castCount,
                 spellHeals = cur?.let { c -> b.spellsFor(c).filter { it.kind == com.monsterquest.core.SkillKind.HEAL }.associate { it.id to b.spellHeal(c, it) } }.orEmpty(),
             )
         }

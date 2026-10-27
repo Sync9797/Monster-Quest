@@ -32,6 +32,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -205,6 +206,97 @@ fun BindingCast(
                 TracePad(glyph, Modifier.fillMaxWidth(), onDone)
                 TextButton(onClick = onCancel, modifier = Modifier.padding(top = 8.dp)) { Text("Cancel") }
             }
+        }
+    }
+}
+
+/**
+ * The crystal after a Binding cast: it shakes once per [CastRoll.shakes]
+ * (a dot lights up for each), then seals with a flash ("Bound!") or breaks
+ * apart ("Broke free!"). [onFinished] runs when it's done.
+ */
+@Composable
+fun SealAnimation(roll: com.monsterquest.core.CastRoll, tint: Color, onFinished: () -> Unit) {
+    val finished by rememberUpdatedState(onFinished)
+    val rotation = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+    var shaken by remember { mutableStateOf(0) }
+    var outcome by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(roll) {
+        kotlinx.coroutines.delay(350)
+        repeat(roll.shakes) {
+            rotation.animateTo(-20f, androidx.compose.animation.core.tween(110))
+            rotation.animateTo(20f, androidx.compose.animation.core.tween(170))
+            rotation.animateTo(0f, androidx.compose.animation.core.tween(110))
+            shaken++
+            kotlinx.coroutines.delay(380)
+        }
+        outcome = roll.success
+        if (roll.success) {
+            scale.animateTo(1.3f, androidx.compose.animation.core.tween(160))
+            scale.animateTo(1f, androidx.compose.animation.core.tween(200))
+        } else {
+            scale.animateTo(0f, androidx.compose.animation.core.tween(240))
+        }
+        kotlinx.coroutines.delay(750)
+        finished()
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        if (roll.critical) Text("Critical catch!", color = Gold, fontWeight = FontWeight.Black, fontSize = 20.sp)
+        Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+            if (outcome == true) {
+                Box(Modifier.size(140.dp).background(Brushes.glow(tint), androidx.compose.foundation.shape.CircleShape))
+            }
+            GIcon(
+                GameIcon.CRYSTAL,
+                Modifier
+                    .size(96.dp)
+                    .graphicsLayer {
+                        rotationZ = rotation.value
+                        scaleX = scale.value
+                        scaleY = scale.value
+                    },
+                tint,
+            )
+        }
+        // A dot for each shake, like a held breath.
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            repeat(3) { i ->
+                Box(
+                    Modifier.size(12.dp).background(
+                        if (i < shaken) tint else MaterialTheme.colorScheme.surfaceVariant,
+                        androidx.compose.foundation.shape.CircleShape,
+                    ),
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            when (outcome) {
+                true -> "Bound!"
+                false -> "Broke free!"
+                null -> "…"
+            },
+            color = if (outcome == false) HpRed else Gold,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+        )
+    }
+}
+
+private object Brushes {
+    fun glow(c: Color) = androidx.compose.ui.graphics.Brush.radialGradient(listOf(c.copy(alpha = 0.55f), c.copy(alpha = 0f)))
+}
+
+/** [SealAnimation] full-screen over everything (battle or the den dialog); it can't be skipped. */
+@Composable
+fun BindingSeal(roll: com.monsterquest.core.CastRoll, tint: Color, onFinished: () -> Unit) {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = false, dismissOnClickOutside = false),
+    ) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.82f)), contentAlignment = Alignment.Center) {
+            SealAnimation(roll, tint, onFinished)
         }
     }
 }

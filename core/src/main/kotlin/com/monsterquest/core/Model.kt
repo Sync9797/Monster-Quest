@@ -460,7 +460,7 @@ enum class Item(
     POTION("Potion", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
     HI_POTION("Greater Potion", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
     ETHER("Mana Draught", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
-    PHOENIX_DOWN("Ember Plume", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
+    PHOENIX_DOWN("Phoenix Feather", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
     RESTORE_POTION("Restore Potion", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
     // Binding Crystals power the Binding Tome's capture spell: one per cast.
     // (Ids stay as they were so saves keep their crystals.)

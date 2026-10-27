@@ -120,6 +120,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     if (vm.showRecap) MorningRecap(vm)
     if (state.starterGiftPending && !vm.starterGiftLater) StarterGiftDialog(vm)
     state.pendingDenCatch?.let { DenCatchDialog(vm, it) }
+    // A den cast: the crystal shakes before the result.
+    vm.denSeal?.let { (roll, _) -> BindingSeal(roll, Gold, vm::finishDenSeal) }
 
     // The menu stays at the bottom on every screen size, folded or open, so it's
     // always within thumb reach.

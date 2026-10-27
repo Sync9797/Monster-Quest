@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1
+
+- **Shake suspense:** after a Binding cast, the crystal shakes before the
+  result: three shakes and it seals ("Bound!"), a near miss shakes twice,
+  a clear miss once or not at all ("Broke free!"), and a critical catch
+  seals after one. A dot lights up with each shake. In battle and at dens.
+- **Ember Plume is now the Phoenix Feather.** Same effect.
+
 ## 2.0.0
 
 - **The Binding Tome: a new way to tame.** Taming is now a capture spell,

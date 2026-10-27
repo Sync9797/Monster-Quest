@@ -149,12 +149,23 @@ object Dens {
     }
 
     /** One taming throw at a beaten den monster. */
-    fun attempt(state: GameState, rng: Random = Random.Default, grade: TraceGrade = TraceGrade.GOOD): Update {
-        val c = state.pendingDenCatch ?: return Update(state, "Nothing to tame.")
+    fun attempt(state: GameState, rng: Random = Random.Default, grade: TraceGrade = TraceGrade.GOOD): Update = cast(state, rng, grade).first
+
+    /** One Binding cast at a beaten den monster, with its roll for the shake animation (null if it couldn't be cast). */
+    fun cast(state: GameState, rng: Random = Random.Default, grade: TraceGrade = TraceGrade.GOOD): Pair<Update, CastRoll?> {
+        val c = state.pendingDenCatch ?: return Update(state, "Nothing to tame.") to null
         val m = c.monster
-        if (state.storageFull) return Update(state, "Monster storage is full. Release a monster or upgrade storage first.")
+        if (state.storageFull) return Update(state, "Monster storage is full. Release a monster or upgrade storage first.") to null
         val critical = rng.nextDouble() < CRITICAL_CATCH
-        if (critical || rng.nextDouble() < (throwChance(m) * c.bait * grade.multiplier).coerceAtMost(0.95)) {
+        val chance = (throwChance(m) * c.bait * grade.multiplier).coerceAtMost(0.95)
+        val roll = rng.nextDouble()
+        val success = critical || roll < chance
+        val result = CastRoll(success, shakesFor(success, critical, roll, chance), critical)
+        return castResult(state, c, m, rng, grade, critical, success) to result
+    }
+
+    private fun castResult(state: GameState, c: DenCatch, m: Monster, rng: Random, grade: TraceGrade, critical: Boolean, success: Boolean): Update {
+        if (success) {
             val tamed = m.copy(uid = newId(rng), xp = 0)
             var s = state.copy(
                 pendingDenCatch = null,

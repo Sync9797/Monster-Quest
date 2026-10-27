@@ -53,6 +53,7 @@ import com.monsterquest.core.MAX_PARTY_SIZE
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,6 +134,10 @@ private fun BattleContent(
     onReplace: (String, String) -> Unit,
 ) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
+    // After a Binding cast, the crystal shakes before the result shows.
+    var sealSeen by remember { mutableIntStateOf(b.castId) }
+    val sealing = b.castRoll != null && b.castId != sealSeen
+    b.castRoll?.takeIf { sealing }?.let { roll -> BindingSeal(roll, Gold) { sealSeen = b.castId } }
     // When a monster faints and someone waits in a swap slot, offer to send them in (once per faint).
     val asked = remember { mutableStateListOf<String>() }
     val fallen = b.allies.firstOrNull { !it.isHero && !it.alive && it.key !in asked }
@@ -182,7 +187,10 @@ private fun BattleContent(
         AllyRow(b)
     }
     val commands: @Composable () -> Unit = {
-        if (b.outcome == BattleOutcome.ONGOING) {
+        if (sealing) {
+            // The crystal is still shaking: no result or commands yet.
+            Spacer(Modifier.height(1.dp))
+        } else if (b.outcome == BattleOutcome.ONGOING) {
             val actor = b.current
             if (actor != null) {
                 ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)

@@ -330,6 +330,24 @@ abstract class ScreenshotBase(private val device: String) {
         check(got != null && got!! >= com.monsterquest.core.TraceGrade.GOOD) { "graded $got" }
     }
 
+    /** After a cast the crystal shakes (3 times for a tame), then seals: "Bound!". */
+    @Test fun bindingSeal() {
+        var done = false
+        shot("46_binding_seal", advanceMs = 1_200) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF0D171A)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                com.monsterquest.app.ui.SealAnimation(com.monsterquest.core.CastRoll(success = true, shakes = 3), com.monsterquest.app.ui.Gold) { done = true }
+            }
+        }
+        check(!done) { "still shaking" }
+        rule.mainClock.advanceTimeBy(2_400)
+        rule.waitForIdle()
+        rule.onNodeWithText("Bound!").assertExists()
+        capture("46b_binding_bound", 50)
+        rule.mainClock.advanceTimeBy(2_000)
+        rule.waitForIdle()
+        check(done) { "the seal finishes" }
+    }
+
     @Test fun focus() {
         val v = vm()
         v.startFocus(30)

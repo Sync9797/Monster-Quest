@@ -57,4 +57,25 @@ class BindingTest {
         val m = Monster.create(common, 6, Random(4))
         assertTrue(Dens.throwOdds(m, grade = TraceGrade.PERFECT) > Dens.throwOdds(m))
     }
+
+    @Test
+    fun castsShakeBeforeTheySealOrBreak() {
+        assertEquals(3, shakesFor(success = true, critical = false, roll = 0.1, chance = 0.3))
+        assertEquals(1, shakesFor(success = true, critical = true, roll = 0.9, chance = 0.3))
+        assertEquals(2, shakesFor(success = false, critical = false, roll = 0.35, chance = 0.3)) // a near miss
+        assertEquals(1, shakesFor(success = false, critical = false, roll = 0.6, chance = 0.3))
+        assertEquals(0, shakesFor(success = false, critical = false, roll = 0.95, chance = 0.3))
+        // Battles and dens record each cast's roll for the animation.
+        val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.copy(inventory = mapOf(Item.TAMING_ORB to 9))
+        val b = GameEngine.newBattle(s, Monster.create(common, 6, Random(2)), EncounterType.WILD, rng = Random(3))
+        b.enemy.hp = b.enemy.maxHp / 3
+        var guard = 0
+        while (b.castCount == 0 && b.outcome == BattleOutcome.ONGOING && guard++ < 20) {
+            if (b.current?.let { !Combatant.isEnemy(it.key) } == true) b.act(BattleAction.Capture(Item.TAMING_ORB, TraceGrade.STRONG)) else break
+        }
+        assertEquals(1, b.castCount)
+        val roll = b.lastCast!!
+        assertEquals(roll.success, b.outcome == BattleOutcome.CAPTURED)
+        if (roll.success) assertTrue(roll.shakes >= 1) else assertTrue(roll.shakes in 0..2)
+    }
 }

@@ -701,6 +701,12 @@ class Battle(
         berry.kind == ItemKind.BAIT && count(berry) > 0 && itemsRemainingThisBattle > 0 && bait < berry.power &&
             encounter != EncounterType.VILLAIN && encounter != EncounterType.DEN && encounter != EncounterType.THUG && !captureLocked
 
+    /** The last Binding cast's roll, for the shake animation, and how many casts so far (to spot a new one). */
+    var lastCast: CastRoll? = null
+        private set
+    var castCount: Int = 0
+        private set
+
     /** A berry the foe has eaten: the next throw's odds are multiplied by this (1 = none). */
     var bait: Double = 1.0
         private set
@@ -1049,7 +1055,11 @@ class Battle(
                 // A berry only lasts for one throw.
                 bait = 1.0
                 val critical = chance < 1.0 && rng.nextDouble() < CRITICAL_CATCH
-                if (critical || rng.nextDouble() < chance) {
+                val roll = rng.nextDouble()
+                val success = critical || roll < chance
+                lastCast = CastRoll(success, shakesFor(success, critical, roll, chance), critical)
+                castCount++
+                if (success) {
                     outcome = BattleOutcome.CAPTURED
                     capturedKey = enemy.key
                     if (critical) log += "Critical catch!"
