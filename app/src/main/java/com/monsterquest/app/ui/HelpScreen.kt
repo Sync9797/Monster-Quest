@@ -40,6 +40,7 @@ private val topics = listOf(
             "It's also your own to-do list and planner. Your tasks and calendar events are your quests, and finishing them powers your adventure: XP for your hero, gold, hunt tokens, and the Silver and Gold shrines that open when you keep up through the week.",
             "Living well pays off too. Walking levels you and your monsters up, heals them, opens loot boxes and draws monsters to you. Time away from your screen (phone-free sessions) earns loot boxes. A full night's sleep refills your Energy.",
             "So the more you get done, move and rest in real life, the stronger your hero and team grow in the game.",
+            "The menu at the bottom: Quests, Map, Bag and Store, with the Hero button in the middle. Tap or hold it to choose your Hero or your Monsters.",
         ),
     ),
     HelpTopic(
@@ -106,7 +107,7 @@ private val topics = listOf(
             "Blue crystal beacons are item shrines at real places (cafes, shops, parks, art, fountains) plus Waystones in between. Tap one to see the real place and street, e.g. Supply Cache: Barnes & Noble on Wards Road.",
             "Tap Walk here on any shrine, monster or villain for walking directions in your map app.",
             "Walk within 60 m and tap one to collect gold, potions, Binding Crystals, berries, spell pages, weapons, armor and lures. A pop-up shows what you got.",
-            "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; upgrade it every 5 levels or for 1,000 gold.",
+            "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; it grows every 5 levels, and the Store sells expansions.",
         ),
     ),
     HelpTopic(
@@ -161,7 +162,7 @@ private val topics = listOf(
         listOf(
             "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
             "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mud Shot (weak, but each hit lowers the foe's accuracy 10%, stacking), Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
-            "Every level gives a small box of items that gets better as you level. Better Binding Crystals unlock in the shop at levels 10 (Resonant), 25 (Radiant), 50 (Prismatic) and 75 (Perfect: always tames with no trace, 2,000 gold; you also get one at level 100).",
+            "Every level gives a small box of items that gets better as you level. Better Binding Crystals unlock in the Store at levels 10 (Resonant), 25 (Radiant), 50 (Prismatic) and 75 (Perfect: always tames with no trace, 2,000 gold; you also get one at level 100).",
             "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
             "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), at once with a Mana Draught, or with a full night's sleep (7 hours or more, synced or logged on the Health card, once a day).",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
@@ -169,7 +170,7 @@ private val topics = listOf(
             "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",
             "At level 15 pick a subclass: three per class, each with its own perks. Switching costs gold.",
             "Skills open at levels 30, 45 and 60 (Intimidate, Hover, Kleptomaniac and more) and rank up every 10 levels; from rank 3 some cover your whole team. Monsters get one skill of their own at level 30.",
-            "The shop buys items at half price and gear by rarity and level. Smelt a weapon for 50 gold to get its parts back.",
+            "The Store buys items at half price and gear by rarity and level. Smelt a weapon for 50 gold to get its parts back.",
             "Adventures (Monsters tab, 5+ monsters) send a team to real places for gold and items while you're away.",
         ),
     ),

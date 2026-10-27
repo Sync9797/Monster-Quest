@@ -213,8 +213,36 @@ fun BagScreen(vm: GameViewModel) {
             }
         }
     }
-    val shop: @Composable () -> Unit = {
-        SectionTitle("Shop  •  ${s.gold} gold")
+    AdaptivePanes(
+        compact = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                bag()
+                gear()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        first = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
+                bag()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+        second = {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(end = 16.dp)) {
+                gear()
+                Spacer(Modifier.height(24.dp))
+            }
+        },
+    )
+    using?.let { item -> PotionTargetDialog(vm, item) { using = null } }
+}
+
+/** The Store: storage expansions and items to buy, and the counter that buys back what you don't need. */
+@Composable
+fun StoreScreen(vm: GameViewModel) {
+    val s = vm.state
+    val buy: @Composable () -> Unit = {
+        SectionTitle("Store  •  ${s.gold} gold")
         StorageShop(vm)
         Item.entries.filter { it.price > 0 }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
@@ -236,33 +264,29 @@ fun BagScreen(vm: GameViewModel) {
                 }
             }
         }
-        SellSection(vm)
     }
 
     AdaptivePanes(
         compact = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                bag()
-                gear()
-                shop()
+                buy()
+                SellSection(vm)
                 Spacer(Modifier.height(24.dp))
             }
         },
         first = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
-                bag()
-                gear()
+                buy()
                 Spacer(Modifier.height(24.dp))
             }
         },
         second = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(end = 16.dp)) {
-                shop()
+                SellSection(vm)
                 Spacer(Modifier.height(24.dp))
             }
         },
     )
-    using?.let { item -> PotionTargetDialog(vm, item) { using = null } }
 }
 
 /** The shop buys anything that isn't worn: items at half price, gear by rarity and level. Weapons can be smelted. */
@@ -271,7 +295,7 @@ private fun SellSection(vm: GameViewModel) {
     val s = vm.state
     SectionTitle("Sell")
     Text(
-        "The shop pays half price for items; rarer and higher-level gear pays more. Smelt a weapon or armor for $SMELT_COST gold " +
+        "The Store pays half price for items; rarer and higher-level gear pays more. Smelt a weapon or armor for $SMELT_COST gold " +
             "to get parts or scrap of its type (1 to 4 by rarity). Take gear off to sell it.",
         fontSize = 12.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

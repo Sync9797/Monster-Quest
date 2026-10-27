@@ -142,10 +142,10 @@ fun HeroScreen(vm: GameViewModel) {
 
     }
     val progress: @Composable () -> Unit = {
-        // Bag and monster storage upgrades (free ones every few levels, and bought ones) live in the Bag's shop.
+        // Bag and monster storage upgrades (free ones every few levels, and bought ones) live in the Store.
         if (s.pendingUpgrades > 0) {
             GameCard(border = Gold) {
-                Text("You have ${s.pendingUpgrades} free storage upgrade(s) to claim in the Bag's shop.", color = Gold, fontSize = 13.sp)
+                Text("You have ${s.pendingUpgrades} free storage upgrade(s) to claim in the Store.", color = Gold, fontSize = 13.sp)
             }
         }
 

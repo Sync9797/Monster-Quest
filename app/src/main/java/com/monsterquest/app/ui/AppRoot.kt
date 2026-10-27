@@ -1,6 +1,28 @@
 package com.monsterquest.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.ArtQuality
 import com.monsterquest.app.ui.art.MonsterArt
@@ -52,7 +74,12 @@ enum class Tab(val label: String, val icon: GameIcon) {
     MONSTERS("Monsters", GameIcon.MONSTERS),
     MAP("Map", GameIcon.MAP),
     BAG("Bag", GameIcon.BAG),
+    STORE("Store", GameIcon.STORE),
 }
+
+/** The bottom menu, left to right; the Hero button in the middle opens Hero and Monsters. */
+private val leftTabs = listOf(Tab.QUESTS, Tab.MAP)
+private val rightTabs = listOf(Tab.BAG, Tab.STORE)
 
 @Composable
 fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Boolean = false) {
@@ -78,6 +105,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     // Back steps out of Settings, then from any tab to Quests; only Back on Quests leaves the app.
     BackHandler(enabled = !settingsOpen && tab != Tab.QUESTS) { tab = Tab.QUESTS }
     BackHandler(enabled = settingsOpen) { settingsOpen = false }
+    var heroMenu by remember { mutableStateOf(false) }
+    BackHandler(enabled = heroMenu) { heroMenu = false }
     val snackbar = remember { SnackbarHostState() }
     val msg = vm.message
     LaunchedEffect(msg) {
@@ -130,10 +159,10 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                Tab.entries.forEach { t ->
+                val item: @Composable RowScope.(Tab) -> Unit = { t ->
                     NavigationBarItem(
                         selected = tab == t && !settingsOpen,
-                        onClick = { tab = t; settingsOpen = false },
+                        onClick = { tab = t; settingsOpen = false; heroMenu = false },
                         icon = { GIcon(t.icon, Modifier.size(24.dp)) },
                         label = { Text(t.label, maxLines = 1, softWrap = false, fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
@@ -143,6 +172,13 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
                         ),
                     )
                 }
+                leftTabs.forEach { item(it) }
+                HeroMenuButton(
+                    current = tab.takeIf { (it == Tab.HERO || it == Tab.MONSTERS) && !settingsOpen },
+                    open = heroMenu,
+                    onToggle = { heroMenu = !heroMenu },
+                )
+                rightTabs.forEach { item(it) }
             }
         },
     ) { padding ->
@@ -157,10 +193,12 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
                     Tab.MONSTERS -> MonstersScreen(vm)
                     Tab.MAP -> MapScreen(vm)
                     Tab.BAG -> BagScreen(vm)
+                    Tab.STORE -> StoreScreen(vm)
                 }
             }
         }
     }
+    if (heroMenu) HeroMenuBubbles(onPick = { tab = it; settingsOpen = false; heroMenu = false }, onDismiss = { heroMenu = false })
     // Battery saver: black screen on top while the map keeps running underneath.
     if (vm.batterySaver) BatterySaverOverlay(vm)
     vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
@@ -319,4 +357,87 @@ private fun SpoilsDialog(vm: GameViewModel) {
         },
         confirmButton = { TextButton(onClick = vm::dismissSpoils) { Text("Leave them") } },
     )
+}
+
+/** The raised middle button. Tap or hold it to choose Hero or Monsters. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RowScope.HeroMenuButton(current: Tab?, open: Boolean, onToggle: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    val lift by animateFloatAsState(if (open) 1.08f else 1f, label = "heroLift")
+    Column(
+        Modifier.weight(1f).fillMaxHeight(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .graphicsLayer { scaleX = lift; scaleY = lift }
+                .clip(CircleShape)
+                .background(if (current != null || open) primary else primary.copy(alpha = 0.18f))
+                .border(2.dp, primary, CircleShape)
+                .combinedClickable(onClickLabel = "Choose Hero or Monsters", onLongClick = onToggle, onClick = onToggle)
+                .semantics { contentDescription = "Hero menu" },
+            contentAlignment = Alignment.Center,
+        ) {
+            GIcon(
+                if (open) GameIcon.CLOSE else (current ?: Tab.HERO).icon,
+                Modifier.size(26.dp),
+                if (current != null || open) MaterialTheme.colorScheme.onPrimary else primary,
+            )
+        }
+        Text(
+            current?.label ?: "Hero",
+            maxLines = 1,
+            softWrap = false,
+            fontSize = 11.sp,
+            color = if (current != null) primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+    }
+}
+
+/** Hero and Monsters, popping up above the middle button. Tapping outside closes them. */
+@Composable
+private fun HeroMenuBubbles(onPick: (Tab) -> Unit, onDismiss: () -> Unit) {
+    val shown = remember { MutableTransitionState(false) }.apply { targetState = true }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.35f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+    ) {
+        AnimatedVisibility(
+            visibleState = shown,
+            enter = fadeIn() + scaleIn(initialScale = 0.4f, transformOrigin = TransformOrigin(0.5f, 1f)) +
+                slideInVertically { it / 2 },
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 92.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(36.dp)) {
+                listOf(Tab.HERO, Tab.MONSTERS).forEach { t ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { onPick(t) }.padding(6.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) { GIcon(t.icon, Modifier.size(30.dp), MaterialTheme.colorScheme.primary) }
+                        Text(
+                            t.label,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

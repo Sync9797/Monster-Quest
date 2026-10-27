@@ -1,6 +1,7 @@
 package com.monsterquest.app
 
 import androidx.compose.ui.test.onLast
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
@@ -227,9 +228,32 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun bag() {
         val v = vm()
         shot("05_bag") { AppRoot(v, Tab.BAG) }
-        // Storage is in the shop now: free upgrades and pricey expansions.
+        rule.onNodeWithText("Bag expansion").assertDoesNotExist()
+    }
+    @Test fun store() {
+        val v = vm()
+        shot("05b_store") { AppRoot(v, Tab.STORE) }
+        // Storage lives in the Store: free upgrades and pricey expansions.
         rule.onNodeWithText("Bag expansion").assertExists()
         rule.onNodeWithText("Monster storage expansion").assertExists()
+    }
+    /** The middle Hero button opens Hero and Monsters bubbles; picking one goes there. */
+    @Test fun heroMenu() {
+        val v = vm()
+        shot("05c_hero_menu") { AppRoot(v, Tab.QUESTS) }
+        rule.onNodeWithContentDescription("Hero menu").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(600)
+        rule.waitForIdle()
+        capture("05c_hero_menu_open", 0)
+        rule.onAllNodes(androidx.compose.ui.test.hasText("Monsters") and androidx.compose.ui.test.hasClickAction()).onLast()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(600)
+        rule.waitForIdle()
+        rule.onNodeWithText("Release…").assertExists()
     }
 
     @Test fun map() {
@@ -698,8 +722,13 @@ abstract class ScreenshotBase(private val device: String) {
 
     @Test fun shopSell() {
         val v = vm(skilledHero())
-        shot("29_shop_sell") { AppRoot(v, Tab.BAG) }
+        shot("29_shop_sell") { AppRoot(v, Tab.STORE) }
         check(rule.onAllNodesWithText("Smelt +3").fetchSemanticsNodes().isNotEmpty()) { "epic weapons smelt into 3 parts" }
+    }
+
+    @Test fun bagGear() {
+        val v = vm(skilledHero())
+        shot("29b_bag_gear") { AppRoot(v, Tab.BAG) }
         // An Epic is -6 when new; after 3 of 10 battles, -5 is left.
         rule.onNodeWithText("Unfamiliar: -5 to all stats • practice 3/10 battles").assertExists()
     }

@@ -17,6 +17,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     ),
     MAP(line("M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"), line("M9 4v14M15 6v14")),
     BAG(line("M5 9h14l-1 11H6z"), line("M9 9V7a3 3 0 0 1 6 0v2"), line("M9 13h6")),
+    STORE(line("M4 9l1.5-5h13L20 9"), line("M4 9a2.67 2.67 0 0 0 5.33 0a2.67 2.67 0 0 0 5.34 0a2.67 2.67 0 0 0 5.33 0"), line("M5.5 11.5V20h13v-8.5"), line("M10 20v-5h4v5")),
 
     // Resources & actions
     COIN(fill("M12 3a9 9 0 1 0 .01 0z"), cut("M12 7.5l3.2 4.5L12 16.5 8.8 12z")),
