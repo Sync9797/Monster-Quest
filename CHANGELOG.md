@@ -12,6 +12,12 @@
   heading styles as the rest of the game.
 - **Map footer:** what's around (monsters near, tracked, shrines, dens,
   foes) shows as small pills that wrap neatly instead of one long line.
+- **Tidier cards:** monster cards, empty party and swap slots, and Journal
+  entries are shorter with their contents centered, so there's no empty
+  strip at the bottom. "Battle party" uses the same heading color as the
+  other sections.
+- **Calmer lists:** adventure cards use an outlined "Choose team" button,
+  so a screen of them isn't a wall of gold buttons.
 
 ## 1.31.0
 

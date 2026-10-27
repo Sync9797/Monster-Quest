@@ -228,7 +228,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                 DisposableEffect(Unit) { onDispose { drag.slots.clear() } }
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Battle party", style = MaterialTheme.typography.titleMedium, color = Gold, modifier = Modifier.weight(1f))
+                        Text("Battle party", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
                         TextButton(onClick = { showChart = true }) { Text("Type chart") }
                     }
                     Text(
@@ -349,12 +349,15 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
     }
 }
 
+/** Monster cards and empty slots share one height, so the grid lines up. */
+private val CARD_HEIGHT = 140.dp
+
 @Composable
 private fun EmptySlot(highlight: Boolean = false) {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(162.dp)
+            .height(CARD_HEIGHT)
             .clip(RoundedCornerShape(12.dp))
             .border(if (highlight) 2.dp else 1.dp, if (highlight) Gold else Line, RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center,
@@ -434,13 +437,14 @@ private fun MonsterTile(
     Column(
         modifier
             .fillMaxWidth()
-            .height(162.dp)
+            .height(CARD_HEIGHT)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(if (border == Line) 1.dp else 2.dp, border, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted, shiny = m.shiny)
         Text(m.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -160,7 +160,7 @@ private fun AdventureCard(adv: Adventure, canSend: Boolean, onPick: () -> Unit) 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(6.dp))
-        SmallButton(if (canSend) "Choose team" else "Too many adventures running", onPick, Modifier.fillMaxWidth(), enabled = canSend)
+        SmallButton(if (canSend) "Choose team" else "Too many adventures running", onPick, Modifier.fillMaxWidth(), enabled = canSend, outlined = true)
     }
 }
 

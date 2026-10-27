@@ -100,7 +100,7 @@ private fun JournalCell(number: Int, sp: Species, seen: Boolean, caught: Boolean
     Box(
         Modifier
             .fillMaxWidth()
-            .height(142.dp)
+            .height(124.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(if (caught) 2.dp else 1.dp, border, RoundedCornerShape(12.dp))

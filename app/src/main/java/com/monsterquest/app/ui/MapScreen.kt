@@ -536,8 +536,9 @@ private val DarkTiles = android.graphics.ColorMatrixColorFilter(
 private fun applyMapStyle(map: MapView, dark: Boolean) {
     val tiles = map.overlayManager.tilesOverlay
     tiles.setColorFilter(if (dark) DarkTiles else null)
-    tiles.setLoadingBackgroundColor(if (dark) 0xFF1A2226.toInt() else 0xFFE8E4DC.toInt())
-    tiles.setLoadingLineColor(if (dark) 0xFF232D31.toInt() else 0xFFD8D3CA.toInt())
+    // The filter also covers the loading grid, so light loading colors come out dark on the dark map.
+    tiles.setLoadingBackgroundColor(0xFFE8E4DC.toInt())
+    tiles.setLoadingLineColor(0xFFD8D3CA.toInt())
     map.invalidate()
 }
 
