@@ -296,7 +296,8 @@ abstract class ScreenshotBase(private val device: String) {
             rule.waitForIdle()
         }
         click(rule.onNodeWithText("Items", substring = true))
-        click(rule.onNodeWithText("${com.monsterquest.core.Item.POTION.label} x", substring = true))
+        // Exactly "Potion xN" (a substring would also match "Restore Potion").
+        click(rule.onNodeWithText("${com.monsterquest.core.Item.POTION.label} x${v.state.count(com.monsterquest.core.Item.POTION)}"))
         check(rule.onAllNodes(androidx.compose.ui.test.hasText(" → ", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview text" }
         check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("after the potion", substring = true)).fetchSemanticsNodes().isNotEmpty()) { "heal preview bar" }
     }
