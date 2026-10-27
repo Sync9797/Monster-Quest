@@ -218,7 +218,8 @@ fun MapScreen(vm: GameViewModel) {
             Haptics.spawn(context)
         }
     }
-    var centered by remember { mutableStateOf(false) }
+    // The map follows the hero; looking at something from the Nearby list leaves it there briefly.
+    var following by remember { mutableStateOf(true) }
 
     val mapView = rememberMapView()
     val icons = remember { HashMap<String, BitmapDrawable>() }
@@ -240,10 +241,7 @@ fun MapScreen(vm: GameViewModel) {
                         mv.overlays.clear()
                         if (loc != null) {
                             val here = GeoPoint(loc.first, loc.second)
-                            if (!centered) {
-                                mv.controller.setCenter(here)
-                                centered = true
-                            }
+                            if (following) mv.controller.setCenter(here)
                             // Reach circle for shrines.
                             mv.overlays.add(
                                 Polygon(mv).apply {
@@ -361,10 +359,13 @@ fun MapScreen(vm: GameViewModel) {
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                Column(horizontalAlignment = Alignment.End) {
-                    OutlinedButton(onClick = {
-                        loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
-                    }) { IconText(GameIcon.PIN, "Center") }
+                if (!following) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        OutlinedButton(onClick = {
+                            following = true
+                            loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+                        }) { IconText(GameIcon.PIN, "Back to me") }
+                    }
                 }
             }
             Text(
@@ -378,7 +379,16 @@ fun MapScreen(vm: GameViewModel) {
 
     fun focusOn(f: MapFocus) {
         focus = f
+        following = false
         mapView.controller.animateTo(GeoPoint(f.lat, f.lon))
+    }
+    // After a look at something in the Nearby list, the map glides back to the hero.
+    LaunchedEffect(following, focus) {
+        if (!following) {
+            kotlinx.coroutines.delay(LOOK_AWAY_MS)
+            following = true
+            loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+        }
     }
     val imperial = vm.state.settings.imperialUnits
     AdaptivePanes(
@@ -425,7 +435,10 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.TrackedPick -> TrackedDialog(
             vm,
             p.spawn,
-            onShowArea = { mapView.controller.animateTo(GeoPoint(p.spawn.lat, p.spawn.lon)) },
+            onShowArea = {
+                following = false
+                mapView.controller.animateTo(GeoPoint(p.spawn.lat, p.spawn.lon))
+            },
         ) { pick = null }
         null -> {}
     }
@@ -464,6 +477,9 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
     }
 }
 
+/** How long the map stays on something picked from the Nearby list before returning to the hero. */
+private const val LOOK_AWAY_MS = 10_000L
+
 @Composable
 private fun rememberMapView(): MapView {
     val context = LocalContext.current
@@ -478,11 +494,13 @@ private fun rememberMapView(): MapView {
             // crashed) the map on every fold; we clean it up ourselves on dispose instead.
             setDestroyMode(false)
             setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(17.0)
-            minZoomLevel = 4.0
+            // Close enough to see the neighbourhood, never so far the hero gets lost.
+            minZoomLevel = 12.0
             maxZoomLevel = 20.0
+            // Locked to the hero like Pokemon GO: pinch, double-tap, or double-tap-and-slide to zoom; no panning.
+            MapGestures(this).attach()
         }
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle

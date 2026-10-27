@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.22.0
+
+- **The map follows you** like Pokemon GO: it stays centered on your hero
+  and moves as you walk. Dragging no longer slides it around.
+- **Zooming:** pinch, double-tap to zoom in, or double-tap and hold, then
+  slide down to zoom in or up to zoom out. Zoom always stays centered on
+  you, from neighbourhood view down to street level.
+- Tapping something in the Nearby list still shows where it is; the map
+  returns to you after 10 seconds, or straight away with "Back to me".
+
 ## 1.21.0
 
 - **Materials:** weapons come in wooden, bronze, iron, golden and diamond;
