@@ -378,6 +378,9 @@ abstract class ScreenshotBase(private val device: String) {
         shot("48_batch_release") { AppRoot(v, Tab.MONSTERS) }
         val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
             n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            // A local state change: let Compose see it before the clock moves.
+            androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+            rule.waitForIdle()
             rule.mainClock.advanceTimeBy(300)
             rule.waitForIdle()
         }
