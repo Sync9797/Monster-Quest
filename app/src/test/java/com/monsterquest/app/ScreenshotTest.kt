@@ -763,7 +763,7 @@ abstract class ScreenshotBase(private val device: String) {
         androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
         capture("41_health_open", 1_000)
         rule.onNodeWithText("Log sleep").assertExists()
-        rule.onNodeWithText("6h 50m", substring = true).assertExists()
+        rule.onNodeWithText("6h 50m").assertExists()
         rule.onNodeWithText("Daily goal").assertExists()
         // Water is just a tally: + adds a glass, no rewards.
         val gold = v.state.gold
