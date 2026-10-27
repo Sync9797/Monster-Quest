@@ -37,7 +37,7 @@ jobs:
 
       - name: Build APK
         shell: bash
-        run: ./gradlew :app:assembleDebug 2>&1 | tee build.log
+        run: ./gradlew :app:assembleRelease 2>&1 | tee build.log
 
       # Logs need a GitHub login to view; push them to a branch so failures can
       # be diagnosed from anywhere.
@@ -58,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MonsterQuest-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/release/app-release.apk
 
       # On every push to main, publish the APK as the "latest" release so it can
       # be downloaded straight from your phone's browser.
@@ -67,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk MonsterQuest.apk
+          cp app/build/outputs/apk/release/app-release.apk MonsterQuest.apk
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest MonsterQuest.apk \
             --title "Latest build ($(git rev-parse --short HEAD))" \
@@ -86,7 +86,7 @@ jobs:
             echo "v$VERSION already released"
             exit 0
           fi
-          cp app/build/outputs/apk/debug/app-debug.apk "MonsterQuest-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "MonsterQuest-$VERSION.apk"
           awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
           gh release create "v$VERSION" "MonsterQuest-$VERSION.apk" \
             --title "Monster Quest $VERSION" \

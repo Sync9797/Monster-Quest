@@ -31,6 +31,18 @@ android {
         debug {
             signingConfig = signingConfigs.getByName("debug")
         }
+        // What CI publishes: not debuggable, so Android compiles the app ahead of time and
+        // Compose's baseline profiles apply. Debug builds scroll and animate far slower.
+        // Signed with the same fixed key, so it installs over earlier (debug) builds.
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+        }
+    }
+
+    lint {
+        // The tests and screenshots cover what lint's release checks would; don't block the build on them.
+        checkReleaseBuilds = false
     }
 
     compileOptions {
@@ -57,6 +69,8 @@ dependencies {
     implementation(project(":core"))
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    // Installs the libraries' baseline profiles (Compose's included) on sideloaded installs too.
+    implementation("androidx.profileinstaller:profileinstaller:1.3.1")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
