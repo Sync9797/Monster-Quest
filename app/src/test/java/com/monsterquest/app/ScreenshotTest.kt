@@ -629,7 +629,9 @@ abstract class ScreenshotBase(private val device: String) {
         val now = System.currentTimeMillis()
         val t = java.time.LocalTime.now()
         val base = sampleState()
-        var s = com.monsterquest.core.Reminders.add(base, "Make bed", t.minusMinutes(20).hour, t.minusMinutes(20).minute, (1..7).toSet(), Random(1)).state
+        // Rang 20 minutes ago (but never before midnight, so it's always today's).
+        val rang = maxOf(0, t.hour * 60 + t.minute - 20)
+        var s = com.monsterquest.core.Reminders.add(base, "Make bed", rang / 60, rang % 60, (1..7).toSet(), Random(1)).state
         s = com.monsterquest.core.Reminders.add(s, "Take vitamins", 21, 30, (1..5).toSet(), Random(2)).state
         val v = vm(s)
         rule.mainClock.autoAdvance = false
