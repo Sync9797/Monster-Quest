@@ -58,7 +58,7 @@ private val topics = listOf(
         GameIcon.WALK, "Walking: monsters come to you",
         listOf(
             "Every 100 steps gives you and your battle party 10 XP and heals 10 HP.",
-            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count) and a water tracker. Tap its title to open or fold it. Water and sleep are just for you: they pay no rewards. Sleep syncs from Health Connect, or log it by hand.",
+            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count) and a water tracker. Tap its title to open or fold it. Water is just for you: it pays no rewards. A full night's sleep (7 hours or more) refills your Energy, once a day. Sleep syncs from Health Connect, or log it by hand.",
             "Each morning, the first time you open the game, a recap shows what yesterday brought (levels, monster XP, loot, HP restored, tasks) and how you slept.",
             "Every 600 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 4 wait beside you on the map for 4 hours.",
             "Monsters hear you moving: while you walk, every monster nearby closes in on you much faster.",
@@ -143,7 +143,7 @@ private val topics = listOf(
             "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mud Shot (weak, but each hit lowers the foe's accuracy 10%, stacking), Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
             "Every level gives a small box of items that gets better as you level. Better orbs unlock in the shop at levels 10 (Great), 25 (Mega), 50 (Ultra) and 75 (Perfect: always tames, 2,000 gold; you also get one at level 100).",
             "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
-            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), or at once with an Ether.",
+            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), at once with an Ether, or with a full night's sleep (7 hours or more, synced or logged on the Health card, once a day).",
             "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
             "A weapon of your class also adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off until you've fought 10 battles with that particular weapon.",
             "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",

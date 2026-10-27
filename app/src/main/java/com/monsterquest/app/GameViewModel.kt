@@ -512,6 +512,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                     if (s != state) set(s)
                 }
             }
+            restFromSleep()
             if (thenRecap && !showRecap && com.monsterquest.core.Recap.due(state, System.currentTimeMillis())) {
                 // Let the loading screen finish first.
                 kotlinx.coroutines.delay(2_200)
@@ -521,8 +522,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Logs a night by hand (when there's no Health Connect sleep data). */
-    fun logSleep(startMs: Long, endMs: Long) =
+    fun logSleep(startMs: Long, endMs: Long) {
         set(com.monsterquest.core.SleepLog.record(state, com.monsterquest.core.SleepNight(startMs, endMs, manual = true)))
+        restFromSleep()
+    }
+
+    /** A full night's sleep that ended today refills Energy (once a day). */
+    private fun restFromSleep() {
+        val u = com.monsterquest.core.SleepLog.restEnergy(state, System.currentTimeMillis())
+        if (u.state != state) set(u.state)
+        if (u.message.isNotEmpty()) message = u.message
+    }
 
     /** The morning recap is on screen. */
     var showRecap by mutableStateOf(false)

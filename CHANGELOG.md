@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.37.1
+
+- **Sleep refills Energy:** a full night's sleep (7 hours or more) that
+  ended this morning, synced from Health Connect or logged by hand on the
+  Health card, refills your Energy. Once a day; a short night doesn't, and
+  an old night doesn't count.
+
 ## 1.37.0
 
 - **Dual types:** 14 final forms gain a second type (earlier forms keep one).

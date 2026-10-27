@@ -321,6 +321,8 @@ data class GameState(
     val sleep: Map<Long, SleepNight> = emptyMap(),
     /** What each recent day brought (levels, XP, loot, healing, tasks), for the morning recap. */
     val tallies: Map<Long, DayTally> = emptyMap(),
+    /** Epoch day a full night's sleep last refilled the hero's Energy. */
+    val sleepEnergyDay: Long? = null,
     /** Epoch day the morning recap was last shown. */
     val recapShownDay: Long? = null,
     /** Epoch day [stepsToday] belongs to. */

@@ -24,10 +24,16 @@ data class SleepNight(
     val hasStages: Boolean get() = deepMin + lightMin + remMin > 0
 }
 
-/** The sleep log: one night per wake-up day, about two months kept. No rewards; it's just for you. */
+/**
+ * The sleep log: one night per wake-up day, about two months kept. A full
+ * night (at least [FULL_NIGHT_MIN]) that ended today refills the hero's Energy,
+ * once a day; otherwise there are no rewards.
+ */
 object SleepLog {
     /** A good night (8 hours) fills the chart's bar. */
     const val GOAL_MIN = 8 * 60
+    /** Sleep at least this long and your Energy is full in the morning. */
+    const val FULL_NIGHT_MIN = 7 * 60
     private const val DAYS_KEPT = 60
 
     fun wakeDay(n: SleepNight, zone: ZoneId): Long = Instant.ofEpochMilli(n.endMs).atZone(zone).toLocalDate().toEpochDay()
@@ -57,6 +63,22 @@ object SleepLog {
     /** Average sleep over the nights logged this week, in minutes, or null if none. */
     fun weekAverage(state: GameState, today: LocalDate): Int? =
         week(state, today).mapNotNull { it.second?.asleepMin }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+
+    /**
+     * Last night was a full night's sleep: refill the hero's Energy. Only for the
+     * night that ended today, and only once a day.
+     */
+    fun restEnergy(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Update {
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        val night = lastNight(state, today) ?: return Update(state, "")
+        if (night.asleepMin < FULL_NIGHT_MIN || state.sleepEnergyDay == today.toEpochDay()) return Update(state, "")
+        val s = state.copy(sleepEnergyDay = today.toEpochDay())
+        if (state.heroEnergyUsed <= 0) return Update(s, "")
+        return Update(
+            s.copy(heroEnergyUsed = 0, energyRegenMs = nowMs),
+            "A full night's sleep (${label(night.asleepMin)}): your Energy is restored!",
+        )
+    }
 
     /** "7h 35m". */
     fun label(minutes: Int): String = "${minutes / 60}h ${"%02d".format(minutes % 60)}m"

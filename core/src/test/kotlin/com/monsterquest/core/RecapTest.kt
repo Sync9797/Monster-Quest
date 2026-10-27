@@ -84,4 +84,22 @@ class RecapTest {
         assertEquals(s0.gold, s.gold)
         assertEquals(s0.hero, s.hero)
     }
+
+    @Test
+    fun aFullNightRefillsEnergyOncePerDay() {
+        val tired = started().copy(heroEnergyUsed = 30, energyRegenMs = at(6))
+        // A short night: no refill.
+        val short = SleepLog.record(tired, SleepNight(at(1, d = day), at(6, d = day)), zone)
+        assertEquals(30, SleepLog.restEnergy(short, at(8), zone).state.heroEnergyUsed)
+        // A full night (7h+) that ended today: Energy full, once.
+        val full = SleepLog.record(tired, SleepNight(at(23, d = day.minusDays(1)), at(7, d = day)), zone)
+        val rested = SleepLog.restEnergy(full, at(8), zone)
+        assertEquals(0, rested.state.heroEnergyUsed)
+        assertTrue("Energy is restored" in rested.message)
+        val again = rested.state.copy(heroEnergyUsed = 20)
+        assertEquals(20, SleepLog.restEnergy(again, at(12), zone).state.heroEnergyUsed)
+        // Last night only: a full night from days ago doesn't count today.
+        val old = SleepLog.record(tired, SleepNight(at(23, d = day.minusDays(3)), at(7, d = day.minusDays(2))), zone)
+        assertEquals(30, SleepLog.restEnergy(old, at(8), zone).state.heroEnergyUsed)
+    }
 }
