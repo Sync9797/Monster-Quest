@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.37.2
+
+- **How to play:** a new first section, "What is Monster Quest?", explains
+  the idea: an adventure RPG tied to exploring the real world and to your
+  own to-do list, where getting work done, walking, resting and time off
+  your screen all power your adventure. A new "Health: walking, sleep and
+  water" section explains the Health card and how walking and sleep help
+  in the game.
+
 ## 1.37.1
 
 - **Sleep refills Energy:** a full night's sleep (7 hours or more) that

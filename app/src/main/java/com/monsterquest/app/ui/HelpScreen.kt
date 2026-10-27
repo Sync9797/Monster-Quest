@@ -34,6 +34,15 @@ private class HelpTopic(val icon: GameIcon, val title: String, val points: List<
 
 private val topics = listOf(
     HelpTopic(
+        GameIcon.STAR, "What is Monster Quest?",
+        listOf(
+            "Monster Quest is an adventure RPG tied to the real world: you explore your own neighborhood to find, fight and tame monsters, visit shrines and raid dens.",
+            "It's also your own to-do list and planner. Your tasks and calendar events are your quests, and finishing them powers your adventure: XP for your hero, gold, hunt tokens, and the Silver and Gold shrines that open when you keep up through the week.",
+            "Living well pays off too. Walking levels you and your monsters up, heals them, opens loot boxes and draws monsters to you. Time away from your screen (phone-free sessions) earns loot boxes. A full night's sleep refills your Energy.",
+            "So the more you get done, move and rest in real life, the stronger your hero and team grow in the game.",
+        ),
+    ),
+    HelpTopic(
         GameIcon.QUESTS, "Quests: get work done",
         listOf(
             "Your phone's calendar events become quests automatically. To add something with a date, add it in your calendar (the Calendar button opens it), then tap Sync if it hasn't shown up yet.",
@@ -58,11 +67,20 @@ private val topics = listOf(
         GameIcon.WALK, "Walking: monsters come to you",
         listOf(
             "Every 100 steps gives you and your battle party 10 XP and heals 10 HP.",
-            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count) and a water tracker. Tap its title to open or fold it. Water is just for you: it pays no rewards. A full night's sleep (7 hours or more) refills your Energy, once a day. Sleep syncs from Health Connect, or log it by hand.",
-            "Each morning, the first time you open the game, a recap shows what yesterday brought (levels, monster XP, loot, HP restored, tasks) and how you slept.",
             "Every 600 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 4 wait beside you on the map for 4 hours.",
             "Monsters hear you moving: while you walk, every monster nearby closes in on you much faster.",
             "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",
+        ),
+    ),
+    HelpTopic(
+        GameIcon.HEART, "Health: walking, sleep and water",
+        listOf(
+            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count), your water and your sleep. Tap its title to open or fold it.",
+            "Walking helps your adventure: every 100 steps gives you and your battle party 10 XP, heals 10 HP and restores 2 Energy. Steps also open loot boxes, bring monsters to follow you, and count toward the 5,000-step goal on the calendar.",
+            "Sleep helps too: a full night (7 hours or more) that ended this morning refills your Energy, once a day. Sleep syncs from Health Connect (Samsung Health, Fitbit, Google Fit...) with Sync sleep, or tap Log sleep to enter it by hand. The card shows last night, its stages when your watch records them, and the week.",
+            "Water is just for you: tap + for each glass and set a daily goal. It pays no rewards.",
+            "Each morning, the first time you open the game, a recap shows what yesterday brought (steps, levels, monster XP, loot, HP restored and tasks done) and how you slept.",
+            "Your monsters also rest on their own: everyone heals 5% of their HP each hour, and fainted monsters wake after about 2 hours.",
         ),
     ),
     HelpTopic(
@@ -167,7 +185,7 @@ fun HelpScreen(onBack: () -> Unit) {
                 TextButton(onClick = onBack) { Text("Back") }
             }
             Text(
-                "Monster Quest rewards getting things done, staying off your phone and getting out for a walk.",
+                "An adventure RPG powered by your real life: get things done, get outside and rest well to grow stronger.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
