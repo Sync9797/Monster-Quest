@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 class QuestWidget : GlanceAppWidget() {
     /** Small: the next few things. Wider or taller: every section. */
     override val sizeMode = SizeMode.Responsive(
-        setOf(SMALL, WIDE, LARGE),
+        setOf(SMALL, SQUARE, WIDE, LARGE),
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -60,6 +60,8 @@ class QuestWidget : GlanceAppWidget() {
 
     companion object {
         val SMALL = DpSize(110.dp, 110.dp)
+        /** About 2x2 cells: the card with what's next and today's date. */
+        val SQUARE = DpSize(160.dp, 160.dp)
         val WIDE = DpSize(250.dp, 110.dp)
         val LARGE = DpSize(250.dp, 250.dp)
 
@@ -81,6 +83,11 @@ private sealed interface Entry {
 private fun WidgetBody(state: GameState) {
     val size = LocalSize.current
     val summary = HomeWidget.summary(state, System.currentTimeMillis())
+    // Around 2x2: a card with what's next at the top and today's date at the bottom.
+    if (size.width < 220.dp && size.height < 220.dp) {
+        DateCard(summary.next)
+        return
+    }
     val compact = size.height < 180.dp || size.width < 200.dp
     val colors = GlanceTheme.colors
     // Small widgets get one combined list; bigger ones get a section per kind.
@@ -160,6 +167,47 @@ private fun LineRow(line: HomeWidget.Line) {
                 color = if (line.done) colors.onSurfaceVariant else if (line.urgent) colors.onSecondaryContainer else colors.onSurface,
                 fontSize = 13.sp,
             ),
+            maxLines = 1,
+        )
+    }
+}
+
+/**
+ * The 2x2 widget: the next event, task or reminder at the top (with when),
+ * and today's date in large type at the bottom, on a wallpaper-tinted card.
+ */
+@Composable
+private fun DateCard(next: HomeWidget.Line?) {
+    val colors = GlanceTheme.colors
+    val today = java.time.LocalDate.now()
+    val locale = java.util.Locale.getDefault()
+    Column(
+        GlanceModifier
+            .fillMaxSize()
+            .background(colors.secondaryContainer)
+            .cornerRadius(28.dp)
+            .padding(16.dp)
+            .clickable(actionStartActivity<MainActivity>()),
+    ) {
+        Text(
+            next?.title ?: "All clear",
+            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 18.sp, fontWeight = FontWeight.Bold),
+            maxLines = 2,
+        )
+        Text(
+            next?.time ?: "Nothing planned",
+            style = TextStyle(color = if (next?.urgent == true) colors.primary else colors.onSecondaryContainer, fontSize = 13.sp),
+            maxLines = 1,
+        )
+        Spacer(GlanceModifier.defaultWeight())
+        Text(
+            today.dayOfMonth.toString(),
+            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 52.sp, fontWeight = FontWeight.Bold),
+        )
+        Text(
+            "${today.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, locale)}, " +
+                today.month.getDisplayName(java.time.format.TextStyle.SHORT, locale),
+            style = TextStyle(color = colors.onSecondaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold),
             maxLines = 1,
         )
     }

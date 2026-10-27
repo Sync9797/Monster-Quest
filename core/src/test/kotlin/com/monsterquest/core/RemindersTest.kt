@@ -108,5 +108,15 @@ class HomeWidgetTest {
         // Dated to-dos first, then tasks without a date.
         assertEquals(listOf("Report", "Water plants"), w.todos.map { it.title })
         assertFalse(w.isEmpty)
+        // Next up: the Make bed reminder rang at 6:00 and is still open, so it comes first.
+        assertEquals("Make bed", w.next?.title)
+        assertEquals("Now", w.next?.time)
+        // Once it's done, the dentist at 10:00 is next.
+        val done = Reminders.complete(s, s.reminders.first { it.title == "Make bed" }.id, now, zone).state
+        val next = HomeWidget.nextUp(done, now, zone)
+        assertEquals("Dentist", next?.title)
+        assertEquals("Today 10:00 AM", next?.time)
+        // Nothing planned: nothing next.
+        assertNull(HomeWidget.nextUp(GameState(), now, zone))
     }
 }

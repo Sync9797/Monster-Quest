@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.25.0
+
+- **2x2 widget card:** at about 2x2 the home-screen widget becomes a card:
+  the next thing coming up at the top (a reminder that's ringing, the next
+  calendar event, the next due to-do, or a task) with when it is, and
+  today's date in large type at the bottom ("27" and "Tuesday, Oct"), on a
+  card tinted from your wallpaper. New widgets start at 2x2. Make it wider
+  or taller for the full list of reminders, calendar quests and to-dos.
+
 ## 1.24.1
 
 - On a single screen (a closed phone) the home page keeps just the welcome

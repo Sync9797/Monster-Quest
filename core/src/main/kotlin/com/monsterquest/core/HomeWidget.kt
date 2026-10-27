@@ -16,6 +16,8 @@ object HomeWidget {
         val reminders: List<Line>,
         val calendar: List<Line>,
         val todos: List<Line>,
+        /** The next thing coming up (for the 2x2 card), or null if nothing is planned. */
+        val next: Line? = null,
     ) {
         val isEmpty: Boolean get() = reminders.isEmpty() && calendar.isEmpty() && todos.isEmpty()
     }
@@ -50,6 +52,44 @@ object HomeWidget {
             .map { t ->
                 Line(t.dueMs?.let { Planner.relative(it, nowMs) }, t.title, urgent = Planner.isDueSoon(t, nowMs) || Planner.isOverdue(t, nowMs))
             }
-        return Summary(state.hero.level, reminders, calendar, todos)
+        return Summary(state.hero.level, reminders, calendar, todos, nextUp(state, nowMs, zone))
+    }
+
+    /** "3:00 PM" today, "Tomorrow 9:00 AM", or "Oct 30" further out. */
+    private fun whenLabel(ms: Long, nowMs: Long, zone: ZoneId): String {
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        val d = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+        return when {
+            d == today -> "Today ${clock(ms, zone)}"
+            d == today.plusDays(1) -> "Tomorrow ${clock(ms, zone)}"
+            else -> "${d.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())} ${d.dayOfMonth}"
+        }
+    }
+
+    /**
+     * The next thing to do: overdue to-dos first, then whatever is soonest of
+     * today's open reminders, calendar quests and dated to-dos; otherwise the
+     * top task without a date.
+     */
+    fun nextUp(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Line? {
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        data class Cand(val at: Long, val line: Line)
+        val open = state.tasks.filter { !it.completed }
+        val cands = buildList {
+            state.reminders.filter { it.ringsOn(today) && it.history[today.toEpochDay()] == null }.forEach { r ->
+                val at = Reminders.ringAt(r, today, zone)
+                add(Cand(at, Line(if (at <= nowMs) "Now" else whenLabel(at, nowMs, zone), r.title, urgent = at <= nowMs)))
+            }
+            open.filter { it.source == TaskSource.CALENDAR && (it.endMs ?: it.startMs ?: 0) >= nowMs }.forEach { t ->
+                val at = t.startMs ?: return@forEach
+                add(Cand(at, Line(if (at <= nowMs) "Happening now" else whenLabel(at, nowMs, zone), t.title, urgent = Planner.isDueSoon(t, nowMs))))
+            }
+            open.filter { it.source == TaskSource.MANUAL && it.dueMs != null }.forEach { t ->
+                val at = t.dueMs!!
+                add(Cand(at, Line(if (at < nowMs) "Overdue" else "Due ${whenLabel(at, nowMs, zone)}", t.title, urgent = at < nowMs || Planner.isDueSoon(t, nowMs))))
+            }
+        }
+        cands.minByOrNull { it.at }?.let { return it.line }
+        return open.filter { it.source == TaskSource.MANUAL }.maxByOrNull { it.priority.ordinal }?.let { Line("Task", it.title) }
     }
 }
