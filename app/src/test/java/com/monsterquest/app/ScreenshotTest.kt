@@ -223,9 +223,13 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Newest").assertExists()
         rule.onNodeWithText("Potential").assertExists()
     }
-    @Test fun bag() { val v = vm(); shot("05_bag") { AppRoot(v, Tab.BAG) } }
+    @Test fun bag() {
+        val v = vm()
+        shot("05_bag") { AppRoot(v, Tab.BAG) }
         // Storage is in the shop now: free upgrades and pricey expansions.
-        check(rule.onAllNodesWithText("Bag expansion").fetchSemanticsNodes().isNotEmpty() || rule.onAllNodesWithText("Shop", substring = true).fetchSemanticsNodes().isEmpty()) { "storage in the shop" }
+        rule.onNodeWithText("Bag expansion").assertExists()
+        rule.onNodeWithText("Monster storage expansion").assertExists()
+    }
 
     @Test fun map() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
