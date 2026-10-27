@@ -84,7 +84,7 @@ fun JournalTab(vm: GameViewModel) {
             }
         }
         items(all, key = { it.id }) { sp ->
-            JournalCell(all.indexOf(sp) + 1, sp, seen = sp.id in s.seen, caught = sp.id in s.caught, shiny = sp.id in s.shinyCaught) { open = sp }
+            JournalCell(Bestiary.number(sp), sp, seen = sp.id in s.seen, caught = sp.id in s.caught, shiny = sp.id in s.shinyCaught) { open = sp }
         }
     }
     open?.let { sp -> JournalEntry(vm, sp) { open = null } }

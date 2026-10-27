@@ -744,8 +744,8 @@ internal fun drawMonster(c: Canvas, w: Float, h: Float, sp: Species, dim: Boolea
         drawLegendary(c, w, h, sp, dim, shiny)
         return
     }
-    // Evolved forms are whole new creatures with their own artwork.
-    val beast = if (sp.stage >= 2) Beasts.forSpecies(sp.id) else null
+    // Evolved forms (and every form of the newer lines) are whole creatures with their own artwork.
+    val beast = Beasts.forSpecies(sp.id)
     c.save()
     // Crop to where the creature actually is, so it fills its frame (beasts spread wider).
     if (beast != null) ArtPainter.fitRegion(c, w, h, 2f, 0f, 196f, 196f) else ArtPainter.fitRegion(c, w, h, 22f, 28f, 156f, 166f)

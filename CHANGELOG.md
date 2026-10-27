@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.33.0
+
+- **35 new monsters, five per type,** each with all-new artwork unlike
+  anything already in the game. Every type gets a three-stage line and a
+  two-stage line (one big evolution at level 24). No new legendaries.
+  - Fire: Cinderskink > Magmander > Pyrosaur (lizard to frilled dinosaur);
+    Cinderlamb > Blazeram.
+  - Electric: Joltlet > Voltape > Thunderkong (monkey to gorilla);
+    Zaplume > Tempest Jelly.
+  - Water: Puddlet > Croaktide > Torrentoad (frogs); Pincerling > Cragclaw
+    (hermit crab to crab).
+  - Flight: Hootling > Strixwind > Elder Strix (owls); Pterix > Skyreaver
+    (pterosaurs).
+  - Gas: Sporelet > Fungloom > Mycolord (mushrooms); Stinkit > Reekmane
+    (skunks).
+  - Corrupt: Hexling > Webstalker > Widowmaw (spiders); Nightling >
+    Vampyrex (bats).
+  - Earth: Rollpip > Pangolurk > Ironscale (pangolins); Stubhorn > Rockrhino.
+  - Each line has its own level-30 skill, and they all appear in the wild.
+- **Journal numbering:** regular monsters first, then the two mythics, then
+  the seven legendaries at the very end (now #111 to #119).
+
 ## 1.32.0
 
 - **Dark map:** Settings > Appearance > Map: Match app (dark with the dark

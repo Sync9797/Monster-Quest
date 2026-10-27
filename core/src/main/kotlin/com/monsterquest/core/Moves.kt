@@ -384,9 +384,9 @@ object Moves {
     /**
      * Who can't learn Smack Down: creatures with nothing to throw a rock
      * with, or that live in the water or the air: fish, slimes, wisps and
-     * the fairy, and the Sky Serpent.
+     * the fairy, the Sky Serpent and the jellyfish.
      */
-    private val noSmackDown = listOf("Bubblefin", "Goopling", "Gloomwisp", "Prism Fairy", "Sky Serpent")
+    private val noSmackDown = listOf("Bubblefin", "Goopling", "Gloomwisp", "Prism Fairy", "Sky Serpent", "Zaplume")
 
     fun canLearnSmackDown(species: Species): Boolean = noSmackDown.none { species.family.startsWith(it) }
 

@@ -256,8 +256,8 @@ class GameTest {
 
     @Test
     fun allMonstersWithEvolutionLines() {
-        assertEquals(84, Bestiary.all.size)
-        assertEquals(84, Bestiary.all.map { it.id }.toSet().size)
+        assertEquals(119, Bestiary.all.size)
+        assertEquals(119, Bestiary.all.map { it.id }.toSet().size)
         // One legendary per type, and they all guard Gold shrines.
         val legendaries = Bestiary.all.filter { it.rarity == Rarity.LEGENDARY }
         assertEquals(Element.typed.toSet(), legendaries.map { it.element }.toSet())
@@ -265,7 +265,8 @@ class GameTest {
         assertTrue(legendaries.all { it in Bestiary.bosses })
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
-        assertEquals(17, lines.values.count { it.size == 3 })
+        assertEquals(24, lines.values.count { it.size == 3 })
+        assertEquals(7, lines.values.count { it.size == 2 })
         // Starters are #1, #4, #7 and #10, each a three-stage line.
         assertEquals(GameEngine.starters, listOf(Bestiary.all[0].id, Bestiary.all[3].id, Bestiary.all[6].id, Bestiary.all[9].id))
         GameEngine.starters.forEach { assertEquals(3, Bestiary.lineOf(Bestiary.get(it)).size) }

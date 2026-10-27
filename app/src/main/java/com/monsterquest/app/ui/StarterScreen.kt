@@ -64,7 +64,7 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                             MonsterArt(sp, Modifier.size(72.dp))
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                val number = Bestiary.all.indexOf(sp) + 1
+                                val number = Bestiary.number(sp)
                                 val line = Bestiary.lineOf(sp)
                                 Text("#%03d  ".format(number) + sp.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Text(line.joinToString(" > ") { it.name }, fontSize = 11.sp, color = Gold)

@@ -27,12 +27,13 @@ data class Species(
 )
 
 /**
- * All 84 monsters:
+ * All 119 monsters, numbered in this order (mythics and legendaries last):
  * - 4 starter lines (#1, #4, #7, #10): pseudo-legendary three-stage lines, the
  *   strongest monsters short of the legendaries. Very rare in the wild.
  * - 6 four-stage lines (3 evolutions), one per type.
  * - 6 three-stage hound lines (2 evolutions): one breed per type.
  * - 5 more three-stage lines: slime, rock golem, thunderbird, shell turtle and imp.
+ * - 1.33: five more per type: a three-stage and a two-stage line each.
  * - 2 rare one-stage mythics.
  * - 6 legendary bosses, one per type, found only at boss shrines.
  */
@@ -44,6 +45,10 @@ object Bestiary {
     private val threeStageRarity = listOf(Rarity.COMMON, Rarity.UNCOMMON, Rarity.RARE)
     private val fourStageLevels = listOf(14, 28, 42)
     private val threeStageLevels = listOf(16, 32)
+    // Two-stage lines: one big evolution.
+    private val twoStageMultipliers = listOf(1.0, 1.75)
+    private val twoStageRarity = listOf(Rarity.COMMON, Rarity.RARE)
+    private val twoStageLevels = listOf(24)
 
     private data class Member(val id: String, val name: String, val special: String)
 
@@ -66,9 +71,10 @@ object Bestiary {
         starter: Boolean = false,
     ): List<Species> {
         val four = members.size == 4
-        val mults = if (starter) starterMultipliers else if (four) fourStageMultipliers else threeStageMultipliers
-        val rarities = if (starter) starterRarity else if (four) fourStageRarity else threeStageRarity
-        val levels = if (starter) starterLevels else if (four) fourStageLevels else threeStageLevels
+        val two = members.size == 2
+        val mults = if (starter) starterMultipliers else if (four) fourStageMultipliers else if (two) twoStageMultipliers else threeStageMultipliers
+        val rarities = if (starter) starterRarity else if (four) fourStageRarity else if (two) twoStageRarity else threeStageRarity
+        val levels = if (starter) starterLevels else if (four) fourStageLevels else if (two) twoStageLevels else threeStageLevels
         return members.mapIndexed { i, m ->
             Species(
                 id = m.id,
@@ -258,6 +264,78 @@ object Bestiary {
             Member("archfiend", "Archfiend", "Infernal Pact"),
         )))
 
+        // ---- 1.33: five more per type (a three-stage and a two-stage line each) ----
+        // Fire
+        addAll(line("Cinderskink line", Element.FIRE, StatBlock(38, 15, 12, 9, 14), SkillKind.PHYSICAL, listOf(
+            Member("cinderskink", "Cinderskink", "Tail Flare"),
+            Member("magmander", "Magmander", "Magma Gills"),
+            Member("pyrosaur", "Pyrosaur", "Frill Inferno"),
+        )))
+        addAll(line("Cinderlamb line", Element.FIRE, StatBlock(44, 12, 14, 12, 10), SkillKind.MAGICAL, listOf(
+            Member("cinderlamb", "Cinderlamb", "Smoulder Wool"),
+            Member("blazeram", "Blazeram", "Blazing Horns"),
+        )))
+        // Electric
+        addAll(line("Joltlet line", Element.ELECTRIC, StatBlock(36, 13, 13, 8, 18), SkillKind.PHYSICAL, listOf(
+            Member("joltlet", "Joltlet", "Tail Zap"),
+            Member("voltape", "Voltape", "Charged Knuckles"),
+            Member("thunderkong", "Thunderkong", "Thunder Pound"),
+        )))
+        addAll(line("Zaplume line", Element.ELECTRIC, StatBlock(38, 8, 17, 10, 13), SkillKind.MAGICAL, listOf(
+            Member("zaplume", "Zaplume", "Static Sting"),
+            Member("tempest_jelly", "Tempest Jelly", "Storm Tendrils"),
+        )))
+        // Water
+        addAll(line("Puddlet line", Element.WATER, StatBlock(42, 12, 13, 11, 13), SkillKind.MAGICAL, listOf(
+            Member("puddlet", "Puddlet", "Puddle Splash"),
+            Member("croaktide", "Croaktide", "Tide Croak"),
+            Member("torrentoad", "Torrentoad", "Torrent Spout"),
+        )))
+        addAll(line("Pincerling line", Element.WATER, StatBlock(44, 14, 8, 18, 7), SkillKind.PHYSICAL, listOf(
+            Member("pincerling", "Pincerling", "Shell Pinch"),
+            Member("cragclaw", "Cragclaw", "Crushing Claws"),
+        )))
+        // Flight
+        addAll(line("Hootling line", Element.FLIGHT, StatBlock(38, 10, 16, 10, 15), SkillKind.MAGICAL, listOf(
+            Member("hootling", "Hootling", "Hoot"),
+            Member("strixwind", "Strixwind", "Night Gust"),
+            Member("elder_strix", "Elder Strix", "Rune Gale"),
+        )))
+        addAll(line("Pterix line", Element.FLIGHT, StatBlock(36, 15, 10, 9, 18), SkillKind.PHYSICAL, listOf(
+            Member("pterix", "Pterix", "Beak Jab"),
+            Member("skyreaver", "Skyreaver", "Reaving Dive"),
+        )))
+        // Gas
+        addAll(line("Sporelet line", Element.GAS, StatBlock(44, 10, 15, 13, 8), SkillKind.MAGICAL, listOf(
+            Member("sporelet", "Sporelet", "Spore Puff"),
+            Member("fungloom", "Fungloom", "Gloom Spores"),
+            Member("mycolord", "Mycolord", "Mycelium Storm"),
+        )))
+        addAll(line("Stinkit line", Element.GAS, StatBlock(40, 12, 14, 11, 13), SkillKind.MAGICAL, listOf(
+            Member("stinkit", "Stinkit", "Stink Spray"),
+            Member("reekmane", "Reekmane", "Reek Cloud"),
+        )))
+        // Corrupt
+        addAll(line("Hexling line", Element.CORRUPT, StatBlock(36, 14, 14, 9, 16), SkillKind.PHYSICAL, listOf(
+            Member("hexling", "Hexling", "Hex Bite"),
+            Member("webstalker", "Webstalker", "Shadow Web"),
+            Member("widowmaw", "Widowmaw", "Widow's Kiss"),
+        )))
+        addAll(line("Nightling line", Element.CORRUPT, StatBlock(36, 12, 15, 9, 17), SkillKind.MAGICAL, listOf(
+            Member("nightling", "Nightling", "Night Nip"),
+            Member("vampyrex", "Vampyrex", "Blood Drain"),
+        )))
+        // Earth
+        addAll(line("Rollpip line", Element.EARTH, StatBlock(46, 13, 8, 18, 8), SkillKind.PHYSICAL, listOf(
+            Member("rollpip", "Rollpip", "Roll Out"),
+            Member("pangolurk", "Pangolurk", "Scale Slash"),
+            Member("ironscale", "Ironscale", "Iron Rampage"),
+        )))
+        addAll(line("Stubhorn line", Element.EARTH, StatBlock(50, 16, 6, 16, 7), SkillKind.PHYSICAL, listOf(
+            Member("stubhorn", "Stubhorn", "Horn Bump"),
+            Member("rockrhino", "Rockrhino", "Boulder Charge"),
+        )))
+
         // ---- Mythics: rare single-stage monsters, as strong as a final evolution ----
         add(single("mimic", "Mimic", Element.CORRUPT, Rarity.EPIC, mythic(StatBlock(66, 24, 24, 24, 10)), "Treasure Trap", SkillKind.PHYSICAL, 52, false, minWildLevel = 15))
         add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.EPIC, mythic(StatBlock(54, 10, 30, 15, 27)), "Prism Beam", SkillKind.MAGICAL, 52, false, minWildLevel = 15))
@@ -273,6 +351,9 @@ object Bestiary {
     }.map { sp -> evolvedNames[sp.id]?.let { sp.copy(name = it) } ?: sp }
 
     private val byId = all.associateBy { it.id }
+
+    /** Journal number: the order of [all], so mythics and then legendaries come last. */
+    fun number(sp: Species): Int = all.indexOfFirst { it.id == sp.id } + 1
 
     /** Species from older saves, mapped onto the current roster. */
     private val legacyIds = mapOf(

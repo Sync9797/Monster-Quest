@@ -809,7 +809,14 @@ def preview(out_dir):
         cairosvg.svg2png(bytestring=svg(parts).encode(), write_to=f"{out_dir}/{name}.png")
     print(len(BEASTS), "previews in", out_dir)
 
-# Which beast each evolved species becomes (its first form keeps its original art).
+# The 1.33 monsters: every form has its own design (see new_monsters.py).
+import os as _os
+sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from new_monsters import NEW as _NEW
+BEASTS.update(_NEW)
+
+# Which beast each species becomes. The original lines' first forms keep their
+# original art; every form of the newer lines has a design here.
 SPECIES = {
     # Starters: fawn > stag > kirin; baby dragon > drake > wyvern;
     # sea snake > naga > sea dragon; cub > bear > elder bear.
@@ -836,6 +843,21 @@ SPECIES = {
     "coralback": "SNAPPER", "bastion_tortoise": "FORTRESS",                           # turtle > snapper > fortress
     "barkwarden": "THORNKNIGHT", "ancient_treant": "TREANT",                          # sapling > tree knight > treant
     "hexfiend": "WARLOCK", "archfiend": "DEMON",                                      # imp > warlock > demon
+    # 1.33: five more per type, every form its own design
+    "cinderskink": "CINDERSKINK", "magmander": "MAGMANDER", "pyrosaur": "PYROSAUR",    # lizard > salamander > frilled dino
+    "cinderlamb": "CINDERLAMB", "blazeram": "BLAZERAM",                               # lamb > ram
+    "joltlet": "JOLTLET", "voltape": "VOLTAPE", "thunderkong": "BRUTE",               # monkey > ape > gorilla
+    "zaplume": "ZAPLUME", "tempest_jelly": "TEMPESTJELLY",                            # jellyfish > man-o'-war
+    "puddlet": "PUDDLET", "croaktide": "CROAKTIDE", "torrentoad": "TORRENTOAD",       # frogling > frog > giant toad
+    "pincerling": "PINCERLING", "cragclaw": "CRAB",                                   # hermit crab > crab
+    "hootling": "HOOTLING", "strixwind": "STRIXWIND", "elder_strix": "ELDERSTRIX",    # owlet > owl > great owl
+    "pterix": "PTERIX", "skyreaver": "SKYREAVER",                                     # baby pterosaur > pterosaur
+    "sporelet": "SPORELET", "fungloom": "FUNGLOOM", "mycolord": "MYCOLORD",           # mushroom > brute > lord
+    "stinkit": "STINKIT", "reekmane": "REEKMANE",                                     # skunk kit > great skunk
+    "hexling": "HEXLING", "webstalker": "WEBSTALKER", "widowmaw": "SPIDER",           # spiderling > stalker > widow
+    "nightling": "NIGHTLING", "vampyrex": "BATFIEND",                                 # bat > bat fiend
+    "rollpip": "ROLLPIP", "pangolurk": "PANGOLURK", "ironscale": "IRONSCALE",         # balled pangolin > pangolin > armored
+    "stubhorn": "STUBHORN", "rockrhino": "ROCKRHINO",                                 # rhino calf > rhino
 }
 
 import re
@@ -918,7 +940,7 @@ def kotlin():
         lines.append(f'        "{sid}" to "{b}",')
     lines.append("    )")
     lines.append("")
-    lines.append("    /** The design for an evolved species, or null to use its line's original art. */")
+    lines.append("    /** The design for a species, or null to use its line's original art. */")
     lines.append("    fun forSpecies(id: String): List<BPart>? = bySpecies[id]?.let { designs[it] }")
     lines.append("}")
     lines.append("")

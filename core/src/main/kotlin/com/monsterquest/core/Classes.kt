@@ -274,6 +274,21 @@ object MonsterTraits {
         "Shellsnap line" to Trait.THICK_HIDE,     // shells
         "Twiglet line" to Trait.REGENERATION,     // trees regrow
         "Impling line" to Trait.INSOMNIA,         // fiends never sleep
+        // 1.33 lines
+        "Cinderskink line" to Trait.FLAME_BODY,   // a burning tail
+        "Cinderlamb line" to Trait.THICK_HIDE,    // thick wool
+        "Joltlet line" to Trait.QUICK_STEP,       // monkeys dodge
+        "Zaplume line" to Trait.STATIC,           // stinging jelly
+        "Puddlet line" to Trait.REGENERATION,     // frogs regrow
+        "Pincerling line" to Trait.THICK_HIDE,    // shells
+        "Hootling line" to Trait.INSOMNIA,        // owls stay up all night
+        "Pterix line" to Trait.LEVITATE,          // fliers
+        "Sporelet line" to Trait.POISON_POINT,    // poisonous spores
+        "Stinkit line" to Trait.INTIMIDATE,       // nobody wants to get close
+        "Hexling line" to Trait.POISON_POINT,     // venom fangs
+        "Nightling line" to Trait.LEVITATE,       // bats fly
+        "Rollpip line" to Trait.THICK_HIDE,       // armored scales
+        "Stubhorn line" to Trait.INTIMIDATE,      // a charging rhino
         // Mythics
         "Mimic" to Trait.THICK_HIDE,              // it's a chest
         "Prism Fairy" to Trait.LEVITATE,
