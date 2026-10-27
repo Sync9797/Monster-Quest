@@ -230,6 +230,16 @@ abstract class ScreenshotBase(private val device: String) {
         shot("06_map") { AppRoot(v, Tab.MAP) }
     }
 
+    /** The map in dark mode (Settings > Appearance > Map). */
+    @Test fun mapDark() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.updateSettings { it.copy(mapStyle = com.monsterquest.core.MapStyle.DARK) }
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        shot("06b_map_dark") { AppRoot(v, Tab.MAP) }
+        rule.onNodeWithText("dens", substring = true).assertExists()
+    }
+
     @Test fun battle() {
         val v = vm()
         v.hunt()
@@ -375,7 +385,11 @@ abstract class ScreenshotBase(private val device: String) {
         })
     }
 
-    @Test fun settings() { val v = vm(); shot("16_settings") { AppRoot(v, initialSettings = true) } }
+    @Test fun settings() {
+        val v = vm()
+        shot("16_settings") { AppRoot(v, initialSettings = true) }
+        rule.onNodeWithText("Match app").assertExists()
+    }
 
     @Test fun batterySaver() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)

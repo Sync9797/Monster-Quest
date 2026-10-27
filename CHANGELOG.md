@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.32.0
+
+- **Dark map:** Settings > Appearance > Map: Match app (dark with the dark
+  theme), Light or Dark. The dark map keeps the map's own colors (parks
+  green, water blue), just dimmed, and never flashes white while loading.
+- **Cleaner text everywhere:** small text no longer gets the large default
+  line spacing, so descriptions and notes stop looking double-spaced on
+  every screen.
+- **Consistent headings:** the Health card and the Swap slots use the same
+  heading styles as the rest of the game.
+- **Map footer:** what's around (monsters near, tracked, shrines, dens,
+  foes) shows as small pills that wrap neatly instead of one long line.
+
 ## 1.31.0
 
 - **Life Absorb (new Corrupt attack):** dark power, not just dirty tricks.

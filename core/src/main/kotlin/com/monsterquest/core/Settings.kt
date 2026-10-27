@@ -30,6 +30,9 @@ enum class FrameRate(val label: String, val hz: Float?, val description: String)
 @Serializable
 enum class ThemeMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
 
+/** The map's look: follow the app's light/dark theme, or always light or dark. */
+enum class MapStyle(val label: String) { AUTO("Match app"), LIGHT("Light"), DARK("Dark") }
+
 /** The game's own gold-and-teal colors, or the phone's Material You colors. */
 @Serializable
 enum class ColorStyle(val label: String, val description: String) {
@@ -63,6 +66,7 @@ data class Settings(
     val includeAllDayEvents: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val colorStyle: ColorStyle = ColorStyle.GAME,
+    val mapStyle: MapStyle = MapStyle.AUTO,
     /** The Health card on Home is open (true) or folded to one line. */
     val healthOpen: Boolean = false,
 )

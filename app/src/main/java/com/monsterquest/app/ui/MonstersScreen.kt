@@ -264,7 +264,7 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                     }
                     }
                     // Swap slots: they come along and can be sent in mid-battle.
-                    Text("Swap", style = MaterialTheme.typography.titleSmall, color = Gold)
+                    SectionTitle("Swap slots", Modifier.padding(top = 4.dp))
                     Text(
                         "Sent in during battle with Swap, e.g. when a monster faints. Half XP unless they fight.",
                         fontSize = 11.sp,

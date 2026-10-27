@@ -15,6 +15,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.font.FontWeight
 import com.monsterquest.core.ColorStyle
 import com.monsterquest.core.ThemeMode
@@ -139,7 +141,18 @@ private val Type = Typography().let { t ->
         headlineSmall = t.headlineSmall.copy(fontFamily = FontFamily.Serif),
         titleLarge = t.titleLarge.copy(fontFamily = FontFamily.Serif),
         titleMedium = t.titleMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Normal),
-    )
+    ).let { ty ->
+        // Line height in proportion to the text size: the default 24sp line made
+        // small (11-13sp) text look double-spaced on every screen.
+        fun TextStyle.tight() = copy(lineHeight = (lineHeight.value / fontSize.value).coerceAtMost(1.4f).em)
+        ty.copy(
+            displayLarge = ty.displayLarge.tight(), displayMedium = ty.displayMedium.tight(), displaySmall = ty.displaySmall.tight(),
+            headlineLarge = ty.headlineLarge.tight(), headlineMedium = ty.headlineMedium.tight(), headlineSmall = ty.headlineSmall.tight(),
+            titleLarge = ty.titleLarge.tight(), titleMedium = ty.titleMedium.tight(), titleSmall = ty.titleSmall.tight(),
+            bodyLarge = ty.bodyLarge.tight(), bodyMedium = ty.bodyMedium.tight(), bodySmall = ty.bodySmall.tight(),
+            labelLarge = ty.labelLarge.tight(), labelMedium = ty.labelMedium.tight(), labelSmall = ty.labelSmall.tight(),
+        )
+    }
 }
 
 /** Changes whenever the palette does, so everything below redraws in the new colors. */

@@ -84,7 +84,7 @@ fun HealthCard(vm: GameViewModel, nowMs: Long) {
             Heart(Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("Health", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Health", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "${"%,d".format(steps)} steps • $glasses of ${s.waterGoal} glasses",
                     fontSize = 12.sp,

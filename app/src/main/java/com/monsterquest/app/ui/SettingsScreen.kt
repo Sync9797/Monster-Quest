@@ -99,6 +99,13 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                         SmallButton(m.label, { vm.updateSettings { it.copy(themeMode = m) } }, Modifier.weight(1f), outlined = m != prefs.themeMode)
                     }
                 }
+                Text("Map", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 14.dp))
+                Text("A dark map at night is easier on the eyes. Match app follows the theme above.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    com.monsterquest.core.MapStyle.entries.forEach { m ->
+                        SmallButton(m.label, { vm.updateSettings { it.copy(mapStyle = m) } }, Modifier.weight(1f), outlined = m != prefs.mapStyle)
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
                 Text("Colors", fontWeight = FontWeight.SemiBold)
                 ColorStyle.entries.forEach { style ->

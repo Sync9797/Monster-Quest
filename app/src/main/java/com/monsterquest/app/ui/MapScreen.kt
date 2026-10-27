@@ -138,6 +138,7 @@ internal fun hasLocationPermission(context: Context) =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(vm: GameViewModel) {
     val context = LocalContext.current
@@ -222,6 +223,12 @@ fun MapScreen(vm: GameViewModel) {
     var following by remember { mutableStateOf(true) }
 
     val mapView = rememberMapView()
+    val darkMap = when (vm.state.settings.mapStyle) {
+        com.monsterquest.core.MapStyle.AUTO -> isDarkTheme(vm.state.settings.themeMode)
+        com.monsterquest.core.MapStyle.LIGHT -> false
+        com.monsterquest.core.MapStyle.DARK -> true
+    }
+    LaunchedEffect(darkMap) { applyMapStyle(mapView, darkMap) }
     val icons = remember { HashMap<String, BitmapDrawable>() }
     fun sprite(key: String, wDp: Int, hDp: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
         icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw) }
@@ -350,15 +357,22 @@ fun MapScreen(vm: GameViewModel) {
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    when {
-                        vm.loadingPlaces -> "Scanning for shrines…"
-                        else -> "${shrines.count { it.tier == ShrineTier.ITEM }} item • ${shrines.count { it.tier == ShrineTier.SILVER }} silver • " +
-                            "${shrines.count { it.tier == ShrineTier.GOLD }} gold • ${dens.size} dens • ${spawns.size} monsters near • ${tracked.size} tracked • ${villains.size} foes"
-                    },
-                    fontSize = 13.sp,
-                    modifier = Modifier.weight(1f),
-                )
+                if (vm.loadingPlaces) {
+                    Text("Scanning for shrines…", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                } else {
+                    // What's around, as small pills that wrap cleanly instead of one long line.
+                    androidx.compose.foundation.layout.FlowRow(
+                        Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        MapCount("${spawns.size} near")
+                        MapCount("${tracked.size} tracked")
+                        MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
+                        MapCount("${dens.size} dens")
+                        if (villains.isNotEmpty()) MapCount("${villains.size} foes")
+                    }
+                }
                 if (!following) {
                     Column(horizontalAlignment = Alignment.End) {
                         OutlinedButton(onClick = {
@@ -481,6 +495,53 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
 private const val LOOK_AWAY_MS = 10_000L
 
 @Composable
+/** A small rounded count under the map ("8 near", "3 dens"...). */
+@Composable
+private fun MapCount(text: String) {
+    Text(
+        text,
+        fontSize = 12.sp,
+        maxLines = 1,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(50))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+/**
+ * Dark map: the OpenStreetMap tiles inverted and turned back to their own
+ * hues (parks stay green, water blue), a little softer, plus a dark
+ * loading grid so the map never flashes white.
+ */
+private val DarkTiles = android.graphics.ColorMatrixColorFilter(
+    android.graphics.ColorMatrix().apply {
+        // Invert...
+        set(floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f))
+        // ...rotate hue 180 degrees so colors come back...
+        postConcat(android.graphics.ColorMatrix(floatArrayOf(
+            -0.574f, 1.43f, 0.144f, 0f, 0f,
+            0.426f, 0.43f, 0.144f, 0f, 0f,
+            0.426f, 1.43f, -0.856f, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f,
+        )))
+        // ...then soften the contrast and dim slightly, with a hint of the game's teal.
+        postConcat(android.graphics.ColorMatrix(floatArrayOf(
+            0.82f, 0f, 0f, 0f, 10f,
+            0f, 0.86f, 0f, 0f, 14f,
+            0f, 0f, 0.88f, 0f, 16f,
+            0f, 0f, 0f, 1f, 0f,
+        )))
+    },
+)
+
+private fun applyMapStyle(map: MapView, dark: Boolean) {
+    val tiles = map.overlayManager.tilesOverlay
+    tiles.setColorFilter(if (dark) DarkTiles else null)
+    tiles.setLoadingBackgroundColor(if (dark) 0xFF1A2226.toInt() else 0xFFE8E4DC.toInt())
+    tiles.setLoadingLineColor(if (dark) 0xFF232D31.toInt() else 0xFFD8D3CA.toInt())
+    map.invalidate()
+}
+
 private fun rememberMapView(): MapView {
     val context = LocalContext.current
     val mapView = remember {
