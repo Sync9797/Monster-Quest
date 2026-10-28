@@ -394,6 +394,26 @@ class EncountersTest {
     }
 
     @Test
+    fun wildMonstersFightWithRandomMovesFromTheSamePool() {
+        val sp = Bestiary.get("emberkit")
+        val known = Moves.learned(sp, 40).map { it.id }.toSet()
+        val loadouts = (1..30).map { Moves.wildLoadout(sp, 40, Random(it)) }
+        loadouts.forEach { l ->
+            assertEquals(4, l.size)
+            assertEquals(4, l.map { it.id }.toSet().size)
+            assertTrue(l.all { it.id in known })
+            assertTrue(l.count { it.isDamaging } >= 2)
+        }
+        // Not always the same four.
+        assertTrue(loadouts.map { l -> l.map { it.id }.toSet() }.toSet().size > 5)
+        // A map spawn gets them, and keeps them once tamed.
+        val spawn = WildSpawn("s:1:2:3", "emberkit", 40, 0.0, 0.0, 0L)
+        val m = World.spawnMonster(spawn)
+        assertEquals(m.moves, World.spawnMonster(spawn).moves)
+        assertTrue(m.activeMoves.map { it.id }.toSet() == m.moves!!.toSet())
+    }
+
+    @Test
     fun classicMoveCostsWork() {
         fun duel(move: String, hpFrac: Double = 1.0): Pair<Battle, Combatant> {
             val m = Monster.create(Bestiary.get("cinder_hound"), 50, Random(3)).copy(moves = listOf(move))

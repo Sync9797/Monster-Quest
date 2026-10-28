@@ -120,7 +120,7 @@ object Dens {
             val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
             val species = Bestiary.randomWild(r, level, rareBoost = 1.6)
             // Great stats: nothing below 10, and two perfect.
-            val base = Monster.create(species, level, r, shiny = rollShiny(r))
+            val base = Monster.create(species, level, r, shiny = rollShiny(r)).withWildMoves(r)
             val sturdy = base.copy(
                 ivs = StatBlock(
                     maxOf(10, base.ivs.hp), maxOf(10, base.ivs.attack), maxOf(10, base.ivs.magic),

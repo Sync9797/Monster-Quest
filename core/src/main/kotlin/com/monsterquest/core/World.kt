@@ -412,5 +412,5 @@ object World {
     }
 
     fun spawnMonster(spawn: WildSpawn): Monster =
-        Monster.create(spawn.species, spawn.level, Random(spawn.id.hashCode().toLong()), shiny = spawn.shiny)
+        Random(spawn.id.hashCode().toLong()).let { r -> Monster.create(spawn.species, spawn.level, r, shiny = spawn.shiny).withWildMoves(r) }
 }

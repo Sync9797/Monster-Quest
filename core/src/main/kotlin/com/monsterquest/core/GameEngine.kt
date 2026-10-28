@@ -946,7 +946,7 @@ object GameEngine {
     fun startHunt(state: GameState, rng: Random = Random.Default): Pair<GameState, Monster?> {
         if (state.huntTokens <= 0) return state to null
         val level = wildLevel(state.hero.level, rng)
-        val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng).let { it.copy(shiny = rollShiny(rng)) }
+        val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng).let { it.copy(shiny = rollShiny(rng)) }.withWildMoves(rng)
         return state.copy(huntTokens = state.huntTokens - 1) to enemy
     }
 

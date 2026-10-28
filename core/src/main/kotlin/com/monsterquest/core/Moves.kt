@@ -456,5 +456,25 @@ object Moves {
         return (picks + known.filter { it !in picks }).take(MAX_MOVES)
     }
 
+    /**
+     * A wild monster's moves: 4 picked at random from everything it knows at
+     * its level (the same pool your own monsters learn from), leaning toward
+     * the ones it learned most recently, with at least 2 attacks.
+     */
+    fun wildLoadout(species: Species, level: Int, rng: kotlin.random.Random): List<Move> {
+        val known = learnable(species).filter { it.first <= level }.toMutableList()
+        val picks = mutableListOf<Move>()
+        fun draw(from: List<Pair<Int, Move>>): Pair<Int, Move>? {
+            if (from.isEmpty()) return null
+            val w = from.map { 1.0 + 3.0 * it.first / level.coerceAtLeast(1) }
+            var roll = rng.nextDouble() * w.sum()
+            from.forEachIndexed { i, p -> roll -= w[i]; if (roll < 0) return p }
+            return from.last()
+        }
+        repeat(2) { draw(known.filter { it.second.isDamaging })?.let { known.remove(it); picks += it.second } }
+        while (picks.size < MAX_MOVES) { val p = draw(known) ?: break; known.remove(p); picks += p.second }
+        return picks
+    }
+
     const val MAX_MOVES = 4
 }

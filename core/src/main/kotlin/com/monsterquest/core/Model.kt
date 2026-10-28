@@ -362,6 +362,9 @@ data class Monster(
     /** Every move this monster knows at its level. */
     val learnedMoves: List<Move> get() = Moves.learned(species, level)
 
+    /** A wild one: fights with 4 random moves it knows (see [Moves.wildLoadout]), and keeps them if tamed. */
+    fun withWildMoves(rng: kotlin.random.Random): Monster = copy(moves = Moves.wildLoadout(species, level, rng).map { it.id })
+
     /** The (up to) 4 moves it fights with. */
     val activeMoves: List<Move>
         get() {

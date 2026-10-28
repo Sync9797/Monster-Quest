@@ -45,6 +45,6 @@ object SecretEncounters {
     fun encounter(heroLevel: Int, hour: Int, rng: Random): List<Monster> {
         val level = GameEngine.wildLevel(heroLevel, rng)
         val species = Bestiary.randomWild(rng, level, TimeOfDay.of(hour).favored)
-        return List(groupSize(rng)) { Monster.create(species, level, rng, shiny = rollShiny(rng)) }
+        return List(groupSize(rng)) { Monster.create(species, level, rng, shiny = rollShiny(rng)).withWildMoves(rng) }
     }
 }
