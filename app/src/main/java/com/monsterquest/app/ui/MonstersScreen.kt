@@ -602,6 +602,8 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                         color = m.gender?.let { genderColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.typeLabel}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
+                    // Its line's candy, right at the top (spend it further down).
+                    IconText(GameIcon.CANDY, "${GameEngine.candyOf(s, sp)} ${GameEngine.candyName(sp)}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
                     Row {
                         Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
                         if (sp.stages > 1) Text("  • Stage ${sp.stage}/${sp.stages}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
