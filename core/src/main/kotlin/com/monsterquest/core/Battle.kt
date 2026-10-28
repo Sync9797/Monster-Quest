@@ -171,6 +171,7 @@ class Combatant(
             Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
             Trait.REGENERATION -> regenPct += t.regenPct(rank)
             Trait.THICK_HIDE -> hidePct = t.hidePct(rank)
+            Trait.SPORE_COAT -> touchPct = t.touchPct(rank)
             Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT -> {
                 touchStatus = when (t) {
                     Trait.STATIC -> Status.SHOCK
@@ -526,7 +527,7 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 /** Hero spells aimed at an ally (or the hero) instead of an enemy. */
 val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY)
 
-private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT)
+private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT, Trait.SPORE_COAT)
 
 /** Chance (percent) a cursed Frost or Flame piece afflicts the foe. */
 const val CURSE_STATUS_PCT = 35
@@ -724,6 +725,11 @@ class Battle(
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
         }
         log += intro
+        // Stormcallers and Sunbringers bring their weather with them.
+        (allies + enemies).firstOrNull { it.rankOf(Trait.STORMCALLER) > 0 || it.rankOf(Trait.SUNBRINGER) > 0 }?.let { c ->
+            weather = if (c.rankOf(Trait.STORMCALLER) > 0) Weather.RAIN else Weather.DROUGHT
+            log += "${c.name} brings ${if (weather == Weather.RAIN) "a storm: it starts to rain" else "a scorching drought"}!"
+        }
         when (weather) {
             Weather.RAIN -> log += "It's raining: Water and Electric moves are stronger, Fire weaker."
             Weather.DROUGHT -> log += "The heat is fierce: Fire and Corrupt moves are stronger, Water weaker."
@@ -967,6 +973,8 @@ class Battle(
         c.protecting = false
         if (c.energyRegen > 0 && c.mp < c.maxMp) c.mp = minOf(c.maxMp, c.mp + c.energyRegen)
         if (c.regenPct > 0 && c.hp < c.maxHp) heal(c, maxOf(1, c.maxHp * c.regenPct / 100), "${c.name} regenerates")
+        val drinker = c.rankOf(Trait.RAIN_DRINKER)
+        if (drinker > 0 && weather == Weather.RAIN && c.hp < c.maxHp) heal(c, maxOf(1, c.maxHp * Trait.RAIN_DRINKER.rainDrinkPct(drinker) / 100), "${c.name} drinks the rain")
         if (c.scorchTurns > 0) {
             c.scorchTurns--
             hurt(c, c.scorchDamage, c.scorchVerb)
@@ -1377,6 +1385,12 @@ class Battle(
     /** Damage dealt by the move being used (for recoil). */
     private var moveDealt = 0
 
+    /** A side effect's chance for [a]'s move: Fortune makes them likelier. */
+    private fun luck(a: Combatant, chance: Double): Double {
+        val r = a.rankOf(Trait.FORTUNE)
+        return if (r > 0) (chance * Trait.FORTUNE.fortuneMult(r)).coerceAtMost(1.0) else chance
+    }
+
     /** Recoil, cut by Iron Skull (none at all at rank 5). */
     private fun recoil(a: Combatant, amount: Int) {
         val skull = a.rankOf(Trait.IRON_SKULL)
@@ -1483,7 +1497,7 @@ class Battle(
         for (fx in move.effects) {
             if (if (fx.targetsFoe()) !onFoe else !onSelf) continue
             when (fx) {
-                is MoveEffect.Inflict -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
+                is MoveEffect.Inflict -> if (d.alive && d.status == null && rng.nextDouble() < luck(a, fx.chance)) {
                     val turns = rng.nextInt(fx.minTurns, fx.maxTurns + 1)
                     if (fx.status == Status.SLEEP) {
                         if (!fallAsleep(d, turns)) continue
@@ -1501,7 +1515,7 @@ class Battle(
                 } else if (move.power == 0 && d.status != null) {
                     log += "${d.name} is already ${d.status!!.label.lowercase()}."
                 }
-                is MoveEffect.Nightmare -> if (d.alive && d.status == null && rng.nextDouble() < fx.chance) {
+                is MoveEffect.Nightmare -> if (d.alive && d.status == null && rng.nextDouble() < luck(a, fx.chance)) {
                     if (!fallAsleep(d, rng.nextInt(3, 6))) continue
                     d.nightmareDamage = scaled(fx.base, a.level)
                     log += "${d.name} falls into a nightmare!"
@@ -1510,7 +1524,7 @@ class Battle(
                 }
                 is MoveEffect.LowerFoe -> if (d.alive && d.oblivious) {
                     log += "${d.name} is oblivious. Its stats don't drop!"
-                } else if (d.alive && rng.nextDouble() < fx.chance) {
+                } else if (d.alive && rng.nextDouble() < luck(a, fx.chance)) {
                     fx.stats.forEach { d.stages[it] = ((d.stages[it] ?: 0) - 1).coerceAtLeast(-4) }
                     log += "${d.name}'s ${fx.stats.joinToString(", ") { it.label }} fell!"
                 }
@@ -1522,7 +1536,7 @@ class Battle(
                         Weather.CLEAR -> "The weather cleared."
                     }
                 }
-                is MoveEffect.FoeAccuracyDown -> if (rng.nextDouble() < fx.chance) {
+                is MoveEffect.FoeAccuracyDown -> if (rng.nextDouble() < luck(a, fx.chance)) {
                     if (d.rankOf(Trait.KEEN_SIGHT) >= 3) {
                         log += "${d.name}'s Keen Sight keeps its aim!"
                     } else {
@@ -1530,7 +1544,7 @@ class Battle(
                         log += "${d.name}'s accuracy fell!"
                     }
                 }
-                is MoveEffect.FoeMissesNext -> if (rng.nextDouble() < fx.chance) {
+                is MoveEffect.FoeMissesNext -> if (rng.nextDouble() < luck(a, fx.chance)) {
                     if (d.rankOf(Trait.UNSHAKEN) >= 3) {
                         log += "${d.name} is Unshaken!"
                     } else {
@@ -1538,7 +1552,7 @@ class Battle(
                         log += "${d.name} is thrown off balance!"
                     }
                 }
-                is MoveEffect.Flinch -> if (d.alive && d.rankOf(Trait.UNSHAKEN) == 0 && rng.nextDouble() < fx.chance) d.flinch = true
+                is MoveEffect.Flinch -> if (d.alive && d.rankOf(Trait.UNSHAKEN) == 0 && rng.nextDouble() < luck(a, fx.chance)) d.flinch = true
                 is MoveEffect.Scorch -> if (d.alive) {
                     d.scorchTurns = fx.turns
                     d.scorchDamage = scaled(fx.base, a.level)
@@ -1549,7 +1563,7 @@ class Battle(
                     a.protecting = true
                     log += "${a.name} raises a ${move.name}!"
                 }
-                is MoveEffect.RaiseSelf -> if (a.alive && rng.nextDouble() < fx.chance) {
+                is MoveEffect.RaiseSelf -> if (a.alive && rng.nextDouble() < luck(a, fx.chance)) {
                     fx.stats.forEach { a.stages[it] = ((a.stages[it] ?: 0) + fx.stages).coerceAtMost(4) }
                     log += "${a.name}'s ${fx.stats.joinToString(" and ") { it.label }} ${if (fx.stages > 1) "sharply rose" else "rose"}!"
                 }
@@ -1682,10 +1696,13 @@ class Battle(
             else -> a.attack * a.stageMultiplier(BattleStat.ATTACK) * (if (a.scared) SCARED_ATTACK else 1.0)
         }
         val defStage = d.stageMultiplier(BattleStat.DEFENSE).let { if (pierce) minOf(it, 1.0) else it }
-        val def = d.defense * defStage
+        // Hard Scales: tougher while it has a status.
+        val scales = d.rankOf(Trait.HARD_SCALES).takeIf { it > 0 && d.status != null }?.let { 1 + Trait.HARD_SCALES.hardScalesPct(it) / 100.0 } ?: 1.0
+        val def = d.defense * defStage * scales
         val typeMult = type.multiplierAgainst(d.types)
         val sameType = if (type != Element.NEUTRAL && type in a.types) 1.2 else 1.0
-        val crit = rng.nextDouble() < 0.06 + a.critBonus + extraCrit
+        // Plated hides can't be critically hit.
+        val crit = d.rankOf(Trait.PLATED) == 0 && rng.nextDouble() < 0.06 + a.critBonus + extraCrit
         val raw = power * atk / (atk + def) *
             (1 + a.level * 0.08) *
             typeMult * sameType * weather.multiplier(type) *
@@ -1698,7 +1715,10 @@ class Battle(
             (1 + a.ragePct / 100.0 * (1 - a.hpFraction)) *
             (1 - d.hidePct / 100.0) *
             (if (type == Element.EARTH) 1 - d.earthResistPct / 100.0 else 1.0) *
-            lastStand * grit * kindle * burned
+            lastStand * grit * kindle * burned *
+            // Insulated takes less Fire and Electric; Plated less from super-effective hits.
+            (if ((type == Element.FIRE || type == Element.ELECTRIC) && d.rankOf(Trait.INSULATED) > 0) 1 - Trait.INSULATED.insulatedPct(d.rankOf(Trait.INSULATED)) / 100.0 else 1.0) *
+            (if (typeMult > 1.0 && d.rankOf(Trait.PLATED) > 0) 1 - Trait.PLATED.platedPct(d.rankOf(Trait.PLATED)) / 100.0 else 1.0)
         var dmg = max(1, raw.roundToInt())
         // Stalwart: once a battle, a knockout blow at (nearly) full HP leaves it at 1 HP.
         val stalwart = d.rankOf(Trait.STALWART)
@@ -1753,7 +1773,8 @@ class Battle(
             hurt(a, maxOf(1, a.maxHp * Trait.BARBED_HIDE.barbedPct(barbs) / 100), "is cut by ${d.name}'s Barbed Hide")
         }
         // Static, Flame Body and Poison Point punish whoever strikes in close.
-        val touch = d.touchStatus
+        // Spore Coat: sleep, poison or shock, whichever the spores bring.
+        val touch = d.touchStatus ?: if (d.rankOf(Trait.SPORE_COAT) > 0) listOf(Status.SLEEP, Status.POISON, Status.SHOCK).random(rng) else null
         if (touch != null && !useMagic && a.alive && a.status == null && rng.nextInt(100) < d.touchPct) {
             a.status = touch
             a.statusTurns = 3

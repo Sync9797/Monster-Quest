@@ -96,4 +96,30 @@ class TraitPoolsTest {
         assertTrue(b3.log.any { "Stalwart" in it } || b3.log.any { "miss" in it }, b3.log.takeLast(6).toString())
         if (b3.log.any { "Stalwart" in it }) assertTrue(b3.enemies.first().hp >= 1, "held on")
     }
+
+    @Test
+    fun legendariesBringTheirWeatherAndPlatedHidesTakeNoCrits() {
+        val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state
+        val kraken = Monster.create(Bestiary.get("abyss_kraken"), 50, Random(2)).copy(skill = Trait.STORMCALLER)
+        val b = GameEngine.newBattle(s, kraken, EncounterType.BOSS_CHALLENGE, rng = Random(3))
+        assertEquals(Weather.RAIN, b.weather)
+        assertTrue(b.log.any { "brings a storm" in it })
+        val behemoth = Monster.create(Bestiary.get("magma_behemoth"), 50, Random(2)).copy(skill = Trait.SUNBRINGER)
+        assertEquals(Weather.DROUGHT, GameEngine.newBattle(s, behemoth, EncounterType.BOSS_CHALLENGE, rng = Random(3)).weather)
+        // Legendaries' pools lead with their weather.
+        assertEquals(Trait.STORMCALLER, MonsterTraits.pool(Bestiary.get("abyss_kraken")).maxBy { it.second }.first)
+        // A Plated monster is never critically hit.
+        val shell = Monster.create(Bestiary.get("bastion_tortoise"), 40, Random(4)).copy(skill = Trait.PLATED)
+        val hitter = Monster.create(Bestiary.get("emberkit"), 40, Random(5)).copy(moves = listOf("heat_claws"))
+        val st = s.copy(monsters = listOf(hitter), party = listOf(hitter.uid))
+        val fight = GameEngine.newBattle(st, shell, EncounterType.WILD, rng = Random(6), fullTeam = true)
+        repeat(40) {
+            if (fight.outcome != BattleOutcome.ONGOING) return@repeat
+            fight.enemies.forEach { it.hp = it.maxHp }
+            fight.allies.forEach { it.hp = it.maxHp }
+            val c = fight.current ?: return@repeat
+            if (c.key == hitter.uid) fight.act(BattleAction.UseMove("heat_claws")) else fight.act(BattleAction.Defend)
+        }
+        assertTrue(fight.events.none { it.targetKey == Combatant.ENEMY_KEY && it.crit })
+    }
 }

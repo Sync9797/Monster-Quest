@@ -185,7 +185,16 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     KINDLING("Kindling", false, true),
     BARBED_HIDE("Barbed Hide", false, true),
     SCAVENGER("Scavenger", false, true),
-    SNARE_AURA("Snare Aura", false, true);
+    SNARE_AURA("Snare Aura", false, true),
+    PLATED("Plated", false, true),
+    FORTUNE("Fortune", false, true),
+    SPORE_COAT("Spore Coat", false, true),
+    HARD_SCALES("Hard Scales", false, true),
+    RAIN_DRINKER("Rain Drinker", false, true),
+    INSULATED("Insulated", false, true),
+    // Signature skills of legendaries: they bring their weather with them.
+    STORMCALLER("Stormcaller", false, true),
+    SUNBRINGER("Sunbringer", false, true);
 
     /** Floats above the ground: Earth moves can't touch it. */
     val hovers: Boolean get() = this == HOVER || this == LEVITATE
@@ -248,6 +257,17 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     fun scavengePct(rank: Int) = 5 + 5 * rank
     /** Snare Aura: cut to a pack member's chance of running off, in percent. */
     fun snarePct(rank: Int) = 20 * rank
+
+    /** Fortune: side-effect chances of its moves are multiplied by this. */
+    fun fortuneMult(rank: Int) = 1.0 + 0.2 * rank
+    /** Hard Scales: more Defense while it has a status, in percent. */
+    fun hardScalesPct(rank: Int) = 30 + 5 * rank
+    /** Rain Drinker: HP healed each turn in Rain, in percent. */
+    fun rainDrinkPct(rank: Int) = 3 + rank / 2
+    /** Insulated: less Fire and Electric damage, in percent. */
+    fun insulatedPct(rank: Int) = 20 + 6 * rank
+    /** Plated: less damage from super-effective hits, in percent (it can't be critically hit at all). */
+    fun platedPct(rank: Int) = 2 * rank
 
     /** The type a Lightning Eater, Spring Soak or Kindling monster absorbs. */
     val absorbs: Element?
@@ -314,6 +334,14 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
             SCAVENGER -> "${scavengePct(r)}% chance to find an item after a win"
             SNARE_AURA -> if (r >= MAX_SKILL_RANK) "Pack members never run off when one is tamed"
             else "Pack members are ${snarePct(r)}% less likely to run off when one is tamed"
+            PLATED -> "Can't be critically hit, and takes ${platedPct(r)}% less from super-effective hits"
+            FORTUNE -> "Its moves' side effects are x${"%.1f".format(fortuneMult(r))} as likely"
+            SPORE_COAT -> "${touchPct(r)}% chance to put to sleep, poison or shock anything that hits it"
+            HARD_SCALES -> "${hardScalesPct(r)}% more Defense while it has a status"
+            RAIN_DRINKER -> "Heals ${rainDrinkPct(r)}% HP every turn in Rain"
+            INSULATED -> "Takes ${insulatedPct(r)}% less Fire and Electric damage"
+            STORMCALLER -> "Brings Rain to every battle it joins"
+            SUNBRINGER -> "Brings a Drought to every battle it joins"
         }
     }
 
@@ -387,8 +415,8 @@ object MonsterTraits {
         // Starters
         "Voltfawn line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 2, Trait.LAST_STAND to 1),   // a charged stag
         "Cindrake line" to listOf(Trait.LEVITATE to 6, Trait.INTIMIDATE to 2, Trait.KINDLING to 1, Trait.LAST_STAND to 1),     // winged dragons
-        "Drizzlet line" to listOf(Trait.LEVITATE to 6, Trait.REGENERATION to 2, Trait.SPRING_SOAK to 1, Trait.RAIN_RUNNER to 1), // sky serpents
-        "Mosscub line" to listOf(Trait.THICK_HIDE to 4, Trait.GRIT to 2, Trait.STALWART to 2, Trait.LAST_STAND to 2),          // bears
+        "Drizzlet line" to listOf(Trait.LEVITATE to 6, Trait.REGENERATION to 1, Trait.SPRING_SOAK to 1, Trait.RAIN_RUNNER to 1, Trait.RAIN_DRINKER to 1, Trait.HARD_SCALES to 1), // sky serpents
+        "Mosscub line" to listOf(Trait.THICK_HIDE to 4, Trait.GRIT to 2, Trait.STALWART to 2, Trait.LAST_STAND to 2, Trait.INSULATED to 2),          // bears
         // Four-stage lines
         "Emberkit line" to listOf(Trait.QUICK_STEP to 4, Trait.SUN_CHASER to 3, Trait.KINDLING to 2, Trait.LAST_STAND to 1),  // fire cats
         "Zapmouse line" to listOf(Trait.STATIC to 5, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 1, Trait.SCAVENGER to 1),  // rodents
@@ -408,34 +436,34 @@ object MonsterTraits {
         "Goopling line" to listOf(Trait.REGENERATION to 5, Trait.STALWART to 2, Trait.POISON_POINT to 2),                 // slimes reform
         "Pebblit line" to listOf(Trait.FLAME_BODY to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 2),                      // molten rock
         "Zipwing line" to listOf(Trait.LEVITATE to 6, Trait.STATIC to 2, Trait.LIGHTNING_EATER to 1, Trait.MOMENTUM to 1),    // thunderbirds
-        "Shellsnap line" to listOf(Trait.THICK_HIDE to 4, Trait.STALWART to 3, Trait.SPRING_SOAK to 2),                   // tortoises
-        "Twiglet line" to listOf(Trait.REGENERATION to 4, Trait.SUN_CHASER to 3, Trait.THICK_HIDE to 2),                  // trees love the sun
+        "Shellsnap line" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 3, Trait.PLATED to 3, Trait.SPRING_SOAK to 2),                   // tortoises
+        "Twiglet line" to listOf(Trait.REGENERATION to 4, Trait.SUN_CHASER to 3, Trait.THICK_HIDE to 2, Trait.RAIN_DRINKER to 2),                  // trees love the sun
         "Impling line" to listOf(Trait.INSOMNIA to 3, Trait.KINDLING to 3, Trait.GRIT to 2, Trait.OVERBEARING to 1),          // fiends
-        "Cinderskink line" to listOf(Trait.FLAME_BODY to 4, Trait.KINDLING to 3, Trait.LAST_STAND to 2, Trait.SUN_CHASER to 1), // salamanders
-        "Cinderlamb line" to listOf(Trait.THICK_HIDE to 4, Trait.IRON_SKULL to 3, Trait.GRIT to 1),                       // rams: wool and horns
+        "Cinderskink line" to listOf(Trait.FLAME_BODY to 4, Trait.KINDLING to 3, Trait.LAST_STAND to 2, Trait.SUN_CHASER to 1, Trait.HARD_SCALES to 2), // salamanders
+        "Cinderlamb line" to listOf(Trait.THICK_HIDE to 3, Trait.IRON_SKULL to 3, Trait.INSULATED to 3, Trait.GRIT to 1),                       // rams: wool and horns
         "Joltlet line" to listOf(Trait.QUICK_STEP to 4, Trait.MOMENTUM to 3, Trait.LIGHTNING_EATER to 1),                 // monkeys
         "Zaplume line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.SPRING_SOAK to 2, Trait.LEVITATE to 1), // drifting jellies
-        "Puddlet line" to listOf(Trait.RAIN_RUNNER to 3, Trait.REGENERATION to 3, Trait.SPRING_SOAK to 2, Trait.POISON_POINT to 1), // frogs
-        "Pincerling line" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.OBLIVIOUS to 2, Trait.SCAVENGER to 1, Trait.RAIN_RUNNER to 1), // crabs
+        "Puddlet line" to listOf(Trait.RAIN_RUNNER to 3, Trait.REGENERATION to 2, Trait.SPRING_SOAK to 2, Trait.RAIN_DRINKER to 2, Trait.POISON_POINT to 1), // frogs
+        "Pincerling line" to listOf(Trait.PLATED to 3, Trait.THICK_HIDE to 2, Trait.STALWART to 2, Trait.OBLIVIOUS to 2, Trait.SCAVENGER to 1, Trait.RAIN_RUNNER to 1), // crabs
         "Hootling line" to listOf(Trait.LEVITATE to 6, Trait.INSOMNIA to 3, Trait.KEEN_SIGHT to 2),                      // owls
         "Pterix line" to listOf(Trait.LEVITATE to 6, Trait.IRON_SKULL to 2, Trait.INTIMIDATE to 1, Trait.KEEN_SIGHT to 1),   // pterosaurs
-        "Sporelet line" to listOf(Trait.POISON_POINT to 4, Trait.REGENERATION to 2, Trait.STALWART to 1),               // mushrooms
+        "Sporelet line" to listOf(Trait.SPORE_COAT to 4, Trait.POISON_POINT to 2, Trait.REGENERATION to 2, Trait.STALWART to 1),               // mushrooms
         "Stinkit line" to listOf(Trait.INTIMIDATE to 4, Trait.POISON_POINT to 2, Trait.GRIT to 1),                      // skunks
         "Hexling line" to listOf(Trait.POISON_POINT to 4, Trait.SNARE_AURA to 3, Trait.INSOMNIA to 1),                  // spiders spin webs
         "Nightling line" to listOf(Trait.LEVITATE to 5, Trait.INSOMNIA to 2, Trait.OVERBEARING to 1),                   // bats
-        "Rollpip line" to listOf(Trait.THICK_HIDE to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 1),                    // armored pangolins
+        "Rollpip line" to listOf(Trait.PLATED to 4, Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.IRON_SKULL to 1),                    // armored pangolins
         "Stubhorn line" to listOf(Trait.IRON_SKULL to 4, Trait.INTIMIDATE to 3, Trait.GRIT to 2, Trait.STALWART to 1),      // charging rhinos
         // Mythics
-        "Mimic" to listOf(Trait.THICK_HIDE to 3, Trait.SNARE_AURA to 3, Trait.SCAVENGER to 2),                          // a treasure chest that bites
-        "Prism Fairy" to listOf(Trait.LEVITATE to 6, Trait.KEEN_SIGHT to 2, Trait.SCAVENGER to 2),
+        "Mimic" to listOf(Trait.SNARE_AURA to 3, Trait.PLATED to 2, Trait.THICK_HIDE to 2, Trait.SCAVENGER to 2),                          // a treasure chest that bites
+        "Prism Fairy" to listOf(Trait.LEVITATE to 6, Trait.FORTUNE to 2, Trait.KEEN_SIGHT to 1, Trait.SCAVENGER to 1),
         // Legendaries
-        "Magma Behemoth" to listOf(Trait.FLAME_BODY to 3, Trait.KINDLING to 2),
-        "Thunder Titan" to listOf(Trait.STATIC to 3, Trait.LIGHTNING_EATER to 2),
+        "Magma Behemoth" to listOf(Trait.SUNBRINGER to 3, Trait.FLAME_BODY to 1, Trait.KINDLING to 1),
+        "Thunder Titan" to listOf(Trait.STORMCALLER to 3, Trait.STATIC to 1, Trait.LIGHTNING_EATER to 1),
         "Sky Serpent" to listOf(Trait.LEVITATE to 8, Trait.OVERBEARING to 2),
-        "Abyss Kraken" to listOf(Trait.INTIMIDATE to 3, Trait.SNARE_AURA to 2, Trait.SPRING_SOAK to 2),                 // tentacles hold on
-        "Miasma Hydra" to listOf(Trait.REGENERATION to 4, Trait.OVERBEARING to 2),
+        "Abyss Kraken" to listOf(Trait.STORMCALLER to 3, Trait.SNARE_AURA to 1, Trait.INTIMIDATE to 1),                 // tentacles hold on
+        "Miasma Hydra" to listOf(Trait.SPORE_COAT to 3, Trait.REGENERATION to 2, Trait.OVERBEARING to 1),
         "Dread Lich" to listOf(Trait.OVERBEARING to 3, Trait.INSOMNIA to 3),
-        "Worldroot Colossus" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.SUN_CHASER to 1),
+        "Worldroot Colossus" to listOf(Trait.SUNBRINGER to 3, Trait.STALWART to 1, Trait.THICK_HIDE to 1),
     )
 
     /** What [species]'s line can roll, with weights (a line with no pool keeps its fixed skill). */

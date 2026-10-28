@@ -38,24 +38,25 @@ its type, and add more from the backlog below when a new monster suits one.
 | Barbed Hide | Rough Skin | Attackers lose 4–8% of their max HP |
 | Scavenger | Pickup | 10–30% chance to find an item after a win |
 | Snare Aura | Arena Trap, Shadow Tag | Pack members 20–100% less likely to run off when one is tamed |
+| Plated | Battle Armor, Shell Armor | Can't be critically hit; 2–10% less from super-effective hits |
+| Fortune | Serene Grace | Side-effect chances ×1.2–2.0 |
+| Spore Coat | Effect Spore | 11–23% to put an attacker to sleep, poison or shock it |
+| Hard Scales | Marvel Scale | +35–55% Defense while statused |
+| Rain Drinker | Rain Dish | Heals 3–5% HP a turn in Rain |
+| Insulated | Thick Fat | 26–50% less Fire and Electric damage |
+| Stormcaller | Drizzle | Brings Rain to every battle (legendary signature: Abyss Kraken, Thunder Titan) |
+| Sunbringer | Drought | Brings a Drought to every battle (legendary signature: Magma Behemoth, Worldroot Colossus) |
 
 ## Backlog (ready when new monsters fit them)
 
 ### Battle, easy
-- **Hard Scales** (Marvel Scale): +50% Defense while statused.
 - **Reckless** (Hustle): +50% Attack, −20% accuracy.
-- **Plated** (Battle Armor / Shell Armor): no critical hits against it.
-- **Fortune** (Serene Grace): doubles its moves' side-effect chances.
 - **Dust Coat** (Shield Dust): immune to foes' side effects.
 - **Grounded / Purified / Fireproof / Warm Blood** (Limber / Immunity / Water Veil / Magma Armor): can't be shocked / poisoned / burned / frostbitten.
-- **Spore Coat** (Effect Spore): attackers may fall asleep, be poisoned or be shocked.
 - **Self-Mend** (Natural Cure): status clears when swapped out.
-- **Insulated** (Thick Fat): Fire and Electric damage −50%.
-- **Rain Drinker** (Rain Dish): heals 1/16 HP a turn in Rain.
 - **Steadfast** (Clear Body / White Smoke): overlaps Oblivious; only if a line needs it under another name.
 
 ### Battle, needs a small new rule
-- **Stormcaller / Sunbringer** (Drizzle / Drought): starts battles in Rain / Drought. Rare and legendary monsters only.
 - **Still Air** (Cloud Nine / Air Lock): cancels weather while out.
 - **Mirror Bond** (Synchronize): a status inflicted on it passes back to the attacker.
 - **Toxic Blood** (Liquid Ooze): drain moves hurt the drainer instead.
