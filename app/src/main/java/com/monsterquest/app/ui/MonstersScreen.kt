@@ -710,8 +710,8 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // Its skill: one per kind of monster, gained at level 30 and stronger every 10 levels.
-        val skill = com.monsterquest.core.MonsterTraits.of(m.species)
+        // Its skill: rolled from its line's pool when it was born, gained at level 30 and stronger every 10 levels.
+        val skill = m.skill ?: com.monsterquest.core.MonsterTraits.of(m.species)
         val skillRank = m.trait?.second ?: 0
         GameCard(Modifier.padding(top = 6.dp), border = if (skillRank > 0) XpPurple else null) {
             if (skillRank > 0) {
@@ -732,6 +732,18 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             } else {
                 Text("Skill: ${skill.label} (at level ${com.monsterquest.core.MONSTER_SKILL_LEVEL})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 Text(skill.describe(1, hero = false) + ".", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            // What others of its line can have instead (the commonest first).
+            val pool = com.monsterquest.core.MonsterTraits.pool(m.species)
+            val others = pool.filter { it.first != skill }.sortedByDescending { it.second }
+            if (others.isNotEmpty()) {
+                val total = pool.sumOf { it.second }
+                Text(
+                    "Others of its kind may have: " + others.joinToString { (t, w) -> "${t.label} (${w * 100 / total}%)" },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
         }
         // Stat points (IVs): fixed at taming, so better monsters come from taming more.

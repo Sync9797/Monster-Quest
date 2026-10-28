@@ -141,6 +141,12 @@ class Combatant(
     var hidePct: Int = 0
     var touchStatus: Status? = null
     var touchPct: Int = 0
+    /** Kindling: it absorbed fire, so its Fire moves hit harder. */
+    var kindled: Boolean = false
+    var stalwartUsed: Boolean = false
+
+    /** A monster skill's rank, or 0 without it. */
+    fun rankOf(t: Trait): Int = traits[t] ?: 0
 
     // Cursed gear (hero only).
     var weaponCurse: Curse? = null
@@ -853,7 +859,7 @@ class Battle(
     fun turnOrder(count: Int = 6): List<String> {
         val alive = { k: String -> combatant(k)?.alive == true }
         val now = listOfNotNull(current?.key) + queue.filter(alive)
-        val everyone = (allies + enemies).filter { it.alive }.sortedByDescending { it.effectiveSpeed }
+        val everyone = (allies + enemies).filter { it.alive }.sortedByDescending { speedOf(it) }
             .sortedByDescending { it.swift }
         val nextReversed = reversedRounds > 1
         val next = (if (nextReversed) everyone.reversed() else everyone).map { it.key } +
@@ -870,7 +876,15 @@ class Battle(
         if (reversedRounds > 0) reversedRounds--
         // Fallen monsters keep their turn while a swap is waiting (to swap or skip).
         val everyone = (allies + enemies).filter { it.alive || awaitsSwap(it) }
-        val bySpeed = everyone.sortedByDescending { it.effectiveSpeed + rng.nextDouble() }
+        // Momentum: Speed creeps up round by round.
+        if (round > 1) for (c in (allies + enemies).filter { it.alive && it.rankOf(Trait.MOMENTUM) > 0 }) {
+            val now = c.stages[BattleStat.SPEED] ?: 0
+            if (now < 4 && rng.nextInt(100) < Trait.MOMENTUM.momentumPct(c.rankOf(Trait.MOMENTUM))) {
+                c.stages[BattleStat.SPEED] = now + 1
+                log += "${c.name}'s Momentum: its Speed rose!"
+            }
+        }
+        val bySpeed = everyone.sortedByDescending { speedOf(it) + rng.nextDouble() }
         val ordered = if (reversedRounds > 0) bySpeed.reversed() else bySpeed
         // An ambush: the monsters all act before you in the first round.
         var order = if (ambush && round == 1) ordered.sortedBy { !Combatant.isEnemy(it.key) } else ordered
@@ -1056,7 +1070,7 @@ class Battle(
             }
             is BattleAction.UseMove -> {
                 val move = actor.usableMoves.find { it.id == action.moveId } ?: return false
-                actor.spendTurn(move)
+                spendMove(actor, move)
                 if (move == Moves.STRUGGLE) log += "${actor.name} is out of moves!"
                 useMove(actor, enemy, move)
             }
@@ -1171,7 +1185,10 @@ class Battle(
     private fun packReacts(tamed: Combatant) {
         for (e in enemies.filter { it.alive }) {
             if (e.level < tamed.level) {
-                if (rng.nextDouble() < PACK_FLEE_CHANCE) {
+                // A Snare Aura on your side holds them in place.
+                val snare = allies.filter { it.alive }.maxOfOrNull { it.rankOf(Trait.SNARE_AURA) } ?: 0
+                val flee = PACK_FLEE_CHANCE * (1 - (if (snare > 0) Trait.SNARE_AURA.snarePct(snare) else 0) / 100.0)
+                if (rng.nextDouble() < flee) {
                     e.gone = "Ran off"
                     log += "${e.name} panics and runs off!"
                 } else {
@@ -1265,7 +1282,8 @@ class Battle(
             record(a, d, StrikeStyle.MISS, Element.NEUTRAL)
             return false
         }
-        var chance = accuracy / 100.0 * (1 - a.muddiedPct / 100.0)
+        var chance = accuracy / 100.0 * (1 - a.muddiedPct / 100.0) *
+            (1 + (a.rankOf(Trait.KEEN_SIGHT).takeIf { it > 0 }?.let { Trait.KEEN_SIGHT.keenSightPct(it) / 100.0 } ?: 0.0))
         if (a.accuracyDown) {
             chance *= 0.6
             a.accuracyDown = false
@@ -1324,12 +1342,48 @@ class Battle(
         if (landed) applyEffects(a, d, move, onFoe = false, onSelf = true)
         // Reckless moves: a share of the damage comes back.
         move.effects.filterIsInstance<MoveEffect.RecoilPct>().firstOrNull()?.let { fx ->
-            if (a.alive && moveDealt > 0) hurt(a, maxOf(1, moveDealt * fx.percent / 100), "is hurt by recoil")
+            if (a.alive && moveDealt > 0) recoil(a, maxOf(1, moveDealt * fx.percent / 100))
         }
     }
 
     /** Damage dealt by the move being used (for recoil). */
     private var moveDealt = 0
+
+    /** Recoil, cut by Iron Skull (none at all at rank 5). */
+    private fun recoil(a: Combatant, amount: Int) {
+        val skull = a.rankOf(Trait.IRON_SKULL)
+        val cut = if (skull > 0) Trait.IRON_SKULL.ironSkullPct(skull) else 0
+        val taken = amount * (100 - cut) / 100
+        if (taken <= 0) {
+            log += "${a.name}'s Iron Skull shrugs off the recoil!"
+            return
+        }
+        hurt(a, taken, if (cut > 0) "is hurt by recoil (Iron Skull: -$cut%)" else "is hurt by recoil")
+    }
+
+    /** Speed in battle: stat stages, then Rain Runner or Sun Chaser in their weather. */
+    private fun speedOf(c: Combatant): Double {
+        val rain = c.rankOf(Trait.RAIN_RUNNER)
+        val sun = c.rankOf(Trait.SUN_CHASER)
+        val mult = when {
+            weather == Weather.RAIN && rain > 0 -> Trait.RAIN_RUNNER.weatherSpeed(rain)
+            weather == Weather.DROUGHT && sun > 0 -> Trait.SUN_CHASER.weatherSpeed(sun)
+            else -> 1.0
+        }
+        return c.effectiveSpeed * mult
+    }
+
+    /** A move spent: Overbearing foes may make it cost an extra use. */
+    private fun spendMove(actor: Combatant, move: Move) {
+        actor.spendTurn(move)
+        if (move == Moves.STRUGGLE) return
+        val bully = foesOf(actor).filter { it.alive && it.rankOf(Trait.OVERBEARING) > 0 }.maxByOrNull { it.rankOf(Trait.OVERBEARING) } ?: return
+        val left = actor.ppLeft(move)
+        if (left > 0 && rng.nextInt(100) < Trait.OVERBEARING.overbearingPct(bully.rankOf(Trait.OVERBEARING))) {
+            actor.pp[move.id] = left - 1
+            log += "${bully.name} is Overbearing: ${move.name} costs ${actor.name} an extra use."
+        }
+    }
 
     /** The other side, from [a]'s point of view. */
     private fun foesOf(a: Combatant): List<Combatant> = if (Combatant.isEnemy(a.key)) allies else enemies
@@ -1441,14 +1495,22 @@ class Battle(
                     }
                 }
                 is MoveEffect.FoeAccuracyDown -> if (rng.nextDouble() < fx.chance) {
-                    d.accuracyDown = true
-                    log += "${d.name}'s accuracy fell!"
+                    if (d.rankOf(Trait.KEEN_SIGHT) >= 3) {
+                        log += "${d.name}'s Keen Sight keeps its aim!"
+                    } else {
+                        d.accuracyDown = true
+                        log += "${d.name}'s accuracy fell!"
+                    }
                 }
                 is MoveEffect.FoeMissesNext -> if (rng.nextDouble() < fx.chance) {
-                    d.missNext = true
-                    log += "${d.name} is thrown off balance!"
+                    if (d.rankOf(Trait.UNSHAKEN) >= 3) {
+                        log += "${d.name} is Unshaken!"
+                    } else {
+                        d.missNext = true
+                        log += "${d.name} is thrown off balance!"
+                    }
                 }
-                is MoveEffect.Flinch -> if (d.alive && rng.nextDouble() < fx.chance) d.flinch = true
+                is MoveEffect.Flinch -> if (d.alive && d.rankOf(Trait.UNSHAKEN) == 0 && rng.nextDouble() < fx.chance) d.flinch = true
                 is MoveEffect.Scorch -> if (d.alive) {
                     d.scorchTurns = fx.turns
                     d.scorchDamage = scaled(fx.base, a.level)
@@ -1493,7 +1555,7 @@ class Battle(
                 is MoveEffect.HealSelf -> if (a.alive && a.hp < a.maxHp) {
                     heal(a, maxOf(1, a.maxHp * fx.percent / 100), "${a.name} restores itself")
                 }
-                is MoveEffect.Recoil -> if (rng.nextDouble() < fx.chance) hurt(a, scaled(fx.base, a.level), "is hurt by recoil")
+                is MoveEffect.Recoil -> if (rng.nextDouble() < fx.chance) recoil(a, scaled(fx.base, a.level))
                 is MoveEffect.PowerUp -> {
                     a.powerUp += fx.percent
                     log += "${a.name}'s power rises! (+${a.powerUp}%)"
@@ -1559,6 +1621,25 @@ class Battle(
         /** Defense Strike: the user's Defense does the hitting. */
         useDefense: Boolean = false,
     ): Int {
+        // Lightning Eater, Spring Soak and Kindling: that type heals instead of hurting.
+        val absorbTrait = d.traits.keys.firstOrNull { it.absorbs != null && it.absorbs == type }
+        if (absorbTrait != null) {
+            val r = d.rankOf(absorbTrait)
+            log += "${d.name}'s ${absorbTrait.label} absorbs the ${type.label.lowercase()}!"
+            if (d.hp < d.maxHp) heal(d, maxOf(1, d.maxHp * absorbTrait.absorbHealPct(r) / 100), absorbTrait.label)
+            if (absorbTrait == Trait.KINDLING && !d.kindled) {
+                d.kindled = true
+                log += "${d.name}'s Fire moves grow stronger!"
+            }
+            record(a, d, StrikeStyle.MISS, type)
+            return 0
+        }
+        // Last Stand, Grit and Kindling power up the attacker.
+        val lastStand = a.rankOf(Trait.LAST_STAND).takeIf { it > 0 && type in a.types && a.hpFraction <= 1.0 / 3 }
+            ?.let { 1 + Trait.LAST_STAND.lastStandPct(it) / 100.0 } ?: 1.0
+        val grit = a.rankOf(Trait.GRIT).takeIf { it > 0 && a.status != null && !useMagic }
+            ?.let { 1 + Trait.GRIT.gritPct(it) / 100.0 } ?: 1.0
+        val kindle = if (a.kindled && type == Element.FIRE) 1 + Trait.KINDLING.kindlePct(a.rankOf(Trait.KINDLING)) / 100.0 else 1.0
         val atk = when {
             useMagic -> a.magic.toDouble()
             useDefense -> a.defense * a.stageMultiplier(BattleStat.DEFENSE)
@@ -1580,8 +1661,18 @@ class Battle(
             (if (useMagic) 1 + a.spellPct / 100.0 else 1.0) *
             (1 + a.ragePct / 100.0 * (1 - a.hpFraction)) *
             (1 - d.hidePct / 100.0) *
-            (if (type == Element.EARTH) 1 - d.earthResistPct / 100.0 else 1.0)
-        val dmg = max(1, raw.roundToInt())
+            (if (type == Element.EARTH) 1 - d.earthResistPct / 100.0 else 1.0) *
+            lastStand * grit * kindle
+        var dmg = max(1, raw.roundToInt())
+        // Stalwart: once a battle, a knockout blow at (nearly) full HP leaves it at 1 HP.
+        val stalwart = d.rankOf(Trait.STALWART)
+        if (stalwart > 0 && !d.stalwartUsed && dmg >= d.hp + d.shield &&
+            d.hp * 100 >= d.maxHp * Trait.STALWART.stalwartMinPct(stalwart)
+        ) {
+            d.stalwartUsed = true
+            dmg = d.hp - 1 + d.shield
+            log += "${d.name} is Stalwart: it holds on with 1 HP!"
+        }
         val absorbed = minOf(d.shield, dmg)
         d.shield -= absorbed
         d.hp = max(0, d.hp - (dmg - absorbed))
@@ -1619,6 +1710,11 @@ class Battle(
                     if (!a.alive) log += "${a.name} falls!"
                 }
             }
+        }
+        // Barbed Hide cuts whoever strikes it.
+        val barbs = d.rankOf(Trait.BARBED_HIDE)
+        if (barbs > 0 && a.alive && a !== d && dmg > 0) {
+            hurt(a, maxOf(1, a.maxHp * Trait.BARBED_HIDE.barbedPct(barbs) / 100), "is cut by ${d.name}'s Barbed Hide")
         }
         // Static, Flame Body and Poison Point punish whoever strikes in close.
         val touch = d.touchStatus
@@ -1667,7 +1763,7 @@ class Battle(
         } else {
             usable.random(rng)
         }
-        enemy.spendTurn(move)
+        spendMove(enemy, move)
         useMove(enemy, target, move)
     }
 
@@ -1724,6 +1820,17 @@ class Battle(
                     val bonus = if (rng.nextDouble() < 0.04 * (teamSize - 1)) Item.RESTORE_POTION
                     else listOf(Item.HI_POTION, Item.GREAT_ORB, Item.PHOENIX_DOWN).random(rng)
                     drops[bonus] = (drops[bonus] ?: 0) + 1
+                }
+            }
+        }
+        // Scavengers on your side sometimes turn something up.
+        if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED) {
+            for (uid in partyUids) {
+                val r = combatant(uid)?.rankOf(Trait.SCAVENGER) ?: 0
+                if (r > 0 && rng.nextInt(100) < Trait.SCAVENGER.scavengePct(r)) {
+                    val found = listOf(Item.POTION, Item.TAMING_ORB, Item.SWEET_BERRY, Item.ETHER).random(rng)
+                    drops[found] = (drops[found] ?: 0) + 1
+                    log += "${combatant(uid)?.name} scavenged a ${found.label}!"
                 }
             }
         }

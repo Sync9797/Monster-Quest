@@ -1277,7 +1277,7 @@ class GameTest {
         fun fight(starterId: String, move: String, packSize: Int = 3): Pair<Battle, Combatant> {
             val m = Monster.create(Bestiary.get(starterId), 40, Random(3)).copy(moves = listOf(move))
             val s = started().let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
-            val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)) }
+            val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)).copy(skill = Trait.STATIC) }
             val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1), fullTeam = true)
             var g = 0
             while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)

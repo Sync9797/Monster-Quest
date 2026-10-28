@@ -144,14 +144,15 @@ class ClassesTest {
     fun hoveringFightersIgnoreEarthMoves() {
         val hero = Hero(level = 30, skills = listOf(Trait.HOVER))
         assertTrue(Combatant.fromHero(hero).immuneEarth)
-        val flier = Monster.create(Bestiary.get("tempest_roc"), 30, rng)
+        val flier = Monster.create(Bestiary.get("tempest_roc"), 30, rng).copy(skill = Trait.LEVITATE)
         assertEquals(Trait.LEVITATE, flier.trait?.first)
-        // Earth types can't levitate; slimes don't intimidate; dragons do.
-        assertTrue(Bestiary.all.filter { it.element == Element.EARTH }.none { MonsterTraits.of(it).hovers })
-        assertTrue(Bestiary.all.filter { "Goopling" in it.family }.none { MonsterTraits.of(it) == Trait.INTIMIDATE })
+        // Earth types can't levitate; slimes don't intimidate; older saves' dragons keep Intimidate.
+        assertTrue(Bestiary.all.filter { it.element == Element.EARTH }.none { sp -> MonsterTraits.pool(sp).any { it.first.hovers } })
+        assertTrue(Bestiary.all.filter { "Goopling" in it.family }.none { sp -> MonsterTraits.pool(sp).any { it.first == Trait.INTIMIDATE } })
         assertEquals(Trait.INTIMIDATE, MonsterTraits.of(Bestiary.get("cindrake")))
         // Every monster has a skill, and only monster skills.
         assertTrue(Bestiary.all.all { MonsterTraits.of(it).forMonster })
+        assertTrue(Bestiary.all.all { sp -> MonsterTraits.pool(sp).all { it.first.forMonster } })
 
         // An Earth move against a levitating monster never lands.
         val s = started()

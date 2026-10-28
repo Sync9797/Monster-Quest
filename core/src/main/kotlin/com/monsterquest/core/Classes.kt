@@ -167,7 +167,25 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     THICK_HIDE("Thick Hide", false, true),
     STATIC("Static", false, true),
     FLAME_BODY("Flame Body", false, true),
-    POISON_POINT("Poison Point", false, true);
+    POISON_POINT("Poison Point", false, true),
+
+    // Monster traits inspired by early-generation abilities (see docs/trait-ideas.md for more to come).
+    LAST_STAND("Last Stand", false, true),
+    RAIN_RUNNER("Rain Runner", false, true),
+    SUN_CHASER("Sun Chaser", false, true),
+    IRON_SKULL("Iron Skull", false, true),
+    OVERBEARING("Overbearing", false, true),
+    MOMENTUM("Momentum", false, true),
+    GRIT("Grit", false, true),
+    KEEN_SIGHT("Keen Sight", false, true),
+    UNSHAKEN("Unshaken", false, true),
+    STALWART("Stalwart", false, true),
+    LIGHTNING_EATER("Lightning Eater", false, true),
+    SPRING_SOAK("Spring Soak", false, true),
+    KINDLING("Kindling", false, true),
+    BARBED_HIDE("Barbed Hide", false, true),
+    SCAVENGER("Scavenger", false, true),
+    SNARE_AURA("Snare Aura", false, true);
 
     /** Floats above the ground: Earth moves can't touch it. */
     val hovers: Boolean get() = this == HOVER || this == LEVITATE
@@ -203,6 +221,42 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
      * then falls back to this.
      */
     fun hoverTeamPct(rank: Int) = if (rank >= 4) 50 else 25
+
+    /** Last Stand: own-type moves hit harder at or below a third of its HP, in percent. */
+    fun lastStandPct(rank: Int) = 30 + 5 * rank
+    /** Rain Runner / Sun Chaser: Speed multiplier in Rain / Drought. */
+    fun weatherSpeed(rank: Int) = 1.5 + 0.1 * rank
+    /** Iron Skull: recoil cut, in percent (none at all at rank 5). */
+    fun ironSkullPct(rank: Int) = 20 * rank
+    /** Overbearing: chance a foe's move costs an extra use, in percent. */
+    fun overbearingPct(rank: Int) = 20 * rank
+    /** Momentum: chance each round to gain +1 Speed, in percent. */
+    fun momentumPct(rank: Int) = 20 * rank
+    /** Grit: more Attack while it has a status, in percent. */
+    fun gritPct(rank: Int) = 30 + 5 * rank
+    /** Keen Sight: extra accuracy, in percent. */
+    fun keenSightPct(rank: Int) = 4 + 4 * rank
+    /** Stalwart: survives a knockout blow with 1 HP when at least this much HP (in percent) is left. */
+    fun stalwartMinPct(rank: Int) = 100 - 5 * (rank - 1)
+    /** Lightning Eater / Spring Soak / Kindling: HP healed on absorbing a hit, in percent of max HP. */
+    fun absorbHealPct(rank: Int) = 10 + 3 * rank
+    /** Kindling: Fire moves stronger after absorbing fire, in percent. */
+    fun kindlePct(rank: Int) = 30 + 5 * rank
+    /** Barbed Hide: attackers lose this share of their max HP, in percent. */
+    fun barbedPct(rank: Int) = 3 + rank
+    /** Scavenger: chance to find an item after a won battle, in percent. */
+    fun scavengePct(rank: Int) = 5 + 5 * rank
+    /** Snare Aura: cut to a pack member's chance of running off, in percent. */
+    fun snarePct(rank: Int) = 20 * rank
+
+    /** The type a Lightning Eater, Spring Soak or Kindling monster absorbs. */
+    val absorbs: Element?
+        get() = when (this) {
+            LIGHTNING_EATER -> Element.ELECTRIC
+            SPRING_SOAK -> Element.WATER
+            KINDLING -> Element.FIRE
+            else -> null
+        }
 
     /** Whether the effect covers the owner's whole side at this rank (hero skills only). */
     fun teamRange(rank: Int, hero: Boolean) = hero && rank >= TEAM_RANGE_RANK && this in RANGED
@@ -242,6 +296,24 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
             STATIC -> "${touchPct(r)}% chance to shock anything that hits it"
             FLAME_BODY -> "${touchPct(r)}% chance to burn anything that hits it"
             POISON_POINT -> "${touchPct(r)}% chance to poison anything that hits it"
+            LAST_STAND -> "Its own-type moves hit ${lastStandPct(r)}% harder at a third of its HP or less"
+            RAIN_RUNNER -> "Speed x${"%.1f".format(weatherSpeed(r))} in Rain"
+            SUN_CHASER -> "Speed x${"%.1f".format(weatherSpeed(r))} in a Drought"
+            IRON_SKULL -> if (r >= MAX_SKILL_RANK) "Takes no recoil damage" else "Takes ${ironSkullPct(r)}% less recoil damage"
+            OVERBEARING -> "${overbearingPct(r)}% chance a foe's move costs an extra use"
+            MOMENTUM -> if (r >= MAX_SKILL_RANK) "Speed rises every round" else "${momentumPct(r)}% chance each round for its Speed to rise"
+            GRIT -> "${gritPct(r)}% more Attack while it has a status"
+            KEEN_SIGHT -> "+${keenSightPct(r)}% accuracy" + if (r >= 3) ", and it can't be blinded" else ""
+            UNSHAKEN -> "Never flinches" + if (r >= 3) ", and it can't be thrown off balance" else ""
+            STALWART -> "Once a battle, survives a knockout blow with 1 HP" +
+                if (stalwartMinPct(r) >= 100) " (at full HP)" else " (at ${stalwartMinPct(r)}% HP or more)"
+            LIGHTNING_EATER -> "Electric attacks heal it ${absorbHealPct(r)}% HP instead of hurting"
+            SPRING_SOAK -> "Water attacks heal it ${absorbHealPct(r)}% HP instead of hurting"
+            KINDLING -> "Fire attacks can't hurt it: they heal ${absorbHealPct(r)}% HP and its Fire moves hit ${kindlePct(r)}% harder"
+            BARBED_HIDE -> "Anything that hits it loses ${barbedPct(r)}% of its max HP"
+            SCAVENGER -> "${scavengePct(r)}% chance to find an item after a win"
+            SNARE_AURA -> if (r >= MAX_SKILL_RANK) "Pack members never run off when one is tamed"
+            else "Pack members are ${snarePct(r)}% less likely to run off when one is tamed"
         }
     }
 
@@ -302,14 +374,88 @@ object MonsterTraits {
         "Worldroot Colossus" to Trait.THICK_HIDE,
     )
 
-    /** The skill this species gets at level 30. Hounds and wolves lead packs. */
+    /** The skill this species had before skills were rolled (monsters from older saves keep it). Hounds and wolves lead packs. */
     fun of(species: Species): Trait =
         byFamily[species.family] ?: if (species.breed != null) Trait.PACK_LEADER else Trait.SECOND_WIND
+
+    /**
+     * The skills each line can roll, with weights, picked to suit how it
+     * looks and what type it is. Lines with Flight float about 60% of the
+     * time (Levitate) but can roll something else.
+     */
+    private val pools: Map<String, List<Pair<Trait, Int>>> = mapOf(
+        // Starters
+        "Voltfawn line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 2, Trait.LAST_STAND to 1),   // a charged stag
+        "Cindrake line" to listOf(Trait.LEVITATE to 6, Trait.INTIMIDATE to 2, Trait.KINDLING to 1, Trait.LAST_STAND to 1),     // winged dragons
+        "Drizzlet line" to listOf(Trait.LEVITATE to 6, Trait.REGENERATION to 2, Trait.SPRING_SOAK to 1, Trait.RAIN_RUNNER to 1), // sky serpents
+        "Mosscub line" to listOf(Trait.THICK_HIDE to 4, Trait.GRIT to 2, Trait.STALWART to 2, Trait.LAST_STAND to 2),          // bears
+        // Four-stage lines
+        "Emberkit line" to listOf(Trait.QUICK_STEP to 4, Trait.SUN_CHASER to 3, Trait.KINDLING to 2, Trait.LAST_STAND to 1),  // fire cats
+        "Zapmouse line" to listOf(Trait.STATIC to 5, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 1, Trait.SCAVENGER to 1),  // rodents
+        "Fluffchick line" to listOf(Trait.LEVITATE to 6, Trait.KEEN_SIGHT to 2, Trait.MOMENTUM to 2),                      // birds of prey
+        "Bubblefin line" to listOf(Trait.BARBED_HIDE to 3, Trait.RAIN_RUNNER to 3, Trait.OBLIVIOUS to 2, Trait.SPRING_SOAK to 2), // sharks: rough skin
+        "Toxbug line" to listOf(Trait.LEVITATE to 6, Trait.POISON_POINT to 2, Trait.KEEN_SIGHT to 1, Trait.MOMENTUM to 1),     // winged bugs
+        "Gloomwisp line" to listOf(Trait.LEVITATE to 6, Trait.OVERBEARING to 2, Trait.INSOMNIA to 2),                      // wisps and wraiths
+        // Hounds lead packs, with a touch of their element
+        "Ember Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.KINDLING to 2, Trait.INTIMIDATE to 1),
+        "Spark Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.LIGHTNING_EATER to 2, Trait.MOMENTUM to 1),
+        "Gale Hound line" to listOf(Trait.LEVITATE to 6, Trait.PACK_LEADER to 3, Trait.MOMENTUM to 1),                    // wolves that ride the wind
+        "Tide Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.SPRING_SOAK to 2, Trait.RAIN_RUNNER to 1),
+        "Venom Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.POISON_POINT to 2, Trait.GRIT to 1),
+        "Shadow Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.INTIMIDATE to 2, Trait.OVERBEARING to 1),
+        "Moss Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.THICK_HIDE to 2, Trait.STALWART to 1),
+        // Three-stage lines
+        "Goopling line" to listOf(Trait.REGENERATION to 5, Trait.STALWART to 2, Trait.POISON_POINT to 2),                 // slimes reform
+        "Pebblit line" to listOf(Trait.FLAME_BODY to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 2),                      // molten rock
+        "Zipwing line" to listOf(Trait.LEVITATE to 6, Trait.STATIC to 2, Trait.LIGHTNING_EATER to 1, Trait.MOMENTUM to 1),    // thunderbirds
+        "Shellsnap line" to listOf(Trait.THICK_HIDE to 4, Trait.STALWART to 3, Trait.SPRING_SOAK to 2),                   // tortoises
+        "Twiglet line" to listOf(Trait.REGENERATION to 4, Trait.SUN_CHASER to 3, Trait.THICK_HIDE to 2),                  // trees love the sun
+        "Impling line" to listOf(Trait.INSOMNIA to 3, Trait.KINDLING to 3, Trait.GRIT to 2, Trait.OVERBEARING to 1),          // fiends
+        "Cinderskink line" to listOf(Trait.FLAME_BODY to 4, Trait.KINDLING to 3, Trait.LAST_STAND to 2, Trait.SUN_CHASER to 1), // salamanders
+        "Cinderlamb line" to listOf(Trait.THICK_HIDE to 4, Trait.IRON_SKULL to 3, Trait.GRIT to 1),                       // rams: wool and horns
+        "Joltlet line" to listOf(Trait.QUICK_STEP to 4, Trait.MOMENTUM to 3, Trait.LIGHTNING_EATER to 1),                 // monkeys
+        "Zaplume line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.SPRING_SOAK to 2, Trait.LEVITATE to 1), // drifting jellies
+        "Puddlet line" to listOf(Trait.RAIN_RUNNER to 3, Trait.REGENERATION to 3, Trait.SPRING_SOAK to 2, Trait.POISON_POINT to 1), // frogs
+        "Pincerling line" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.OBLIVIOUS to 2, Trait.SCAVENGER to 1, Trait.RAIN_RUNNER to 1), // crabs
+        "Hootling line" to listOf(Trait.LEVITATE to 6, Trait.INSOMNIA to 3, Trait.KEEN_SIGHT to 2),                      // owls
+        "Pterix line" to listOf(Trait.LEVITATE to 6, Trait.IRON_SKULL to 2, Trait.INTIMIDATE to 1, Trait.KEEN_SIGHT to 1),   // pterosaurs
+        "Sporelet line" to listOf(Trait.POISON_POINT to 4, Trait.REGENERATION to 2, Trait.STALWART to 1),               // mushrooms
+        "Stinkit line" to listOf(Trait.INTIMIDATE to 4, Trait.POISON_POINT to 2, Trait.GRIT to 1),                      // skunks
+        "Hexling line" to listOf(Trait.POISON_POINT to 4, Trait.SNARE_AURA to 3, Trait.INSOMNIA to 1),                  // spiders spin webs
+        "Nightling line" to listOf(Trait.LEVITATE to 5, Trait.INSOMNIA to 2, Trait.OVERBEARING to 1),                   // bats
+        "Rollpip line" to listOf(Trait.THICK_HIDE to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 1),                    // armored pangolins
+        "Stubhorn line" to listOf(Trait.IRON_SKULL to 4, Trait.INTIMIDATE to 3, Trait.GRIT to 2, Trait.STALWART to 1),      // charging rhinos
+        // Mythics
+        "Mimic" to listOf(Trait.THICK_HIDE to 3, Trait.SNARE_AURA to 3, Trait.SCAVENGER to 2),                          // a treasure chest that bites
+        "Prism Fairy" to listOf(Trait.LEVITATE to 6, Trait.KEEN_SIGHT to 2, Trait.SCAVENGER to 2),
+        // Legendaries
+        "Magma Behemoth" to listOf(Trait.FLAME_BODY to 3, Trait.KINDLING to 2),
+        "Thunder Titan" to listOf(Trait.STATIC to 3, Trait.LIGHTNING_EATER to 2),
+        "Sky Serpent" to listOf(Trait.LEVITATE to 8, Trait.OVERBEARING to 2),
+        "Abyss Kraken" to listOf(Trait.INTIMIDATE to 3, Trait.SNARE_AURA to 2, Trait.SPRING_SOAK to 2),                 // tentacles hold on
+        "Miasma Hydra" to listOf(Trait.REGENERATION to 4, Trait.OVERBEARING to 2),
+        "Dread Lich" to listOf(Trait.OVERBEARING to 3, Trait.INSOMNIA to 3),
+        "Worldroot Colossus" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.SUN_CHASER to 1),
+    )
+
+    /** What [species]'s line can roll, with weights (a line with no pool keeps its fixed skill). */
+    fun pool(species: Species): List<Pair<Trait, Int>> = pools[species.family] ?: listOf(of(species) to 1)
+
+    /** Rolls a new monster's skill from its line's pool. */
+    fun roll(species: Species, rng: kotlin.random.Random): Trait {
+        val pool = pool(species)
+        var r = rng.nextInt(pool.sumOf { it.second })
+        for ((t, w) in pool) {
+            r -= w
+            if (r < 0) return t
+        }
+        return pool.last().first
+    }
 }
 
 /** A monster's skill and its rank, or null below level 30. */
 val Monster.trait: Pair<Trait, Int>?
-    get() = skillRank(level, MONSTER_SKILL_LEVEL).takeIf { it > 0 }?.let { MonsterTraits.of(species) to it }
+    get() = skillRank(level, MONSTER_SKILL_LEVEL).takeIf { it > 0 }?.let { (skill ?: MonsterTraits.of(species)) to it }
 
 // ---------------------------------------------------------------------------
 // Weapon class bonus and proficiency

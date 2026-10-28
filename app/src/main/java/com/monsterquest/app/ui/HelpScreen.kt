@@ -178,6 +178,7 @@ private val topics = listOf(
             "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",
             "At level 15 pick a subclass: three per class, each with its own perks. Switching costs gold.",
             "Skills open at levels 30, 45 and 60 (Intimidate, Hover, Kleptomaniac and more) and rank up every 10 levels; from rank 3 some cover your whole team. Monsters get one skill of their own at level 30.",
+            "Each monster's skill is rolled when it's born from a few that suit its kind: winged and flying monsters usually Levitate, sharks get Barbed Hide, rams Iron Skull, spiders Snare Aura, trees Sun Chaser... Its page shows its skill and what others of its kind may have.",
             "The Store buys items at half price and gear by rarity and level. Smelt a weapon for 50 gold to get its parts back.",
             "Adventures (Monsters tab, 5+ monsters) send a team to real places for gold and items while you're away.",
         ),

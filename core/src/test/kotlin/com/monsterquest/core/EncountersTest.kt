@@ -198,7 +198,7 @@ class EncountersTest {
         assertTrue(learners > Bestiary.all.size * 3 / 4)
 
         // Against a levitating bird: it connects, and afterwards Earth moves land.
-        val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng)
+        val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng).copy(skill = Trait.LEVITATE)
         val bear = Monster.create(Bestiary.get("terraursa"), 40, rng).copy(moves = listOf("smack_down"))
         val b = Battle(Hero(level = 40), listOf(bear), bird, EncounterType.WILD, emptyMap(), false, rng = Random(12), fullTeam = true)
         assertTrue(b.enemy.immuneEarth)

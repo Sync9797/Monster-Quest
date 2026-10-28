@@ -328,6 +328,8 @@ data class Monster(
     val cureReady: Boolean = false,
     /** A rare color variant (about 1 in [SHINY_ODDS]). */
     val shiny: Boolean = false,
+    /** The skill it gets at level 30, rolled from its line's pool when it was born (null: older saves keep their line's fixed skill). */
+    val skill: Trait? = null,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name
@@ -393,7 +395,7 @@ data class Monster(
             ivs = StatBlock.random(rng, MAX_IV),
             level = level.coerceIn(1, MAX_MONSTER_LEVEL),
             shiny = shiny,
-        ).evolved()
+        ).evolved().let { m -> m.copy(skill = MonsterTraits.roll(m.species, Random(m.uid.hashCode().toLong()))) }
     }
 }
 
