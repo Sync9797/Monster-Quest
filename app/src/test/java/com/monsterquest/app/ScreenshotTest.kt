@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -224,6 +225,33 @@ abstract class ScreenshotBase(private val device: String) {
         // Sort options, with Potential after Newest.
         rule.onNodeWithText("Newest").assertExists()
         rule.onNodeWithText("Potential").assertExists()
+    }
+    /** Hold a move on a monster's page and drag it down a slot: the order changes. */
+    @Test fun reorderMoves() {
+        val v = vm()
+        val mon = v.state.partyMonsters.first()
+        val first = mon.activeMoves[0]
+        val second = mon.activeMoves[1]
+        shot("04b_monster_moves") { AppRoot(v, Tab.MONSTERS) }
+        rule.mainClock.autoAdvance = true
+        // Open its page (on big screens it may already be open).
+        if (rule.onAllNodes(androidx.compose.ui.test.hasText("Hold a move and drag it", substring = true)).fetchSemanticsNodes().isEmpty()) {
+            rule.onAllNodes(androidx.compose.ui.test.hasText(mon.displayName, substring = true) and androidx.compose.ui.test.hasClickAction())[0]
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.waitForIdle()
+        }
+        val card = rule.onAllNodes(androidx.compose.ui.test.hasText(first.name) and androidx.compose.ui.test.hasClickAction())[0]
+        card.performScrollTo()
+        rule.waitForIdle()
+        card.performTouchInput {
+            down(center)
+            advanceEventTime(1_000)
+            repeat(6) { moveBy(androidx.compose.ui.geometry.Offset(0f, height * 0.2f)) }
+            up()
+        }
+        rule.waitForIdle()
+        val after = v.state.monsters.first { it.uid == mon.uid }.activeMoves.map { it.id }
+        check(after.take(2) == listOf(second.id, first.id)) { "order after drag: $after" }
     }
     @Test fun bag() {
         val v = vm()

@@ -20,6 +20,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -772,15 +775,59 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         // ---- Moves ----
         SectionTitle("Moves")
         Text(
-            if (m.moves == null) "Automatic loadout (best moves). Tap a slot to choose your own."
-            else "Custom loadout. Tap a slot to swap a move.",
+            (if (m.moves == null) "Automatic loadout (best moves). Tap a slot to choose your own."
+            else "Custom loadout. Tap a slot to swap a move.") + " Hold a move and drag it to change the order.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         val active = m.activeMoves
+        // Hold a move and drag it up or down: it drops into the slot it's over.
+        var dragFrom by remember(m.uid) { mutableStateOf<Int?>(null) }
+        var dragDy by remember(m.uid) { mutableStateOf(0f) }
+        val slotHeight = remember(m.uid) { mutableStateMapOf<Int, Int>() }
+        fun dropTarget(from: Int): Int {
+            val h = slotHeight[from]?.takeIf { it > 0 } ?: return from
+            return (from + (dragDy / h).roundToInt()).coerceIn(0, active.size - 1)
+        }
         (0 until Moves.MAX_MOVES).forEach { i ->
             val mv = active.getOrNull(i)
-            MoveCard(mv, sp.types, onClick = { editingSlot = i })
+            val from = dragFrom
+            val dragging = from == i
+            val hovered = from != null && !dragging && dropTarget(from) == i
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .onSizeChanged { slotHeight[i] = it.height }
+                    .zIndex(if (dragging) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (dragging) dragDy else 0f
+                        val lift = if (dragging) 1.03f else 1f
+                        scaleX = lift
+                        scaleY = lift
+                        alpha = if (hovered) 0.6f else 1f
+                    }
+                    .then(
+                        if (mv == null || active.size < 2) Modifier
+                        else Modifier.pointerInput(m.uid, active.map { it.id }) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { dragFrom = i; dragDy = 0f },
+                                onDrag = { change, amount -> change.consume(); dragDy += amount.y },
+                                onDragEnd = {
+                                    val to = dropTarget(i)
+                                    if (to != i) {
+                                        val ids = active.map { it.id }.toMutableList()
+                                        ids.add(to, ids.removeAt(i))
+                                        vm.setMoves(m.uid, ids)
+                                    }
+                                    dragFrom = null
+                                    dragDy = 0f
+                                },
+                                onDragCancel = { dragFrom = null; dragDy = 0f },
+                            )
+                        },
+                    ),
+            ) {
+                MoveCard(mv, sp.types, onClick = { editingSlot = i })
+            }
         }
         if (m.moves != null) {
             TextButton(onClick = { vm.resetMoves(m.uid) }) { Text("Reset to automatic") }
