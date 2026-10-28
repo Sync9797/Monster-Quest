@@ -638,6 +638,21 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
     fun learnMove(uid: String, newId: String, replaceId: String) = apply(GameEngine.learnMove(state, uid, newId, replaceId))
     fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
+
+    // ---- save backup -----------------------------------------------------------
+
+    /** The whole game as text, to save to a file the player keeps. */
+    fun exportSave(): String = state.toJson()
+
+    /** Reads a save file; null if it isn't one. */
+    fun parseSave(text: String): GameState? = runCatching { GameState.fromJson(text) }.getOrNull()?.takeIf { it.starterChosen }
+
+    /** Replaces the game with an imported save (the current one is kept on the phone first). */
+    fun importSave(imported: GameState) {
+        repo.keepBeforeImport()
+        set(imported)
+        message = "Save imported: ${imported.hero.name}, level ${imported.hero.level}."
+    }
     fun resetMoves(uid: String) =
         set(state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = null) else it }))
 

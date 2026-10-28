@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import androidx.activity.compose.BackHandler
 import android.Manifest
 import android.content.Intent
@@ -32,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +58,60 @@ import com.monsterquest.core.ColorStyle
 import com.monsterquest.core.ThemeMode
 
 /** Settings: performance, calendar and where steps come from. */
+/** Export the save to a file the player keeps, or import one (after a confirmation). */
+@Composable
+private fun SaveBackupCard(vm: GameViewModel) {
+    val context = LocalContext.current
+    var pending by remember { mutableStateOf<com.monsterquest.core.GameState?>(null) }
+    var note by remember { mutableStateOf<String?>(null) }
+    val exporter = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            note = runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(vm.exportSave().toByteArray()) }
+                "Saved. Keep the file somewhere safe (Drive, email, a computer)."
+            }.getOrElse { "Couldn't save the file." }
+        }
+    }
+    val importer = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val text = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
+            val parsed = text?.let { vm.parseSave(it) }
+            if (parsed == null) note = "That file isn't a Monster Quest save." else pending = parsed
+        }
+    }
+    GameCard {
+        Text("Keep a copy of your game in a file, and bring it back on this or another phone.", fontSize = 13.sp)
+        Text(
+            "The phone also keeps a copy from each of the last ${com.monsterquest.app.data.SaveRepository.DAILY_BACKUPS} days.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { exporter.launch("monster-quest-${java.time.LocalDate.now()}.json") }, modifier = Modifier.weight(1f)) { Text("Export save") }
+            OutlinedButton(onClick = { importer.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.weight(1f)) { Text("Import save") }
+        }
+        note?.let { Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp)) }
+    }
+    pending?.let { save ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text("Replace your game?") },
+            text = {
+                Text(
+                    "This save has ${save.hero.name} at level ${save.hero.level} with ${save.monsters.size} monsters and ${save.gold} gold. " +
+                        "It replaces your current game (which stays on the phone as a backup).",
+                )
+            },
+            confirmButton = { TextButton(onClick = { vm.importSave(save); pending = null; note = "Save imported." }) { Text("Replace") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } },
+        )
+    }
+}
+
 @Composable
 fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () -> Unit) {
     val context = LocalContext.current
@@ -145,6 +203,10 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     prefs.simpleCasting,
                 ) { on -> vm.updateSettings { it.copy(simpleCasting = on) } }
             }
+
+            // ---- Backup ----
+            SectionTitle("Backup")
+            SaveBackupCard(vm)
 
             // ---- Steps ----
             SectionTitle("Step sync")

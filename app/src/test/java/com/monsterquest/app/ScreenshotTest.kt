@@ -266,6 +266,21 @@ abstract class ScreenshotBase(private val device: String) {
         val after = v.state.monsters.first { it.uid == mon.uid }.activeMoves.map { it.id }
         check(after.take(2) == listOf(second.id, first.id)) { "order after drag: $after" }
     }
+    /** Settings > Backup: export and import the save, and the round trip works. */
+    @Test fun saveBackup() {
+        val v = vm()
+        shot("44_settings_backup") { AppRoot(v, initialSettings = true) }
+        rule.mainClock.autoAdvance = true
+        rule.onNodeWithText("Export save").performScrollTo().assertExists()
+        rule.onNodeWithText("Import save").assertExists()
+        val text = v.exportSave()
+        val back = v.parseSave(text)
+        check(back != null && back.hero.level == v.state.hero.level && back.monsters.size == v.state.monsters.size) { "round trip" }
+        check(v.parseSave("not a save") == null)
+        v.importSave(back!!.copy(gold = 4242))
+        check(v.state.gold == 4242)
+    }
+
     @Test fun bag() {
         val v = vm()
         shot("05_bag") { AppRoot(v, Tab.BAG) }
