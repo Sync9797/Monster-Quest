@@ -35,6 +35,14 @@ object Foods {
         mapOf(Rarity.COMMON to 1.0, Rarity.UNCOMMON to 2.0, Rarity.RARE to 3.0, Rarity.EPIC to 4.0),
     )
 
+    /**
+     * Better food also lifts the odds of rarer monsters of every kind, not just
+     * its eaters (added to the spawn rare boost, like a Lure's +0.5).
+     */
+    private val tierRareBonus = listOf(0.0, 0.3, 0.6)
+
+    fun rareBonus(state: GameState, nowMs: Long): Double = active(state, nowMs)?.let { tierRareBonus[tier(it) - 1] } ?: 0.0
+
     /** How much more often [species] turns up while [food] is out (1 if it doesn't eat it). */
     fun boostFor(food: Item, species: Species): Double {
         if (base(food) !in dietOf(species)) return 1.0

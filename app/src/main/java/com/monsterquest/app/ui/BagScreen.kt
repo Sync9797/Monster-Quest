@@ -268,7 +268,7 @@ fun StoreScreen(vm: GameViewModel) {
         }
         SectionTitle("Food")
         Text(
-            "Set food out (from your Bag) to draw the monsters that eat it for 30 minutes. Fine and Gourmet tiers unlock as you level up: they pull harder and bring the rarer, more evolved eaters.",
+            "Set food out (from your Bag) to draw the monsters that eat it for 30 minutes. Fine and Gourmet tiers unlock as you level up: they pull harder, bring the rarer, more evolved eaters, and make rarer monsters of every kind more likely.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

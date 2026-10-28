@@ -196,7 +196,7 @@ private val topics = listOf(
             "Every encounter shows stars for how strong its line ends up (by the final form's max stats), and what it becomes: a silhouette until you've seen that form.",
             "Want a line? Pin it (from an encounter or the Journal). Wanted lines stand in a gold ring on the map, and the weather panel says when the weather favors them. You can pin up to 6.",
             "Food: the Store sells food that draws the monsters who eat it, 4x as often for 30 minutes (set it out from your Bag). Diets fit the creature: Seed Mix for grazers and small birds, Raw Meat for hunters, Fresh Fish for fish and seabirds, Rich Compost for trees and fungi, Mineral Salts for rock eaters, Spirit Incense for spirits, and a Dragon's Feast for dragons. Legendaries and mythics can't be lured.",
-            "Every food comes in three tiers. Basic is open from the start; Fine unlocks around level 20 (pulls 6x, and rarer eaters up to 2.5x more on top) and Gourmet around level 40 (8x, rarer eaters up to 4x more). The better the food, the more likely its eaters arrive evolved and rare.",
+            "Every food comes in three tiers. Basic is open from the start; Fine unlocks around level 20 (pulls 6x, and rarer eaters up to 2.5x more on top) and Gourmet around level 40 (8x, rarer eaters up to 4x more). The better the food, the more likely its eaters arrive evolved and rare. Fine and Gourmet food also raise the odds of rarer monsters of every kind while they're out (+30% and +60%).",
             "Mystery of the week: a silhouette on Home with clues (type, weather, time of day). It turns up 4x as often all week; tame one for 500 gold, 10 candy and a Golden Berry.",
         ),
     ),

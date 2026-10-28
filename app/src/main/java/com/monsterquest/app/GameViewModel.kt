@@ -867,6 +867,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         speciesBoosts = (com.monsterquest.core.Mystery.boosts(state).keys + com.monsterquest.core.Foods.boosts(state, nowMs).keys).associateWith { id ->
             (com.monsterquest.core.Mystery.boosts(state)[id] ?: 1.0) * (com.monsterquest.core.Foods.boosts(state, nowMs)[id] ?: 1.0)
         },
+        rareBonus = com.monsterquest.core.Foods.rareBonus(state, nowMs),
     )
 
     /** Like the weather, nearby water changes the monsters with the next wave, so the map doesn't reshuffle. */

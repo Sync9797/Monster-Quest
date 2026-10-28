@@ -70,6 +70,12 @@ class FoodsTest {
             return picks.count { it.rarity >= Rarity.RARE }.toDouble() / picks.size
         }
         assertTrue(rareShare(Item.RAW_MEAT_GOURMET) > rareShare(Item.RAW_MEAT) * 1.3)
+        // Better tiers also lift rare odds for every monster while they're out.
+        var fed = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state
+        fed = fed.copy(inventory = fed.inventory + (Item.RAW_MEAT to 1) + (Item.RAW_MEAT_GOURMET to 1))
+        assertEquals(0.0, Foods.rareBonus(Foods.use(fed, Item.RAW_MEAT, 0).state, 1))
+        assertEquals(0.6, Foods.rareBonus(Foods.use(fed, Item.RAW_MEAT_GOURMET, 0).state, 1))
+        assertEquals(0.0, Foods.rareBonus(Foods.use(fed, Item.RAW_MEAT_GOURMET, 0).state, Foods.DURATION_MS + 1))
         // The shop won't sell a tier before its level.
         val s = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state.copy(gold = 10_000)
         assertEquals(s, GameEngine.buy(s, Item.RAW_MEAT_GOURMET).state)

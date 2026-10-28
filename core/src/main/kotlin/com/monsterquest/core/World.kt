@@ -69,8 +69,10 @@ data class SpawnConditions(
     val weather: LiveWeather? = null,
     /** How far the nearest lake, river or coast is (null: unknown). */
     val waterDistanceM: Double? = null,
-    /** Species that turn up more often (the mystery of the week). */
+    /** Species that turn up more often (the mystery of the week, food set out). */
     val speciesBoosts: Map<String, Double> = emptyMap(),
+    /** Extra pull on rarer monsters of every kind (Fine and Gourmet food). */
+    val rareBonus: Double = 0.0,
 ) {
     val timeOfDay: TimeOfDay get() = TimeOfDay.of(hour)
 
@@ -346,7 +348,7 @@ object World {
     ): List<WildSpawn> {
         val window = spawnWindow(nowMs)
         val expires = (window + 1) * SPAWN_WINDOW_MS
-        val rareBoost = 1.0 + conditions.activity + if (conditions.lure) 0.5 else 0.0
+        val rareBoost = 1.0 + conditions.activity + (if (conditions.lure) 0.5 else 0.0) + conditions.rareBonus
         val out = mutableListOf<WildSpawn>()
         for (sh in shrines) {
             val home = sh.id in bonded
@@ -400,7 +402,7 @@ object World {
         val expires = (window + 1) * SPAWN_WINDOW_MS
         val ageMin = (nowMs - window * SPAWN_WINDOW_MS) / 60_000.0
         val favored = conditions.timeOfDay.favored
-        val rareBoost = 1.0 + conditions.activity + if (conditions.lure) 0.5 else 0.0
+        val rareBoost = 1.0 + conditions.activity + (if (conditions.lure) 0.5 else 0.0) + conditions.rareBonus
         val chance = cellChance(conditions)
         val cx = floor(anchorLat / SPAWN_CELL_DEG).toLong()
         val cy = floor(anchorLon / SPAWN_CELL_DEG).toLong()
