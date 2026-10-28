@@ -82,6 +82,7 @@ private val topics = listOf(
         GameIcon.HEART, "Health: walking, sleep and water",
         listOf(
             "The Health card at the top of Home shows today's steps by hour (tap a bar for its count), your water and your sleep. Tap its title to open or fold it.",
+            "Eggs: two monsters of the same line at level 20+ can make an egg (on a monster's page, for gold and line candy). Walk 2 to 6 km to hatch it: it's the line's first stage, with at least 3 of its parents' best genes, maybe a parent's personality, and better shiny odds if a parent was shiny. Both parents rest for a day.",
             "Walking helps your adventure: every 100 steps gives you and your battle party 10 XP, heals 10 HP and restores 2 Energy. Steps also open loot boxes, bring monsters to follow you, and count toward the 5,000-step goal on the calendar.",
             "Sleep helps too: a full night (7 hours or more) that ended this morning refills your Energy, once a day. Sleep syncs from Health Connect (Samsung Health, Fitbit, Google Fit...) with Sync sleep, or tap Log sleep to enter it by hand. The card shows last night, its stages when your watch records them, and the week.",
             "Water is just for you: tap + for each glass and set a daily goal. It pays no rewards.",

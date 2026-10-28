@@ -1785,6 +1785,7 @@ object GameEngine {
     fun walk(state: GameState, steps: Int, nowMs: Long = System.currentTimeMillis(), zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Update {
         if (steps <= 0) return Update(state, "")
         var s = LootBoxes.addWalk(state, steps * METERS_PER_MILE / STEPS_PER_MILE)
+        s = Eggs.addWalk(s, steps * METERS_PER_MILE / STEPS_PER_MILE)
         val day = java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
         val today = if (s.stepsDay == day) s.stepsToday + steps else steps
         s = s.copy(

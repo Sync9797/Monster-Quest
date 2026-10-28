@@ -59,6 +59,7 @@ fun BagScreen(vm: GameViewModel) {
     var using by remember { mutableStateOf<Item?>(null) }
     val bag: @Composable () -> Unit = {
         LootBoxSection(vm)
+        EggsSection(vm)
         SectionTitle("Bag ${s.bagCount}/${s.bagCapacity}")
         LabeledBar("Space", s.bagCount, s.bagCapacity, if (s.bagFull) HpRed else MpBlue)
         if (s.bagCount > s.bagCapacity) {

@@ -154,3 +154,29 @@ private fun LootBoxCard(
         }
     }
 }
+
+/** Eggs being walked: progress, and a Hatch button when one is ready. */
+@androidx.compose.runtime.Composable
+fun EggsSection(vm: com.monsterquest.app.GameViewModel) {
+    val eggs = vm.state.eggs
+    if (eggs.isEmpty()) return
+    SectionTitle("Eggs ${eggs.size}/${com.monsterquest.core.Eggs.MAX_EGGS}")
+    eggs.forEach { egg ->
+        GameCard(Modifier.padding(vertical = 3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                com.monsterquest.app.ui.art.MonsterArt(egg.species, Modifier.size(40.dp), silhouette = !egg.ready, shiny = egg.ready && egg.shiny)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("${egg.species.name} egg", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (egg.ready) "Ready to hatch!" else String.format(Locale.US, "Walk %.1f / %.1f km", egg.walkedMeters / 1000, egg.meters / 1000),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (!egg.ready) Bar(egg.progress.toFloat(), Gold, Modifier.fillMaxWidth().padding(top = 3.dp), heightDp = 5)
+                }
+                if (egg.ready) androidx.compose.material3.Button(onClick = { vm.hatchEgg(egg.id) }) { Text("Hatch") }
+            }
+        }
+    }
+}

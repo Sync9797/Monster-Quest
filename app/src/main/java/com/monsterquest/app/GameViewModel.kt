@@ -712,6 +712,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))
     fun feedTreat(uid: String) = apply(GameEngine.feedTreat(state, uid))
     fun rerollPersonality(uid: String) = apply(GameEngine.rerollPersonality(state, uid))
+    fun breed(a: String, b: String) = apply(com.monsterquest.core.Eggs.breed(state, a, b, System.currentTimeMillis()))
+    fun hatchEgg(id: String) = apply(com.monsterquest.core.Eggs.hatch(state, id))
     fun buy(item: Item) = apply(GameEngine.buy(state, item))
     fun sell(item: Item) = apply(GameEngine.sellItem(state, item))
     fun discard(item: Item) = apply(GameEngine.discard(state, item))

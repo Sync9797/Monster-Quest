@@ -66,6 +66,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -553,6 +554,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     val other = s.monsters.find { it.uid == compareUid && it.uid != m.uid }
     var editingSlot by remember(m.uid) { mutableStateOf<Int?>(null) }
     var rerolling by remember(m.uid) { mutableStateOf(false) }
+    var breeding by remember(m.uid) { mutableStateOf(false) }
     // How the move picker lists moves (kept while the screen is open).
     var moveSort by rememberSaveable { mutableStateOf(MoveSort.ROLE) }
     var releasing by remember { mutableStateOf(false) }
@@ -894,6 +896,17 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             SmallButton("Rename", { renaming = true }, Modifier.weight(1f), outlined = true)
             SmallButton("Release", { releasing = true }, Modifier.weight(1f), outlined = true)
         }
+        // Two of the same line, level 20+, can make an egg.
+        if (m.level >= com.monsterquest.core.Eggs.BREED_LEVEL) {
+            val now = System.currentTimeMillis()
+            SmallButton(
+                if (com.monsterquest.core.Eggs.resting(m, now)) "Resting after making an egg" else "Make an egg",
+                { breeding = true },
+                Modifier.fillMaxWidth().padding(top = 6.dp),
+                enabled = com.monsterquest.core.Eggs.canBreed(m, now),
+                outlined = true,
+            )
+        }
         // A Mood Crystal (from long phone-free sessions) gives it a new personality.
         val crystals = s.count(Item.MOOD_CRYSTAL)
         if (crystals > 0) {
@@ -965,6 +978,44 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             },
             confirmButton = { TextButton(onClick = { vm.release(m.uid); releasing = false }) { Text("Release") } },
             dismissButton = { TextButton(onClick = { releasing = false }) { Text("Keep") } },
+        )
+    }
+    if (breeding) {
+        val now = System.currentTimeMillis()
+        val partners = com.monsterquest.core.Eggs.partners(s, m, now)
+        val candy = GameEngine.candyOf(s, sp)
+        AlertDialog(
+            onDismissRequest = { breeding = false },
+            title = { Text("Make an egg") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        "Pair ${m.displayName} with another of its line (level ${com.monsterquest.core.Eggs.BREED_LEVEL}+). " +
+                            "The egg hatches a ${Bestiary.lineOf(sp).first().name} after a walk, with the best of both parents' genes " +
+                            "(at least ${com.monsterquest.core.Eggs.INHERITED_STATS} stats). Both parents rest for a day.",
+                        fontSize = 13.sp,
+                    )
+                    Text(
+                        "Costs ${com.monsterquest.core.Eggs.BREED_GOLD} gold and ${com.monsterquest.core.Eggs.BREED_CANDY} ${GameEngine.candyName(sp)} (you have $candy) • " +
+                            "Eggs: ${s.eggs.size}/${com.monsterquest.core.Eggs.MAX_EGGS}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                    if (partners.isEmpty()) Text("No partner is ready: you need another of this line at level ${com.monsterquest.core.Eggs.BREED_LEVEL}+ that isn't resting.", color = HpYellow, fontSize = 13.sp)
+                    partners.forEach { p ->
+                        OutlinedButton(
+                            onClick = { vm.breed(m.uid, p.uid); breeding = false },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            enabled = s.gold >= com.monsterquest.core.Eggs.BREED_GOLD && candy >= com.monsterquest.core.Eggs.BREED_CANDY &&
+                                s.eggs.size < com.monsterquest.core.Eggs.MAX_EGGS,
+                        ) {
+                            Text("${p.displayName}  Lv ${p.level}  •  Potential ${p.potential}%", modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { breeding = false }) { Text("Close") } },
         )
     }
     if (rerolling) {

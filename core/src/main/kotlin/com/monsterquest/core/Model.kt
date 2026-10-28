@@ -330,6 +330,8 @@ data class Monster(
     val shiny: Boolean = false,
     /** The skill it gets at level 30, rolled from its line's pool when it was born (null: older saves keep their line's fixed skill). */
     val skill: Trait? = null,
+    /** When it last made an egg (it rests a day after). */
+    val bredAtMs: Long = 0,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name

@@ -331,6 +331,8 @@ data class GameState(
     val goalsClaimed: Set<String> = emptySet(),
     /** The last day each weather event happened (by event name), so each brings one visitor a day. */
     val weatherEventDays: Map<String, Long> = emptyMap(),
+    /** Eggs being walked to hatch. */
+    val eggs: List<Egg> = emptyList(),
     /** Today's quest rewards so far (see [QuestRewards]); kept on the hero, so deleting quests doesn't reset it. */
     val questLimits: QuestLimits = QuestLimits(),
     /** Daily reminders (gentle alarms on chosen days). */
@@ -520,6 +522,7 @@ data class Lifetime(
     val longestFocus: Int = 0,
     /** Monsters tamed of each type (a dual type counts for both). */
     val tamedByType: Map<Element, Int> = emptyMap(),
+    val eggsHatched: Int = 0,
 ) {
     /** One more monster tamed. */
     fun tamed(m: Monster): Lifetime = copy(
