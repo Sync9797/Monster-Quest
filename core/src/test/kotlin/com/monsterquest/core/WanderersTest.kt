@@ -85,12 +85,14 @@ class WanderersTest {
         val nomad = (0 until 50).asSequence().flatMap { Wanderers.nomadsNear(s, 40.0 + it * 0.05, -74.0, now, utc) }.first()
         assertEquals(Wanderers.NOMAD_ACTIVE + Wanderers.NOMAD_SWAPS, nomad.team.size)
         // Weak foes so the fight resolves.
-        val weak = nomad.copy(team = (1..5).map { Monster.create(Bestiary.get("zapmouse"), 2, Random(it)) })
+        val weak = nomad.copy(team = (1..4).map { Monster.create(Bestiary.get("zapmouse"), 2, Random(it)) }, level = 2)
         val b = GameEngine.newBattle(
-            s, weak.active.first(), EncounterType.NOMAD, rng = Random(3), pack = weak.active.drop(1),
+            s, weak.active.first(), EncounterType.NOMAD, rng = Random(3), pack = weak.active.drop(1), thug = weak.fighter,
             enemyReserve = weak.reserve, swapLimit = Wanderers.NOMAD_SWAPS, trainer = weak.name,
         )
+        // The nomad and two monsters against the hero and two of yours.
         assertEquals(3, b.enemies.size)
+        assertEquals(weak.name, b.enemies.last().name)
         assertEquals(3, b.allies.size)
         assertEquals(2, b.swapsWaiting.size)
         assertEquals(2, b.enemyReserveLeft)
@@ -100,7 +102,7 @@ class WanderersTest {
         assertEquals(BattleOutcome.WON, b.outcome)
         assertEquals(0, b.enemyReserveLeft)
         assertTrue(b.log.any { "sends out" in it })
-        assertEquals(5, b.result().defeated.size)
+        assertEquals(4, b.result().defeated.size)
         val r = Wanderers.nomadReward(s, weak, now, Random(4), utc)
         assertEquals(s.gold + weak.level * Wanderers.NOMAD_GOLD_PER_LEVEL, r.state.gold)
         assertEquals(1, r.state.eggs.size)

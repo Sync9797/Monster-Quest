@@ -25,8 +25,8 @@ data class TraderOffer(
 data class Trader(val id: String, val name: String, val lat: Double, val lon: Double, val offers: List<TraderOffer>)
 
 /**
- * A nomad adventurer who challenges you: three of their monsters against the
- * hero and two of yours, with two swaps waiting on each side.
+ * A nomad adventurer who challenges you: the nomad and two of their monsters
+ * against the hero and two of yours, with two swaps waiting on each side.
  */
 data class Nomad(
     val id: String,
@@ -36,9 +36,21 @@ data class Nomad(
     val level: Int,
     /** The first [Wanderers.NOMAD_ACTIVE] fight; the rest are the swaps. */
     val team: List<Monster>,
+    /** How the nomad fights: hits hard (warrior), casts (mage) or strikes fast (rogue). */
+    val cls: HeroClass = HeroClass.WARRIOR,
 ) {
     val active: List<Monster> get() = team.take(Wanderers.NOMAD_ACTIVE)
     val reserve: List<Monster> get() = team.drop(Wanderers.NOMAD_ACTIVE)
+
+    /** The nomad as a fighter beside their monsters. */
+    val fighter: Thug get() = Thug(name, "Nomads", level, cls, fullTitle = name)
+
+    val style: String
+        get() = when (cls) {
+            HeroClass.WARRIOR -> "a hard-hitting brawler"
+            HeroClass.MAGE -> "a spellcaster"
+            else -> "quick and hard to hit"
+        }
 }
 
 /**
@@ -49,7 +61,8 @@ object Wanderers {
     const val RANGE_M = 100.0
     const val TRADER_CHANCE = 0.12
     const val NOMAD_CHANCE = 0.12
-    const val NOMAD_ACTIVE = 3
+    /** The nomad fights too: with two monsters, a 3 on 3 against the hero and two of yours. */
+    const val NOMAD_ACTIVE = 2
     const val NOMAD_SWAPS = 2
     /** Gear sells for this many times what the shop would pay for it. */
     const val GEAR_MARKUP = 3
@@ -145,7 +158,8 @@ object Wanderers {
                 val lvl = (level + r.nextInt(-1, 2)).coerceAtLeast(2)
                 Monster.create(Bestiary.trained(r, lvl), lvl, r).withWildMoves(r)
             }
-            Nomad(id, nomadNames.random(r), (x + r.nextDouble()) * CELL_DEG, (y + r.nextDouble()) * CELL_DEG, level, team)
+            val cls = listOf(HeroClass.WARRIOR, HeroClass.MAGE, HeroClass.ROGUE).random(r)
+            Nomad(id, nomadNames.random(r), (x + r.nextDouble()) * CELL_DEG, (y + r.nextDouble()) * CELL_DEG, level, team, cls)
         }
     }
 

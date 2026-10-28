@@ -863,7 +863,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         lure = state.lureActive(nowMs),
         weather = weatherForWave(nowMs),
         waterDistanceM = waterForWave(nowMs),
-        speciesBoosts = com.monsterquest.core.Mystery.boosts(state),
+        // The mystery of the week and any food set out draw their monsters.
+        speciesBoosts = (com.monsterquest.core.Mystery.boosts(state).keys + com.monsterquest.core.Foods.boosts(state, nowMs).keys).associateWith { id ->
+            (com.monsterquest.core.Mystery.boosts(state)[id] ?: 1.0) * (com.monsterquest.core.Foods.boosts(state, nowMs)[id] ?: 1.0)
+        },
     )
 
     /** Like the weather, nearby water changes the monsters with the next wave, so the map doesn't reshuffle. */
@@ -876,6 +879,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
+    fun useFood(food: com.monsterquest.core.Item) = apply(com.monsterquest.core.Foods.use(state, food, System.currentTimeMillis()))
 
     // ---- battery saver -------------------------------------------------------
 
@@ -1149,7 +1153,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         nomadRun = nomad
         startBattle(
-            nomad.active.first(), EncounterType.NOMAD, null, pack = nomad.active.drop(1),
+            nomad.active.first(), EncounterType.NOMAD, null, pack = nomad.active.drop(1), thug = nomad.fighter,
             enemyReserve = nomad.reserve, swapLimit = com.monsterquest.core.Wanderers.NOMAD_SWAPS, trainer = nomad.name,
         )
     }

@@ -540,6 +540,10 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        com.monsterquest.core.Foods.active(vm.state, now)?.let { food ->
+            IconText(food.icon(), formatDuration(vm.state.foodUntilMs - now), tint = food.color(), fontSize = 12.sp)
+            Spacer(Modifier.width(6.dp))
+        }
         if (cond.lure) {
             IconText(GameIcon.LURE, formatDuration(vm.state.lureUntilMs - now), tint = Color(0xFFF2A198), fontSize = 12.sp)
         } else {
@@ -1436,12 +1440,13 @@ private fun NomadDialog(vm: GameViewModel, nomad: com.monsterquest.core.Nomad, o
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "\"A fair fight? Three of mine against you and two of yours, two swaps each.\" " +
+                    "\"A fair fight? Me and two of mine against you and two of yours, two swaps each.\" " +
+                        "${nomad.name} fights too: ${nomad.style}. " +
                         "Win for ${nomad.level * com.monsterquest.core.Wanderers.NOMAD_GOLD_PER_LEVEL} gold, 2 Hi-Potions and an egg from one of their monsters' lines " +
                         "(${com.monsterquest.core.Wanderers.NOMAD_EGG_PERFECT} perfect stats). Their monsters can't be tamed.",
                     fontSize = 13.sp,
                 )
-                Text("Fighting", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                Text("Fighting beside ${nomad.name}", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                 NomadTeamRow(vm, nomad.active)
                 Text("Swaps", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
                 NomadTeamRow(vm, nomad.reserve)

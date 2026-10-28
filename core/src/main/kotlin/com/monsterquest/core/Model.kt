@@ -469,7 +469,7 @@ fun newId(rng: Random = Random.Default): String =
 const val MASTER_ORB_SELL_PRICE = 200
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT, PERSONALITY }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT, PERSONALITY, FOOD }
 
 @Serializable
 enum class Item(
@@ -503,6 +503,16 @@ enum class Item(
     /** Only from long phone-free sessions (60 to 120 minutes). */
     MOOD_CRYSTAL("Mood Crystal", ItemKind.PERSONALITY, 1.0, 0, "Gives a monster a new personality, at random. Earned from long phone-free sessions."),
     LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day."),
+    // Foods: set one out and, for 30 minutes, monsters that eat it turn up far more often (see Foods).
+    SEED_MIX("Seed Mix", ItemKind.FOOD, 30.0, 60, "Grain and seeds for grazers, small birds and rodents."),
+    ORCHARD_FRUIT("Orchard Fruit", ItemKind.FOOD, 30.0, 80, "Ripe fruit and honey for apes, bears and other omnivores."),
+    WRIGGLE_GRUBS("Wriggle Grubs", ItemKind.FOOD, 30.0, 80, "A jar of grubs for bugs, spiders, frogs and insect-eaters."),
+    FRESH_FISH("Fresh Fish", ItemKind.FOOD, 30.0, 100, "The day's catch for fish, turtles, crabs and seabirds."),
+    RAW_MEAT("Raw Meat", ItemKind.FOOD, 30.0, 120, "Red meat for hunters: cats, hounds, owls and lizards."),
+    RICH_COMPOST("Rich Compost", ItemKind.FOOD, 30.0, 80, "Leaf mold and rot for trees, fungi and slimes."),
+    MINERAL_SALTS("Mineral Salts", ItemKind.FOOD, 30.0, 120, "Salt licks and crushed ore for rock eaters.", minLevel = 5),
+    SPIRIT_INCENSE("Spirit Incense", ItemKind.FOOD, 30.0, 150, "Smoke that spirits and imps can't resist.", minLevel = 10),
+    DRAGON_FEAST("Dragon's Feast", ItemKind.FOOD, 30.0, 400, "A roast fit for a dragon. Nothing less will do.", minLevel = 15),
     // Berries: fed to a monster before a throw, like a Razz Berry. Only found in the wild.
     SWEET_BERRY(
         "Sweet Berry", ItemKind.BAIT, 1.5, 0,

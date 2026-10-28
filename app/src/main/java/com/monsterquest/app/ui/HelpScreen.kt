@@ -186,7 +186,7 @@ private val topics = listOf(
         GameIcon.MAP, "Traders and nomads",
         listOf(
             "Green-glowing traders wander the map, changing daily. They sell weapons and armor, plus shop supplies 20-35% off. Each offer sells once.",
-            "Blue-glowing nomad adventurers want a fair fight: three of their monsters against you and two of yours, with two swaps waiting on each side. When one of theirs falls, the next steps in.",
+            "Blue-glowing nomad adventurers want a fair fight: the nomad and two of their monsters against you and two of yours, with two swaps waiting on each side. The nomad fights too (a brawler, a caster or a quick striker). When one of their monsters falls, the next steps in.",
             "Beat a nomad for gold, 2 Hi-Potions and an egg from one of their monsters' lines with 3 perfect stats (2 Great Orbs if your egg slots are full). Each nomad can be beaten once a day; lose and you can try again.",
         ),
     ),
@@ -195,6 +195,7 @@ private val topics = listOf(
         listOf(
             "Every encounter shows stars for how strong its line ends up (by the final form's max stats), and what it becomes: a silhouette until you've seen that form.",
             "Want a line? Pin it (from an encounter or the Journal). Wanted lines stand in a gold ring on the map, and the weather panel says when the weather favors them. You can pin up to 6.",
+            "Food: the Store sells food that draws the monsters who eat it, 4x as often for 30 minutes (set it out from your Bag). Diets fit the creature: Seed Mix for grazers and small birds, Raw Meat for hunters, Fresh Fish for fish and seabirds, Rich Compost for trees and fungi, Mineral Salts for rock eaters, Spirit Incense for spirits, and a Dragon's Feast for dragons. Legendaries and mythics can't be lured.",
             "Mystery of the week: a silhouette on Home with clues (type, weather, time of day). It turns up 4x as often all week; tame one for 500 gold, 10 candy and a Golden Berry.",
         ),
     ),

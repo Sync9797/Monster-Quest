@@ -160,6 +160,14 @@ fun Item.icon(): GameIcon = when (this) {
     Item.MOOD_CRYSTAL -> GameIcon.SPARK
     Item.LURE -> GameIcon.LURE
     Item.SWEET_BERRY, Item.GOLDEN_BERRY -> GameIcon.BERRY
+    Item.SEED_MIX, Item.RICH_COMPOST -> GameIcon.LEAF
+    Item.ORCHARD_FRUIT -> GameIcon.BERRY
+    Item.WRIGGLE_GRUBS -> GameIcon.TREAT
+    Item.FRESH_FISH -> GameIcon.DROP
+    Item.RAW_MEAT -> GameIcon.PAW
+    Item.MINERAL_SALTS -> GameIcon.CRYSTAL
+    Item.SPIRIT_INCENSE -> GameIcon.MOON
+    Item.DRAGON_FEAST -> GameIcon.FLAME
 }
 
 fun Item.color(): Color = when (this) {
@@ -178,6 +186,15 @@ fun Item.color(): Color = when (this) {
     Item.LURE -> Color(0xFFF2A198)
     Item.SWEET_BERRY -> Color(0xFFE5739A)
     Item.GOLDEN_BERRY -> Color(0xFFEBC678)
+    Item.SEED_MIX -> Color(0xFFD9C27A)
+    Item.ORCHARD_FRUIT -> Color(0xFFF2A65A)
+    Item.WRIGGLE_GRUBS -> Color(0xFFC9A27E)
+    Item.FRESH_FISH -> Color(0xFF7FB8E6)
+    Item.RAW_MEAT -> Color(0xFFE07A6E)
+    Item.RICH_COMPOST -> Color(0xFF8FB86A)
+    Item.MINERAL_SALTS -> Color(0xFFBFC7D1)
+    Item.SPIRIT_INCENSE -> Color(0xFFB59AF0)
+    Item.DRAGON_FEAST -> Color(0xFFF26B4A)
 }
 
 fun com.monsterquest.core.WeaponType.icon(): GameIcon = when (this) {

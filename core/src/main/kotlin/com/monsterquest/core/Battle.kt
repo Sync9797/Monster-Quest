@@ -756,7 +756,7 @@ class Battle(
             EncounterType.DEN -> "A fierce ${enemy.name} (Lv ${enemy.level}) charges out of its den! Beat it, then try to tame it."
             EncounterType.THUG -> "${thug?.title ?: "A thug"} of the ${thug?.crew ?: "streets"} jumps you with " +
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
-            EncounterType.NOMAD -> "${trainer ?: "The nomad"} sends out ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}" +
+            EncounterType.NOMAD -> "${trainer ?: "The nomad"} steps up${if (thug != null) " to fight" else ""} with ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}" +
                 (if (enemyBench.isNotEmpty()) ", with ${enemyBench.size} more waiting!" else "!")
         }
         log += intro

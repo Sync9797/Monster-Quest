@@ -27,7 +27,14 @@ data class VillainCamp(
  * (as many as you have fighting, so it's an even match). Their monsters
  * won't leave them, so they can't be tamed.
  */
-data class Thug(val name: String, val crew: String, val level: Int, val cls: HeroClass = HeroClass.ROGUE) {
+data class Thug(
+    val name: String,
+    val crew: String,
+    val level: Int,
+    val cls: HeroClass = HeroClass.ROGUE,
+    /** A full name to show instead of "Name the Kind" (a nomad). */
+    val fullTitle: String? = null,
+) {
     /** What kind of thug: a Brute (warrior), a Hexer (mage) or a Cutthroat (rogue). */
     val kind: String
         get() = when (cls) {
@@ -37,7 +44,7 @@ data class Thug(val name: String, val crew: String, val level: Int, val cls: Her
         }
 
     /** e.g. "Brick the Brute". */
-    val title: String get() = "$name the $kind"
+    val title: String get() = fullTitle ?: "$name the $kind"
 }
 
 /**

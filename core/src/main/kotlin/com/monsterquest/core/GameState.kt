@@ -346,6 +346,9 @@ data class GameState(
     val activityAtMs: Long = 0,
     /** A lure is active until this time. */
     val lureUntilMs: Long = 0,
+    /** Food set out to draw monsters that eat it (see [Foods]), and until when. */
+    val food: Item? = null,
+    val foodUntilMs: Long = 0,
     /** Epoch day the free daily lure was last handed out. */
     val lastFreeLureDay: Long? = null,
     /** Weapon parts by type; [PARTS_TO_FORGE] of one type forge that weapon. */

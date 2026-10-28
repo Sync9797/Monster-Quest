@@ -94,6 +94,7 @@ fun BagScreen(vm: GameViewModel) {
                         SmallButton("Use", { vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY) }, outlined = true, enabled = s.heroEnergyUsed > 0)
                     }
                     if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
+                    if (item.kind == ItemKind.FOOD) SmallButton("Set out", { vm.useFood(item) }, outlined = true)
                     TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
                 }
             }
@@ -253,6 +254,7 @@ fun StoreScreen(vm: GameViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.kind == ItemKind.FOOD) Text(foodEatersText(s, item), fontSize = 11.sp, color = Gold)
                     }
                     if (s.hero.level < item.minLevel) {
                         // Locked until the hero is strong enough.
@@ -506,4 +508,13 @@ private fun StorageShop(vm: GameViewModel) {
             }
         }
     }
+}
+
+/** Who a food draws: the lines you've met by name, the rest as a count. */
+internal fun foodEatersText(s: com.monsterquest.core.GameState, food: Item): String {
+    val lines = com.monsterquest.core.Foods.eaters(food).map { com.monsterquest.core.Bestiary.lineOf(it).first() }.distinctBy { it.family }
+    val known = lines.filter { sp -> com.monsterquest.core.Bestiary.lineOf(sp).any { it.id in s.seen } }
+    val unknown = lines.size - known.size
+    return "Draws: " + (known.map { it.name } + listOfNotNull(if (unknown > 0) "$unknown line${if (unknown == 1) "" else "s"} you haven't met" else null)).joinToString() +
+        " (30 min, ${com.monsterquest.core.Foods.BOOST.toInt()}x as often)"
 }
