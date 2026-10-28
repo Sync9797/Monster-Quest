@@ -253,11 +253,17 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                     Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { i ->
                             val m = s.partyMonsters.getOrNull(i)
+                            // The first slot is the buddy: outlined in its own color.
+                            val buddySlot = i == 0 && m != null
                             Box(
                                 Modifier
                                     .weight(1f)
                                     .onGloballyPositioned { drag.slots[i] = it.boundsInRoot() }
-                                    .border(if (hovered == i) 3.dp else 0.dp, if (hovered == i) Gold else Color.Transparent, RoundedCornerShape(12.dp)),
+                                    .border(
+                                        if (hovered == i) 3.dp else if (buddySlot) 2.dp else 0.dp,
+                                        if (hovered == i) Gold else if (buddySlot) BuddyColor else Color.Transparent,
+                                        RoundedCornerShape(12.dp),
+                                    ),
                             ) {
                                 if (m != null) {
                                     MonsterTile(
@@ -269,11 +275,25 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                                 } else {
                                     EmptySlot(highlight = drag.uid != null)
                                 }
+                                if (buddySlot) {
+                                    Text(
+                                        "BUDDY",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.TopStart)
+                                            .padding(4.dp)
+                                            .background(BuddyColor, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                                    )
+                                }
                             }
                         }
                         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                     }
+                    BuddyProgress(s)
                     // Swap slots: they come along and can be sent in mid-battle.
                     SectionTitle("Swap slots", Modifier.padding(top = 4.dp))
                     Text(
@@ -1198,3 +1218,30 @@ fun TypeChart() {
 /** Blue for male, pink for female. */
 internal fun genderColor(g: com.monsterquest.core.Gender): Color =
     if (g == com.monsterquest.core.Gender.MALE) Color(0xFF5B9BE0) else Color(0xFFE27AA5)
+
+/** The buddy's highlight color. */
+internal val BuddyColor = Color(0xFF3FA7A0)
+
+/** The buddy (first party slot) walks with you and finds candy; this shows how far to the next one. */
+@Composable
+private fun BuddyProgress(s: com.monsterquest.core.GameState) {
+    val buddy = com.monsterquest.core.Buddy.of(s) ?: return
+    val per = com.monsterquest.core.Buddy.metersPerCandy(buddy.species)
+    val walked = com.monsterquest.core.Buddy.progress(s).coerceIn(0.0, per)
+    val mile = com.monsterquest.core.METERS_PER_MILE
+    GameCard(Modifier.padding(bottom = 8.dp), border = BuddyColor) {
+        Text("Buddy: ${buddy.displayName}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BuddyColor)
+        Text(
+            "Walks with you and finds a ${GameEngine.candyName(buddy.species)} every ${"%.0f".format(per / mile)} mi. " +
+                "${"%.2f".format(walked / mile)} / ${"%.0f".format(per / mile)} mi",
+            fontSize = 12.sp,
+        )
+        Bar((walked / per).toFloat(), BuddyColor, Modifier.fillMaxWidth().padding(top = 4.dp), heightDp = 6)
+        Text(
+            "Your first party slot is your buddy. Stronger monsters take longer. Moving it out of the slot resets the walk.",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}

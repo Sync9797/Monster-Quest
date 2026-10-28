@@ -83,6 +83,7 @@ private val topics = listOf(
         GameIcon.HEART, "Health: walking, sleep and water",
         listOf(
             "The Health card at the top of Home shows today's steps by hour (tap a bar for its count), your water and your sleep. Tap its title to open or fold it.",
+            "Buddy: the monster in your first party slot is your buddy (outlined on the Monsters tab). It finds its line's candy as you walk: every mile for Common monsters, 2 for Uncommon, 3 for Rare, 5 for Epic and 10 for Legendary. Moving it out of the first slot resets the walk.",
             "Genders: every monster is male or female, except legendaries and mythics, which have no gender and can't make eggs.",
             "Eggs from adventures: a team of two or more has a 75% chance to bring home an egg, win or lose. With a male and a female of the same line on the team it's their egg, with their best genes; otherwise it's an egg of one member's line.",
             "Eggs: a male and a female of the same line at level 20+ can make an egg (on a monster's page, for gold and line candy). Walk 2 to 6 km to hatch it: it's the line's first stage, with at least 3 of its parents' best genes, maybe a parent's personality, and better shiny odds if a parent was shiny. Both parents rest for a day.",

@@ -168,7 +168,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun set(next: GameState) {
         // A new day or week starts its goals from the stats just before this change.
-        val s = com.monsterquest.core.Goals.rollover(state, next, java.time.LocalDate.now().toEpochDay())
+        // A new buddy (first party slot) starts its walk toward candy from zero.
+        val s = com.monsterquest.core.Buddy.sync(com.monsterquest.core.Goals.rollover(state, next, java.time.LocalDate.now().toEpochDay()))
         val walked = s.stats.totalSteps - state.stats.totalSteps
         // Add today's gains (levels, XP, loot, healing, tasks) for tomorrow's morning recap.
         state = com.monsterquest.core.Recap.track(state, s, System.currentTimeMillis()).withJournal()

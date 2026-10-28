@@ -1786,6 +1786,8 @@ object GameEngine {
         if (steps <= 0) return Update(state, "")
         var s = LootBoxes.addWalk(state, steps * METERS_PER_MILE / STEPS_PER_MILE)
         s = Eggs.addWalk(s, steps * METERS_PER_MILE / STEPS_PER_MILE)
+        val (withBuddy, buddyText) = Buddy.addWalk(s, steps * METERS_PER_MILE / STEPS_PER_MILE)
+        s = withBuddy
         val day = java.time.Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
         val today = if (s.stepsDay == day) s.stepsToday + steps else steps
         s = s.copy(
@@ -1799,11 +1801,14 @@ object GameEngine {
         s = Health.recordSteps(s, steps, nowMs, zone)
         val (withFollowers, followed) = drawFollowers(s, steps, nowMs)
         s = withFollowers
-        val followText = when (followed.size) {
-            0 -> ""
-            1 -> "A wild ${followed[0].species.name} followed your footsteps! Find it on the map."
-            else -> "${followed.size} monsters followed your footsteps! Find them on the map."
-        }
+        val followText = listOf(
+            when (followed.size) {
+                0 -> ""
+                1 -> "A wild ${followed[0].species.name} followed your footsteps! Find it on the map."
+                else -> "${followed.size} monsters followed your footsteps! Find them on the map."
+            },
+            buddyText,
+        ).filter { it.isNotEmpty() }.joinToString(" ")
         val bank = s.stepBank + steps
         val rewards = bank / STEPS_PER_REWARD
         s = s.copy(stepBank = bank % STEPS_PER_REWARD)

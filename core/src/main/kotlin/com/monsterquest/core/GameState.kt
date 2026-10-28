@@ -362,6 +362,9 @@ data class GameState(
     val energyRegenMs: Long = 0,
     /** Steps not yet turned into a reward (rewards come every 100 steps). */
     val stepBank: Int = 0,
+    /** The buddy (first party slot) the walk toward its next candy counts for, and how far you've gone. */
+    val buddyUid: String? = null,
+    val buddyMeters: Double = 0.0,
     val stepsToday: Int = 0,
     /** Steps per local hour (key: [Health.hourKey]), for the Health card's chart. About a week is kept. */
     val stepsByHour: Map<Long, Int> = emptyMap(),
