@@ -157,6 +157,7 @@ fun Item.icon(): GameIcon = when (this) {
     // Binding Crystals.
     Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB -> GameIcon.CRYSTAL
     Item.TREAT -> GameIcon.TREAT
+    Item.MOOD_CRYSTAL -> GameIcon.SPARK
     Item.LURE -> GameIcon.LURE
     Item.SWEET_BERRY, Item.GOLDEN_BERRY -> GameIcon.BERRY
 }
@@ -173,6 +174,7 @@ fun Item.color(): Color = when (this) {
     Item.MASTER_ORB -> Color(0xFFEBC678)
     Item.PERFECT_ORB -> Color(0xFFFF7BD5)
     Item.TREAT -> Color(0xFFD9A07A)
+    Item.MOOD_CRYSTAL -> Color(0xFFB59AF0)
     Item.LURE -> Color(0xFFF2A198)
     Item.SWEET_BERRY -> Color(0xFFE5739A)
     Item.GOLDEN_BERRY -> Color(0xFFEBC678)

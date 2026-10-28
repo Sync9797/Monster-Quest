@@ -381,6 +381,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         set(u.state)
         focusSucceeded = success
         focusResult = u.message
+        // Party training: show who levelled up once the result is dismissed.
+        trainingLevelUps = u.levelUps
         FocusService.stop(getApplication())
         FocusStore.clear(getApplication())
     }
@@ -636,8 +638,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun restore(uid: String) = apply(GameEngine.restore(state, uid))
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
-    fun learnMove(uid: String, newId: String, replaceId: String) = apply(GameEngine.learnMove(state, uid, newId, replaceId))
+    fun learnMove(uid: String, newId: String, replaceId: String) {
+        apply(GameEngine.learnMove(state, uid, newId, replaceId))
+        if (state.settings.bigMomentHaptics) Haptics.learned(getApplication())
+    }
     fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
+
+    /** Level-ups from party training during a phone-free session, shown one by one. */
+    var trainingLevelUps by mutableStateOf<List<com.monsterquest.core.LevelUp>>(emptyList())
+    fun dismissTrainingLevelUp() {
+        trainingLevelUps = trainingLevelUps.drop(1)
+    }
 
     // ---- save backup -----------------------------------------------------------
 
@@ -676,6 +687,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun evolve(uid: String) = apply(GameEngine.evolve(state, uid))
     fun rename(uid: String, name: String) = apply(GameEngine.rename(state, uid, name))
     fun feedTreat(uid: String) = apply(GameEngine.feedTreat(state, uid))
+    fun rerollPersonality(uid: String) = apply(GameEngine.rerollPersonality(state, uid))
     fun buy(item: Item) = apply(GameEngine.buy(state, item))
     fun sell(item: Item) = apply(GameEngine.sellItem(state, item))
     fun discard(item: Item) = apply(GameEngine.discard(state, item))
@@ -1074,7 +1086,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun battleAction(action: BattleAction) {
         val b = activeBattle ?: return
         if (b.outcome != BattleOutcome.ONGOING) return
+        val casts = b.castCount
         b.act(action)
+        // Big moments buzz: a tame (a critical one more so).
+        val cast = b.lastCast
+        if (state.settings.bigMomentHaptics && b.castCount != casts && cast?.success == true) {
+            if (cast.critical) Haptics.criticalCatch(getApplication()) else Haptics.tamed(getApplication())
+        }
         var resultText: String? = null
         var nextOpponent: String? = null
         var levelUps: List<com.monsterquest.core.LevelUp>? = null
@@ -1083,6 +1101,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             set(u.state)
             resultText = u.message
             levelUps = u.levelUps
+            if (state.settings.bigMomentHaptics && u.levelUps.isNotEmpty()) Haptics.levelUp(getApplication())
             val run = villainRun
             if (run != null) {
                 val next = run.camp.team.getOrNull(run.index + 1)

@@ -96,7 +96,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     }
     val battle = vm.battle
     if (battle != null) {
-        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster, outfit = HeroOutfit.of(state.equippedGear, state.equippedArmor, state.equippedPieces), onTarget = vm::selectTarget, onReplace = vm::replaceFainted, onLearn = vm::learnMove)
+        BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster, outfit = HeroOutfit.of(state.equippedGear, state.equippedArmor, state.equippedPieces), onTarget = vm::selectTarget, onReplace = vm::replaceFainted, onLearn = vm::learnMove, speed = state.settings.battleSpeed.factor)
         return
     }
 
@@ -123,6 +123,13 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
             text = { Text(text) },
             confirmButton = { TextButton(onClick = vm::dismissFocusResult) { Text("OK") } },
         )
+    }
+
+    // Monsters that levelled up training during a phone-free session (after its result is closed).
+    if (vm.focusResult == null) {
+        vm.trainingLevelUps.firstOrNull()?.let { up ->
+            LevelUpDialog(up, null, 0, 1, onLearn = vm::learnMove) { vm.dismissTrainingLevelUp() }
+        }
     }
 
     vm.adventureResult?.let { text ->

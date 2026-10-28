@@ -449,7 +449,7 @@ fun newId(rng: Random = Random.Default): String =
 const val MASTER_ORB_SELL_PRICE = 200
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT, PERSONALITY }
 
 @Serializable
 enum class Item(
@@ -480,6 +480,8 @@ enum class Item(
         minLevel = 75,
     ),
     TREAT("Monster Treat", ItemKind.TREAT, 100.0, 50, "Feed to a monster outside battle for a big XP boost."),
+    /** Only from long phone-free sessions (60 to 120 minutes). */
+    MOOD_CRYSTAL("Mood Crystal", ItemKind.PERSONALITY, 1.0, 0, "Gives a monster a new personality, at random. Earned from long phone-free sessions."),
     LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day."),
     // Berries: fed to a monster before a throw, like a Razz Berry. Only found in the wild.
     SWEET_BERRY(

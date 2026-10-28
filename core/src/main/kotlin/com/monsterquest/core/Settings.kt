@@ -33,6 +33,9 @@ enum class ThemeMode(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK
 /** The map's look: follow the app's light/dark theme, or always light or dark. */
 enum class MapStyle(val label: String) { AUTO("Match app"), LIGHT("Light"), DARK("Dark") }
 
+/** How fast battle animations play. */
+enum class BattleSpeed(val label: String, val factor: Float) { NORMAL("Normal", 1f), FAST("Fast", 0.5f), INSTANT("Instant", 0f) }
+
 /** The game's own gold-and-teal colors, or the phone's Material You colors. */
 @Serializable
 enum class ColorStyle(val label: String, val description: String) {
@@ -73,6 +76,9 @@ data class Settings(
     val healthOpen: Boolean = false,
     /** Look up the real weather where you are; it changes which monsters are out. */
     val liveWeather: Boolean = true,
+    val battleSpeed: BattleSpeed = BattleSpeed.NORMAL,
+    /** Buzz on big moments: taming, critical catches, level-ups, new moves. */
+    val bigMomentHaptics: Boolean = true,
 )
 
 val CALENDAR_DAYS_AHEAD_OPTIONS = listOf(1, 3, 7, 14)

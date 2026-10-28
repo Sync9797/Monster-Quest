@@ -552,6 +552,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     var compareUid by remember(m.uid) { mutableStateOf<String?>(null) }
     val other = s.monsters.find { it.uid == compareUid && it.uid != m.uid }
     var editingSlot by remember(m.uid) { mutableStateOf<Int?>(null) }
+    var rerolling by remember(m.uid) { mutableStateOf(false) }
     // How the move picker lists moves (kept while the screen is open).
     var moveSort by rememberSaveable { mutableStateOf(MoveSort.ROLE) }
     var releasing by remember { mutableStateOf(false) }
@@ -893,6 +894,11 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             SmallButton("Rename", { renaming = true }, Modifier.weight(1f), outlined = true)
             SmallButton("Release", { releasing = true }, Modifier.weight(1f), outlined = true)
         }
+        // A Mood Crystal (from long phone-free sessions) gives it a new personality.
+        val crystals = s.count(Item.MOOD_CRYSTAL)
+        if (crystals > 0) {
+            SmallButton("New personality (Mood Crystal x$crystals)", { rerolling = true }, Modifier.fillMaxWidth().padding(top = 6.dp), outlined = true)
+        }
         Spacer(Modifier.height(24.dp))
     }
 
@@ -959,6 +965,20 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             },
             confirmButton = { TextButton(onClick = { vm.release(m.uid); releasing = false }) { Text("Release") } },
             dismissButton = { TextButton(onClick = { releasing = false }) { Text("Keep") } },
+        )
+    }
+    if (rerolling) {
+        AlertDialog(
+            onDismissRequest = { rerolling = false },
+            title = { Text("Use a Mood Crystal?") },
+            text = {
+                Text(
+                    "${m.displayName} is ${m.personality.label} (${m.personality.description}). " +
+                        "The crystal gives it a different personality, at random. It can't be undone.",
+                )
+            },
+            confirmButton = { TextButton(onClick = { vm.rerollPersonality(m.uid); rerolling = false }) { Text("Use it") } },
+            dismissButton = { TextButton(onClick = { rerolling = false }) { Text("Keep") } },
         )
     }
     if (renaming) {

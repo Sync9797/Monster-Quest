@@ -50,4 +50,21 @@ class FocusRewardTest {
         // 5 pages: enough to learn it outright.
         assertTrue(spell.id in u.state.hero.knownSpells, u.message)
     }
+
+    @Test
+    fun moodCrystalsComeFromLongSessionsAndChangePersonality() {
+        // Two hours: always one. Under an hour: never.
+        assertEquals(1, finish(started(), 120, 5).state.count(Item.MOOD_CRYSTAL))
+        assertTrue((0..30).none { finish(started(), 45, it).state.count(Item.MOOD_CRYSTAL) > 0 })
+        assertTrue((0..40).any { finish(started(), 60, it).state.count(Item.MOOD_CRYSTAL) > 0 })
+        assertEquals(0, Item.MOOD_CRYSTAL.price)
+        val s = finish(started(), 120, 5).state
+        val m = s.monsters.first()
+        val u = GameEngine.rerollPersonality(s, m.uid, Random(9))
+        val after = u.state.monsters.first { it.uid == m.uid }
+        assertTrue(after.personality != m.personality)
+        assertEquals(0, u.state.count(Item.MOOD_CRYSTAL))
+        // Without one, nothing happens.
+        assertEquals(after.personality, GameEngine.rerollPersonality(u.state, m.uid).state.monsters.first { it.uid == m.uid }.personality)
+    }
 }

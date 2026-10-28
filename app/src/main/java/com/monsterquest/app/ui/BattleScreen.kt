@@ -118,8 +118,10 @@ fun BattleScreen(
     onReplace: (String, String) -> Unit = { _, _ -> },
     /** A monster learns a new move in place of one it knows (monster uid, new move id, replaced move id). */
     onLearn: (String, String, String) -> Unit = { _, _, _ -> },
+    /** Animation speed: 1 normal, 0.5 fast, 0 instant. */
+    speed: Float = 1f,
 ) {
-    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace, onLearn) }
+    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace, onLearn, speed) }
 }
 
 /** What the hero is wearing, so their battle sprite matches their equipment. */
@@ -134,6 +136,7 @@ private fun BattleContent(
     onTarget: (String) -> Unit,
     onReplace: (String, String) -> Unit,
     onLearn: (String, String, String) -> Unit,
+    speed: Float,
 ) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     // After a Binding cast, the crystal shakes before the result shows.
@@ -163,7 +166,7 @@ private fun BattleContent(
             confirmButton = { TextButton(onClick = { asked += fallen.key }) { Text("Not now") } },
         )
     }
-    val fx = rememberBattleFx(b)
+    val fx = rememberBattleFx(b, speed)
     // Back closes a sub-menu (Magic, Items, Tame...). It never quits a fight in
     // progress (use Flee), and leaves the result screen once the fight is over.
     BackHandler {
@@ -485,7 +488,7 @@ private fun LevelUpGate(
 
 /** One fighter's level-up: new level, every stat before → after, moves learned, evolution. */
 @Composable
-private fun LevelUpDialog(
+internal fun LevelUpDialog(
     up: LevelUp,
     fighter: FighterView?,
     index: Int,

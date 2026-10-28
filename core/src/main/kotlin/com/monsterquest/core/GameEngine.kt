@@ -934,6 +934,21 @@ object GameEngine {
 
     fun treatXp(m: Monster): Int = maxOf(Item.TREAT.power.toInt(), m.xpToNext * 2 / 5)
 
+    /** A Mood Crystal: [uid] gets a new personality, different from its old one. */
+    fun rerollPersonality(state: GameState, uid: String, rng: Random = Random.Default): Update {
+        if (state.count(Item.MOOD_CRYSTAL) <= 0) return Update(state, "No Mood Crystals. Earn them from phone-free sessions of an hour or more.")
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
+        val next = Personality.entries.filter { it != m.personality }.random(rng)
+        val changed = m.copy(personality = next)
+        return Update(
+            state.copy(
+                monsters = state.monsters.map { if (it.uid == uid) changed else it },
+                inventory = removeItems(state.inventory, mapOf(Item.MOOD_CRYSTAL to 1)),
+            ),
+            "The Mood Crystal glows... ${m.displayName} is now ${next.label} (was ${m.personality.label}).",
+        )
+    }
+
     fun feedTreat(state: GameState, uid: String): Update {
         if (state.count(Item.TREAT) <= 0) return Update(state, "No treats. Buy some in the shop.")
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
@@ -1812,12 +1827,12 @@ object GameEngine {
     const val HALF_WALK_MINUTES = 90
 
     /** What a long phone-free session pays on top of its box. */
-    data class FocusBonus(val tomePages: Int, val levelShare: Double, val energyRefill: Int)
+    data class FocusBonus(val tomePages: Int, val levelShare: Double, val energyRefill: Int, val moodCrystalPct: Int = 0)
 
     fun focusBonus(minutes: Int): FocusBonus = when {
-        minutes >= 120 -> FocusBonus(tomePages = 5, levelShare = 0.5, energyRefill = 100)
-        minutes >= 90 -> FocusBonus(tomePages = 3, levelShare = 0.25, energyRefill = 50)
-        minutes >= 60 -> FocusBonus(tomePages = 0, levelShare = 0.1, energyRefill = 0)
+        minutes >= 120 -> FocusBonus(tomePages = 5, levelShare = 0.5, energyRefill = 100, moodCrystalPct = 100)
+        minutes >= 90 -> FocusBonus(tomePages = 3, levelShare = 0.25, energyRefill = 50, moodCrystalPct = 50)
+        minutes >= 60 -> FocusBonus(tomePages = 0, levelShare = 0.1, energyRefill = 0, moodCrystalPct = 25)
         else -> FocusBonus(0, 0.0, 0)
     }
 
@@ -1871,6 +1886,11 @@ object GameEngine {
                     },
                 )
                 msg.append(" Your party trained while you were away (+${(bonus.levelShare * 100).toInt()}% of a level each).")
+            }
+            // Mood Crystals (personality rerolls) only come from hour-plus sessions.
+            if (bonus.moodCrystalPct > 0 && rng.nextInt(100) < bonus.moodCrystalPct) {
+                s = s.copy(inventory = s.inventory + (Item.MOOD_CRYSTAL to s.count(Item.MOOD_CRYSTAL) + 1))
+                msg.append(" You found a Mood Crystal (a new personality for a monster).")
             }
             if (bonus.energyRefill > 0 && s.heroEnergyUsed > 0) {
                 s = s.copy(heroEnergyUsed = (s.heroEnergyUsed - s.hero.maxMp * bonus.energyRefill / 100).coerceAtLeast(0))

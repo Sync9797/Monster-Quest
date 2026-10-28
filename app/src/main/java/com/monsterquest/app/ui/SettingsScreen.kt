@@ -197,6 +197,22 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     "Show distances in feet and miles. Turn off for meters and kilometers.",
                     prefs.imperialUnits,
                 ) { on -> vm.updateSettings { it.copy(imperialUnits = on) } }
+                // Battle speed: chips for Normal, Fast and Instant.
+                Text("Battle speed", modifier = Modifier.padding(top = 8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                    com.monsterquest.core.BattleSpeed.entries.forEach { sp ->
+                        if (sp == prefs.battleSpeed) {
+                            Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(sp.label) }
+                        } else {
+                            OutlinedButton(onClick = { vm.updateSettings { it.copy(battleSpeed = sp) } }, modifier = Modifier.weight(1f)) { Text(sp.label) }
+                        }
+                    }
+                }
+                ToggleRow(
+                    "Big-moment buzz",
+                    "A short vibration when you tame a monster (a bigger one for a critical catch), level up or learn a move.",
+                    prefs.bigMomentHaptics,
+                ) { on -> vm.updateSettings { it.copy(bigMomentHaptics = on) } }
                 ToggleRow(
                     "Simple casting",
                     "Cast Binding with one tap (a Good trace) instead of tracing the glyph. Handy one-handed or on the move.",

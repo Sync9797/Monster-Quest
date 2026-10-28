@@ -90,19 +90,25 @@ private fun impactAt(e: BattleEvent) = if (e.style == StrikeStyle.BOLT) 0.62f el
 
 /** Plays new battle events one after another as they arrive. */
 @Composable
-fun rememberBattleFx(b: BattleView): BattleFx {
+fun rememberBattleFx(b: BattleView, speed: Float = 1f): BattleFx {
     val fx = remember { BattleFx() }
     var shown by remember { mutableStateOf(-1) }
     fx.currentKey = b.current?.key
     LaunchedEffect(b.events.size) {
         // A new battle (e.g. the next villain monster) starts its numbering over.
         if ((b.events.lastOrNull()?.seq ?: -1) < shown) shown = -1
+        // Battle speed: Fast halves every animation; Instant skips them.
+        if (speed <= 0f) {
+            shown = b.events.lastOrNull()?.seq ?: shown
+            fx.event = null
+            return@LaunchedEffect
+        }
         for (e in b.events.filter { it.seq > shown }) {
             fx.event = e
             fx.progress.snapTo(0f)
-            fx.progress.animateTo(1f, tween(duration(e), easing = LinearEasing))
+            fx.progress.animateTo(1f, tween((duration(e) * speed).toInt(), easing = LinearEasing))
             shown = e.seq
-            delay(90)
+            delay((90 * speed).toLong())
         }
         fx.event = null
     }

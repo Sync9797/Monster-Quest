@@ -30,6 +30,24 @@ object Haptics {
         runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 150, 250), -1)) }
     }
 
+    private fun play(context: Context, vararg pattern: Long) {
+        val v = vibrator(context) ?: return
+        if (!v.hasVibrator()) return
+        runCatching { v.vibrate(VibrationEffect.createWaveform(pattern, -1)) }
+    }
+
+    /** A rising triple: a monster was tamed. */
+    fun tamed(context: Context) = play(context, 0, 60, 60, 80, 60, 160)
+
+    /** A big burst: a critical catch. */
+    fun criticalCatch(context: Context) = play(context, 0, 40, 40, 40, 40, 40, 40, 260)
+
+    /** A firm double: a level-up. */
+    fun levelUp(context: Context) = play(context, 0, 120, 80, 120)
+
+    /** One short tap: a new move learned. */
+    fun learned(context: Context) = play(context, 0, 70)
+
     /** Two quick pulses: a wild monster appeared nearby. */
     fun spawn(context: Context) {
         val v = vibrator(context) ?: return
