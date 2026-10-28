@@ -269,7 +269,7 @@ private fun EnemyPanel(b: BattleView, onTarget: (String) -> Unit) {
     }
     GameCard(border = if (b.isBoss) BossRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FighterArt(e, Modifier.size(96.dp).fighterFx(e.key))
+            FoeArt(e, 96)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 if (b.encounter == EncounterType.DEN) {
@@ -354,14 +354,28 @@ private fun PackPanel(b: BattleView, onTarget: (String) -> Unit) {
                         .padding(6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    FighterArt(f, Modifier.size(56.dp).fighterFx(f.key))
+                    FoeArt(f, 56)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(f.name, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (targeted) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f, fill = false))
                         if (b.alreadyCaught(f)) CaughtMark(Modifier.padding(start = 3.dp).size(11.dp))
                     }
                     IconText(f.element.icon(), "Lv ${f.level}", tint = f.element.color(), fontSize = 10.sp, size = 11.dp)
                     Bar(f.hpFraction, hpColor(f.hpFraction), Modifier.fillMaxWidth(), heightDp = 6)
-                    Text(if (f.alive) "${f.hp}/${f.maxHp}" else "Defeated", fontSize = 10.sp, color = if (f.alive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        when {
+                            f.alive -> "${f.hp}/${f.maxHp}"
+                            f.tamed -> "Tamed!"
+                            f.gone != null -> f.gone
+                            else -> "Defeated"
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = if (f.tamed) FontWeight.Bold else FontWeight.Normal,
+                        color = when {
+                            f.alive -> MaterialTheme.colorScheme.onSurface
+                            f.tamed -> XpPurple
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
                     if (targeted) Text("Target", fontSize = 9.sp, color = Gold, fontWeight = FontWeight.Bold)
                     f.tags.firstOrNull()?.let { Text(it, fontSize = 9.sp, color = HpYellow, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
@@ -708,6 +722,49 @@ private fun FighterArt(f: FighterView, modifier: Modifier) {
         f.thug -> ThugArt(cls ?: HeroClass.ROGUE, modifier)
         cls != null -> HeroArt(cls, modifier, portrait = false, outfit = LocalOutfit.current ?: HeroOutfit.classic(cls))
         sp != null -> MonsterArt(sp, modifier, dim = !f.alive, shiny = f.shiny)
+    }
+}
+
+/**
+ * A foe's picture that shows how it left the fight: a beaten one fades out
+ * (grayed), a tamed one fades back behind a glowing crystal and a "Tamed"
+ * tag, and one that ran off fades almost away.
+ */
+@Composable
+private fun FoeArt(f: FighterView, sizeDp: Int) {
+    val target = when {
+        f.alive -> 1f
+        f.tamed -> 0.45f
+        f.gone != null -> 0.15f
+        else -> 0.3f
+    }
+    val fade by androidx.compose.animation.core.animateFloatAsState(target, tween(600), label = "foeFade")
+    Box(Modifier.size(sizeDp.dp), contentAlignment = Alignment.Center) {
+        FighterArt(f, Modifier.size(sizeDp.dp).fighterFx(f.key).graphicsLayer { alpha = fade })
+        if (f.tamed) {
+            GIcon(GameIcon.CRYSTAL, Modifier.size((sizeDp * 0.45f).dp), XpPurple)
+            Text(
+                "TAMED",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .background(XpPurple, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        } else if (!f.alive) {
+            Text(
+                if (f.gone != null) f.gone.uppercase() else "DEFEATED",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .background(Color(0xCC4A4F55), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        }
     }
 }
 

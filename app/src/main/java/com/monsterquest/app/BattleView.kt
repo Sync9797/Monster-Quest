@@ -146,18 +146,22 @@ data class FighterView(
     val thug: Boolean = false,
     /** A dual-type monster's second type. */
     val element2: Element? = null,
+    /** Left the fight without being beaten: "Tamed" or "Ran off". */
+    val gone: String? = null,
 ) {
+    val tamed: Boolean get() = gone == "Tamed"
     /** One or two types. */
     val types: List<Element> get() = listOfNotNull(element, element2)
     val typeLabel: String get() = types.joinToString(" / ") { it.label }
 
-    val alive: Boolean get() = hp > 0
+    val alive: Boolean get() = hp > 0 && gone == null
     val hpFraction: Float get() = hp.toFloat() / maxHp
 
     companion object {
         fun of(c: Combatant) = FighterView(
             c.key, c.name, c.speciesId, c.heroClass, c.element, c.level, c.hp, c.maxHp, c.mp, c.maxMp, c.isHero, c.tags(), c.status, c.cursed, c.shiny, c.thug,
             element2 = c.element2,
+            gone = c.gone,
         )
     }
 }
