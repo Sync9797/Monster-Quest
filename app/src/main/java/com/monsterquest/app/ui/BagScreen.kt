@@ -278,13 +278,15 @@ fun StoreScreen(vm: GameViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        MarkupNote(s, item)
                     }
+                    val price = com.monsterquest.core.Prices.unitPrice(s, item, System.currentTimeMillis())
                     if (s.hero.level < item.minLevel) {
                         // Locked until the hero is strong enough.
                         Button(onClick = {}, enabled = false) { IconText(GameIcon.LOCK, "Lv ${item.minLevel}") }
                     } else {
-                        Button(onClick = { vm.buy(item) }, enabled = s.gold >= item.price && !s.bagFull) {
-                            IconText(GameIcon.COIN, "%,d".format(item.price))
+                        Button(onClick = { vm.buy(item) }, enabled = s.gold >= price && !s.bagFull) {
+                            IconText(GameIcon.COIN, "%,d".format(price))
                         }
                     }
                 }
@@ -571,8 +573,9 @@ private fun FoodStoreCard(vm: GameViewModel, food: Item) {
                     if (s.hero.level < tier.minLevel) {
                         Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { IconText(GameIcon.LOCK, "Lv ${tier.minLevel}", fontSize = 12.sp) }
                     } else {
-                        Button(onClick = { vm.buy(tier) }, enabled = s.gold >= tier.price && !s.bagFull, modifier = Modifier.fillMaxWidth()) {
-                            IconText(GameIcon.COIN, "%,d".format(tier.price), fontSize = 12.sp)
+                        val price = com.monsterquest.core.Prices.unitPrice(s, tier, System.currentTimeMillis())
+                        Button(onClick = { vm.buy(tier) }, enabled = s.gold >= price && !s.bagFull, modifier = Modifier.fillMaxWidth()) {
+                            IconText(GameIcon.COIN, "%,d".format(price), fontSize = 12.sp)
                         }
                     }
                 }
@@ -617,4 +620,16 @@ private fun BagFold(
             Column(Modifier.padding(top = 4.dp)) { content() }
         }
     }
+}
+
+/** "Selling fast: +30%" on an item you've been buying a lot, with when it eases. */
+@Composable
+private fun MarkupNote(s: com.monsterquest.core.GameState, item: Item) {
+    val m = com.monsterquest.core.Prices.multiplier(s, item, System.currentTimeMillis())
+    if (m <= 1.0) return
+    Text(
+        "Selling fast: +${Math.round((m - 1) * 100)}%. Prices ease each hour and reset tomorrow. Walking heals for free!",
+        fontSize = 11.sp,
+        color = HpYellow,
+    )
 }

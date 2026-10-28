@@ -258,6 +258,7 @@ fun QuestsScreen(vm: GameViewModel) {
             }
         }
         if (showDone) items(done.take(50), key = { "done_" + it.id }, contentType = { "done" }) { DoneLine(it) }
+        item(key = "mysteries") { MysteriesFold(vm) }
         item(key = "bottom") { Spacer(Modifier.height(24.dp)) }
     }
 

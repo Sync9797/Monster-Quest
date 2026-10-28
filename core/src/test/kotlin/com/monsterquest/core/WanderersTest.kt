@@ -51,6 +51,7 @@ class WanderersTest {
         val u = Mystery.claim(s)
         assertEquals(s.gold + Mystery.GOLD, u.state.gold)
         assertEquals(u.state, Mystery.claim(u.state).state)
+        assertEquals(listOf(sp.id to s.mysteryWeek), u.state.mysteriesSolved)
     }
 
     @Test

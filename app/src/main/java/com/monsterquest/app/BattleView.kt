@@ -65,6 +65,8 @@ data class BattleView(
     val movePp: Map<String, Int> = emptyMap(),
     /** HP each of the current fighter's healing spells restores, by spell id. */
     val spellHeals: Map<String, Int> = emptyMap(),
+    /** The foes struck first (a monster or a thug jumped you). */
+    val ambush: Boolean = false,
 ) {
     /** True if you've already caught a monster of [f]'s species. */
     fun alreadyCaught(f: FighterView): Boolean = f.speciesId != null && f.speciesId in caught
@@ -116,6 +118,7 @@ data class BattleView(
                 castId = b.castCount,
                 movePp = cur?.let { c -> c.moves.associate { it.id to c.ppLeft(it) } }.orEmpty(),
                 spellHeals = cur?.let { c -> b.spellsFor(c).filter { it.kind == com.monsterquest.core.SkillKind.HEAL }.associate { it.id to b.spellHeal(c, it) } }.orEmpty(),
+                ambush = b.ambush,
             )
         }
     }

@@ -1081,7 +1081,7 @@ class GameTest {
     @Test
     fun berriesBoostTheNextThrow() {
         val now = 1_700_000_000_000L
-        val foe = Monster.create(Bestiary.get("zapmouse"), 8, Random(4))
+        val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(4))
         val s = started().copy(inventory = mapOf(Item.TAMING_ORB to 5, Item.SWEET_BERRY to 2, Item.GOLDEN_BERRY to 1))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5))
         b.enemy.hp = b.enemy.maxHp / 3

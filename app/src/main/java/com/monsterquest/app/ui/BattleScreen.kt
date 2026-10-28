@@ -247,6 +247,8 @@ private fun BattleContent(
                         }
                     },
                 )
+                // An ambush: a warning flashes over the fight as it starts.
+                if (b.ambush) AmbushOverlay(b)
                 // Projectiles, slashes and damage numbers fly over everything.
                 BattleFxOverlay()
             }
@@ -597,6 +599,7 @@ internal fun LevelUpDialog(
  * A new move to learn, compared side by side with the 4 it knows: pick one to
  * forget, or skip it for now.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LearnMovePrompt(
     name: String,
@@ -606,6 +609,9 @@ private fun LearnMovePrompt(
     onReplace: (Move) -> Unit,
     onSkip: () -> Unit,
 ) {
+    // Hold any move (the new one or one you know) for its full details.
+    var details by remember { mutableStateOf<Move?>(null) }
+    details?.let { mv -> MoveDetailsDialog(mv, emptyList(), ownTypes) { details = null } }
     Column(
         Modifier
             .padding(top = 8.dp)
@@ -614,13 +620,30 @@ private fun LearnMovePrompt(
             .padding(8.dp),
     ) {
         Text("$name wants to learn ${newMove.name}!", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Gold)
-        LearnMoveLine(newMove, ownTypes, highlight = true)
-        Text(newMove.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .combinedClickable(onLongClickLabel = "Move details", onLongClick = { details = newMove }, onClick = { details = newMove })
+                .padding(vertical = 2.dp),
+        ) {
+            LearnMoveLine(newMove, ownTypes, highlight = true)
+            Text(newMove.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Spacer(Modifier.height(6.dp))
-        Text("Forget one to make room:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Forget one to make room (hold a move for its details):", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         current.forEach { old ->
-            OutlinedButton(onClick = { onReplace(old) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                Column(Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .combinedClickable(onLongClickLabel = "Move details", onLongClick = { details = old }, onClick = { onReplace(old) }),
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                color = Color.Transparent,
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     LearnMoveLine(old, ownTypes, highlight = false)
                     // How the new move compares with this one.
                     val diff = newMove.power - old.power
@@ -649,7 +672,7 @@ private fun LearnMoveLine(mv: Move, ownTypes: List<Element>, highlight: Boolean)
         Text(
             (if (mv.isDamaging) "Pow ${mv.power}" else "Status") +
                 (if (MoveEffect.SureHit in mv.effects) " • Sure hit" else " • Acc ${mv.accuracy}") +
-                (if (mv.isDamaging && mv.type in ownTypes) " • +20%" else ""),
+                (if (mv.isDamaging && mv.type != Element.NEUTRAL && mv.type in ownTypes) " • STAB" else ""),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -668,7 +691,10 @@ private fun AllyCardBody(a: FighterView, active: Boolean, modifier: Modifier) {
             .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FighterArt(a, Modifier.size(44.dp).fighterFx(a.key))
+        Box(Modifier.size(44.dp)) {
+            FighterArt(a, Modifier.size(44.dp).fighterFx(a.key))
+            if (a.alive) a.status?.let { StatusOverlay(it, 44, Modifier.align(Alignment.TopEnd)) }
+        }
         Text(
             a.name,
             fontSize = 11.sp,
@@ -741,6 +767,7 @@ private fun FoeArt(f: FighterView, sizeDp: Int) {
     val fade by androidx.compose.animation.core.animateFloatAsState(target, tween(600), label = "foeFade")
     Box(Modifier.size(sizeDp.dp), contentAlignment = Alignment.Center) {
         FighterArt(f, Modifier.size(sizeDp.dp).fighterFx(f.key).graphicsLayer { alpha = fade })
+        if (f.alive) f.status?.let { StatusOverlay(it, sizeDp, Modifier.align(Alignment.TopEnd)) }
         if (f.tamed) {
             GIcon(GameIcon.CRYSTAL, Modifier.size((sizeDp * 0.45f).dp), XpPurple)
             Text(
@@ -768,6 +795,48 @@ private fun FoeArt(f: FighterView, sizeDp: Int) {
     }
 }
 
+/**
+ * A status shown on the fighter's picture, animated: drifting "Zz" for sleep,
+ * a flickering bolt for shock, bubbling poison, a dancing flame for a burn and
+ * a slowly turning snowflake for frostbite.
+ */
+@Composable
+private fun StatusOverlay(status: com.monsterquest.core.Status, sizeDp: Int, modifier: Modifier) {
+    val t = rememberInfiniteTransition(label = "status")
+    val cycle by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Restart), label = "cycle")
+    val pulse by t.animateFloat(0.55f, 1f, infiniteRepeatable(tween(260), RepeatMode.Reverse), label = "pulse")
+    val icon = (sizeDp * 0.42f).coerceAtLeast(14f).dp
+    Box(modifier.size((sizeDp * 0.55f).coerceAtLeast(20f).dp), contentAlignment = Alignment.Center) {
+        when (status) {
+            com.monsterquest.core.Status.SLEEP -> {
+                // Two Zs drifting up and fading, one after the other.
+                listOf(0f, 0.5f).forEachIndexed { i, offset ->
+                    val p = (cycle + offset) % 1f
+                    Text(
+                        "z",
+                        fontSize = (11 + i * 4).sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF9CBFE4),
+                        modifier = Modifier.graphicsLayer {
+                            translationY = -p * sizeDp * 0.5f
+                            translationX = (i * 6 - 3).toFloat() + p * 4
+                            alpha = 1f - p
+                        },
+                    )
+                }
+            }
+            com.monsterquest.core.Status.SHOCK ->
+                GIcon(GameIcon.BOLT, Modifier.size(icon).graphicsLayer { alpha = pulse; rotationZ = if (pulse > 0.8f) 8f else -8f }, Color(0xFFF2D24A))
+            com.monsterquest.core.Status.POISON ->
+                GIcon(GameIcon.GAS, Modifier.size(icon).graphicsLayer { translationY = -kotlin.math.sin(cycle * 6.283f) * 4f; alpha = 0.75f + 0.25f * pulse }, Color(0xFFB57FE0))
+            com.monsterquest.core.Status.BURN ->
+                GIcon(GameIcon.FLAME, Modifier.size(icon).graphicsLayer { scaleX = 0.85f + 0.2f * pulse; scaleY = 0.9f + 0.25f * pulse }, Color(0xFFF2803A))
+            com.monsterquest.core.Status.FROSTBITE ->
+                GIcon(GameIcon.SNOW, Modifier.size(icon).graphicsLayer { rotationZ = cycle * 360f }, Color(0xFF9FE3F2))
+        }
+    }
+}
+
 /** A small taming orb next to a foe's name: you've already caught one of these. */
 @Composable
 private fun CaughtMark(modifier: Modifier) {
@@ -777,12 +846,20 @@ private fun CaughtMark(modifier: Modifier) {
 /** A move button: type-colored, with power and a hint when it's super effective. */
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, ppLeft: Int? = null, onClick: () -> Unit) {
+private fun MoveButton(
+    mv: Move,
+    enemyTypes: List<Element>,
+    modifier: Modifier,
+    ppLeft: Int? = null,
+    ownTypes: List<Element> = emptyList(),
+    onClick: () -> Unit,
+) {
     val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyTypes) else 1.0
     val spent = ppLeft != null && ppLeft <= 0
+    val stab = mv.isDamaging && mv.type != Element.NEUTRAL && mv.type in ownTypes
     // Hold a move to see its accuracy and side effects.
     var details by remember { mutableStateOf(false) }
-    if (details) MoveDetailsDialog(mv, enemyTypes) { details = false }
+    if (details) MoveDetailsDialog(mv, enemyTypes, ownTypes) { details = false }
     Surface(
         modifier = modifier
             .heightIn(min = 52.dp)
@@ -816,7 +893,7 @@ private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, 
                     mult > 1.0 -> "${mv.power} • Super effective!"
                     mult < 1.0 -> "${mv.power} • Weak"
                     else -> "Power ${mv.power}"
-                } + (ppLeft?.let { "  •  $it/${mv.maxPp}" } ?: ""),
+                } + (if (stab) " • STAB" else "") + (ppLeft?.let { "  •  $it/${mv.maxPp}" } ?: ""),
                 fontSize = 11.sp,
                 maxLines = 1,
                 color = Color.White.copy(alpha = 0.85f),
@@ -835,8 +912,9 @@ private fun MoveStat(label: String, value: String) {
 
 /** A move's numbers and side effects, shown when its button is held. */
 @Composable
-fun MoveDetailsDialog(mv: Move, enemyTypes: List<Element>, onDismiss: () -> Unit) {
+fun MoveDetailsDialog(mv: Move, enemyTypes: List<Element>, ownTypes: List<Element> = emptyList(), onDismiss: () -> Unit) {
     val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyTypes) else 1.0
+    val stab = mv.isDamaging && mv.type != Element.NEUTRAL && mv.type in ownTypes
     val sureHit = MoveEffect.SureHit in mv.effects
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -855,7 +933,11 @@ fun MoveDetailsDialog(mv: Move, enemyTypes: List<Element>, onDismiss: () -> Unit
                 MoveStat("Accuracy", if (sureHit) "Never misses" else "${mv.accuracy}%")
                 MoveStat("Role", mv.role.label)
                 MoveStat("Uses per battle", "${mv.maxPp} (+1 back each turn it rests)")
-                if (mv.isDamaging) MoveStat(
+                if (mv.isDamaging && ownTypes.isNotEmpty()) MoveStat(
+                    "Same type (STAB)",
+                    if (stab) "Yes: ×${com.monsterquest.core.SAME_TYPE_BONUS} power" else "No",
+                )
+                if (mv.isDamaging && enemyTypes.isNotEmpty()) MoveStat(
                     "Vs this foe",
                     when {
                         mult > 1.0 -> "Super effective (×${"%.1f".format(mult)})"
@@ -949,7 +1031,7 @@ private fun ActionPanel(
                     b.moves.chunked(2).forEach { row ->
                         Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEach { mv ->
-                                MoveButton(mv, b.enemy.types, Modifier.weight(1f), b.movePp[mv.id]) { onAction(BattleAction.UseMove(mv.id)) }
+                                MoveButton(mv, b.enemy.types, Modifier.weight(1f), b.movePp[mv.id], ownTypes = actor.types) { onAction(BattleAction.UseMove(mv.id)) }
                             }
                             if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
@@ -1164,6 +1246,54 @@ private fun ResultPanel(b: BattleView, onClose: () -> Unit, onNext: () -> Unit) 
             } else {
                 Button(onClick = onClose, modifier = Modifier.fillMaxWidth()) { Text("Continue") }
             }
+        }
+    }
+}
+
+/**
+ * "AMBUSH!" flashed over the battle as it opens, so it's clear the foes struck
+ * first. It doesn't block the screen and fades by itself.
+ */
+@Composable
+private fun AmbushOverlay(b: BattleView) {
+    var shown by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (shown) 1f else 0f, tween(500), label = "ambushFade")
+    val pop = remember { Animatable(1.6f) }
+    LaunchedEffect(Unit) {
+        pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 400f))
+        kotlinx.coroutines.delay(1600)
+        shown = false
+    }
+    if (alpha <= 0.01f) return
+    val thug = b.enemies.firstOrNull { it.thug }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer { this.alpha = alpha }
+            .background(Color(0x88400A0A)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            GIcon(GameIcon.SKULL, Modifier.size(56.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }, Color(0xFFFF6B5E))
+            Text(
+                "AMBUSH!",
+                fontSize = 44.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFFFFE3DC),
+                modifier = Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            )
+            Text(
+                when {
+                    thug != null -> "${thug.name} jumps you! They strike first."
+                    b.enemies.size > 1 -> "${b.enemies.size} wild monsters strike first!"
+                    else -> "A wild ${b.enemy.name} strikes first!"
+                },
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
         }
     }
 }

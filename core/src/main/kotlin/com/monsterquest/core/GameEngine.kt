@@ -411,14 +411,16 @@ object GameEngine {
         return out
     }
 
-    fun buy(state: GameState, item: Item, qty: Int = 1): Update {
+    fun buy(state: GameState, item: Item, qty: Int = 1, nowMs: Long = System.currentTimeMillis()): Update {
         if (item.price <= 0) return Update(state, "${item.label} can't be bought.")
         if (state.hero.level < item.minLevel) return Update(state, "${item.label}s unlock at level ${item.minLevel}.")
-        val cost = item.price * qty
+        // Buying the same thing again and again marks it up for a while (see Prices).
+        val cost = Prices.price(state, item, qty, nowMs)
         if (state.gold < cost) return Update(state, "Not enough gold.")
         if (state.bagCount + qty > state.bagCapacity) return Update(state, "Bag is full (${state.bagCount}/${state.bagCapacity}).")
-        val (s, _) = addItems(state.copy(gold = state.gold - cost), mapOf(item to qty))
-        return Update(s, "Bought ${item.label}.")
+        val (s, _) = addItems(Prices.record(state.copy(gold = state.gold - cost), item, qty, nowMs), mapOf(item to qty))
+        val markup = Prices.multiplier(s, item, nowMs)
+        return Update(s, "Bought ${item.label} for $cost gold." + if (markup > 1.0) " It's selling fast: the next one is ${Prices.unitPrice(s, item, nowMs)}." else "")
     }
 
     fun discard(state: GameState, item: Item): Update {

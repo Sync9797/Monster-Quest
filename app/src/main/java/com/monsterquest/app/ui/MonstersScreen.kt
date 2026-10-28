@@ -162,7 +162,7 @@ private fun MonsterCollection(vm: GameViewModel) {
     )
 }
 
-private enum class SortBy(val label: String) { LEVEL("Level"), TYPE("Type"), NAME("Name"), NEWEST("Newest"), POTENTIAL("Potential") }
+private enum class SortBy(val label: String) { LEVEL("Level"), TYPE("Type"), SPECIES("Species"), NAME("Name"), NEWEST("Newest"), POTENTIAL("Potential") }
 
 /** Party slots on top, then a tidy grid of the rest of the collection. */
 @Composable
@@ -175,6 +175,8 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
         when (sortBy) {
             SortBy.LEVEL -> list.sortedByDescending { it.level }
             SortBy.TYPE -> list.sortedWith(compareBy<Monster> { it.species.element }.thenByDescending { it.level })
+            // Journal order, so each line's stages sit together (ties: higher level first).
+            SortBy.SPECIES -> list.sortedWith(compareBy<Monster> { com.monsterquest.core.Bestiary.number(it.species) }.thenByDescending { it.level })
             SortBy.NAME -> list.sortedBy { it.displayName }
             SortBy.NEWEST -> list.reversed()
             // Best genes first (ties: higher level first).

@@ -123,6 +123,7 @@ private val topics = listOf(
             "Tap Walk here on any shrine, monster or villain for walking directions in your map app.",
             "Walk within 60 m and tap one to collect gold, potions, Binding Crystals, berries, spell pages, weapons, armor and lures. A pop-up shows what you got.",
             "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; it grows every 5 levels, and the Store sells expansions.",
+            "Store prices rise if you keep buying the same item (after the first 3, each one costs 15% more, up to 2.5x). They ease each hour and reset the next day. Walking heals for free.",
         ),
     ),
     HelpTopic(
@@ -144,6 +145,7 @@ private val topics = listOf(
             "Scare (an attack) and Intimidate (a skill) both drop the foe's Attack to 67% for the battle. They don't stack.",
             "Seven types, each strong against two and weak to two: Water > Fire & Gas, Fire > Earth & Electric, Corrupt > Fire & Flight, Gas > Corrupt & Electric, Earth > Water & Corrupt, Flight > Earth & Gas, Electric > Water & Flight. Super-effective hits do 1.5x; the Type chart on the Monsters tab shows it all.",
             "Dual types: every starter's final form and some of the strongest final evolutions have two types (like Thunderbird, Electric / Flight). Both count: two weaknesses stack to 2.25x, and they get the same-type bonus and learn moves for both types.",
+            "Same-type bonus (STAB): a move of one of the monster's own types hits 1.5x as hard, as in the classic games. Move buttons and details mark it.",
             "Monsters grow stronger the more fighters you bring, and pay more. A one-on-one wild fight pays x1.25; in a den, a full team of 6 faces a much tougher monster for up to x4.",
             "Packs: nearby monsters may team up (2, 3 or 4 of them), and you bring as many fighters. Tap a pack member to target it. Packs are tougher and pay up to 2.1x more. Not every monster joins in.",
             "Tame more than one: taming a pack member doesn't end the fight. Each weaker one (lower level than the one you tamed) may panic and run off (50%); the stronger ones fly into a rage, +1 to every stat, stacking with every tame. Everyone you tame is yours, even if you flee or fall afterwards.",

@@ -375,6 +375,11 @@ data class GameState(
     val mysteryId: String? = null,
     val mysteryFound: Boolean = false,
     val mysteryClaimed: Boolean = false,
+    /** Mysteries solved and claimed, oldest first: species id to the week it was the mystery. */
+    val mysteriesSolved: List<Pair<String, Long>> = emptyList(),
+    /** Recent store demand per item (units, when last bought) for the day [demandDay] (see [Prices]). */
+    val demand: Map<Item, Pair<Double, Long>> = emptyMap(),
+    val demandDay: Long = -1,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

@@ -105,7 +105,10 @@ object Mystery {
         val sp = species(state) ?: return Update(state, "No mystery this week.")
         if (!state.mysteryFound) return Update(state, "Find and tame this week's mystery first.")
         if (state.mysteryClaimed) return Update(state, "Already claimed this week.")
-        var s = GameEngine.addCandy(state.copy(gold = state.gold + GOLD, mysteryClaimed = true), sp, CANDY)
+        var s = GameEngine.addCandy(
+            state.copy(gold = state.gold + GOLD, mysteryClaimed = true, mysteriesSolved = state.mysteriesSolved + (sp.id to state.mysteryWeek)),
+            sp, CANDY,
+        )
         s = GameEngine.addItems(s, mapOf(ITEM to 1)).first
         return Update(s, "Mystery solved: ${sp.name}! +$GOLD gold, +$CANDY ${GameEngine.candyName(sp)} and a ${ITEM.label}.")
     }

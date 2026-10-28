@@ -563,6 +563,9 @@ const val SHOCK_SPEED = 0.5
 /** Burned fighters' physical attacks hit for this share. */
 const val BURN_ATTACK = 0.75
 
+/** Same-type attack bonus (STAB): a move of one of the user's own types hits 1.5x, as in the classic games. */
+const val SAME_TYPE_BONUS = 1.5
+
 /** Spread moves hit each foe at 75% power when there's more than one (as in later generations). */
 const val SPREAD_POWER = 0.75
 
@@ -1737,7 +1740,7 @@ class Battle(
         val scales = d.rankOf(Trait.HARD_SCALES).takeIf { it > 0 && d.status != null }?.let { 1 + Trait.HARD_SCALES.hardScalesPct(it) / 100.0 } ?: 1.0
         val def = d.defense * defStage * scales
         val typeMult = type.multiplierAgainst(d.types)
-        val sameType = if (type != Element.NEUTRAL && type in a.types) 1.2 else 1.0
+        val sameType = if (type != Element.NEUTRAL && type in a.types) SAME_TYPE_BONUS else 1.0
         // Plated hides can't be critically hit.
         val crit = d.rankOf(Trait.PLATED) == 0 && rng.nextDouble() < 0.06 + a.critBonus + extraCrit
         val raw = power * atk / (atk + def) *
