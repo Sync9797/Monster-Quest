@@ -617,8 +617,9 @@ private fun CaughtMark(modifier: Modifier) {
 /** A move button: type-colored, with power and a hint when it's super effective. */
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, onClick: () -> Unit) {
+private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, ppLeft: Int? = null, onClick: () -> Unit) {
     val mult = if (mv.isDamaging) mv.type.multiplierAgainst(enemyTypes) else 1.0
+    val spent = ppLeft != null && ppLeft <= 0
     // Hold a move to see its accuracy and side effects.
     var details by remember { mutableStateOf(false) }
     if (details) MoveDetailsDialog(mv, enemyTypes) { details = false }
@@ -626,9 +627,10 @@ private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, 
         modifier = modifier
             .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(50))
-            .combinedClickable(onLongClickLabel = "Move details", onLongClick = { details = true }, onClick = onClick),
+            .combinedClickable(onLongClickLabel = "Move details", onLongClick = { details = true }, onClick = { if (!spent) onClick() }),
         shape = RoundedCornerShape(50),
-        color = typeColor(mv.type),
+        // Out of uses: greyed out until it rests a turn.
+        color = if (spent) Color(0xFF4A4F55) else typeColor(mv.type),
         contentColor = Color(0xFFF5F2EA),
     ) {
         Column(
@@ -654,7 +656,7 @@ private fun MoveButton(mv: Move, enemyTypes: List<Element>, modifier: Modifier, 
                     mult > 1.0 -> "${mv.power} • Super effective!"
                     mult < 1.0 -> "${mv.power} • Weak"
                     else -> "Power ${mv.power}"
-                },
+                } + (ppLeft?.let { "  •  $it/${mv.maxPp}" } ?: ""),
                 fontSize = 11.sp,
                 maxLines = 1,
                 color = Color.White.copy(alpha = 0.85f),
@@ -691,6 +693,8 @@ fun MoveDetailsDialog(mv: Move, enemyTypes: List<Element>, onDismiss: () -> Unit
                 MoveStat("Type", mv.type.label)
                 MoveStat("Power", if (mv.isDamaging) mv.power.toString() else "— (status move)")
                 MoveStat("Accuracy", if (sureHit) "Never misses" else "${mv.accuracy}%")
+                MoveStat("Role", mv.role.label)
+                MoveStat("Uses per battle", "${mv.maxPp} (+1 back each turn it rests)")
                 if (mv.isDamaging) MoveStat(
                     "Vs this foe",
                     when {
@@ -775,11 +779,17 @@ private fun ActionPanel(
                         ActionButton("Defend", Modifier.weight(1f), icon = GameIcon.SHIELD) { onAction(BattleAction.Defend) }
                     }
                 } else {
-                    // A monster's 4 moves, two per row.
+                    // A monster's 4 moves, two per row, with the uses each has left.
+                    if (b.moves.isNotEmpty() && b.moves.all { (b.movePp[it.id] ?: 1) <= 0 }) {
+                        Text("Out of moves! Rest one a turn to get a use back, or:", fontSize = 12.sp, color = HpYellow)
+                        MoveButton(com.monsterquest.core.Moves.STRUGGLE, b.enemy.types, Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+                            onAction(BattleAction.UseMove(com.monsterquest.core.Moves.STRUGGLE.id))
+                        }
+                    }
                     b.moves.chunked(2).forEach { row ->
                         Row(Modifier.padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             row.forEach { mv ->
-                                MoveButton(mv, b.enemy.types, Modifier.weight(1f)) { onAction(BattleAction.UseMove(mv.id)) }
+                                MoveButton(mv, b.enemy.types, Modifier.weight(1f), b.movePp[mv.id]) { onAction(BattleAction.UseMove(mv.id)) }
                             }
                             if (row.size == 1) Spacer(Modifier.weight(1f))
                         }

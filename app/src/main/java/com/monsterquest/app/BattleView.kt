@@ -61,6 +61,8 @@ data class BattleView(
     val castId: Int = 0,
     /** Settings > Simple casting: tap a crystal instead of tracing the glyph. */
     val simpleCasting: Boolean = false,
+    /** Uses left of each of the current monster's moves (PP), by move id. */
+    val movePp: Map<String, Int> = emptyMap(),
     /** HP each of the current fighter's healing spells restores, by spell id. */
     val spellHeals: Map<String, Int> = emptyMap(),
 ) {
@@ -112,6 +114,7 @@ data class BattleView(
                 bait = b.bait,
                 castRoll = b.lastCast,
                 castId = b.castCount,
+                movePp = cur?.let { c -> c.moves.associate { it.id to c.ppLeft(it) } }.orEmpty(),
                 spellHeals = cur?.let { c -> b.spellsFor(c).filter { it.kind == com.monsterquest.core.SkillKind.HEAL }.associate { it.id to b.spellHeal(c, it) } }.orEmpty(),
             )
         }

@@ -106,6 +106,18 @@ sealed interface MoveEffect {
     data object DefenseStrike : MoveEffect
 }
 
+/**
+ * What a move is for, at a glance: groups the move list and sets how many
+ * times it can be used in a battle ([pp]).
+ */
+enum class MoveRole(val label: String, val description: String, val pp: Int) {
+    BASIC("Basic", "Light attacks, nothing special.", 12),
+    RELIABLE("Reliable", "Solid damage with no drawback, or never misses.", 8),
+    HIGH_RISK("High risk", "Huge hits with a cost: inaccurate, recoil, a turn of rest, or the user's own stats fall.", 4),
+    STATUS("Status & traps", "Sleep, shock, poison, burn, damage over time and stat drops on the foe.", 3),
+    SUPPORT("Support", "Guards, heals, weather and boosts for the user or the team.", 4),
+}
+
 data class Move(
     val id: String,
     val name: String,
@@ -117,6 +129,31 @@ data class Move(
     val description: String,
 ) {
     val isDamaging: Boolean get() = power > 0
+
+    val role: MoveRole
+        get() {
+            val e = effects
+            val toFoe = e.any {
+                it is MoveEffect.Inflict || it is MoveEffect.Nightmare || it is MoveEffect.Scorch ||
+                    it is MoveEffect.LowerFoe || it is MoveEffect.FoeAccuracyDown || it == MoveEffect.ReverseOrder
+            }
+            if (!isDamaging) return if (toFoe) MoveRole.STATUS else MoveRole.SUPPORT
+            val risky = accuracy <= 85 || e.any {
+                it == MoveEffect.Recharge || it is MoveEffect.RecoilPct || it is MoveEffect.Recoil ||
+                    it is MoveEffect.LowerSelf || it == MoveEffect.HpScaled || it == MoveEffect.TwoTurnDive
+            }
+            // A weak hit that always afflicts or traps the foe is really a status move.
+            val trap = e.any { (it is MoveEffect.Inflict && it.chance >= 1.0) || it is MoveEffect.Scorch || it is MoveEffect.Nightmare }
+            return when {
+                risky -> MoveRole.HIGH_RISK
+                trap && power < 70 -> MoveRole.STATUS
+                power < 60 -> MoveRole.BASIC
+                else -> MoveRole.RELIABLE
+            }
+        }
+
+    /** Uses per battle (PP). Each turn a fighter doesn't use it, it gets one back. */
+    val maxPp: Int get() = role.pp
 
     /** Average damage power, counting multiple hits and crit chances (for loadouts and AI). */
     val expectedPower: Double
@@ -363,6 +400,9 @@ object Moves {
         m("boulder_trap", "Boulder Trap", Element.EARTH, 50, 80, "Boulders pin the foe down: always lowers its Speed.", MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 1.0)),
         m("verdant_blade", "Verdant Blade", Element.EARTH, 90, desc = "A leaf sharp as a blade: high critical-hit chance.", fx = *arrayOf(MoveEffect.HighCrit)),
     )
+
+    /** When every move is out of uses: a weak, desperate hit with recoil. */
+    val STRUGGLE = Move("struggle", "Struggle", Element.NEUTRAL, 50, 100, listOf(MoveEffect.SureHit, MoveEffect.RecoilPct(25)), "Out of moves: a desperate struggle that hurts the user too.")
 
     private val byId = all.associateBy { it.id }
 

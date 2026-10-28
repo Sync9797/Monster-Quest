@@ -414,6 +414,38 @@ class EncountersTest {
     }
 
     @Test
+    fun movesHaveUsesThatComeBackWhenRested() {
+        assertEquals(MoveRole.STATUS, Moves.get("spore_cloud").role)
+        assertEquals(MoveRole.STATUS, Moves.get("sleep_wave").role)
+        assertEquals(MoveRole.HIGH_RISK, Moves.get("blast_burn").role)
+        assertEquals(MoveRole.HIGH_RISK, Moves.get("flare_blitz").role)
+        assertEquals(MoveRole.RELIABLE, Moves.get("flame_torrent").role)
+        assertEquals(MoveRole.BASIC, Moves.get("tackle").role)
+        assertEquals(MoveRole.SUPPORT, Moves.get("roost").role)
+        // Every move lands in one role, and roles set the uses.
+        assertTrue(Moves.all.all { it.maxPp == it.role.pp })
+
+        val m = Monster.create(Bestiary.get("goopling"), 30, Random(3)).copy(moves = listOf("spore_cloud", "tackle"))
+        val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
+        val foe = Monster.create(Bestiary.get("emberkit"), 30, Random(4))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
+        val me = b.allies.first { it.key == m.uid }
+        val spore = Moves.get("spore_cloud")
+        fun myTurn() { var g = 0; while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) { b.allies.forEach { it.hp = it.maxHp }; b.enemies.forEach { it.hp = it.maxHp }; b.act(BattleAction.Defend) } }
+        repeat(3) { myTurn(); b.act(BattleAction.UseMove("spore_cloud")) }
+        assertEquals(0, me.ppLeft(spore))
+        // Out of uses: it can't be picked...
+        myTurn()
+        assertTrue(spore !in me.usableMoves)
+        // ...until a turn spent on something else gives one back.
+        b.act(BattleAction.UseMove("tackle"))
+        assertEquals(1, me.ppLeft(spore))
+        // Out of everything: Struggle.
+        me.pp.keys.forEach { me.pp[it] = 0 }
+        assertEquals(listOf(Moves.STRUGGLE), me.usableMoves)
+    }
+
+    @Test
     fun classicMoveCostsWork() {
         fun duel(move: String, hpFrac: Double = 1.0): Pair<Battle, Combatant> {
             val m = Monster.create(Bestiary.get("cinder_hound"), 50, Random(3)).copy(moves = listOf(move))

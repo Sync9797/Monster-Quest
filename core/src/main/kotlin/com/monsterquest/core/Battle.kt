@@ -77,6 +77,21 @@ class Combatant(
     /** Monster moves (empty for the hero, who uses Attack and spells). */
     val moves: List<Move>,
 ) {
+    /** Uses left of each move this battle (PP), by move id. */
+    val pp: MutableMap<String, Int> = moves.associate { it.id to it.maxPp }.toMutableMap()
+
+    fun ppLeft(m: Move): Int = pp[m.id] ?: m.maxPp
+
+    /** Moves with uses left; Struggle when there are none. */
+    val usableMoves: List<Move> get() = moves.filter { ppLeft(it) > 0 }.ifEmpty { if (moves.isEmpty()) emptyList() else listOf(Moves.STRUGGLE) }
+
+    /** After a turn: [used] costs one use; every other move gets one back. */
+    fun spendTurn(used: Move?) {
+        for (m in moves) {
+            pp[m.id] = if (m.id == used?.id) ppLeft(m) - 1 else minOf(m.maxPp, ppLeft(m) + 1)
+        }
+    }
+
     /** For artwork: the monster's species, or the hero's class. */
     var speciesId: String? = null
     /** A dual-type monster's second type. */
@@ -795,6 +810,8 @@ class Battle(
         if (outcome != BattleOutcome.ONGOING) return
         val consumedTurn = perform(actor, action)
         if (!consumedTurn) return
+        // A turn spent on anything but a move rests every move a little.
+        if (action !is BattleAction.UseMove) actor.spendTurn(null)
         current = null
         checkEnd()
         advance()
@@ -1036,7 +1053,9 @@ class Battle(
                 log += "${actor.name} braces for impact."
             }
             is BattleAction.UseMove -> {
-                val move = actor.moves.find { it.id == action.moveId } ?: return false
+                val move = actor.usableMoves.find { it.id == action.moveId } ?: return false
+                actor.spendTurn(move)
+                if (move == Moves.STRUGGLE) log += "${actor.name} is out of moves!"
                 useMove(actor, enemy, move)
             }
             is BattleAction.CastSpell -> {
@@ -1619,7 +1638,7 @@ class Battle(
     /** Enemy AI: usually its best damaging move, sometimes a useful status move. */
     private fun enemyTurn(enemy: Combatant) {
         val target = pickTarget() ?: return
-        val usable = enemy.moves.filter { m ->
+        val usable = enemy.usableMoves.filter { m ->
             when {
                 MoveEffect.Protect in m.effects -> !enemy.usedProtectLast && enemy.hpFraction < 0.5
                 m.isDamaging -> true
@@ -1632,7 +1651,7 @@ class Battle(
                 m.effects.any { it is MoveEffect.RaiseSelf } -> m.effects.filterIsInstance<MoveEffect.RaiseSelf>().any { r -> r.stats.any { (enemy.stages[it] ?: 0) < 2 } }
                 else -> true
             }
-        }.ifEmpty { listOf(Moves.get("tackle")) }
+        }.ifEmpty { enemy.usableMoves.ifEmpty { listOf(Moves.STRUGGLE) } }
         val move = if (rng.nextDouble() < 0.7) {
             usable.maxBy { m ->
                 val smack = m.effects.filterIsInstance<MoveEffect.SmackDown>().firstOrNull()
@@ -1646,6 +1665,7 @@ class Battle(
         } else {
             usable.random(rng)
         }
+        enemy.spendTurn(move)
         useMove(enemy, target, move)
     }
 

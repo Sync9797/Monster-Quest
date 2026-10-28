@@ -90,6 +90,7 @@ import com.monsterquest.core.MONSTER_STATS
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Move
 import com.monsterquest.core.Moves
+import com.monsterquest.core.MoveEffect
 import com.monsterquest.core.Rarity
 import com.monsterquest.core.Stat
 
@@ -547,6 +548,8 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     var compareUid by remember(m.uid) { mutableStateOf<String?>(null) }
     val other = s.monsters.find { it.uid == compareUid && it.uid != m.uid }
     var editingSlot by remember(m.uid) { mutableStateOf<Int?>(null) }
+    // How the move picker lists moves (kept while the screen is open).
+    var moveSort by rememberSaveable { mutableStateOf(MoveSort.ROLE) }
     var releasing by remember { mutableStateOf(false) }
     var usingPotion by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
@@ -836,19 +839,44 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
     editingSlot?.let { slot ->
         val current = m.activeMoves
         val options = m.learnedMoves.filter { it !in current }
+        val learnedAt = Moves.learnable(sp).associate { (lvl, mv) -> mv.id to lvl }
+        val choose: (Move) -> Unit = { mv ->
+            val ids = current.map { it.id }.toMutableList()
+            if (slot < ids.size) ids[slot] = mv.id else ids += mv.id
+            vm.setMoves(m.uid, ids)
+            editingSlot = null
+        }
         AlertDialog(
             onDismissRequest = { editingSlot = null },
             title = { Text("Slot ${slot + 1}: choose a move") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    if (options.isEmpty()) Text("${m.displayName} hasn't learned any other moves yet.")
-                    options.forEach { mv ->
-                        MoveCard(mv, sp.types) {
-                            val ids = current.map { it.id }.toMutableList()
-                            if (slot < ids.size) ids[slot] = mv.id else ids += mv.id
-                            vm.setMoves(m.uid, ids)
-                            editingSlot = null
+                    if (options.isEmpty()) {
+                        Text("${m.displayName} hasn't learned any other moves yet.")
+                    } else {
+                        // Sort: grouped by role, or by power, type, accuracy or the level it was learned.
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        ) {
+                            MoveSort.entries.forEach { opt -> SortChip(opt.label, opt == moveSort) { moveSort = opt } }
                         }
+                    }
+                    when (moveSort) {
+                        MoveSort.ROLE -> com.monsterquest.core.MoveRole.entries.forEach { role ->
+                            val group = options.filter { it.role == role }.sortedByDescending { it.power }
+                            if (group.isNotEmpty()) {
+                                Text(role.label, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 6.dp))
+                                Text(
+                                    "${role.description} ${role.pp} uses per battle.",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                group.forEach { mv -> MoveCard(mv, sp.types) { choose(mv) } }
+                            }
+                        }
+                        else -> moveSort.sorted(options, learnedAt).forEach { mv -> MoveCard(mv, sp.types) { choose(mv) } }
                     }
                 }
             },
@@ -961,8 +989,46 @@ private fun MoveCard(mv: Move?, ownTypes: List<Element>, onClick: () -> Unit) {
                 )
             }
             Text(mv.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${mv.role.label} • ${mv.maxPp} uses per battle",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = typeColor(mv.type),
+            )
         }
     }
+}
+
+/** Ways to list moves in the move picker. */
+private enum class MoveSort(val label: String) {
+    ROLE("Role"),
+    POWER("Power"),
+    TYPE("Type"),
+    ACCURACY("Accuracy"),
+    LEVEL("Level learned");
+
+    fun sorted(moves: List<Move>, learnedAt: Map<String, Int>): List<Move> = when (this) {
+        ROLE -> moves.sortedBy { it.role }
+        POWER -> moves.sortedByDescending { it.power }
+        TYPE -> moves.sortedWith(compareBy<Move> { it.type }.thenByDescending { it.power })
+        ACCURACY -> moves.sortedWith(compareByDescending<Move> { if (MoveEffect.SureHit in it.effects) 101 else it.accuracy }.thenByDescending { it.power })
+        LEVEL -> moves.sortedByDescending { learnedAt[it.id] ?: 0 }
+    }
+}
+
+@Composable
+private fun SortChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        fontSize = 12.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    )
 }
 
 /** The rock-paper-scissors cycle: each type beats the next one. */

@@ -121,6 +121,8 @@ private val topics = listOf(
             "Dens are the exception: you bring your hero, all 5 party monsters and the 2 swap slots. On the Monsters tab, long-press a monster and drag it onto a party or swap slot.",
             "Each monster has 4 moves. Spells and typed moves throw bolts of their type; swords and Normal moves slash.",
             "Hold a move button to see its type, power, accuracy and side effects.",
+            "Moves have uses per battle, shown on each button: Basic 12, Reliable 8, High risk 4, Support 4, Status & traps 3. Every turn a monster doesn't use a move, that move gets one use back, so sleep and shock can't be spammed. Out of everything, a monster can only Struggle (a weak hit that hurts itself). Wild monsters play by the same rules.",
+            "When choosing moves on a monster's page, sort them by role (Basic, Reliable, High risk, Status & traps, Support), power, type, accuracy or the level learned.",
             "Bigger moves cost something: lower accuracy, recoil, a turn of rest, or a drop in the user's own stats. Clean, reliable attacks top out around 95 power; moves that hit every foe do 75% to each.",
             "Each type fights its own way: Fire hits hardest; Water is quick (some moves let it go first next round); Flight powers itself up; Earth builds Defense and some moves hit with Defense instead of Attack; Electric and Gas spread status and hit statused foes harder; Corrupt fights dirty and tears down stats.",
             "Scare (an attack) and Intimidate (a skill) both drop the foe's Attack to 67% for the battle. They don't stack.",
