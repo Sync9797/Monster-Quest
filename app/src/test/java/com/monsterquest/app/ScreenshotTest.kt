@@ -936,7 +936,7 @@ abstract class ScreenshotBase(private val device: String) {
             com.monsterquest.core.LevelUp(
                 pal.key, pal.name, pal.speciesId, 20, 21,
                 stats("HP" to (118 to 124), "Attack" to (44 to 46), "Magic" to (22 to 23), "Defense" to (30 to 31), "Speed" to (41 to 43)),
-                learned = listOf("Fire Fang"),
+                learned = listOf("Ember Fang"),
                 canLearn = listOf("Flame Torrent"),
                 canLearnIds = listOf("flame_torrent"),
                 loadout = listOf("spit_fire", "cinder_jab", "heat_claws", "bite"),
@@ -954,7 +954,7 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Next (1/2)").performClick()
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${pal.name} grew to Lv 21!").assertExists()
-        rule.onNodeWithText("Learned Fire Fang!").assertExists()
+        rule.onNodeWithText("Learned Ember Fang!").assertExists()
         // It wants Flame Torrent too: compare, then forget Spit Fire for it.
         rule.onNodeWithText("${pal.name} wants to learn Flame Torrent!").assertExists()
         rule.onNodeWithText("Skip for now").assertExists()

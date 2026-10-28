@@ -128,7 +128,7 @@ class Combatant(
     var immuneEarth: Boolean = false
     /** Hovering only because of the hero's maxed Hover (it breaks when the hero is hit). */
     var borrowedHover: Boolean = false
-    /** Knocked down by Smack Down: Earth moves hit it for the rest of the battle. */
+    /** Knocked down by Knockdown: Earth moves hit it for the rest of the battle. */
     var grounded: Boolean = false
     /** Less damage from Earth moves, in percent (a hovering hero's team). */
     var earthResistPct: Int = 0
@@ -233,7 +233,7 @@ class Combatant(
     /** Mid-dive (Dive Bomb turn 1): out of reach until it strikes. */
     var diving: Move? = null
     val stages: MutableMap<BattleStat, Int> = mutableMapOf()
-    /** Steel Wing stacks, in percent. */
+    /** Iron Wing stacks, in percent. */
     var powerUp: Int = 0
     /** Scared or Intimidated: Attack drops to [SCARED_ATTACK] (66.7%) for the battle. Doesn't stack. */
     var scared: Boolean = false
@@ -1423,17 +1423,17 @@ class Battle(
         if (floatsOver(a, t, move.type, smackDown = smack != null)) return false
         if (MoveEffect.SureHit !in move.effects && !rollHit(a, t, move.accuracy)) return false
         if (!move.isDamaging) return true
-        if (t.diving != null) log += "Thunder Bolt strikes ${t.name} mid-dive!"
+        if (t.diving != null) log += "Sky Bolt strikes ${t.name} mid-dive!"
         val style = if (move.type == Element.NEUTRAL) StrikeStyle.SLASH else StrikeStyle.BOLT
         val crit = if (MoveEffect.HighCrit in move.effects) 0.25 else 0.0
         val multi = move.effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()
         val hits = multi?.let { rng.nextInt(it.min, it.max + 1) } ?: 1
-        // Smack Down hits a hovering foe harder and knocks it to the ground.
+        // Knockdown hits a hovering foe harder and knocks it to the ground.
         val airborne = smack != null && t.immuneEarth
         // Status Bonus: hits harder when the foe is already asleep, shocked, poisoned...
         val bonus = move.effects.filterIsInstance<MoveEffect.StatusBonus>().firstOrNull()
             ?.takeIf { t.status != null }?.multiplier ?: 1.0
-        // Eruption-style moves weaken as the user tires.
+        // HP-scaled moves weaken as the user tires.
         val hpScale = if (MoveEffect.HpScaled in move.effects) a.hpFraction else 1.0
         val power = ((if (airborne) smack!!.groundedPower else move.power) * mult * bonus * hpScale).roundToInt().coerceAtLeast(1)
         val useDefense = MoveEffect.DefenseStrike in move.effects
@@ -1777,7 +1777,7 @@ class Battle(
                 val smack = m.effects.filterIsInstance<MoveEffect.SmackDown>().firstOrNull()
                 when {
                     !m.isDamaging -> 25.0
-                    // Earth moves pass under a hovering target, except Smack Down, which hits harder.
+                    // Earth moves pass under a hovering target, except Knockdown, which hits harder.
                     m.type == Element.EARTH && target.immuneEarth -> if (smack != null) smack.groundedPower * m.type.multiplierAgainst(target.types) else 0.0
                     else -> m.expectedPower * m.type.multiplierAgainst(target.types)
                 }

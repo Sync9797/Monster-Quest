@@ -62,7 +62,7 @@ sealed interface MoveEffect {
     data object Scare : MoveEffect
     /** Slowest fighters move first for 3 rounds. */
     data object ReverseOrder : MoveEffect
-    /** Turn 1: fly out of reach (only Thunder Bolt can hit). Turn 2: strike. */
+    /** Turn 1: fly out of reach (only Sky Bolt can hit). Turn 2: strike. */
     data object TwoTurnDive : MoveEffect
     /** The user heals [percent]% of its max HP. */
     data class HealSelf(val percent: Int) : MoveEffect
@@ -89,7 +89,7 @@ sealed interface MoveEffect {
     /** Goes through guards, Wave Guard and the foe's raised Defense. */
     data object Pierce : MoveEffect
     /**
-     * Smack Down: an Earth move that reaches fliers anyway. Against a hovering
+     * Knockdown: an Earth move that reaches fliers anyway. Against a hovering
      * foe it hits at [groundedPower] and knocks it down for good, so Earth moves
      * hit it for the rest of the battle.
      */
@@ -183,36 +183,36 @@ object Moves {
         m("headbutt", "Headbutt", Element.NEUTRAL, 70, desc = "30% chance the foe loses its next turn.", fx = *arrayOf(MoveEffect.Flinch(0.3))),
         m("sleep_wave", "Sleep Wave", Element.NEUTRAL, 0, 60, "A hypnotic wave: if it lands, the foe falls asleep.", MoveEffect.Inflict(Status.SLEEP, 1.0, 2, 4)),
         m("quick_strike", "Quick Strike", Element.NEUTRAL, 40, desc = "Never misses.", fx = *arrayOf(MoveEffect.SureHit)),
-        m("fury_swipes", "Fury Swipes", Element.NEUTRAL, 18, 80, "Swipes 2 to 5 times.", MoveEffect.MultiHit(2, 5)),
+        m("fury_swipes", "Frenzy Swipes", Element.NEUTRAL, 18, 80, "Swipes 2 to 5 times.", MoveEffect.MultiHit(2, 5)),
         m("focus", "Focus", Element.NEUTRAL, 0, desc = "Sharply raises Attack.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 2))),
         m("slam", "Body Slam", Element.NEUTRAL, 85, desc = "A heavy body slam: 30% chance to shock.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
 
         // ---- Fire ----
         m("spit_fire", "Spit Fire", Element.FIRE, 40, desc = "A gob of flame. 10% chance to burn.", fx = *arrayOf(MoveEffect.Inflict(Status.BURN, 0.1, 4, 4))),
-        m("fire_fang", "Fire Fang", Element.FIRE, 65, 95, "10% chance to burn, 10% chance the foe loses its next turn.", MoveEffect.Inflict(Status.BURN, 0.1, 4, 4), MoveEffect.Flinch(0.1)),
+        m("fire_fang", "Ember Fang", Element.FIRE, 65, 95, "10% chance to burn, 10% chance the foe loses its next turn.", MoveEffect.Inflict(Status.BURN, 0.1, 4, 4), MoveEffect.Flinch(0.1)),
         m("fire_wave", "Fire Wave", Element.FIRE, 60, desc = "Scorches for 5 damage a turn for 5 turns.", fx = *arrayOf(MoveEffect.Scorch(5, 5))),
         m("solar_flare", "Solar Flare", Element.FIRE, 0, desc = "Blinding light: the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0))),
         m("drought", "Drought", Element.FIRE, 0, desc = "Dries up rain. Fire and Corrupt +25%, Water −15%.", fx = *arrayOf(MoveEffect.SetWeather(Weather.DROUGHT, 1.0))),
         m("fire_storm", "Fire Storm", Element.FIRE, 100, 90, "A raging firestorm that sweeps every foe. 10% chance to burn each.", MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.BURN, 0.1, 4, 4)),
-        m("blast_burn", "Blast Burn", Element.FIRE, 150, 90, "Huge damage, but the user must rest next turn.", MoveEffect.Recharge),
-        m("flame_charge", "Flame Charge", Element.FIRE, 50, desc = "Cloaked in flame: raises the user's Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
+        m("blast_burn", "Inferno Blast", Element.FIRE, 150, 90, "Huge damage, but the user must rest next turn.", MoveEffect.Recharge),
+        m("flame_charge", "Blazing Dash", Element.FIRE, 50, desc = "Cloaked in flame: raises the user's Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
         m("ember_barrage", "Ember Barrage", Element.FIRE, 20, 85, "Spits 2 to 5 embers.", MoveEffect.MultiHit(2, 5)),
         m("heat_claws", "Heat Claws", Element.FIRE, 70, desc = "Red-hot claws: high critical-hit chance.", fx = *arrayOf(MoveEffect.HighCrit)),
         m("kindle", "Kindle", Element.FIRE, 0, desc = "Stokes its inner fire: cures its status and raises Attack.", fx = *arrayOf(MoveEffect.CureSelf, MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1))),
-        m("lava_plume", "Lava Plume", Element.FIRE, 80, desc = "Lava sprays over every foe. 30% chance to burn each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.BURN, 0.3, 4, 4))),
+        m("lava_plume", "Lava Spray", Element.FIRE, 80, desc = "Lava sprays over every foe. 30% chance to burn each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.BURN, 0.3, 4, 4))),
 
         // ---- Electric ----
         m("spark", "Spark", Element.ELECTRIC, 40, desc = "A crackling jolt. 10% chance to shock.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.1, 4, 4))),
         m("shock", "Shock", Element.ELECTRIC, 25, desc = "A weak jolt that always shocks: 25% chance each turn the foe can't act.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 1.0, 4, 4))),
-        m("thunder_shock", "Thunder Shock", Element.ELECTRIC, 65, desc = "30% chance to shock.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
-        m("thunder_wave", "Thunder Wave", Element.ELECTRIC, 60, desc = "A wave of current through every foe. 15% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.15, 4, 4))),
-        m("thunder_bolt", "Thunder Bolt", Element.ELECTRIC, 95, desc = "10% chance to shock. Hits fliers mid-dive.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.1, 4, 4))),
+        m("thunder_shock", "Jolt Strike", Element.ELECTRIC, 65, desc = "30% chance to shock.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
+        m("thunder_wave", "Static Wave", Element.ELECTRIC, 60, desc = "A wave of current through every foe. 15% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.15, 4, 4))),
+        m("thunder_bolt", "Sky Bolt", Element.ELECTRIC, 95, desc = "10% chance to shock. Hits fliers mid-dive.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.1, 4, 4))),
         m("volt_crash", "Volt Crash", Element.ELECTRIC, 120, desc = "A reckless charge. Takes a third of the damage dealt as recoil.", fx = *arrayOf(MoveEffect.RecoilPct(33))),
         m("quick_bolt", "Quick Bolt", Element.ELECTRIC, 60, desc = "Lightning-fast: never misses.", fx = *arrayOf(MoveEffect.SureHit)),
         m("spark_storm", "Spark Storm", Element.ELECTRIC, 20, 85, "Zaps 2 to 5 times.", MoveEffect.MultiHit(2, 5)),
         m("charge", "Charge", Element.ELECTRIC, 0, desc = "Builds up power: raises Attack and Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1))),
         m("volt_fang", "Volt Fang", Element.ELECTRIC, 65, 95, "10% chance to shock, 10% chance the foe loses its turn.", MoveEffect.Inflict(Status.SHOCK, 0.1, 4, 4), MoveEffect.Flinch(0.1)),
-        m("zap_cannon", "Zap Cannon", Element.ELECTRIC, 100, 50, "Wildly inaccurate, but always shocks.", MoveEffect.Inflict(Status.SHOCK, 1.0, 4, 4)),
+        m("zap_cannon", "Arc Cannon", Element.ELECTRIC, 100, 50, "Wildly inaccurate, but always shocks.", MoveEffect.Inflict(Status.SHOCK, 1.0, 4, 4)),
 
         // ---- Water ----
         m("splash", "Splash", Element.WATER, 20, desc = "Spray in the eyes: the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0))),
@@ -228,7 +228,7 @@ object Moves {
         m("rain", "Rain", Element.WATER, 0, desc = "Summons rain. Water and Electric +25%, Fire −15%.", fx = *arrayOf(MoveEffect.SetWeather(Weather.RAIN, 1.0))),
         m("hydro_blast", "Hydro Blast", Element.WATER, 120, 80, "A crushing torrent. Huge, but it often misses."),
         m("hydro_surprise", "Hydro Surprise", Element.WATER, 90, 85, "Bursts up from below: high critical-hit chance.", MoveEffect.HighCrit),
-        m("aqua_jet", "Aqua Jet", Element.WATER, 40, desc = "A darting jet that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
+        m("aqua_jet", "Jet Dash", Element.WATER, 40, desc = "A darting jet that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
         m("bubble_barrage", "Bubble Barrage", Element.WATER, 20, 85, "Fires 2 to 5 bubbles.", MoveEffect.MultiHit(2, 5)),
         m("soak", "Soak", Element.WATER, 0, desc = "Drenches the foe: its Attack and Speed fall.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1.0))),
         m("tidal_slam", "Tidal Slam", Element.WATER, 80, desc = "Crashes down like a wave: 20% chance the foe loses its next turn.", fx = *arrayOf(MoveEffect.Flinch(0.2))),
@@ -237,13 +237,13 @@ object Moves {
         // ---- Flight ----
         m("peck", "Peck", Element.FLIGHT, 40, desc = "A sharp jab."),
         m("gust", "Gust", Element.FLIGHT, 40, desc = "15% chance the foe misses its next attack.", fx = *arrayOf(MoveEffect.FoeMissesNext(0.15))),
-        m("steel_wing", "Steel Wing", Element.FLIGHT, 40, desc = "Your damage rises 10% for the rest of the battle.", fx = *arrayOf(MoveEffect.PowerUp(10))),
+        m("steel_wing", "Iron Wing", Element.FLIGHT, 40, desc = "Your damage rises 10% for the rest of the battle.", fx = *arrayOf(MoveEffect.PowerUp(10))),
         m("lullaby", "Lullaby", Element.FLIGHT, 0, 70, "Sings the foe to sleep for 3–5 turns.", MoveEffect.Inflict(Status.SLEEP, 1.0, 3, 5)),
         m("wind_tunnel", "Wind Tunnel", Element.FLIGHT, 55, 95, "Slicing winds hit every foe: high critical-hit chance.", MoveEffect.HitsAllFoes, MoveEffect.HighCrit),
         m("flying_kick", "Flying Kick", Element.FLIGHT, 90, 95, "A soaring kick. Takes a quarter of the damage dealt as recoil.", MoveEffect.RecoilPct(25)),
         m("wild_wind", "Wild Wind", Element.FLIGHT, 0, desc = "Slowest fighters move first for 3 rounds.", fx = *arrayOf(MoveEffect.ReverseOrder)),
-        m("dive_bomb", "Dive Bomb", Element.FLIGHT, 90, 95, "Flies out of reach for a turn, then strikes. Thunder Bolt can hit it mid-air.", MoveEffect.TwoTurnDive),
-        m("aerial_ace", "Aerial Ace", Element.FLIGHT, 60, desc = "A swooping strike that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
+        m("dive_bomb", "Dive Bomb", Element.FLIGHT, 90, 95, "Flies out of reach for a turn, then strikes. Sky Bolt can hit it mid-air.", MoveEffect.TwoTurnDive),
+        m("aerial_ace", "Swoop Strike", Element.FLIGHT, 60, desc = "A swooping strike that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
         m("feather_flurry", "Feather Flurry", Element.FLIGHT, 18, 85, "Flings 2 to 5 razor feathers.", MoveEffect.MultiHit(2, 5)),
         m("tailwind", "Tailwind", Element.FLIGHT, 0, desc = "Rides the wind: sharply raises Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 2))),
         m("razor_gale", "Razor Gale", Element.FLIGHT, 70, desc = "Cutting winds: high critical-hit chance.", fx = *arrayOf(MoveEffect.HighCrit)),
@@ -252,7 +252,7 @@ object Moves {
         // ---- Gas ----
         m("puff", "Puff", Element.GAS, 40, desc = "A burst of foul air: 20% chance the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(0.2))),
         m("poison_gas", "Poison Gas", Element.GAS, 0, 90, "Poisons the foe: 10% of its HP each turn.", MoveEffect.Inflict(Status.POISON, 1.0, 5, 5)),
-        m("gunk_shot", "Gunk Shot", Element.GAS, 120, 70, "A heavy glob of filth: huge but inaccurate. 30% chance to poison.", MoveEffect.Inflict(Status.POISON, 0.3, 5, 5)),
+        m("gunk_shot", "Filth Shot", Element.GAS, 120, 70, "A heavy glob of filth: huge but inaccurate. 30% chance to poison.", MoveEffect.Inflict(Status.POISON, 0.3, 5, 5)),
         m("toxic_wave", "Toxic Wave", Element.GAS, 60, desc = "Fumes roll over every foe. 15% chance to poison each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.POISON, 0.15, 5, 5))),
         m("smog_screen", "Smog Screen", Element.GAS, 0, desc = "Thick smog: the foe's next move may miss and its Speed drops.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0), MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 1.0))),
         m("acid_rain", "Acid Rain", Element.GAS, 90, desc = "20% chance to lower Defense.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.DEFENSE), 0.2))),
@@ -268,29 +268,29 @@ object Moves {
         m("dark_wave", "Dark Wave", Element.CORRUPT, 60, desc = "Darkness washes over every foe. 20% chance to lower Speed.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 0.2))),
         m("corruptive_bite", "Corruptive Bite", Element.CORRUPT, 60, desc = "15% chance to lower Speed, Defense and Attack.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.SPEED, BattleStat.DEFENSE, BattleStat.ATTACK), 0.15))),
         m("nightmare", "Nightmare", Element.CORRUPT, 0, desc = "80% chance of sleep; 20 damage every turn asleep.", fx = *arrayOf(MoveEffect.Nightmare(0.8, 20))),
-        m("shadow_claw", "Shadow Claw", Element.CORRUPT, 70, desc = "Claws from the dark that slip past guards and raised Defense.", fx = *arrayOf(MoveEffect.Pierce)),
+        m("shadow_claw", "Umbral Claw", Element.CORRUPT, 70, desc = "Claws from the dark that slip past guards and raised Defense.", fx = *arrayOf(MoveEffect.Pierce)),
         m("void_pulse", "Void Pulse", Element.CORRUPT, 110, 85, "A pulse from the void."),
-        m("sucker_punch", "Sucker Punch", Element.CORRUPT, 60, desc = "A dirty blow that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
+        m("sucker_punch", "Cheap Shot", Element.CORRUPT, 60, desc = "A dirty blow that never misses.", fx = *arrayOf(MoveEffect.SureHit)),
         m("hex_barrage", "Hex Barrage", Element.CORRUPT, 20, 85, "Casts 2 to 5 small hexes.", MoveEffect.MultiHit(2, 5)),
-        m("night_slash", "Night Slash", Element.CORRUPT, 70, desc = "A slash from the shadows: high critical-hit chance.", fx = *arrayOf(MoveEffect.HighCrit)),
+        m("night_slash", "Dusk Slash", Element.CORRUPT, 70, desc = "A slash from the shadows: high critical-hit chance.", fx = *arrayOf(MoveEffect.HighCrit)),
         m("dark_pact", "Dark Pact", Element.CORRUPT, 0, desc = "Trades life for power: sharply raises Attack, costs HP.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 2), MoveEffect.Recoil(15, 1.0))),
         m("soul_drain", "Soul Drain", Element.CORRUPT, 70, desc = "Drains the foe's spirit and heals 15% of its HP.", fx = *arrayOf(MoveEffect.HealSelf(15))),
 
         // ---- Earth ----
-        m("seed_bomb", "Seed Bomb", Element.EARTH, 40, desc = "A burst of hard seeds."),
+        m("seed_bomb", "Seed Burst", Element.EARTH, 40, desc = "A burst of hard seeds."),
         m("mulch", "Mulch", Element.EARTH, 0, desc = "Burrows into rich soil and heals 10% of its HP.", fx = *arrayOf(MoveEffect.HealSelf(10))),
         m("sap", "Sap", Element.EARTH, 40, desc = "Drains the foe and heals half the damage dealt.", fx = *arrayOf(MoveEffect.LifeDrain(50))),
         m("rock_throw", "Rock Throw", Element.EARTH, 50, 90, "Hurls a heavy stone: 30% chance to lower Defense.", MoveEffect.LowerFoe(listOf(BattleStat.DEFENSE), 0.3)),
         m("mega_sap", "Mega Sap", Element.EARTH, 60, desc = "Drains the foe and heals half the damage dealt.", fx = *arrayOf(MoveEffect.LifeDrain(50))),
-        m("vine_whip", "Vine Whip", Element.EARTH, 45, desc = "Lashes with thorny vines: 25% chance to lower Speed.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 0.25))),
+        m("vine_whip", "Thorn Lash", Element.EARTH, 45, desc = "Lashes with thorny vines: 25% chance to lower Speed.", fx = *arrayOf(MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 0.25))),
         m("earthquake", "Earthquake", Element.EARTH, 100, desc = "The ground splits beneath every foe.", fx = *arrayOf(MoveEffect.HitsAllFoes)),
-        m("leaf_storm", "Leaf Storm", Element.EARTH, 130, 90, "A storm of razor leaves: the user's Attack harshly falls.", MoveEffect.LowerSelf(listOf(BattleStat.ATTACK), 2)),
-        m("rock_blast", "Rock Blast", Element.EARTH, 25, 80, "Hurls 2 to 5 stones.", MoveEffect.MultiHit(2, 5)),
+        m("leaf_storm", "Leaf Tempest", Element.EARTH, 130, 90, "A storm of razor leaves: the user's Attack harshly falls.", MoveEffect.LowerSelf(listOf(BattleStat.ATTACK), 2)),
+        m("rock_blast", "Stone Volley", Element.EARTH, 25, 80, "Hurls 2 to 5 stones.", MoveEffect.MultiHit(2, 5)),
         m("harden", "Harden", Element.EARTH, 0, desc = "Turns its hide to stone: sharply raises Defense.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 2))),
         m("thorn_trap", "Thorn Trap", Element.EARTH, 0, desc = "Thorns that cut 6 damage a turn for 5 turns.", fx = *arrayOf(MoveEffect.Scorch(6, 5))),
         m("ground_pound", "Ground Pound", Element.EARTH, 65, desc = "20% chance the foe loses its next turn.", fx = *arrayOf(MoveEffect.Flinch(0.2))),
-        m("stone_edge", "Stone Edge", Element.EARTH, 100, 80, "Jagged stones: high critical-hit chance.", MoveEffect.HighCrit),
-        m("smack_down", "Smack Down", Element.EARTH, 65, desc = "Hurls a rock that reaches fliers. Against a hovering foe: 85 power, and it's knocked down so Earth moves hit it for the rest of the battle.", fx = *arrayOf(MoveEffect.SmackDown(85))),
+        m("stone_edge", "Jagged Edge", Element.EARTH, 100, 80, "Jagged stones: high critical-hit chance.", MoveEffect.HighCrit),
+        m("smack_down", "Knockdown", Element.EARTH, 65, desc = "Hurls a rock that reaches fliers. Against a hovering foe: 85 power, and it's knocked down so Earth moves hit it for the rest of the battle.", fx = *arrayOf(MoveEffect.SmackDown(85))),
 
         // ---- More attacks: 8 per type, each type with its own strength ----
         // Fire: raw damage, often at a cost.
@@ -298,7 +298,7 @@ object Moves {
         m("flare_rush", "Flare Rush", Element.FIRE, 80, desc = "A burning tackle. Takes a quarter of the damage dealt as recoil.", fx = *arrayOf(MoveEffect.RecoilPct(25))),
         m("searing_blade", "Searing Blade", Element.FIRE, 70, desc = "A white-hot edge that cuts through guards and raised Defense.", fx = *arrayOf(MoveEffect.Pierce)),
         m("magma_fist", "Magma Fist", Element.FIRE, 75, desc = "A fist of molten rock. 10% chance to burn.", fx = *arrayOf(MoveEffect.Inflict(Status.BURN, 0.1, 4, 4))),
-        m("flare_blitz", "Flare Blitz", Element.FIRE, 120, desc = "An all-out blazing charge. Takes a third of the damage dealt as recoil.", fx = *arrayOf(MoveEffect.RecoilPct(33))),
+        m("flare_blitz", "Wildfire Charge", Element.FIRE, 120, desc = "An all-out blazing charge. Takes a third of the damage dealt as recoil.", fx = *arrayOf(MoveEffect.RecoilPct(33))),
         m("meteor_flame", "Meteor Flame", Element.FIRE, 120, 85, "Burning rocks crash down: huge, but it can miss. 10% chance to burn.", MoveEffect.Inflict(Status.BURN, 0.1, 4, 4)),
         m("sunfire", "Sunfire", Element.FIRE, 100, 95, "A beam of sunlight. 50% chance of a drought.", MoveEffect.SetWeather(Weather.DROUGHT, 0.5)),
         m("supernova", "Supernova", Element.FIRE, 150, desc = "Explodes over every foe. Weaker as the user's HP falls.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.HpScaled)),
@@ -310,7 +310,7 @@ object Moves {
         m("ion_storm", "Ion Storm", Element.ELECTRIC, 80, desc = "Charged air around every foe. 30% chance to shock each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4))),
         m("volt_snare", "Volt Snare", Element.ELECTRIC, 75, desc = "30% chance to shock, 20% chance to lower Speed.", fx = *arrayOf(MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4), MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 0.2))),
         m("plasma_lance", "Plasma Lance", Element.ELECTRIC, 80, desc = "Pierces guards and raised Defense. 10% chance to shock.", fx = *arrayOf(MoveEffect.Pierce, MoveEffect.Inflict(Status.SHOCK, 0.1, 4, 4))),
-        m("thunderclap", "Thunderclap", Element.ELECTRIC, 120, 70, "A deafening thunderclap: huge but inaccurate. 30% chance to shock.", MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4)),
+        m("thunderclap", "Sky Crack", Element.ELECTRIC, 120, 70, "A deafening thunderclap: huge but inaccurate. 30% chance to shock.", MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4)),
         m("judgment_bolt", "Judgment Bolt", Element.ELECTRIC, 100, 90, "1.5x power against a foe with a status. 30% chance to shock.", MoveEffect.StatusBonus(1.5), MoveEffect.Inflict(Status.SHOCK, 0.3, 4, 4)),
 
         // Water: balanced and fast. Many move first next round.
@@ -327,7 +327,7 @@ object Moves {
         m("wing_flick", "Wing Flick", Element.FLIGHT, 40, desc = "A light flick of the wings: raises the user's Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
         m("sky_uppercut", "Sky Uppercut", Element.FLIGHT, 60, desc = "A rising blow: 20% chance to raise the user's Attack.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1, 0.2))),
         m("updraft", "Updraft", Element.FLIGHT, 70, 90, "Strikes and rides the updraft: 30% chance to raise the user's Defense.", MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1, 0.3)),
-        m("air_slash", "Air Slash", Element.FLIGHT, 75, 95, "A blade of air. 30% chance the foe loses its next turn.", MoveEffect.Flinch(0.3)),
+        m("air_slash", "Wind Slash", Element.FLIGHT, 75, 95, "A blade of air. 30% chance the foe loses its next turn.", MoveEffect.Flinch(0.3)),
         m("soaring_strike", "Soaring Strike", Element.FLIGHT, 75, desc = "The user's damage rises 10% for the rest of the battle.", fx = *arrayOf(MoveEffect.PowerUp(10))),
         m("ascent", "Ascent", Element.FLIGHT, 80, desc = "Climbs high and dives: 20% chance to raise the user's Attack and Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1, 0.2))),
         m("hurricane", "Hurricane", Element.FLIGHT, 110, 70, "A violent storm: often misses. 30% chance the foe misses its next attack.", MoveEffect.FoeMissesNext(0.3)),
@@ -335,10 +335,10 @@ object Moves {
 
         // Gas: status first. Poison and sleep, and punishes foes that are already hurting.
         m("noxious_spit", "Noxious Spit", Element.GAS, 35, desc = "30% chance to poison.", fx = *arrayOf(MoveEffect.Inflict(Status.POISON, 0.3, 5, 5))),
-        m("venoshock", "Venoshock", Element.GAS, 55, desc = "Double power against a foe that has a status.", fx = *arrayOf(MoveEffect.StatusBonus(2.0))),
+        m("venoshock", "Venom Surge", Element.GAS, 55, desc = "Double power against a foe that has a status.", fx = *arrayOf(MoveEffect.StatusBonus(2.0))),
         m("drowsy_mist", "Drowsy Mist", Element.GAS, 45, 85, "Sleepy fumes. 40% chance the foe falls asleep.", MoveEffect.Inflict(Status.SLEEP, 0.4, 2, 3)),
         m("toxic_cloud", "Toxic Cloud", Element.GAS, 65, desc = "A cloud over every foe. 30% chance to poison each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.POISON, 0.3, 5, 5))),
-        m("sludge_bomb", "Sludge Bomb", Element.GAS, 90, desc = "30% chance to poison.", fx = *arrayOf(MoveEffect.Inflict(Status.POISON, 0.3, 5, 5))),
+        m("sludge_bomb", "Sludge Shot", Element.GAS, 90, desc = "30% chance to poison.", fx = *arrayOf(MoveEffect.Inflict(Status.POISON, 0.3, 5, 5))),
         m("plague_fang", "Plague Fang", Element.GAS, 75, desc = "30% chance to poison, and heals a quarter of the damage dealt.", fx = *arrayOf(MoveEffect.Inflict(Status.POISON, 0.3, 5, 5), MoveEffect.LifeDrain(25))),
         m("caustic_burst", "Caustic Burst", Element.GAS, 85, desc = "1.5x power against a foe with a status. 30% chance to lower Defense.", fx = *arrayOf(MoveEffect.StatusBonus(1.5), MoveEffect.LowerFoe(listOf(BattleStat.DEFENSE), 0.3))),
         m("pandemic", "Pandemic", Element.GAS, 95, 90, "A plague over every foe. 30% chance to poison each.", MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.POISON, 0.3, 5, 5)),
@@ -358,9 +358,9 @@ object Moves {
         // Earth: steady damage built on Defense.
         m("stone_knuckle", "Stone Knuckle", Element.EARTH, 45, desc = "A rocky punch: raises the user's Defense.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1))),
         m("bedrock_press", "Bedrock Press", Element.EARTH, 60, desc = "Presses down with its whole weight: damage comes from the user's Defense, not Attack.", fx = *arrayOf(MoveEffect.DefenseStrike)),
-        m("mud_slap", "Mud Slap", Element.EARTH, 30, desc = "Mud in the eyes: the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0))),
+        m("mud_slap", "Mud Fling", Element.EARTH, 30, desc = "Mud in the eyes: the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0))),
         m("shield_bash", "Shield Bash", Element.EARTH, 65, desc = "Uses the user's Defense for damage, then raises it.", fx = *arrayOf(MoveEffect.DefenseStrike, MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1))),
-        m("rockslide", "Rockslide", Element.EARTH, 75, 90, "Rocks tumble onto every foe. 30% chance each loses its turn.", MoveEffect.HitsAllFoes, MoveEffect.Flinch(0.3)),
+        m("rockslide", "Landslide", Element.EARTH, 75, 90, "Rocks tumble onto every foe. 30% chance each loses its turn.", MoveEffect.HitsAllFoes, MoveEffect.Flinch(0.3)),
         m("iron_root", "Iron Root", Element.EARTH, 70, desc = "Roots dig in: heals 10% of its HP and raises Defense.", fx = *arrayOf(MoveEffect.HealSelf(10), MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1))),
         m("mountain_crush", "Mountain Crush", Element.EARTH, 100, 90, "Brings a mountain down: damage comes from the user's Defense.", MoveEffect.DefenseStrike),
         m("titan_slam", "Titan Slam", Element.EARTH, 120, desc = "A titanic slam: the user's Attack and Defense fall.", fx = *arrayOf(MoveEffect.LowerSelf(listOf(BattleStat.ATTACK, BattleStat.DEFENSE), 1))),
@@ -448,12 +448,12 @@ object Moves {
         "Prism Fairy" to listOf(8 to "cleansing_wave", 20 to "quick_bolt"),
     )
 
-    /** Smack Down: Earth monsters learn it at 20, almost everyone else at 24. */
+    /** Knockdown: Earth monsters learn it at 20, almost everyone else at 24. */
     const val SMACK_DOWN_EARTH_LEVEL = 20
     const val SMACK_DOWN_LEVEL = 24
 
     /**
-     * Who can't learn Smack Down: creatures with nothing to throw a rock
+     * Who can't learn Knockdown: creatures with nothing to throw a rock
      * with, or that live in the water or the air: fish, slimes, wisps and
      * the fairy, the Sky Serpent and the jellyfish.
      */

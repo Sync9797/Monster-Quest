@@ -720,13 +720,13 @@ class GameTest {
         val m = Monster.create(Bestiary.get("emberkit"), 6, rng)
         val (after, notes) = GameEngine.grow(m, monsterXpForNext(6))
         assertEquals(7, after.level)
-        assertTrue(notes.any { it.contains("learned Fire Fang") })
+        assertTrue(notes.any { it.contains("learned Ember Fang") })
         // A custom loadout with a free slot gets the new move...
         val (filled, _) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite")), monsterXpForNext(6))
         assertEquals(listOf("spit_fire", "tackle", "bite", "fire_fang"), filled.moves)
         // ...but a full one is left alone, with a hint to swap it in.
         val (full, fullNotes) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite", "spit_fire").distinct() + "tackle"), monsterXpForNext(6))
-        assertTrue(fullNotes.any { it.contains("can learn Fire Fang") })
+        assertTrue(fullNotes.any { it.contains("can learn Ember Fang") })
         assertTrue("fire_fang" !in full.moves!!)
         // Players can choose any learned moves for their 4 slots.
         val s = started().copy(monsters = listOf(after))
@@ -1245,7 +1245,7 @@ class GameTest {
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }
         fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
-        // Fury Swipes can miss (80% accuracy): swipe until it lands.
+        // Frenzy Swipes can miss (80% accuracy): swipe until it lands.
         repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.act(BattleAction.UseMove("fury_swipes")) } }
         assertTrue(b.log.any { it.matches(Regex("Hit [2-5] times!")) })
         myTurn(); b.act(BattleAction.UseMove("focus"))

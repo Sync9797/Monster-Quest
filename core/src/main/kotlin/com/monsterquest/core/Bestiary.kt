@@ -283,7 +283,7 @@ object Bestiary {
         addAll(line("Zipwing line", Element.ELECTRIC, StatBlock(34, 13, 14, 8, 19), SkillKind.PHYSICAL, listOf(
             Member("zipwing", "Zipwing", "Zap Peck"),
             Member("stormtalon", "Stormtalon", "Static Dive"),
-            Member("thunderbird", "Thunderbird", "Thunderclap"),
+            Member("thunderbird", "Thunderbird", "Sky Crack"),
         )))
         addAll(line("Shellsnap line", Element.WATER, StatBlock(48, 13, 10, 17, 6), SkillKind.PHYSICAL, listOf(
             Member("shellsnap", "Shellsnap", "Shell Ram"),
@@ -378,7 +378,7 @@ object Bestiary {
         add(single("prism_fairy", "Prism Fairy", Element.FLIGHT, Rarity.EPIC, mythic(StatBlock(54, 10, 30, 15, 27)), "Prism Beam", SkillKind.MAGICAL, 52, false, minWildLevel = 15))
 
         // ---- Legendary bosses ----
-        add(single("magma_behemoth", "Magma Behemoth", Element.FIRE, Rarity.LEGENDARY, StatBlock(84, 27, 18, 20, 9), "Eruption", SkillKind.PHYSICAL, 60, true))
+        add(single("magma_behemoth", "Magma Behemoth", Element.FIRE, Rarity.LEGENDARY, StatBlock(84, 27, 18, 20, 9), "Magma Surge", SkillKind.PHYSICAL, 60, true))
         add(single("thunder_titan", "Thunder Titan", Element.ELECTRIC, Rarity.LEGENDARY, StatBlock(78, 20, 27, 18, 16), "Judgement Bolt", SkillKind.MAGICAL, 60, true))
         add(single("sky_serpent", "Sky Serpent", Element.FLIGHT, Rarity.LEGENDARY, StatBlock(72, 22, 24, 16, 22), "Cyclone Coil", SkillKind.MAGICAL, 58, true))
         add(single("abyss_kraken", "Abyss Kraken", Element.WATER, Rarity.LEGENDARY, StatBlock(80, 24, 22, 18, 12), "Maelstrom", SkillKind.MAGICAL, 58, true))

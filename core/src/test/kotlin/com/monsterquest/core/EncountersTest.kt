@@ -217,7 +217,7 @@ class EncountersTest {
         val s = withMonsters(2, level = 70)
         val hero = s.hero.copy(level = 70, skills = listOf(Trait.HOVER))
         assertEquals(5, hero.rankOf(Trait.HOVER))
-        val foe = Monster.create(Bestiary.get("goopling"), 70, rng) // no Smack Down: only a hit on the hero ends the hover
+        val foe = Monster.create(Bestiary.get("goopling"), 70, rng) // no Knockdown: only a hit on the hero ends the hover
         val b = GameEngine.newBattle(s.copy(hero = hero), foe, EncounterType.WILD, rng = Random(3), fullTeam = true)
         // Everyone hovers (unless a faster foe already hit the hero before your first turn).
         assertTrue(b.allies.all { it.immuneEarth } || b.log.any { "hover breaks" in it })
@@ -463,7 +463,7 @@ class EncountersTest {
         val (melt, hot) = duel("meltdown")
         melt.act(BattleAction.UseMove("meltdown"))
         assertTrue(hot.stages[BattleStat.ATTACK] == -2 || melt.log.any { "miss" in it }, melt.log.takeLast(5).toString())
-        // Flare Blitz: recoil is a third of the damage dealt.
+        // Wildfire Charge: recoil is a third of the damage dealt.
         val (blitz, _) = duel("flare_blitz")
         blitz.act(BattleAction.UseMove("flare_blitz"))
         val hit = blitz.log.firstNotNullOfOrNull { Regex("It hits .* for (\\d+) damage").find(it)?.groupValues?.get(1)?.toInt() }
