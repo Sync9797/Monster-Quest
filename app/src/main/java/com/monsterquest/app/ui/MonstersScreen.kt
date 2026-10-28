@@ -540,6 +540,7 @@ private fun MonsterTile(
 }
 
 /** Full stat page for one monster, with comparison and move management. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) {
     val s = vm.state
