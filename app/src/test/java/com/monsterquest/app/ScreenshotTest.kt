@@ -234,12 +234,10 @@ abstract class ScreenshotBase(private val device: String) {
         val second = mon.activeMoves[1]
         shot("04b_monster_moves") { AppRoot(v, Tab.MONSTERS) }
         rule.mainClock.autoAdvance = true
-        // Open its page (on big screens it may already be open).
-        if (rule.onAllNodes(androidx.compose.ui.test.hasText("Hold a move and drag it", substring = true)).fetchSemanticsNodes().isEmpty()) {
-            rule.onAllNodes(androidx.compose.ui.test.hasText(mon.displayName, substring = true) and androidx.compose.ui.test.hasClickAction())[0]
-                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-            rule.waitForIdle()
-        }
+        // Open its page (on big screens another monster's page may be open beside the list).
+        rule.onAllNodes(androidx.compose.ui.test.hasText(mon.displayName, substring = true) and androidx.compose.ui.test.hasClickAction())[0]
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitForIdle()
         val card = rule.onAllNodes(androidx.compose.ui.test.hasText(first.name) and androidx.compose.ui.test.hasClickAction())[0]
         card.performScrollTo()
         rule.waitForIdle()
