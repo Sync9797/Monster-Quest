@@ -207,7 +207,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     /** Second Wind: heal this share of max HP once, on dropping below 25%. */
     fun secondWindPct(rank: Int) = 15 + 5 * rank
     fun tamePct(rank: Int) = 5 * rank
-    fun regenPct(rank: Int) = 2 + rank
+    fun regenPct(rank: Int) = (rank + 3) / 2
     fun critPct(rank: Int) = 3 * rank
     fun energyPerTurn(rank: Int) = rank
     fun maxEnergy(rank: Int) = 2 * rank

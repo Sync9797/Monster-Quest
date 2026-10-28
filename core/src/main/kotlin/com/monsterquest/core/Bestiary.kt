@@ -280,7 +280,7 @@ object Bestiary {
             Member("boulderon", "Boulderon", "Boulder Slam"),
             Member("magma_colossus", "Magma Colossus", "Molten Quake"),
         )))
-        addAll(line("Zipwing line", Element.ELECTRIC, StatBlock(34, 13, 14, 8, 19), SkillKind.PHYSICAL, listOf(
+        addAll(line("Zipwing line", Element.ELECTRIC, StatBlock(37, 14, 15, 9, 21), SkillKind.PHYSICAL, listOf(
             Member("zipwing", "Zipwing", "Zap Peck"),
             Member("stormtalon", "Stormtalon", "Static Dive"),
             Member("thunderbird", "Thunderbird", "Sky Crack"),
@@ -308,17 +308,17 @@ object Bestiary {
             Member("magmander", "Magmander", "Magma Gills"),
             Member("pyrosaur", "Pyrosaur", "Frill Inferno"),
         )))
-        addAll(line("Cinderlamb line", Element.FIRE, StatBlock(44, 12, 14, 12, 10), SkillKind.MAGICAL, listOf(
+        addAll(line("Cinderlamb line", Element.FIRE, StatBlock(48, 13, 15, 13, 11), SkillKind.MAGICAL, listOf(
             Member("cinderlamb", "Cinderlamb", "Smoulder Wool"),
             Member("blazeram", "Blazeram", "Blazing Horns"),
         )))
         // Electric
-        addAll(line("Joltlet line", Element.ELECTRIC, StatBlock(36, 13, 13, 8, 18), SkillKind.PHYSICAL, listOf(
+        addAll(line("Joltlet line", Element.ELECTRIC, StatBlock(39, 14, 14, 9, 19), SkillKind.PHYSICAL, listOf(
             Member("joltlet", "Joltlet", "Tail Zap"),
             Member("voltape", "Voltape", "Charged Knuckles"),
             Member("thunderkong", "Thunderkong", "Thunder Pound"),
         )))
-        addAll(line("Zaplume line", Element.ELECTRIC, StatBlock(38, 8, 17, 10, 13), SkillKind.MAGICAL, listOf(
+        addAll(line("Zaplume line", Element.ELECTRIC, StatBlock(44, 9, 19, 13, 15), SkillKind.MAGICAL, listOf(
             Member("zaplume", "Zaplume", "Static Sting"),
             Member("tempest_jelly", "Tempest Jelly", "Storm Tendrils"),
         )))
@@ -338,7 +338,7 @@ object Bestiary {
             Member("strixwind", "Strixwind", "Night Gust"),
             Member("elder_strix", "Elder Strix", "Rune Gale"),
         )))
-        addAll(line("Pterix line", Element.FLIGHT, StatBlock(36, 15, 10, 9, 18), SkillKind.PHYSICAL, listOf(
+        addAll(line("Pterix line", Element.FLIGHT, StatBlock(44, 17, 11, 13, 19), SkillKind.PHYSICAL, listOf(
             Member("pterix", "Pterix", "Beak Jab"),
             Member("skyreaver", "Skyreaver", "Reaving Dive"),
         )))
@@ -358,7 +358,7 @@ object Bestiary {
             Member("webstalker", "Webstalker", "Shadow Web"),
             Member("widowmaw", "Widowmaw", "Widow's Kiss"),
         )))
-        addAll(line("Nightling line", Element.CORRUPT, StatBlock(36, 12, 15, 9, 17), SkillKind.MAGICAL, listOf(
+        addAll(line("Nightling line", Element.CORRUPT, StatBlock(42, 13, 17, 12, 18), SkillKind.MAGICAL, listOf(
             Member("nightling", "Nightling", "Night Nip"),
             Member("vampyrex", "Vampyrex", "Blood Drain"),
         )))

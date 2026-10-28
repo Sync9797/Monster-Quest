@@ -155,13 +155,17 @@ data class Move(
     /** Uses per battle (PP). Each turn a fighter doesn't use it, it gets one back. */
     val maxPp: Int get() = role.pp
 
-    /** Average damage power, counting multiple hits and crit chances (for loadouts and AI). */
+    /** Average damage power per turn, counting hits, crits and the move's costs (for loadouts and AI). */
     val expectedPower: Double
         get() {
             val hits = effects.filterIsInstance<MoveEffect.MultiHit>().firstOrNull()?.let { (it.min + it.max) / 2.0 } ?: 1.0
             val crit = if (MoveEffect.HighCrit in effects) 1.12 else 1.0
             val spread = if (MoveEffect.HitsAllFoes in effects) 1.15 else 1.0
-            return power * hits * crit * spread * accuracy / 100.0
+            // What the move costs: a turn of rest or charging, recoil, the user's own stats falling.
+            val turns = if (MoveEffect.Recharge in effects || MoveEffect.TwoTurnDive in effects) 0.6 else 1.0
+            val recoil = 1 - (effects.filterIsInstance<MoveEffect.RecoilPct>().firstOrNull()?.percent ?: 0) / 200.0
+            val drop = if (effects.any { it is MoveEffect.LowerSelf }) 0.85 else 1.0
+            return power * hits * crit * spread * accuracy / 100.0 * turns * recoil * drop
         }
 }
 
@@ -251,7 +255,7 @@ object Moves {
 
         // ---- Gas ----
         m("puff", "Puff", Element.GAS, 40, desc = "A burst of foul air: 20% chance the foe's next move may miss.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(0.2))),
-        m("poison_gas", "Poison Gas", Element.GAS, 0, 90, "Poisons the foe: 10% of its HP each turn.", MoveEffect.Inflict(Status.POISON, 1.0, 5, 5)),
+        m("poison_gas", "Poison Gas", Element.GAS, 0, 90, "Poisons the foe: 8% of its HP each turn.", MoveEffect.Inflict(Status.POISON, 1.0, 5, 5)),
         m("gunk_shot", "Filth Shot", Element.GAS, 120, 70, "A heavy glob of filth: huge but inaccurate. 30% chance to poison.", MoveEffect.Inflict(Status.POISON, 0.3, 5, 5)),
         m("toxic_wave", "Toxic Wave", Element.GAS, 60, desc = "Fumes roll over every foe. 15% chance to poison each.", fx = *arrayOf(MoveEffect.HitsAllFoes, MoveEffect.Inflict(Status.POISON, 0.15, 5, 5))),
         m("smog_screen", "Smog Screen", Element.GAS, 0, desc = "Thick smog: the foe's next move may miss and its Speed drops.", fx = *arrayOf(MoveEffect.FoeAccuracyDown(1.0), MoveEffect.LowerFoe(listOf(BattleStat.SPEED), 1.0))),
@@ -325,11 +329,11 @@ object Moves {
 
         // Flight: balanced attacks that power the user up.
         m("wing_flick", "Wing Flick", Element.FLIGHT, 40, desc = "A light flick of the wings: raises the user's Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.SPEED), 1))),
-        m("sky_uppercut", "Sky Uppercut", Element.FLIGHT, 60, desc = "A rising blow: 20% chance to raise the user's Attack.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1, 0.2))),
-        m("updraft", "Updraft", Element.FLIGHT, 70, 90, "Strikes and rides the updraft: 30% chance to raise the user's Defense.", MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1, 0.3)),
+        m("sky_uppercut", "Sky Uppercut", Element.FLIGHT, 60, desc = "A rising blow: 50% chance to raise the user's Attack.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK), 1, 0.5))),
+        m("updraft", "Updraft", Element.FLIGHT, 70, 90, "Strikes and rides the updraft: 50% chance to raise the user's Defense.", MoveEffect.RaiseSelf(listOf(BattleStat.DEFENSE), 1, 0.5)),
         m("air_slash", "Wind Slash", Element.FLIGHT, 75, 95, "A blade of air. 30% chance the foe loses its next turn.", MoveEffect.Flinch(0.3)),
         m("soaring_strike", "Soaring Strike", Element.FLIGHT, 75, desc = "The user's damage rises 10% for the rest of the battle.", fx = *arrayOf(MoveEffect.PowerUp(10))),
-        m("ascent", "Ascent", Element.FLIGHT, 80, desc = "Climbs high and dives: 20% chance to raise the user's Attack and Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1, 0.2))),
+        m("ascent", "Ascent", Element.FLIGHT, 80, desc = "Climbs high and dives: 40% chance to raise the user's Attack and Speed.", fx = *arrayOf(MoveEffect.RaiseSelf(listOf(BattleStat.ATTACK, BattleStat.SPEED), 1, 0.4))),
         m("hurricane", "Hurricane", Element.FLIGHT, 110, 70, "A violent storm: often misses. 30% chance the foe misses its next attack.", MoveEffect.FoeMissesNext(0.3)),
         m("talon_storm", "Talon Storm", Element.FLIGHT, 100, 95, "A flurry of talons: high critical-hit chance.", MoveEffect.HighCrit),
 

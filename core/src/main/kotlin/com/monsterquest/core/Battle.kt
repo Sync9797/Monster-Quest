@@ -248,7 +248,8 @@ class Combatant(
     val hpFraction: Double get() = hp.toDouble() / maxHp
 
     fun stageMultiplier(stat: BattleStat): Double = (1.0 + 0.15 * (stages[stat] ?: 0)).coerceIn(0.4, 2.0)
-    val effectiveSpeed: Double get() = speed * stageMultiplier(BattleStat.SPEED)
+    /** Speed after stat stages; a shocked fighter moves at half speed (like paralysis). */
+    val effectiveSpeed: Double get() = speed * stageMultiplier(BattleStat.SPEED) * (if (status == Status.SHOCK) SHOCK_SPEED else 1.0)
 
     /** Short labels for the UI, e.g. "Asleep", "Def ↓1". */
     fun tags(): List<String> = buildList {
@@ -549,6 +550,15 @@ const val SCARED_ATTACK = 2.0 / 3.0
 
 /** Pay for a thug fight, per fighter on their side (thug included). */
 const val THUG_REWARD = 0.9
+
+/** Poison: this share of max HP each turn. */
+const val POISON_PCT = 8
+
+/** Shocked fighters move at this share of their Speed. */
+const val SHOCK_SPEED = 0.5
+
+/** Burned fighters' physical attacks hit for this share. */
+const val BURN_ATTACK = 0.75
 
 /** Spread moves hit each foe at 75% power when there's more than one (as in later generations). */
 const val SPREAD_POWER = 0.75
@@ -960,7 +970,7 @@ class Battle(
             hurt(c, c.scorchDamage, c.scorchVerb)
         }
         when (c.status) {
-            Status.POISON -> hurt(c, max(1, c.maxHp / 10), "is hurt by poison")
+            Status.POISON -> hurt(c, max(1, c.maxHp * POISON_PCT / 100), "is hurt by poison")
             Status.BURN -> hurt(c, max(1, c.maxHp * 6 / 100), "is hurt by its burn")
             // A drought thaws frostbite out.
             Status.FROSTBITE -> if (weather != Weather.DROUGHT) hurt(c, max(1, c.maxHp * 5 / 100), "is hurt by frostbite")
@@ -1661,6 +1671,8 @@ class Battle(
             ?.let { 1 + Trait.LAST_STAND.lastStandPct(it) / 100.0 } ?: 1.0
         val grit = a.rankOf(Trait.GRIT).takeIf { it > 0 && a.status != null && !useMagic }
             ?.let { 1 + Trait.GRIT.gritPct(it) / 100.0 } ?: 1.0
+        // A burn weakens physical attacks (Grit shrugs that off and hits harder instead).
+        val burned = if (a.status == Status.BURN && !useMagic && a.rankOf(Trait.GRIT) == 0) BURN_ATTACK else 1.0
         val kindle = if (a.kindled && type == Element.FIRE) 1 + Trait.KINDLING.kindlePct(a.rankOf(Trait.KINDLING)) / 100.0 else 1.0
         val atk = when {
             useMagic -> a.magic.toDouble()
@@ -1684,7 +1696,7 @@ class Battle(
             (1 + a.ragePct / 100.0 * (1 - a.hpFraction)) *
             (1 - d.hidePct / 100.0) *
             (if (type == Element.EARTH) 1 - d.earthResistPct / 100.0 else 1.0) *
-            lastStand * grit * kindle
+            lastStand * grit * kindle * burned
         var dmg = max(1, raw.roundToInt())
         // Stalwart: once a battle, a knockout blow at (nearly) full HP leaves it at 1 HP.
         val stalwart = d.rankOf(Trait.STALWART)

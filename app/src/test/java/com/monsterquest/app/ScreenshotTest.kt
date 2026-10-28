@@ -393,7 +393,8 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun battlePotionPreview() {
         val base = sampleState()
         // Hurt the whole party so whoever is listed has something to heal.
-        val v = vm(base.copy(heroDamage = 120, monsters = base.monsters.map { it.copy(damage = it.stats.hp / 2) }))
+        // (Not so hurt that the wild monster can knock the hero out before the first turn.)
+        val v = vm(base.copy(heroDamage = 40, monsters = base.monsters.map { it.copy(damage = it.stats.hp / 2) }))
         v.hunt()
         shot("44_battle_potion") { AppRoot(v) }
         val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
