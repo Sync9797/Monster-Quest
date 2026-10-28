@@ -84,6 +84,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var location by mutableStateOf<Pair<Double, Double>?>(null)
         private set
     var shrines by mutableStateOf<List<Shrine>>(emptyList())
+        private set
 
     /** Points along nearby lakes, rivers and coast (from the map tiles). */
     private var waterPoints: List<Pair<Double, Double>> = emptyList()
@@ -104,7 +105,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         return waterDistanceCache
     }
-        private set
     var loadingPlaces by mutableStateOf(false)
         private set
     private var placesFetchedAt: Pair<Double, Double>? = null
