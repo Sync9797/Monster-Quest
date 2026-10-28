@@ -62,6 +62,7 @@ private val topics = listOf(
             "Finish to win a loot box. Longer sessions give rarer boxes; 60+ minutes can give a Legendary box with a boss inside.",
             "Long sessions pay extra. 60 minutes: your party trains (+10% of a level each). 90 minutes: no Common boxes, half the walk to open, a Scholar's Tome (3 pages for any spell you choose), +25% of a level for the party and +50% Energy. 120 minutes is the jackpot: always an Epic or Legendary box at half the walk, a 5-page Scholar's Tome (enough to learn a spell), +50% of a level for the party and full Energy.",
             "Read a Scholar's Tome on the Hero tab, under Magic: pick the spell its pages go to.",
+            "After a two-hour session, a rare visitor (an Epic or rarer monster) waits beside you on the map for 15 minutes, and it's 1.5x easier to tame.",
             "Sessions of an hour or more can also give a Mood Crystal (25% at 60 minutes, 50% at 90, always at 120): use it on a monster's page to give it a new personality.",
             "Leaving for another app (and not coming back within 15 seconds) fails the session. Phone calls never count.",
             "Loot boxes open by walking: 1, 3, 5 or 10 miles depending on the box.",

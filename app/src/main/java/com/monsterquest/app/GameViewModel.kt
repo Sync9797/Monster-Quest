@@ -928,7 +928,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (ambush) s = s.copy(lastAmbushMs = now)
         set(s)
-        startBattle(World.spawnMonster(spawn), EncounterType.WILD, null, pack.map { World.spawnMonster(it) }, ambush)
+        startBattle(
+            World.spawnMonster(spawn), EncounterType.WILD, null, pack.map { World.spawnMonster(it) }, ambush,
+            captureBoost = if (spawn.visitor) GameEngine.VISITOR_CATCH_BOOST else 1.0,
+        )
     }
 
     /**
@@ -1071,6 +1074,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         pack: List<Monster> = emptyList(),
         ambush: Boolean = false,
         thug: com.monsterquest.core.Thug? = null,
+        captureBoost: Double = 1.0,
     ) {
         var s = state
         for (m in listOf(enemy) + pack) s = GameEngine.markSeen(s, m.speciesId)
@@ -1078,6 +1082,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val b = GameEngine.newBattle(
             state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
             weather = weather?.kind?.takeIf { state.settings.liveWeather },
+            captureBoost = captureBoost,
         )
         activeBattle = b
         battle = battleView(b, null)

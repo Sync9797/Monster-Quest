@@ -87,6 +87,8 @@ data class WildSpawn(
     val shiny: Boolean = false,
     /** Lingers around this shrine (id) instead of roaming. */
     val shrineId: String? = null,
+    /** A rare visitor (after a long phone-free session): easier to tame. */
+    val visitor: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
 }

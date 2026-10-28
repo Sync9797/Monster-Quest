@@ -1000,6 +1000,8 @@ object GameEngine {
         fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
         /** The real weather where the fight happens. */
         weather: LiveWeather? = null,
+        /** Better taming odds (a rare visitor). */
+        captureBoost: Double = 1.0,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -1014,6 +1016,7 @@ object GameEngine {
         thug = thug,
         fullTeam = fullTeam,
         startWeather = weather?.battle ?: Weather.CLEAR,
+        captureBoost = captureBoost,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */
@@ -1643,7 +1646,21 @@ object GameEngine {
     const val FOLLOWER_TTL_MS = 4 * 60 * 60_000L
 
     fun activeFollowers(state: GameState, nowMs: Long): List<Follower> =
-        state.followers.filter { nowMs - it.createdMs < FOLLOWER_TTL_MS }
+        state.followers.filter { nowMs - it.createdMs < it.ttlMs }
+
+    /** A rare visitor waits this long after a two-hour phone-free session. */
+    const val VISITOR_TTL_MS = 15 * 60_000L
+
+    /** Taming odds against a rare visitor are this much better. */
+    const val VISITOR_CATCH_BOOST = 1.5
+
+    /** An Epic (or rarer) wild monster that comes to wait beside you. */
+    fun rareVisitor(state: GameState, nowMs: Long, rng: Random): Follower {
+        val level = wildLevel(state.hero.level, rng) + 2
+        val pool = Bestiary.wild.filter { it.rarity >= Rarity.EPIC && it.minWildLevel <= level }
+            .ifEmpty { Bestiary.wild.filter { it.rarity >= Rarity.RARE } }
+        return Follower(newId(rng), pool.random(rng).id, level, nowMs, rollShiny(rng), visitor = true)
+    }
 
     /** A follower as a battle-ready spawn standing right beside you. */
     fun followerSpawn(f: Follower, lat: Double, lon: Double, index: Int): WildSpawn {
@@ -1651,7 +1668,8 @@ object GameEngine {
         return WildSpawn(
             id = "f:${f.id}", speciesId = f.speciesId, level = f.level,
             lat = lat + 0.00018 * kotlin.math.cos(angle), lon = lon + 0.00022 * kotlin.math.sin(angle),
-            expiresAtMs = f.createdMs + FOLLOWER_TTL_MS, follower = true, shiny = f.shiny,
+            expiresAtMs = f.createdMs + f.ttlMs, follower = true, shiny = f.shiny,
+            lured = f.visitor, visitor = f.visitor,
         )
     }
 
@@ -1886,6 +1904,12 @@ object GameEngine {
                     },
                 )
                 msg.append(" Your party trained while you were away (+${(bonus.levelShare * 100).toInt()}% of a level each).")
+            }
+            // Two hours off the phone: a rare visitor waits on the map.
+            if (f.minutes >= 120) {
+                val v = rareVisitor(s, f.endMs, rng)
+                s = s.copy(followers = s.followers + v)
+                msg.append(" A rare ${v.species.name} (Lv ${v.level}) is waiting on your map for 15 minutes, and it's easier to tame!")
             }
             // Mood Crystals (personality rerolls) only come from hour-plus sessions.
             if (bonus.moodCrystalPct > 0 && rng.nextInt(100) < bonus.moodCrystalPct) {

@@ -604,6 +604,8 @@ class Battle(
     private val storageRoom: Int = if (storageFull) 0 else Int.MAX_VALUE,
     /** The weather the fight starts in (from the real weather: rain, or a heatwave's drought). */
     startWeather: Weather = Weather.CLEAR,
+    /** Multiplier on taming odds (a rare visitor is easier). */
+    private val captureBoost: Double = 1.0,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -824,7 +826,7 @@ class Battle(
     fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
-                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus)
+                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus) * captureBoost
             ).coerceIn(0.0, 0.95)
 
     // ---- turn handling ------------------------------------------------------

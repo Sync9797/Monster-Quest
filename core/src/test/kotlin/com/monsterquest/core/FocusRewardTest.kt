@@ -67,4 +67,25 @@ class FocusRewardTest {
         // Without one, nothing happens.
         assertEquals(after.personality, GameEngine.rerollPersonality(u.state, m.uid).state.monsters.first { it.uid == m.uid }.personality)
     }
+
+    @Test
+    fun aRareVisitorWaitsAfterTwoHours() {
+        val s = finish(started(), 120, 11).state
+        val v = s.followers.single { it.visitor }
+        assertTrue(v.species.rarity >= Rarity.EPIC)
+        assertEquals(GameEngine.VISITOR_TTL_MS, v.ttlMs)
+        // It waits 15 minutes, then it's gone.
+        assertTrue(GameEngine.activeFollowers(s, v.createdMs + 10 * 60_000L).any { it.visitor })
+        assertTrue(GameEngine.activeFollowers(s, v.createdMs + 16 * 60_000L).none { it.visitor })
+        assertTrue(finish(started(), 90, 11).state.followers.none { it.visitor })
+        // Easier to tame.
+        val spawn = GameEngine.followerSpawn(v, 0.0, 0.0, 0)
+        assertTrue(spawn.visitor)
+        val foe = World.spawnMonster(spawn)
+        val plain = GameEngine.newBattle(s.copy(inventory = mapOf(Item.TAMING_ORB to 3)), foe, EncounterType.WILD, rng = Random(2))
+        val boosted = GameEngine.newBattle(s.copy(inventory = mapOf(Item.TAMING_ORB to 3)), foe, EncounterType.WILD, rng = Random(2), captureBoost = GameEngine.VISITOR_CATCH_BOOST)
+        plain.enemy.hp = plain.enemy.maxHp / 4
+        boosted.enemy.hp = boosted.enemy.maxHp / 4
+        assertTrue(boosted.captureOdds(Item.TAMING_ORB) > plain.captureOdds(Item.TAMING_ORB))
+    }
 }

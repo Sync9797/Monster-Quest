@@ -226,8 +226,17 @@ val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
 
 /** A wild monster drawn to you by your walking. */
 @Serializable
-data class Follower(val id: String, val speciesId: String, val level: Int, val createdMs: Long, val shiny: Boolean = false) {
+data class Follower(
+    val id: String,
+    val speciesId: String,
+    val level: Int,
+    val createdMs: Long,
+    val shiny: Boolean = false,
+    /** A rare visitor after a two-hour phone-free session: it only waits [GameEngine.VISITOR_TTL_MS], and is easier to tame. */
+    val visitor: Boolean = false,
+) {
     val species: Species get() = Bestiary.get(speciesId)
+    val ttlMs: Long get() = if (visitor) GameEngine.VISITOR_TTL_MS else GameEngine.FOLLOWER_TTL_MS
 }
 
 // ---------------------------------------------------------------------------
