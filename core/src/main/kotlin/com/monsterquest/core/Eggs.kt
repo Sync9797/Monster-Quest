@@ -23,10 +23,11 @@ data class Egg(
 }
 
 /**
- * Breeding: two monsters of the same evolution line, both level
+ * Breeding: a male and a female of the same evolution line, both level
  * [BREED_LEVEL]+, make an egg (for line candy and gold). The parents stay, but
  * rest for a day. The egg hatches by walking and carries the best of its
- * parents' genes.
+ * parents' genes. Legendaries and mythics have no gender and can't breed.
+ * Adventures can also bring eggs home ([fromAdventure]).
  */
 object Eggs {
     const val MAX_EGGS = 3
@@ -48,20 +49,21 @@ object Eggs {
 
     fun resting(m: Monster, nowMs: Long): Boolean = m.bredAtMs > 0 && nowMs - m.bredAtMs < BREED_COOLDOWN_MS
 
-    fun canBreed(m: Monster, nowMs: Long): Boolean = m.level >= BREED_LEVEL && !m.fainted && !resting(m, nowMs)
+    /** Legendaries and mythics can never make eggs. */
+    fun breedable(species: Species): Boolean = !species.genderless
+
+    fun canBreed(m: Monster, nowMs: Long): Boolean = breedable(m.species) && m.level >= BREED_LEVEL && !m.fainted && !resting(m, nowMs)
+
+    /** A male and a female of the same line. */
+    fun compatible(a: Monster, b: Monster): Boolean =
+        a.uid != b.uid && a.species.family == b.species.family && a.gender != null && b.gender == a.gender?.opposite
 
     /** Who [m] can make an egg with right now. */
     fun partners(state: GameState, m: Monster, nowMs: Long): List<Monster> =
-        state.monsters.filter { it.uid != m.uid && it.species.family == m.species.family && canBreed(it, nowMs) }
+        state.monsters.filter { compatible(m, it) && canBreed(it, nowMs) }
 
-    fun breed(state: GameState, uidA: String, uidB: String, nowMs: Long, rng: Random = Random.Default): Update {
-        val a = state.monsters.find { it.uid == uidA } ?: return Update(state, "Monster not found.")
-        val b = state.monsters.find { it.uid == uidB } ?: return Update(state, "Monster not found.")
-        if (a.species.family != b.species.family) return Update(state, "Only monsters of the same line can make an egg.")
-        if (!canBreed(a, nowMs) || !canBreed(b, nowMs)) return Update(state, "Both need to be level $BREED_LEVEL+, awake and rested.")
-        if (state.eggs.size >= MAX_EGGS) return Update(state, "You can carry $MAX_EGGS eggs at a time. Hatch one first.")
-        if (state.gold < BREED_GOLD) return Update(state, "Making an egg costs $BREED_GOLD gold.")
-        if (GameEngine.candyOf(state, a.species) < BREED_CANDY) return Update(state, "Making an egg costs $BREED_CANDY ${GameEngine.candyName(a.species)}.")
+    /** An egg of [a] and [b]'s line with the best of their genes. */
+    private fun eggOf(a: Monster, b: Monster, rng: Random): Egg {
         val baby = Bestiary.lineOf(a.species).first()
         // The best of both: some stats are guaranteed the better parent's, the rest are rolled.
         val best = MONSTER_STATS.shuffled(rng).take(INHERITED_STATS).toSet()
@@ -70,7 +72,46 @@ object Eggs {
         val personality = if (rng.nextDouble() < PERSONALITY_CHANCE) listOf(a, b).random(rng).personality
         else Personality.entries.random(rng)
         val shiny = rollShiny(rng) || ((a.shiny || b.shiny) && rollShiny(rng))
-        val egg = Egg(newId(rng), baby.id, ivs, personality, shiny, walkMeters(baby))
+        return Egg(newId(rng), baby.id, ivs, personality, shiny, walkMeters(baby))
+    }
+
+    /** Chance an adventure team of [ADVENTURE_EGG_TEAM]+ monsters brings home an egg. */
+    const val ADVENTURE_EGG_CHANCE = 0.75
+    const val ADVENTURE_EGG_TEAM = 2
+
+    /**
+     * Rolls for an egg when an adventure ends. With a male and a female of the
+     * same line on the team, it's their egg (with their genes); otherwise the
+     * team finds an egg of one member's line, with ordinary genes. Legendaries
+     * and mythics never pass on an egg. Free, and no one has to rest after.
+     * Returns the new state and a note, or null for no egg.
+     */
+    fun fromAdventure(state: GameState, team: List<Monster>, rng: Random): Pair<GameState, String>? {
+        if (team.size < ADVENTURE_EGG_TEAM || rng.nextDouble() >= ADVENTURE_EGG_CHANCE) return null
+        val kin = team.filter { breedable(it.species) }
+        if (kin.isEmpty()) return null
+        val pair = kin.flatMap { a -> kin.filter { b -> compatible(a, b) }.map { a to it } }.randomOrNull(rng)
+        val egg = if (pair != null) eggOf(pair.first, pair.second, rng) else {
+            val baby = Bestiary.lineOf(kin.random(rng).species).first()
+            Egg(newId(rng), baby.id, StatBlock.random(rng, MAX_IV), Personality.entries.random(rng), rollShiny(rng), walkMeters(baby))
+        }
+        if (state.eggs.size >= MAX_EGGS) return state to "They found an egg but your egg slots are full ($MAX_EGGS), so they left it."
+        val note = if (pair != null) "${pair.first.displayName} and ${pair.second.displayName} came back with an egg!"
+        else "The team found a ${egg.species.name} egg!"
+        return state.copy(eggs = state.eggs + egg) to "$note Walk ${"%.1f".format(egg.meters / 1000)} km to hatch it."
+    }
+
+    fun breed(state: GameState, uidA: String, uidB: String, nowMs: Long, rng: Random = Random.Default): Update {
+        val a = state.monsters.find { it.uid == uidA } ?: return Update(state, "Monster not found.")
+        val b = state.monsters.find { it.uid == uidB } ?: return Update(state, "Monster not found.")
+        if (!breedable(a.species) || !breedable(b.species)) return Update(state, "Legendary and mythical monsters can't make eggs.")
+        if (a.species.family != b.species.family) return Update(state, "Only monsters of the same line can make an egg.")
+        if (!compatible(a, b)) return Update(state, "An egg takes a male and a female.")
+        if (!canBreed(a, nowMs) || !canBreed(b, nowMs)) return Update(state, "Both need to be level $BREED_LEVEL+, awake and rested.")
+        if (state.eggs.size >= MAX_EGGS) return Update(state, "You can carry $MAX_EGGS eggs at a time. Hatch one first.")
+        if (state.gold < BREED_GOLD) return Update(state, "Making an egg costs $BREED_GOLD gold.")
+        if (GameEngine.candyOf(state, a.species) < BREED_CANDY) return Update(state, "Making an egg costs $BREED_CANDY ${GameEngine.candyName(a.species)}.")
+        val egg = eggOf(a, b, rng)
         val s = GameEngine.addCandy(state, a.species, -BREED_CANDY).copy(
             gold = state.gold - BREED_GOLD,
             eggs = state.eggs + egg,
@@ -96,6 +137,6 @@ object Eggs {
             party = if (state.party.size < MAX_PARTY_SIZE) state.party + m.uid else state.party,
             stats = state.stats.copy(eggsHatched = state.stats.eggsHatched + 1),
         )
-        return Update(s, "The egg hatched: a ${if (m.shiny) "shiny " else ""}${m.species.name}! ${m.personality.label}, with ${GameEngine.perfectStatCount(m)} perfect stat(s).")
+        return Update(s, "The egg hatched: a ${if (m.shiny) "shiny " else ""}${m.gender?.let { it.label.lowercase() + " " } ?: ""}${m.species.name}! ${m.personality.label}, with ${GameEngine.perfectStatCount(m)} perfect stat(s).")
     }
 }

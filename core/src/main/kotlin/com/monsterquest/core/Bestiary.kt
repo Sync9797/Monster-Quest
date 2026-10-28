@@ -38,6 +38,12 @@ data class Species(
 
     /** Attack types that hit it harder than normal, counting both its types. */
     val weakTo: List<Element> get() = Element.typed.filter { it.multiplierAgainst(types) > 1.0 }
+
+    /** One of the rare one-stage mythics. */
+    val mythic: Boolean get() = id in Bestiary.MYTHIC_IDS
+
+    /** Legendaries and mythics have no gender, and can't make eggs. */
+    val genderless: Boolean get() = rarity == Rarity.LEGENDARY || mythic
 }
 
 /**
@@ -137,6 +143,8 @@ object Bestiary {
      * (but below the starters and legendaries): their stats are boosted by this.
      */
     const val MYTHIC_POWER = 1.45
+
+    val MYTHIC_IDS = setOf("mimic", "prism_fairy")
 
     private fun mythic(b: StatBlock) = StatBlock(
         (b.hp * MYTHIC_POWER).toInt(), (b.attack * MYTHIC_POWER).toInt(), (b.magic * MYTHIC_POWER).toInt(),

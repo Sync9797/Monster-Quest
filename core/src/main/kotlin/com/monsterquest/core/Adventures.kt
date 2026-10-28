@@ -166,6 +166,10 @@ object Adventures {
             },
         )
         val teamNames = team.joinToString { it.displayName }
+        // Teams of two or more often bring home an egg, win or lose.
+        val egg = Eggs.fromAdventure(s, team, rng)
+        if (egg != null) s = egg.first
+        val eggNote = egg?.let { " ${it.second}" } ?: ""
         return if (success) {
             val gold = 20 * d + adv.recommendedLevel * 2 * d + rng.nextInt(10 * d + 1)
             s = s.copy(gold = s.gold + gold)
@@ -174,7 +178,7 @@ object Adventures {
             Update(
                 granted.state,
                 "${adv.title}: success! $teamNames brought back +$gold gold, ${granted.message}. Each monster +$xpEach XP." +
-                    notes.joinToString("") { " $it" },
+                    eggNote + notes.joinToString("") { " $it" },
             )
         } else {
             val gold = 10 * d
@@ -186,7 +190,7 @@ object Adventures {
             Update(
                 s,
                 "${adv.title}: the team was driven back. +$gold gold, +$xpEach XP each." +
-                    (weakest?.let { " ${it.displayName} fainted and needs a Restore Potion." } ?: ""),
+                    (weakest?.let { " ${it.displayName} fainted and needs a Restore Potion." } ?: "") + eggNote,
             )
         }
     }

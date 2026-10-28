@@ -519,7 +519,10 @@ private fun MonsterTile(
         verticalArrangement = Arrangement.Center,
     ) {
         MonsterArt(sp, Modifier.size(64.dp), dim = m.fainted, shiny = m.shiny)
-        Text(m.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(m.displayName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            m.gender?.let { Text(" ${it.symbol}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = genderColor(it)) }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             GIcon(sp.element.icon(), Modifier.size(11.dp), sp.element.color())
             Spacer(Modifier.width(3.dp))
@@ -572,6 +575,12 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Column(Modifier.weight(1f)) {
                     Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (m.shiny) IconText(GameIcon.SPARK, "Shiny", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp, size = 14.dp)
+                    Text(
+                        m.gender?.let { "${it.symbol} ${it.label}" } ?: (if (sp.mythic) "Mythical" else "Legendary") + ": no gender, can't make eggs",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = m.gender?.let { genderColor(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     IconText(sp.element.icon(), "Lv ${m.level} ${sp.name} • ${sp.typeLabel}", tint = sp.element.color(), fontSize = 13.sp, size = 14.dp)
                     Row {
                         Text(sp.rarity.label, fontSize = 12.sp, color = rarityColor(sp.rarity))
@@ -896,8 +905,8 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             SmallButton("Rename", { renaming = true }, Modifier.weight(1f), outlined = true)
             SmallButton("Release", { releasing = true }, Modifier.weight(1f), outlined = true)
         }
-        // Two of the same line, level 20+, can make an egg.
-        if (m.level >= com.monsterquest.core.Eggs.BREED_LEVEL) {
+        // A male and a female of the same line, level 20+, can make an egg (never legendaries or mythics).
+        if (m.level >= com.monsterquest.core.Eggs.BREED_LEVEL && com.monsterquest.core.Eggs.breedable(sp)) {
             val now = System.currentTimeMillis()
             SmallButton(
                 if (com.monsterquest.core.Eggs.resting(m, now)) "Resting after making an egg" else "Make an egg",
@@ -990,7 +999,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text(
-                        "Pair ${m.displayName} with another of its line (level ${com.monsterquest.core.Eggs.BREED_LEVEL}+). " +
+                        "Pair ${m.displayName} with a ${m.gender?.opposite?.label?.lowercase() ?: "partner"} of its line (level ${com.monsterquest.core.Eggs.BREED_LEVEL}+). " +
                             "The egg hatches a ${Bestiary.lineOf(sp).first().name} after a walk, with the best of both parents' genes " +
                             "(at least ${com.monsterquest.core.Eggs.INHERITED_STATS} stats). Both parents rest for a day.",
                         fontSize = 13.sp,
@@ -1002,7 +1011,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 6.dp),
                     )
-                    if (partners.isEmpty()) Text("No partner is ready: you need another of this line at level ${com.monsterquest.core.Eggs.BREED_LEVEL}+ that isn't resting.", color = HpYellow, fontSize = 13.sp)
+                    if (partners.isEmpty()) Text("No partner is ready: you need a ${m.gender?.opposite?.label?.lowercase() ?: "partner"} of this line at level ${com.monsterquest.core.Eggs.BREED_LEVEL}+ that isn't resting.", color = HpYellow, fontSize = 13.sp)
                     partners.forEach { p ->
                         OutlinedButton(
                             onClick = { vm.breed(m.uid, p.uid); breeding = false },
@@ -1010,7 +1019,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                             enabled = s.gold >= com.monsterquest.core.Eggs.BREED_GOLD && candy >= com.monsterquest.core.Eggs.BREED_CANDY &&
                                 s.eggs.size < com.monsterquest.core.Eggs.MAX_EGGS,
                         ) {
-                            Text("${p.displayName}  Lv ${p.level}  •  Potential ${p.potential}%", modifier = Modifier.weight(1f))
+                            Text("${p.displayName} ${p.gender?.symbol ?: ""}  Lv ${p.level}  •  Potential ${p.potential}%", modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -1185,3 +1194,7 @@ fun TypeChart() {
         )
     }
 }
+
+/** Blue for male, pink for female. */
+internal fun genderColor(g: com.monsterquest.core.Gender): Color =
+    if (g == com.monsterquest.core.Gender.MALE) Color(0xFF5B9BE0) else Color(0xFFE27AA5)

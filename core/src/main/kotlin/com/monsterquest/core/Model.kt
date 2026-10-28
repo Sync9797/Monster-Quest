@@ -290,6 +290,18 @@ enum class Weapon(
 }
 
 @Serializable
+enum class Gender(val label: String, val symbol: String) {
+    MALE("Male", "\u2642"),
+    FEMALE("Female", "\u2640");
+
+    val opposite: Gender get() = if (this == MALE) FEMALE else MALE
+
+    companion object {
+        /** Even odds, decided by the monster's id. */
+        fun of(uid: String): Gender = if (Math.floorMod(uid.hashCode() * 31 + 7, 2) == 0) MALE else FEMALE
+    }
+}
+
 enum class Rarity(val label: String, val spawnWeight: Int, val captureMultiplier: Double) {
     COMMON("Common", 60, 1.0),
     UNCOMMON("Uncommon", 25, 0.85),
@@ -335,6 +347,12 @@ data class Monster(
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name
+
+    /**
+     * Male or female, fixed from birth (it follows the monster's id, so older
+     * saves and evolutions keep it); null for legendaries and mythics.
+     */
+    val gender: Gender? get() = if (species.genderless) null else Gender.of(uid)
 
     /**
      * Monster stats run well above the hero's: they're the real fighters.
