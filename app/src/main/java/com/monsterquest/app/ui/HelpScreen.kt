@@ -98,6 +98,7 @@ private val topics = listOf(
             "Get within 330 ft (100 m) of a monster to battle it. The phone buzzes when one comes into range.",
             "You can zoom out to about a quarter mile around you, and the map never moves more than a mile away. The weather badge in its corner shows the real weather where you are: rain brings out Water and Electric types, heat Fire, fog Gas and Corrupt, wind Flight, storms Electric. Tap it to see the details. Rain and heat also carry into battles (Rain or Drought).",
             "The time of day matters too: Dawn favors Flight and Earth, Day Fire and Electric, Dusk Gas and Water, Night Corrupt and Gas.",
+            "Shrines are permanent: each stands at a real place and stays put, so your local routes stay the same. Lakes, rivers and the coast bring out Water types (x2.5 within about 250 m); far from any water they're rare.",
             "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",
             "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 Binding casts to tame it, plus 1 for each of your monsters still standing (up to 10). Den casts don't use crystals. The den screen shows your catch rate and overall odds. Dens move every day.",
             "Every Binding cast has a 2% critical catch: the monster is tamed whatever the odds. The Tame button shows your best catch rate.",

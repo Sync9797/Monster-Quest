@@ -84,6 +84,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var location by mutableStateOf<Pair<Double, Double>?>(null)
         private set
     var shrines by mutableStateOf<List<Shrine>>(emptyList())
+
+    /** Points along nearby lakes, rivers and coast (from the map tiles). */
+    private var waterPoints: List<Pair<Double, Double>> = emptyList()
+    private var waterKnown = false
+    private var waterAt: Pair<Double, Double>? = null
+    private var waterDistanceCache: Double? = null
+
+    /** How far the nearest water is (null until the map tiles have loaded). Worked out again after moving 30 m. */
+    fun waterDistance(): Double? {
+        val here = location ?: return null
+        if (placesFetchedAt == null || loadingPlaces) return waterDistanceCache
+        val at = waterAt
+        if (at == null || World.distanceMeters(at.first, at.second, here.first, here.second) > 30) {
+            waterAt = here
+            // No water found counts as far from water only if every tile around really loaded.
+            waterDistanceCache = waterPoints.minOfOrNull { World.distanceMeters(here.first, here.second, it.first, it.second) }
+                ?: if (waterKnown) Double.MAX_VALUE else null
+        }
+        return waterDistanceCache
+    }
         private set
     var loadingPlaces by mutableStateOf(false)
         private set
@@ -711,7 +731,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             placesFetchedAt = lat to lon
             viewModelScope.launch {
                 val ua = "MonsterQuest/0.1 (${getApplication<Application>().packageName})"
-                shrines = withContext(Dispatchers.IO) { PlacesRepository.shrinesNear(lat, lon, ua) }
+                val dir = java.io.File(getApplication<Application>().filesDir, "tiles")
+                val area = withContext(Dispatchers.IO) { PlacesRepository.areaNear(dir, lat, lon, ua) }
+                shrines = area.shrines
+                waterPoints = area.water
+                waterKnown = area.waterKnown
+                waterAt = null
                 loadingPlaces = false
             }
         }
@@ -823,7 +848,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         activity = GameEngine.activityLevel(state, nowMs),
         lure = state.lureActive(nowMs),
         weather = weatherForWave(nowMs),
+        waterDistanceM = waterForWave(nowMs),
     )
+
+    /** Like the weather, nearby water changes the monsters with the next wave, so the map doesn't reshuffle. */
+    private var waveWater: Pair<Long, Double?> = -1L to null
+
+    private fun waterForWave(nowMs: Long): Double? {
+        val window = World.spawnWindow(nowMs)
+        if (waveWater.first != window || waveWater.second == null) waveWater = window to waterDistance()
+        return waveWater.second
+    }
 
     fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
 

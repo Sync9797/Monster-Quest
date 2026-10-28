@@ -17,6 +17,11 @@ enum class ShrineTier(val label: String) {
     GOLD("Gold shrine"),
 }
 
+/** One map tile as kept on the phone: when it was looked up, its shrines, and points along its water. */
+@kotlinx.serialization.Serializable
+data class ShrineTile(val fetchedAt: Long, val shrines: List<Shrine>, val water: List<List<Double>> = emptyList())
+
+@kotlinx.serialization.Serializable
 data class Shrine(
     val id: String,
     /** The in-game name, e.g. "Supply Cache". */
@@ -62,11 +67,19 @@ data class SpawnConditions(
     val lure: Boolean = false,
     /** The real weather where you are, when known. */
     val weather: LiveWeather? = null,
+    /** How far the nearest lake, river or coast is (null: unknown). */
+    val waterDistanceM: Double? = null,
 ) {
     val timeOfDay: TimeOfDay get() = TimeOfDay.of(hour)
 
-    /** Spawn weight multipliers from the weather. */
-    val boosts: Map<Element, Double> get() = weather?.boosts.orEmpty()
+    /** Spawn weight multipliers from the weather and from being near (or far from) water. */
+    val boosts: Map<Element, Double>
+        get() {
+            val water = World.waterFactor(waterDistanceM) ?: return weather?.boosts.orEmpty()
+            val b = weather?.boosts.orEmpty().toMutableMap()
+            b[Element.WATER] = (b[Element.WATER] ?: 1.0) * water
+            return b
+        }
 }
 
 data class WildSpawn(
@@ -95,6 +108,61 @@ data class WildSpawn(
 
 /** Location-based content: shrines at real places and wild monsters that roam the map. */
 object World {
+    /** Water types by a lake, river or coast: this much more common within [NEAR_WATER_M]. */
+    const val NEAR_WATER_FACTOR = 2.5
+    /** ...and this much rarer with no water within [FAR_FROM_WATER_M]. */
+    const val FAR_FROM_WATER_FACTOR = 0.4
+    const val NEAR_WATER_M = 250.0
+    const val FAR_FROM_WATER_M = 1_000.0
+
+    /** How water nearby changes Water-type spawns; null when unknown or in between. */
+    fun waterFactor(distanceM: Double?): Double? = when {
+        distanceM == null -> null
+        distanceM <= NEAR_WATER_M -> NEAR_WATER_FACTOR
+        distanceM >= FAR_FROM_WATER_M -> FAR_FROM_WATER_FACTOR
+        else -> null
+    }
+
+    // ---- fixed map tiles (shrines are looked up once per tile and kept) ----
+
+    /** Tile size in degrees: about 1.1 km north-south. */
+    const val TILE_DEG = 0.01
+
+    /** A tile's key, e.g. "4075:-7399". */
+    fun tileKey(lat: Double, lon: Double): String = "${floor(lat / TILE_DEG).toLong()}:${floor(lon / TILE_DEG).toLong()}"
+
+    /** South, west, north, east edges of a tile. */
+    fun tileBounds(key: String): DoubleArray {
+        val (y, x) = key.split(":").map { it.toLong() }
+        return doubleArrayOf(y * TILE_DEG, x * TILE_DEG, (y + 1) * TILE_DEG, (x + 1) * TILE_DEG)
+    }
+
+    /** Tiles covering [radiusM] around a point. */
+    fun tilesAround(lat: Double, lon: Double, radiusM: Double): List<String> {
+        val dy = kotlin.math.ceil(radiusM / 111_320.0 / TILE_DEG).toLong()
+        val dx = kotlin.math.ceil(radiusM / (111_320.0 * kotlin.math.cos(Math.toRadians(lat))) / TILE_DEG).toLong()
+        val cy = floor(lat / TILE_DEG).toLong()
+        val cx = floor(lon / TILE_DEG).toLong()
+        return (-dy..dy).flatMap { y -> (-dx..dx).map { x -> "${cy + y}:${cx + x}" } }
+    }
+
+    /** Most shrines of each tier kept per tile. */
+    val TILE_CAPS = mapOf(ShrineTier.ITEM to 14, ShrineTier.SILVER to 3, ShrineTier.GOLD to 2)
+
+    /**
+     * Which of a tile's real places become shrines: the same ones every time
+     * (picked by a stable hash of the place, not by where you are), spaced at
+     * least 40 m apart, up to [TILE_CAPS] of each tier.
+     */
+    fun selectForTile(candidates: List<Shrine>): List<Shrine> {
+        val kept = mutableListOf<Shrine>()
+        for (sh in candidates.sortedBy { stableHash(it.id) * 31L + it.id.length }) {
+            if (kept.count { it.tier == sh.tier } >= (TILE_CAPS[sh.tier] ?: 0)) continue
+            if (kept.any { distanceMeters(it.lat, it.lon, sh.lat, sh.lon) < 40 }) continue
+            kept += sh
+        }
+        return kept
+    }
     /** How close (meters) you must be to use a shrine. */
     const val SHRINE_RANGE_M = 60.0
     /** How close (meters) you must be to battle a wild spawn. */

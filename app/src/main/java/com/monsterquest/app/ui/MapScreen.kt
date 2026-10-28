@@ -594,6 +594,12 @@ private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
                     "${time.label}: ${time.favored.joinToString(" and ") { it.label }} types are out more (x3).",
                     fontSize = 13.sp,
                 )
+                // Lakes, rivers and coast bring out Water types; far from water they're rare.
+                when (com.monsterquest.core.World.waterFactor(vm.waterDistance())) {
+                    com.monsterquest.core.World.NEAR_WATER_FACTOR -> Text("Near water (a lake, river or coast): Water types x${com.monsterquest.core.World.NEAR_WATER_FACTOR}.", fontSize = 13.sp)
+                    com.monsterquest.core.World.FAR_FROM_WATER_FACTOR -> Text("No water nearby: Water types are rarer (x${com.monsterquest.core.World.FAR_FROM_WATER_FACTOR}).", fontSize = 13.sp)
+                    else -> {}
+                }
                 Text(
                     "New monsters follow the weather with the next wave (every 15 minutes). Live weather from Open-Meteo; turn it off in Settings.",
                     fontSize = 12.sp,
