@@ -60,6 +60,8 @@ private val topics = listOf(
         listOf(
             "Pick 15 to 120 minutes and put your phone down. The screen stays on and dims; just don't leave the game.",
             "Finish to win a loot box. Longer sessions give rarer boxes; 60+ minutes can give a Legendary box with a boss inside.",
+            "Long sessions pay extra. 60 minutes: your party trains (+10% of a level each). 90 minutes: no Common boxes, half the walk to open, a Scholar's Tome (3 pages for any spell you choose), +25% of a level for the party and +50% Energy. 120 minutes is the jackpot: always an Epic or Legendary box at half the walk, a 5-page Scholar's Tome (enough to learn a spell), +50% of a level for the party and full Energy.",
+            "Read a Scholar's Tome on the Hero tab, under Magic: pick the spell its pages go to.",
             "Leaving for another app (and not coming back within 15 seconds) fails the session. Phone calls never count.",
             "Loot boxes open by walking: 1, 3, 5 or 10 miles depending on the box.",
         ),

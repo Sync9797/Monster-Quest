@@ -310,6 +310,8 @@ data class GameState(
     val heroDamage: Int = 0,
     /** Energy the hero has spent and not yet recovered (back slowly over time, faster by walking, or with an Ether). */
     val heroEnergyUsed: Int = 0,
+    /** Scholar's Tomes waiting to be read: pages each, for a spell the player picks. */
+    val tomes: List<Int> = emptyList(),
     /** Up to when Energy recovery over time has been counted. */
     val energyRegenMs: Long = 0,
     /** Steps not yet turned into a reward (rewards come every 100 steps). */

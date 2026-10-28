@@ -122,8 +122,8 @@ private fun LootBoxCard(
                 Text(
                     when {
                         box.ready -> "Ready to open!"
-                        box.unlocking -> String.format(Locale.US, "Unlocking: %.2f / %d mi", walked, r.miles)
-                        else -> "Walk ${r.miles} mile${if (r.miles == 1) "" else "s"} to open"
+                        box.unlocking -> String.format(Locale.US, "Unlocking: %.2f / %s mi", walked, box.milesLabel)
+                        else -> "Walk ${box.milesLabel} mile${if (box.miles == 1.0) "" else "s"} to open" + if (box.halfWalk) " (half walk)" else ""
                     },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

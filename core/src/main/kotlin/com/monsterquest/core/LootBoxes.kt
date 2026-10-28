@@ -50,9 +50,16 @@ data class LootBox(
     /** Only unlocking boxes collect walking distance. */
     val unlocking: Boolean = false,
     val walkedMeters: Double = 0.0,
+    /** Earned in a long (90+ minute) phone-free session: half the walk to open. */
+    val halfWalk: Boolean = false,
 ) {
-    val ready: Boolean get() = walkedMeters >= rarity.meters
-    val progress: Double get() = (walkedMeters / rarity.meters).coerceIn(0.0, 1.0)
+    /** Distance to walk to open it. */
+    val meters: Double get() = rarity.meters * if (halfWalk) 0.5 else 1.0
+    val miles: Double get() = rarity.miles * if (halfWalk) 0.5 else 1.0
+    /** "3", "2.5": the walk in miles, for messages. */
+    val milesLabel: String get() = if (miles % 1.0 == 0.0) miles.toInt().toString() else "%.1f".format(miles)
+    val ready: Boolean get() = walkedMeters >= meters
+    val progress: Double get() = (walkedMeters / meters).coerceIn(0.0, 1.0)
 }
 
 /** Loot boxes: earned from phone-free sessions, opened by walking. */
@@ -60,8 +67,9 @@ object LootBoxes {
 
     /** Odds (percent) of each box rarity for a session of [minutes]. Longer sessions, better boxes. */
     fun odds(minutes: Int): Map<BoxRarity, Int> = when {
-        minutes >= 120 -> mapOf(BoxRarity.RARE to 30, BoxRarity.EPIC to 50, BoxRarity.LEGENDARY to 20)
-        minutes >= 90 -> mapOf(BoxRarity.COMMON to 10, BoxRarity.RARE to 40, BoxRarity.EPIC to 38, BoxRarity.LEGENDARY to 12)
+        // Two hours off the phone is the jackpot: always Epic or Legendary.
+        minutes >= 120 -> mapOf(BoxRarity.EPIC to 50, BoxRarity.LEGENDARY to 50)
+        minutes >= 90 -> mapOf(BoxRarity.RARE to 45, BoxRarity.EPIC to 40, BoxRarity.LEGENDARY to 15)
         minutes >= 60 -> mapOf(BoxRarity.COMMON to 25, BoxRarity.RARE to 45, BoxRarity.EPIC to 25, BoxRarity.LEGENDARY to 5)
         // Level 4 boxes need at least an hour off the phone.
         minutes >= 45 -> mapOf(BoxRarity.COMMON to 40, BoxRarity.RARE to 47, BoxRarity.EPIC to 13)
@@ -86,7 +94,7 @@ object LootBoxes {
         }
         return Update(
             state.copy(lootBoxes = state.lootBoxes.map { if (it.id == id) it.copy(unlocking = true) else it }),
-            "${box.rarity.label} box is unlocking. Walk ${box.rarity.miles} mile(s) to open it!",
+            "${box.rarity.label} box is unlocking. Walk ${box.milesLabel} mile(s) to open it!",
         )
     }
 
@@ -95,7 +103,7 @@ object LootBoxes {
         if (meters <= 0 || state.lootBoxes.none { it.unlocking && !it.ready }) return state
         return state.copy(
             lootBoxes = state.lootBoxes.map {
-                if (it.unlocking && !it.ready) it.copy(walkedMeters = minOf(it.rarity.meters, it.walkedMeters + meters)) else it
+                if (it.unlocking && !it.ready) it.copy(walkedMeters = minOf(it.meters, it.walkedMeters + meters)) else it
             },
         )
     }
@@ -111,7 +119,7 @@ object LootBoxes {
     fun open(state: GameState, id: String, rng: Random = Random.Default): BoxOpening {
         val box = state.lootBoxes.find { it.id == id } ?: return BoxOpening(Update(state, "Box not found."))
         if (!box.ready) {
-            return BoxOpening(Update(state, "Keep walking! %.1f of %d miles.".format(box.walkedMeters / METERS_PER_MILE, box.rarity.miles)))
+            return BoxOpening(Update(state, "Keep walking! %.1f of %s miles.".format(box.walkedMeters / METERS_PER_MILE, box.milesLabel)))
         }
         val level = box.rarity.level
         val gold = when (level) {

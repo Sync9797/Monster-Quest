@@ -637,6 +637,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun restore(uid: String) = apply(GameEngine.restore(state, uid))
     fun setMoves(uid: String, moveIds: List<String>) = apply(GameEngine.setMoves(state, uid, moveIds))
     fun learnMove(uid: String, newId: String, replaceId: String) = apply(GameEngine.learnMove(state, uid, newId, replaceId))
+    fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
     fun resetMoves(uid: String) =
         set(state.copy(monsters = state.monsters.map { if (it.uid == uid) it.copy(moves = null) else it }))
 

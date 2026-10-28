@@ -90,6 +90,17 @@ fun FocusCard(vm: GameViewModel) {
             fontSize = 12.sp,
             color = HpGreen,
         )
+        // Long sessions pay extra on top of the box.
+        val bonus = GameEngine.focusBonus(minutes)
+        val extras = buildList {
+            if (minutes >= GameEngine.HALF_WALK_MINUTES) add("half the walk to open")
+            if (bonus.tomePages > 0) add("a Scholar's Tome (${bonus.tomePages} pages for a spell you choose)")
+            if (bonus.levelShare > 0) add("party training (+${(bonus.levelShare * 100).toInt()}% of a level)")
+            if (bonus.energyRefill > 0) add(if (bonus.energyRefill >= 100) "full Energy" else "+${bonus.energyRefill}% Energy")
+        }
+        if (extras.isNotEmpty()) {
+            Text("Plus: " + extras.joinToString(", ") + ".", fontSize = 12.sp, color = Gold, fontWeight = FontWeight.SemiBold)
+        }
         Text(
             "Boxes unlock by walking: Lv 1 = 1 mi, Lv 2 = 3 mi, Lv 3 = 5 mi, Lv 4 = 10 mi. Level 4 boxes (boss inside!) need 60+ minutes.",
             fontSize = 12.sp,

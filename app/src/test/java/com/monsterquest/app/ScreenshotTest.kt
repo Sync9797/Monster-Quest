@@ -219,6 +219,21 @@ abstract class ScreenshotBase(private val device: String) {
         rule.onNodeWithText("Tasks").assertExists()
     }
     @Test fun hero() { val v = vm(); shot("03_hero") { AppRoot(v, Tab.HERO) } }
+
+    /** A Scholar's Tome from a long phone-free session: pick a spell for its pages. */
+    @Test fun scholarsTome() {
+        val v = vm(sampleState().copy(tomes = listOf(5)))
+        shot("03b_scholars_tome") { AppRoot(v, Tab.HERO) }
+        rule.mainClock.autoAdvance = true
+        rule.onNodeWithText("Choose a spell").performScrollTo()
+        rule.onNodeWithText("Choose a spell").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Read the tome: 5 pages").assertExists()
+        val spell = com.monsterquest.core.GameEngine.tomeChoices(v.state).first()
+        rule.onAllNodes(androidx.compose.ui.test.hasText(spell.name) and androidx.compose.ui.test.hasClickAction())[0].performClick()
+        rule.waitForIdle()
+        check(v.state.tomes.isEmpty()) { "the tome was read" }
+    }
     @Test fun monsters() {
         val v = vm()
         shot("04_monsters") { AppRoot(v, Tab.MONSTERS) }

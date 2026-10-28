@@ -67,6 +67,49 @@ import com.monsterquest.core.TEAM_RANGE_RANK
 import com.monsterquest.core.Trait
 import com.monsterquest.core.skillRank
 
+/** A Scholar's Tome waiting to be read: pick the spell its pages go to. */
+@Composable
+private fun TomeCard(vm: GameViewModel, index: Int, pages: Int) {
+    var choosing by remember { mutableStateOf(false) }
+    GameCard(Modifier.padding(vertical = 4.dp), border = Gold) {
+        IconText(GameIcon.BOOK, "Scholar's Tome", tint = Gold, textColor = Gold, bold = true, fontSize = 14.sp)
+        Text("$pages pages for any spell you choose. Earned by staying off your phone.", fontSize = 12.sp)
+        Button(onClick = { choosing = true }, modifier = Modifier.padding(top = 6.dp)) { Text("Choose a spell") }
+    }
+    if (choosing) {
+        val s = vm.state
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            title = { Text("Read the tome: $pages pages") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    GameEngine.tomeChoices(s).forEach { sp ->
+                        val rank = s.hero.spellRank(sp.id)
+                        val have = s.spellPages[sp.id] ?: 0
+                        val need = if (rank == 0) Spells.PAGES_TO_LEARN else Spells.pagesToUpgrade(rank)
+                        OutlinedButton(
+                            onClick = { vm.readTome(index, sp.id); choosing = false },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        ) {
+                            GIcon(sp.spellIcon(), Modifier.size(18.dp), sp.spellColor())
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(sp.name, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    (if (rank == 0) "Not learned" else "Rank $rank") + " • $have/$need pages" +
+                                        if (have + pages >= need) (if (rank == 0) " • learns it!" else " • enough to rank up") else "",
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { choosing = false }) { Text("Later") } },
+        )
+    }
+}
+
 @Composable
 fun HeroScreen(vm: GameViewModel) {
     val s = vm.state
@@ -235,6 +278,8 @@ fun HeroScreen(vm: GameViewModel) {
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Scholar's Tomes from long phone-free sessions: pages for a spell you choose.
+        s.tomes.forEachIndexed { i, pages -> TomeCard(vm, i, pages) }
         Spells.all.forEach { base ->
             val rank = h.spellRank(base.id)
             val known = rank > 0

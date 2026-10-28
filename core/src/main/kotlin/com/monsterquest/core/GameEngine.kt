@@ -1808,6 +1808,31 @@ object GameEngine {
         return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Put your phone down and stay in the game.")
     }
 
+    /** Boxes from sessions this long need half the walk to open. */
+    const val HALF_WALK_MINUTES = 90
+
+    /** What a long phone-free session pays on top of its box. */
+    data class FocusBonus(val tomePages: Int, val levelShare: Double, val energyRefill: Int)
+
+    fun focusBonus(minutes: Int): FocusBonus = when {
+        minutes >= 120 -> FocusBonus(tomePages = 5, levelShare = 0.5, energyRefill = 100)
+        minutes >= 90 -> FocusBonus(tomePages = 3, levelShare = 0.25, energyRefill = 50)
+        minutes >= 60 -> FocusBonus(tomePages = 0, levelShare = 0.1, energyRefill = 0)
+        else -> FocusBonus(0, 0.0, 0)
+    }
+
+    /** Spells a Scholar's Tome can go to: ones not yet learned or not yet maxed. */
+    fun tomeChoices(state: GameState): List<Skill> = Spells.all.filter { state.hero.spellRank(it.id) < Spells.MAX_RANK }
+
+    /** Reads the Scholar's Tome at [index]: its pages go to [spellId]. */
+    fun readTome(state: GameState, index: Int, spellId: String): Update {
+        val pages = state.tomes.getOrNull(index) ?: return Update(state, "No tome to read.")
+        if (tomeChoices(state).none { it.id == spellId }) return Update(state, "That spell is already mastered.")
+        val s = state.copy(tomes = state.tomes.filterIndexed { i, _ -> i != index })
+        val u = grantLoot(s, Loot(pages = mapOf(spellId to pages)))
+        return Update(u.state, "Scholar's Tome: ${u.message}.", u.rewards)
+    }
+
     fun focusPenalty(state: GameState): Int = maxOf(10, state.gold * GOLD_LOSS_PERCENT / 100).coerceAtMost(state.gold)
 
     /**
@@ -1825,8 +1850,33 @@ object GameEngine {
                 return Update(s.copy(gold = s.gold + gold), "Phone-free for ${f.minutes} min! Box storage full, so you got $gold gold instead.")
             }
             val rarity = LootBoxes.roll(f.minutes, rng)
-            s = s.copy(lootBoxes = s.lootBoxes + LootBox(newId(rng), rarity, f.endMs))
-            Update(s, "Phone-free for ${f.minutes} min! You earned a Level ${rarity.level} ${rarity.label} loot box. Walk ${rarity.miles} mile(s) to open it.")
+            val box = LootBox(newId(rng), rarity, f.endMs, halfWalk = f.minutes >= HALF_WALK_MINUTES)
+            s = s.copy(lootBoxes = s.lootBoxes + box)
+            val msg = StringBuilder("Phone-free for ${f.minutes} min! You earned a Level ${rarity.level} ${rarity.label} loot box. Walk ${box.milesLabel} mile(s) to open it")
+            msg.append(if (box.halfWalk) " (half the usual walk)." else ".")
+            // Long sessions pay more on top: a Scholar's Tome, training for the party, rest for the hero.
+            val bonus = focusBonus(f.minutes)
+            if (bonus.tomePages > 0) {
+                s = s.copy(tomes = s.tomes + bonus.tomePages)
+                msg.append(" Plus a Scholar's Tome: choose a spell for ${bonus.tomePages} pages (on the Hero tab).")
+            }
+            val levelUps = mutableListOf<LevelUp>()
+            if (bonus.levelShare > 0) {
+                s = s.copy(
+                    monsters = s.monsters.map { m ->
+                        if (m.uid !in s.party || m.fainted) return@map m
+                        val (after, up) = growDetailed(m, (monsterXpForNext(m.level) * bonus.levelShare).toInt().coerceAtLeast(1))
+                        up?.let { levelUps += it }
+                        after
+                    },
+                )
+                msg.append(" Your party trained while you were away (+${(bonus.levelShare * 100).toInt()}% of a level each).")
+            }
+            if (bonus.energyRefill > 0 && s.heroEnergyUsed > 0) {
+                s = s.copy(heroEnergyUsed = (s.heroEnergyUsed - s.hero.maxMp * bonus.energyRefill / 100).coerceAtLeast(0))
+                msg.append(if (bonus.energyRefill >= 100) " Your Energy is full." else " Energy +${bonus.energyRefill}%.")
+            }
+            Update(s, msg.toString(), levelUps = levelUps)
         } else {
             val loss = focusPenalty(s)
             s = s.copy(
