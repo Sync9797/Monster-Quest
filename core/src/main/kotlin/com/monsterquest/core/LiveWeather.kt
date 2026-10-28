@@ -52,6 +52,44 @@ enum class LiveWeather(
     }
 }
 
+/**
+ * Notable real weather sets off an event: a surge of its types (on top of the
+ * weather's own boosts) and, once a day per kind, a special visitor of a fitting
+ * type that waits on the map.
+ */
+enum class WeatherEvent(val label: String, val weather: LiveWeather, val element: Element, val text: String) {
+    STORM_SURGE("Storm surge", LiveWeather.STORM, Element.ELECTRIC, "Lightning charges the air: Electric monsters are everywhere."),
+    HEATWAVE("Heatwave", LiveWeather.HOT, Element.FIRE, "The heat draws Fire monsters out of hiding."),
+    FOGBOUND("Fogbound", LiveWeather.FOG, Element.CORRUPT, "Shapes move in the fog: Corrupt and Gas monsters prowl."),
+    SNOWFALL("Snowfall", LiveWeather.SNOW, Element.WATER, "Snow blankets the ground: Water monsters come out to play.");
+
+    companion object {
+        fun of(kind: LiveWeather?): WeatherEvent? = entries.firstOrNull { it.weather == kind }
+
+        /** Extra spawn weight for the event's type, on top of the weather's own. */
+        const val SURGE = 1.5
+
+        /**
+         * Starts [event] for today if it hasn't happened yet: a special visitor
+         * (an Epic or rarer monster of its type when one fits your level) waits
+         * on the map for [GameEngine.VISITOR_TTL_MS].
+         */
+        fun trigger(state: GameState, event: WeatherEvent, nowMs: Long, epochDay: Long, rng: kotlin.random.Random): Update? {
+            if (state.weatherEventDays[event.name] == epochDay) return null
+            val level = GameEngine.wildLevel(state.hero.level, rng) + 2
+            val fits = Bestiary.wild.filter { event.element in it.types && it.minWildLevel <= level }
+            val pool = fits.filter { it.rarity >= Rarity.EPIC }.ifEmpty { fits.filter { it.rarity >= Rarity.RARE } }.ifEmpty { fits }
+            if (pool.isEmpty()) return null
+            val v = Follower(newId(rng), pool.random(rng).id, level, nowMs, rollShiny(rng), visitor = true)
+            val s = state.copy(
+                followers = state.followers + v,
+                weatherEventDays = state.weatherEventDays + (event.name to epochDay),
+            )
+            return Update(s, "${event.label}! ${event.text} A rare ${v.species.name} (Lv ${v.level}) is waiting on your map for 15 minutes.")
+        }
+    }
+}
+
 /** A reading of the real weather, and when it was taken. */
 data class WeatherReading(
     val kind: LiveWeather,

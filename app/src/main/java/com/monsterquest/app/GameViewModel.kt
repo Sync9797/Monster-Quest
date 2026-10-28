@@ -772,6 +772,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (reading != null) {
                 weather = reading
                 weatherAt = lat to lon
+                // Storms, heatwaves, fog and snow set off an event (one special visitor a day each).
+                com.monsterquest.core.WeatherEvent.of(reading.kind)?.let { e ->
+                    com.monsterquest.core.WeatherEvent.trigger(state, e, now, java.time.LocalDate.now().toEpochDay(), kotlin.random.Random.Default)?.let { apply(it) }
+                }
             }
             loadingWeather = false
         }
@@ -812,7 +816,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val (aLat, aLon) = spawnAnchor ?: (lat to lon)
         val wild = World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), aLat, aLon)
             .filter { it.id !in state.usedSpawns }
-        val guards = World.shrineSpawns(shrines, lat, lon, nowMs, state.hero.level, spawnConditions(nowMs))
+        val bonded = state.shrines.filterValues { it.bond == com.monsterquest.core.ShrineBond.BONDED }.keys
+        val guards = World.shrineSpawns(shrines, lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), bonded)
             .filter { it.id !in state.usedSpawns }
         val followers = GameEngine.activeFollowers(state, nowMs).mapIndexed { i, f -> GameEngine.followerSpawn(f, lat, lon, i) }
         return followers + guards + wild

@@ -1272,7 +1272,8 @@ object GameEngine {
     fun shrineCooldownLeft(state: GameState, shrine: Shrine, nowMs: Long): Long {
         val rec = state.shrines[shrine.id] ?: return 0
         val cd = when (shrine.tier) {
-            ShrineTier.ITEM -> World.SHRINE_COOLDOWN_MS
+            // A bonded item shrine recharges faster.
+            ShrineTier.ITEM -> rec.bond.cooldownMin * 60_000L
             ShrineTier.SILVER -> World.SILVER_COOLDOWN_MS
             ShrineTier.GOLD -> World.BOSS_COOLDOWN_MS
         }
@@ -1439,15 +1440,19 @@ object GameEngine {
     fun visitShrine(state: GameState, shrine: Shrine, nowMs: Long, rng: Random = Random.Default): Update {
         if (shrine.isBoss) return Update(state, "This is a boss shrine. Challenge the guardian!")
         if (shrineCooldownLeft(state, shrine, nowMs) > 0) return Update(state, "This shrine is recharging.")
-        val gold = rng.nextInt(5, 16)
+        val before = state.shrines[shrine.id] ?: ShrineRecord()
+        val bond = before.bond
+        val gold = (rng.nextInt(5, 16) * bond.goldMult).toInt()
+        val after = before.copy(lastVisitMs = nowMs, visits = before.visits + 1)
         var s = state.copy(
             gold = state.gold + gold,
-            shrines = state.shrines + (shrine.id to (state.shrines[shrine.id] ?: ShrineRecord()).copy(lastVisitMs = nowMs)),
+            shrines = state.shrines + (shrine.id to after),
             stats = state.stats.copy(shrinesVisited = state.stats.shrinesVisited + 1),
         )
-        val loot = grantLoot(s, rollLoot(s, rng.nextInt(2, 4), rng))
+        val loot = grantLoot(s, rollLoot(s, rng.nextInt(2, 4) + bond.extraRolls, rng))
         s = loot.state
-        return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.", listOf(Reward.Gold(gold)) + loot.rewards)
+        val bondUp = if (after.bond != bond) " This shrine is now ${after.bond.label} with you!" else ""
+        return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.$bondUp", listOf(Reward.Gold(gold)) + loot.rewards)
     }
 
     // ---- weapons -----------------------------------------------------------

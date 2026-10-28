@@ -75,9 +75,13 @@ data class SpawnConditions(
     /** Spawn weight multipliers from the weather and from being near (or far from) water. */
     val boosts: Map<Element, Double>
         get() {
-            val water = World.waterFactor(waterDistanceM) ?: return weather?.boosts.orEmpty()
             val b = weather?.boosts.orEmpty().toMutableMap()
-            b[Element.WATER] = (b[Element.WATER] ?: 1.0) * water
+            // A weather event surges its type (fog also brings out Gas).
+            WeatherEvent.of(weather)?.let { e ->
+                b[e.element] = (b[e.element] ?: 1.0) * WeatherEvent.SURGE
+                if (e == WeatherEvent.FOGBOUND) b[Element.GAS] = (b[Element.GAS] ?: 1.0) * WeatherEvent.SURGE
+            }
+            World.waterFactor(waterDistanceM)?.let { b[Element.WATER] = (b[Element.WATER] ?: 1.0) * it }
             return b
         }
 }
@@ -335,17 +339,20 @@ object World {
         nowMs: Long,
         heroLevel: Int,
         conditions: SpawnConditions = SpawnConditions(12),
+        /** Shrines bonded with you: monsters gather there more. */
+        bonded: Set<String> = emptySet(),
     ): List<WildSpawn> {
         val window = spawnWindow(nowMs)
         val expires = (window + 1) * SPAWN_WINDOW_MS
         val rareBoost = 1.0 + conditions.activity + if (conditions.lure) 0.5 else 0.0
         val out = mutableListOf<WildSpawn>()
         for (sh in shrines) {
+            val home = sh.id in bonded
             if (distanceMeters(lat, lon, sh.lat, sh.lon) > TRACK_M) continue
             val r = Random(seed(stableHash(sh.id).toLong(), window, 0x5a17))
-            val chance = (if (sh.isBoss) 0.8 else 0.45) + 0.25 * conditions.activity + (if (conditions.lure) 0.15 else 0.0)
+            val chance = (if (sh.isBoss) 0.8 else 0.45) + 0.25 * conditions.activity + (if (conditions.lure) 0.15 else 0.0) + (if (home) 0.25 else 0.0)
             if (r.nextDouble() > chance) continue
-            val count = if (sh.isBoss) 2 + r.nextInt(2) else 1 + (if (r.nextDouble() < 0.25 + 0.25 * conditions.activity) 1 else 0)
+            val count = (if (sh.isBoss) 2 + r.nextInt(2) else 1 + (if (r.nextDouble() < 0.25 + 0.25 * conditions.activity) 1 else 0)) + (if (home) 1 else 0)
             val favored = conditions.timeOfDay.favored + listOfNotNull(shrineElement(sh))
             repeat(count) { i ->
                 val angle = r.nextDouble() * 2 * Math.PI

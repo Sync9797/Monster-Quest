@@ -208,7 +208,28 @@ data class ShrineRecord(
     /** Boss shrines: the boss must be defeated once before it can be tamed. */
     val bossDefeated: Boolean = false,
     val bossCaptured: Boolean = false,
-)
+    /** Item shrines: how many times you've collected here (it builds a bond). */
+    val visits: Int = 0,
+) {
+    val bond: ShrineBond get() = ShrineBond.of(visits)
+}
+
+/**
+ * Item shrines you keep coming back to grow attached to you: more loot,
+ * shorter recharges and, once bonded, more monsters gathering there.
+ */
+enum class ShrineBond(val label: String, val visits: Int, val extraRolls: Int, val goldMult: Double, val cooldownMin: Int) {
+    NONE("New", 0, 0, 1.0, 30),
+    FAMILIAR("Familiar", 5, 1, 1.0, 30),
+    TRUSTED("Trusted", 15, 1, 1.5, 20),
+    BONDED("Bonded", 40, 2, 2.0, 15);
+
+    val next: ShrineBond? get() = entries.getOrNull(ordinal + 1)
+
+    companion object {
+        fun of(visits: Int): ShrineBond = entries.last { visits >= it.visits }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Phone-free focus sessions
@@ -308,6 +329,8 @@ data class GameState(
     val goalWeek: Long = -1,
     val weekBaseline: Lifetime = Lifetime(),
     val goalsClaimed: Set<String> = emptySet(),
+    /** The last day each weather event happened (by event name), so each brings one visitor a day. */
+    val weatherEventDays: Map<String, Long> = emptyMap(),
     /** Today's quest rewards so far (see [QuestRewards]); kept on the hero, so deleting quests doesn't reset it. */
     val questLimits: QuestLimits = QuestLimits(),
     /** Daily reminders (gentle alarms on chosen days). */

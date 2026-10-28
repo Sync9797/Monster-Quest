@@ -40,4 +40,20 @@ class LiveWeatherTest {
         assertEquals(Weather.DROUGHT, GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3), weather = LiveWeather.HOT).weather)
         assertEquals(Weather.CLEAR, GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3)).weather)
     }
+
+    @Test
+    fun stormsSetOffAnEventWithOneVisitorADay() {
+        val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.copy(hero = Hero(level = 40))
+        val e = WeatherEvent.of(LiveWeather.STORM)!!
+        val u = WeatherEvent.trigger(s, e, 1_000L, 500L, Random(2))!!
+        val v = u.state.followers.single { it.visitor }
+        assertTrue(Element.ELECTRIC in v.species.types)
+        assertTrue("Storm surge" in u.message)
+        // Once a day.
+        assertEquals(null, WeatherEvent.trigger(u.state, e, 2_000L, 500L, Random(3)))
+        assertTrue(WeatherEvent.trigger(u.state, e, 2_000L, 501L, Random(3)) != null)
+        // No event in plain rain; a storm surges Electric on top of the weather.
+        assertEquals(null, WeatherEvent.of(LiveWeather.RAIN))
+        assertEquals(2.5 * WeatherEvent.SURGE, SpawnConditions(12, weather = LiveWeather.STORM).boosts[Element.ELECTRIC]!!, 1e-9)
+    }
 }

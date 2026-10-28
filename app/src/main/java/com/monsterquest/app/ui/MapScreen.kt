@@ -552,7 +552,13 @@ private fun WeatherBadge(w: com.monsterquest.core.WeatherReading, imperial: Bool
     ) {
         GIcon(w.kind.icon(), Modifier.size(20.dp), Gold)
         Spacer(Modifier.width(6.dp))
-        Text("${w.kind.label} ${temperature(w.tempC, imperial)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        val event = com.monsterquest.core.WeatherEvent.of(w.kind)
+        Text(
+            (event?.label ?: w.kind.label) + " ${temperature(w.tempC, imperial)}",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (event != null) Gold else MaterialTheme.colorScheme.onSurface,
+        )
         // The types it favors, as small icons.
         w.kind.more.take(2).forEach { el ->
             Spacer(Modifier.width(4.dp))
@@ -576,6 +582,10 @@ private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
                 if (w == null) {
                     Text("The weather hasn't been looked up yet.")
                 } else {
+                    com.monsterquest.core.WeatherEvent.of(w.kind)?.let { e ->
+                        Text("${e.label}! ${e.text}", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text("Its type surges (x${com.monsterquest.core.WeatherEvent.SURGE} more), and once a day it brings a rare visitor.", fontSize = 12.sp)
+                    }
                     if (w.kind.more.isNotEmpty()) {
                         Text("More likely now", fontWeight = FontWeight.SemiBold)
                         w.kind.more.forEach { el -> WeatherTypeLine(el, "x${"%.1f".format(w.kind.boosts.getValue(el))}") }
@@ -901,7 +911,31 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
                 Text("${shrine.tier.label} • ${distanceText(dist, vm.state.settings.imperialUnits)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 when (shrine.tier) {
-                    ShrineTier.ITEM -> Text("Weapons, spell-book pages, Binding Crystals, berries and potions.")
+                    ShrineTier.ITEM -> Column {
+                        Text("Weapons, spell-book pages, Binding Crystals, berries and potions.")
+                        // Its bond with you: more loot and faster recharges the more you come back.
+                        val rec = vm.state.shrines[shrine.id] ?: com.monsterquest.core.ShrineRecord()
+                        val bond = rec.bond
+                        Text(
+                            "Bond: ${bond.label} (${rec.visits} visit${if (rec.visits == 1) "" else "s"})" +
+                                (bond.next?.let { " • ${it.label} at ${it.visits}" } ?: ""),
+                            color = if (bond != com.monsterquest.core.ShrineBond.NONE) Gold else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        if (bond != com.monsterquest.core.ShrineBond.NONE) {
+                            Text(
+                                listOfNotNull(
+                                    "+${bond.extraRolls} loot",
+                                    if (bond.goldMult > 1.0) "x${bond.goldMult} gold" else null,
+                                    "recharges in ${bond.cooldownMin} min",
+                                    if (bond == com.monsterquest.core.ShrineBond.BONDED) "more monsters gather here" else null,
+                                ).joinToString(" • "),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     ShrineTier.SILVER -> if (guardian != null) {
                         GuardianPreview(guardian)
                         Text("Level ${GameEngine.silverLevel(vm.state.hero.level)} • 1.5× HP • Acts twice per round")

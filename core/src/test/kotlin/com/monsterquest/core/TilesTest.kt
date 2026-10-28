@@ -28,4 +28,24 @@ class TilesTest {
         // Rain and a river stack.
         assertEquals(2.0 * World.NEAR_WATER_FACTOR, SpawnConditions(12, weather = LiveWeather.RAIN, waterDistanceM = 50.0).boosts[Element.WATER]!!, 1e-9)
     }
+
+    @Test
+    fun shrinesYouKeepVisitingBond() {
+        var s = GameEngine.chooseStarter(GameState(), "emberkit", kotlin.random.Random(1)).state.copy(bagCapacity = 999)
+        val sh = World.shrineFromPlace("node7", "Corner Cafe", 40.0, -73.0, ShrineTier.ITEM)
+        var now = 0L
+        repeat(15) {
+            s = GameEngine.visitShrine(s, sh, now, kotlin.random.Random(it)).state
+            now += 31 * 60_000L
+        }
+        val rec = s.shrines.getValue(sh.id)
+        assertEquals(15, rec.visits)
+        assertEquals(ShrineBond.TRUSTED, rec.bond)
+        // Trusted: recharges in 20 minutes instead of 30.
+        assertEquals(20 * 60_000L, GameEngine.shrineCooldownLeft(s, sh, now - 31 * 60_000L))
+        // Bonded shrines draw more monsters.
+        val plain = World.shrineSpawns(listOf(sh), 40.0, -73.0, 5_000_000L, 20).size
+        val home = World.shrineSpawns(listOf(sh), 40.0, -73.0, 5_000_000L, 20, bonded = setOf(sh.id)).size
+        assertTrue(home >= plain)
+    }
 }
