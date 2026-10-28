@@ -67,6 +67,53 @@ import com.monsterquest.core.TEAM_RANGE_RANK
 import com.monsterquest.core.Trait
 import com.monsterquest.core.skillRank
 
+/** Milestones: how far along each is, with rewards to claim. Ready ones come first. */
+@Composable
+private fun AchievementsCard(vm: GameViewModel) {
+    val s = vm.state
+    val all = com.monsterquest.core.Achievements.all
+    val ready = com.monsterquest.core.Achievements.claimable(s)
+    val claimed = s.achievementsClaimed.size
+    var open by rememberSaveable { mutableStateOf(false) }
+    GameCard(Modifier.padding(vertical = 4.dp), border = if (ready.isNotEmpty()) Gold else null) {
+        Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                IconText(GameIcon.STAR, "Achievements  $claimed/${all.size}", tint = Gold, textColor = Gold, bold = true, fontSize = 14.sp)
+                if (ready.isNotEmpty()) Text("${ready.size} ready to claim!", fontSize = 12.sp, color = Gold)
+            }
+            Text(if (open) "Hide ▴" else "Show ▾", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (open) {
+            val sorted = all.sortedWith(compareBy({ it !in ready }, { it.id in s.achievementsClaimed }))
+            sorted.forEach { a ->
+                val done = a.id in s.achievementsClaimed
+                val p = a.progress(s).coerceAtMost(a.goal)
+                Column(Modifier.padding(top = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(a.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+                            Text(a.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        when {
+                            done -> GIcon(GameIcon.CHECK, Modifier.size(18.dp), HpGreen)
+                            a in ready -> Button(onClick = { vm.claimAchievement(a.id) }) { Text("Claim") }
+                            else -> Text("%,d/%,d".format(p, a.goal), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    if (!done) {
+                        Bar(p.toFloat() / a.goal, Gold, Modifier.fillMaxWidth().padding(top = 2.dp), heightDp = 4)
+                        Text(
+                            "Reward: ${"%,d".format(a.gold)} gold" + a.items.entries.joinToString("") { ", ${it.key.label} x${it.value}" },
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** A Scholar's Tome waiting to be read: pick the spell its pages go to. */
 @Composable
 private fun TomeCard(vm: GameViewModel, index: Int, pages: Int) {
@@ -185,6 +232,7 @@ fun HeroScreen(vm: GameViewModel) {
 
     }
     val progress: @Composable () -> Unit = {
+        AchievementsCard(vm)
         // Bag and monster storage upgrades (free ones every few levels, and bought ones) live in the Store.
         if (s.pendingUpgrades > 0) {
             GameCard(border = Gold) {

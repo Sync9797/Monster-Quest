@@ -154,7 +154,7 @@ object Villains {
             val joined = m.copy(uid = newId(rng), xp = 0, damage = 0, fainted = false, cursed = true, cureProgress = 0)
             Update(
                 GameEngine.addCandy(
-                    s.copy(monsters = s.monsters + joined, stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1)),
+                    s.copy(monsters = s.monsters + joined, stats = s.stats.tamed(joined)),
                     m.species,
                     GameEngine.TAME_CANDY,
                 ),

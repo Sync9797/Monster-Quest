@@ -1115,7 +1115,7 @@ object GameEngine {
             s = s.copy(
                 monsters = s.monsters + c,
                 party = party,
-                stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1),
+                stats = s.stats.tamed(c),
             )
             s = addCandy(s, c.species, TAME_CANDY)
             msg.append(" ${if (r.tamed.size > 1) "${c.displayName}: " else ""}Personality: ${c.personality.label} (${c.personality.description}). +$TAME_CANDY ${candyName(c.species)}.")
@@ -1876,7 +1876,13 @@ object GameEngine {
         val f = state.focus ?: return Update(state, "")
         var s = state.copy(focus = null)
         return if (success) {
-            s = s.copy(stats = s.stats.copy(focusWins = s.stats.focusWins + 1, focusMinutes = s.stats.focusMinutes + f.minutes))
+            s = s.copy(
+                stats = s.stats.copy(
+                    focusWins = s.stats.focusWins + 1,
+                    focusMinutes = s.stats.focusMinutes + f.minutes,
+                    longestFocus = maxOf(s.stats.longestFocus, f.minutes),
+                ),
+            )
             if (s.lootBoxes.size >= MAX_LOOT_BOXES) {
                 // Shouldn't happen (starting is blocked when full), but don't lose the reward entirely.
                 val gold = f.minutes

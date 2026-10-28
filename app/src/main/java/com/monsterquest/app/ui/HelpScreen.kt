@@ -40,6 +40,7 @@ private val topics = listOf(
             "It's also your own to-do list and planner. Your tasks and calendar events are your quests, and finishing them powers your adventure: XP for your hero, gold, hunt tokens, and the Silver and Gold shrines that open when you keep up through the week.",
             "Living well pays off too. Walking levels you and your monsters up, heals them, opens loot boxes and draws monsters to you. Time away from your screen (phone-free sessions) earns loot boxes. A full night's sleep refills your Energy.",
             "So the more you get done, move and rest in real life, the stronger your hero and team grow in the game.",
+            "Goals on Home: three for today and three for the week (win battles, tame a featured type, walk, finish quests...). Claim each for gold and an item; finish a whole set for a bonus. Achievements on the Hero tab track lifetime milestones with bigger rewards.",
             "The menu at the bottom: Quests, Map, Bag and Store, with the Hero button in the middle. Tap or hold it to choose your Hero or your Monsters.",
         ),
     ),

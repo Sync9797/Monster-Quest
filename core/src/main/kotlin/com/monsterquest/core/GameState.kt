@@ -300,6 +300,14 @@ data class GameState(
     val stepHistory: Map<Long, Int> = emptyMap(),
     /** Epoch day -> quests completed that day. */
     val questDays: Map<Long, Int> = emptyMap(),
+    /** Achievements whose reward has been claimed, by id. */
+    val achievementsClaimed: Set<String> = emptySet(),
+    /** Daily and weekly goals: the day and week they're for, the stats when each began, and what's been claimed. */
+    val goalDay: Long = -1,
+    val dayBaseline: Lifetime = Lifetime(),
+    val goalWeek: Long = -1,
+    val weekBaseline: Lifetime = Lifetime(),
+    val goalsClaimed: Set<String> = emptySet(),
     /** Today's quest rewards so far (see [QuestRewards]); kept on the hero, so deleting quests doesn't reset it. */
     val questLimits: QuestLimits = QuestLimits(),
     /** Daily reminders (gentle alarms on chosen days). */
@@ -485,4 +493,14 @@ data class Lifetime(
     val focusMinutes: Int = 0,
     val totalSteps: Long = 0,
     val villainsBeaten: Int = 0,
-)
+    /** The longest phone-free session finished, in minutes. */
+    val longestFocus: Int = 0,
+    /** Monsters tamed of each type (a dual type counts for both). */
+    val tamedByType: Map<Element, Int> = emptyMap(),
+) {
+    /** One more monster tamed. */
+    fun tamed(m: Monster): Lifetime = copy(
+        monstersTamed = monstersTamed + 1,
+        tamedByType = m.species.types.fold(tamedByType) { acc, t -> acc + (t to (acc[t] ?: 0) + 1) },
+    )
+}

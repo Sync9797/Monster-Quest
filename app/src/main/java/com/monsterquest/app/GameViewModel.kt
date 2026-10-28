@@ -146,7 +146,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun completeReminder(id: String) = apply(com.monsterquest.core.Reminders.complete(state, id, System.currentTimeMillis()))
     fun skipReminder(id: String) = apply(com.monsterquest.core.Reminders.skip(state, id, System.currentTimeMillis()))
 
-    private fun set(s: GameState) {
+    private fun set(next: GameState) {
+        // A new day or week starts its goals from the stats just before this change.
+        val s = com.monsterquest.core.Goals.rollover(state, next, java.time.LocalDate.now().toEpochDay())
         val walked = s.stats.totalSteps - state.stats.totalSteps
         // Add today's gains (levels, XP, loot, healing, tasks) for tomorrow's morning recap.
         state = com.monsterquest.core.Recap.track(state, s, System.currentTimeMillis()).withJournal()
@@ -643,6 +645,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (state.settings.bigMomentHaptics) Haptics.learned(getApplication())
     }
     fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
+    fun claimAchievement(id: String) = apply(com.monsterquest.core.Achievements.claim(state, id))
+    fun claimGoal(goal: com.monsterquest.core.Goal) = apply(com.monsterquest.core.Goals.claim(state, goal))
 
     /** Level-ups from party training during a phone-free session, shown one by one. */
     var trainingLevelUps by mutableStateOf<List<com.monsterquest.core.LevelUp>>(emptyList())

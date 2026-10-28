@@ -124,6 +124,7 @@ fun QuestsScreen(vm: GameViewModel) {
         Column {
             // Health (steps, water, and soon sleep): folds to one line so it stays out of the way.
             HealthCard(vm, now)
+            GoalsCard(vm)
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // A task has no due date. Anything with a date goes on the calendar (in the calendar app).

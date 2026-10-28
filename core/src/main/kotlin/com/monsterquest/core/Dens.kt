@@ -171,7 +171,7 @@ object Dens {
                 pendingDenCatch = null,
                 monsters = state.monsters + tamed,
                 party = if (state.party.size < MAX_PARTY_SIZE) state.party + tamed.uid else state.party,
-                stats = state.stats.copy(monstersTamed = state.stats.monstersTamed + 1),
+                stats = state.stats.tamed(tamed),
             )
             s = GameEngine.addCandy(s, tamed.species, GameEngine.TAME_CANDY)
             val xp = GameEngine.captureXp(tamed.level) * 2
