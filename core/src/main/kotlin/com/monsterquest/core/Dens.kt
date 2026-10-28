@@ -118,7 +118,7 @@ object Dens {
             val id = "den:$day:$x:$y"
             if (id in state.densCleared) continue
             val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
-            val species = Bestiary.randomWild(r, level, rareBoost = 1.6)
+            val species = Bestiary.randomWild(r, level, rareBoost = 1.6, favorFirstForms = false)
             // Great stats: nothing below 10, and two perfect.
             val base = Monster.create(species, level, r, shiny = rollShiny(r)).withWildMoves(r)
             val sturdy = base.copy(
@@ -173,10 +173,10 @@ object Dens {
                 party = if (state.party.size < MAX_PARTY_SIZE) state.party + tamed.uid else state.party,
                 stats = state.stats.tamed(tamed),
             )
-            s = GameEngine.addCandy(s, tamed.species, GameEngine.TAME_CANDY)
+            s = GameEngine.addCandy(s, tamed.species, GameEngine.tameCandy(tamed.species))
             val xp = GameEngine.captureXp(tamed.level) * 2
             val gain = GameEngine.addHeroXp(s, xp)
-            return Update(gain.state, (if (critical) "Critical catch! " else "") + "Got it! ${m.displayName} from the den was tamed! +$xp XP, +${GameEngine.TAME_CANDY} ${GameEngine.candyName(tamed.species)}.${GameEngine.levelUpText(gain)}")
+            return Update(gain.state, (if (critical) "Critical catch! " else "") + "Got it! ${m.displayName} from the den was tamed! +$xp XP, +${GameEngine.tameCandy(tamed.species)} ${GameEngine.candyName(tamed.species)}.${GameEngine.levelUpText(gain)}")
         }
         val left = c.throwsLeft - 1
         return if (left <= 0) {

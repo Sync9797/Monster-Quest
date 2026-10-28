@@ -112,6 +112,28 @@ data class WildSpawn(
     val visitor: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
+
+    /** A big, tough first form with perfect genes (see [Alphas]). */
+    val alpha: Boolean get() = Alphas.isAlpha(id, species, level)
+}
+
+/**
+ * Alphas: at higher levels some first-stage monsters spawn big and tough
+ * (1.5x stats in battle, a stronger extra move, a little harder to tame) with
+ * [PERFECT_STATS] perfect stats, so the small forms stay worth hunting.
+ */
+object Alphas {
+    /** From this wild level on, first forms can be Alphas. */
+    const val FROM_LEVEL = 15
+    const val CHANCE = 0.08
+    const val STAT_BOOST = 1.5
+    const val CATCH_MULTIPLIER = 0.8
+    const val PERFECT_STATS = 3
+
+    /** Decided by the spawn's id, so it's the same every time you look. */
+    fun isAlpha(id: String, species: Species, level: Int): Boolean =
+        level >= FROM_LEVEL && species.stage == 1 && species.stages > 1 && !species.genderless &&
+            Random(id.hashCode().toLong() * 31 + 0xA1FA).nextDouble() < CHANCE
 }
 
 /** Location-based content: shrines at real places and wild monsters that roam the map. */
@@ -499,5 +521,14 @@ object World {
 
     fun spawnMonster(spawn: WildSpawn): Monster =
         // The fight is with the very monster shown on the map: no evolving on the way in.
-        Random(spawn.id.hashCode().toLong()).let { r -> Monster.create(spawn.species, spawn.level, r, shiny = spawn.shiny, evolve = false).withWildMoves(r) }
+        Random(spawn.id.hashCode().toLong()).let { r ->
+            val m = Monster.create(spawn.species, spawn.level, r, shiny = spawn.shiny, evolve = false).withWildMoves(r)
+            if (!spawn.alpha) m else {
+                // An Alpha: perfect genes and a stronger move it shouldn't know yet.
+                val strong = Moves.learnable(m.species).filter { (lv, mv) -> mv.isDamaging && lv <= m.level + 15 && mv.id !in m.activeMoves.map { it.id } }
+                    .maxByOrNull { it.second.power }?.second
+                val moves = m.activeMoves.map { it.id }.let { ids -> if (strong == null) ids else ids.dropLast(if (ids.size >= Moves.MAX_MOVES) 1 else 0) + strong.id }
+                GameEngine.withPerfectStats(m, Alphas.PERFECT_STATS, r).copy(alpha = true, moves = moves)
+            }
+        }
 }

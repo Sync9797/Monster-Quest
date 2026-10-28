@@ -445,6 +445,8 @@ object Bestiary {
         boosts: Map<Element, Double> = emptyMap(),
         /** Extra multipliers by species id (the mystery of the week). */
         speciesBoosts: Map<String, Double> = emptyMap(),
+        /** Keep evolved forms rare, so first forms fill the wild (off for dens, which want strong monsters). */
+        favorFirstForms: Boolean = true,
     ): Species {
         val pool = wild.filter { it.minWildLevel <= level }
         fun weight(s: Species): Int {
@@ -453,6 +455,7 @@ object Bestiary {
             if (boosts.isNotEmpty()) w *= s.types.maxOf { boosts[it] ?: 1.0 }
             if (s.rarity.ordinal > 0) w *= rareBoost
             speciesBoosts[s.id]?.let { w *= it }
+            if (favorFirstForms) w *= STAGE_PULL.getOrElse(s.stage - 1) { STAGE_PULL.last() }
             return w.toInt().coerceAtLeast(1)
         }
         var roll = rng.nextInt(pool.sumOf { weight(it) })
@@ -462,6 +465,9 @@ object Bestiary {
         }
         return pool.last()
     }
+
+    /** Wild spawn weight by evolution stage: evolved forms are rare finds (catch a small one and evolve it). */
+    val STAGE_PULL = listOf(1.0, 0.3, 0.12, 0.06)
 
     /** [species]' line evolved as far as a trained monster of [level] would be. */
     fun evolvedFor(species: Species, level: Int): Species {

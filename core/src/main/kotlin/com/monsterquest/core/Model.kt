@@ -344,6 +344,8 @@ data class Monster(
     val skill: Trait? = null,
     /** When it last made an egg (it rests a day after). */
     val bredAtMs: Long = 0,
+    /** Born an Alpha in the wild: big, with perfect genes (see [Alphas]). */
+    val alpha: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val displayName: String get() = nickname ?: species.name

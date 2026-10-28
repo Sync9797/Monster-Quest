@@ -672,12 +672,14 @@ class Battle(
     private fun foe(m: Monster, key: String): Combatant {
         // Legendaries are built stronger to own; as shrine guardians they're scaled back to their usual challenge.
         val legend = if (m.species.rarity == Rarity.LEGENDARY && encounter != EncounterType.WILD) 1 / Bestiary.LEGENDARY_POWER else 1.0
+        // A wild Alpha is half again as tough.
+        val alpha = if (m.alpha && encounter == EncounterType.WILD) Alphas.STAT_BOOST else 1.0
         return Combatant.fromMonster(
-            m,
+            if (alpha > 1.0) m.copy(nickname = "Alpha ${m.displayName}") else m,
             key,
-            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost,
-            attackMultiplier = scaling.attack * legend * enemyBoost,
-            defenseMultiplier = scaling.defense * legend * enemyBoost,
+            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost * alpha,
+            attackMultiplier = scaling.attack * legend * enemyBoost * alpha,
+            defenseMultiplier = scaling.defense * legend * enemyBoost * alpha,
             speedMultiplier = enemyBoost,
         )
     }
@@ -888,7 +890,7 @@ class Battle(
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus) * captureBoost *
-                (if (snapFailed) SNAP_FAIL_CATCH else 1.0)
+                (if (snapFailed) SNAP_FAIL_CATCH else 1.0) * (if (monsterFor(enemy.key).alpha) Alphas.CATCH_MULTIPLIER else 1.0)
             ).coerceIn(0.0, 0.95)
 
     // ---- Snap Bind: the first-turn gamble ------------------------------------
@@ -910,7 +912,7 @@ class Battle(
     /** Snap Bind odds with [orb]: by rarity, better crystals help (square root of their power), less against higher levels. */
     fun snapOdds(orb: Item): Double {
         val sp = monsterFor(enemy.key).species
-        val base = SNAP_BIND_ODDS[sp.rarity] ?: 0.1
+        val base = (SNAP_BIND_ODDS[sp.rarity] ?: 0.1) * (if (monsterFor(enemy.key).alpha) Alphas.CATCH_MULTIPLIER else 1.0)
         val levelPenalty = 0.95.pow(max(0, enemy.level - heroLevel))
         return (base * kotlin.math.sqrt(orb.power) * levelPenalty * captureBoost).coerceIn(0.01, SNAP_BIND_MAX)
     }

@@ -321,8 +321,10 @@ fun MapScreen(vm: GameViewModel) {
                                     position = GeoPoint(sp.lat, sp.lon)
                                     // Monsters stand on the map themselves, feet at their spot.
                                     setAnchor(Marker.ANCHOR_CENTER, 0.95f)
-                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny) })
-                                    title = sp.species.name
+                                    // Alphas stand bigger, in a red glow.
+                                    val size = if (sp.alpha) 80 else 58
+                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}_${sp.alpha}", size, size) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny, sp.alpha) })
+                                    title = (if (sp.alpha) "Alpha " else "") + sp.species.name
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
                                 },
                             )
@@ -1074,7 +1076,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Wild ${sp.name}")
+                Text(if (spawn.alpha) "Alpha ${sp.name}" else "Wild ${sp.name}", color = if (spawn.alpha) Color(0xFFE0574A) else Color.Unspecified)
                 val where = landmark?.let { (place, gap) -> landmarkText(place, gap, vm.state.settings.imperialUnits) }
                     ?: street?.let { "On $it" }
                 if (where != null) Text(where, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1085,6 +1087,14 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
             Column {
                 MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = spawn.shiny)
                 if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
+                if (spawn.alpha) {
+                    Text(
+                        "ALPHA: half again as tough, with a strong move beyond its level and ${com.monsterquest.core.Alphas.PERFECT_STATS} perfect stats. A little harder to tame.",
+                        color = Color(0xFFE0574A),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                    )
+                }
                 Text("Level ${spawn.level} • ${sp.typeLabel} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
                 ScoutLine(vm, sp)
                 if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)

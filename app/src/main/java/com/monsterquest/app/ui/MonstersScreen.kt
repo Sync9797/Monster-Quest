@@ -597,6 +597,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 Column(Modifier.weight(1f)) {
                     Text(m.displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (m.shiny) IconText(GameIcon.SPARK, "Shiny", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp, size = 14.dp)
+                    if (m.alpha) Text("Alpha-born", color = Color(0xFFE0574A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(
                         m.gender?.let { "${it.symbol} ${it.label}" } ?: (if (sp.mythic) "Mythical" else "Legendary") + ": no gender, can't make eggs",
                         fontSize = 13.sp,

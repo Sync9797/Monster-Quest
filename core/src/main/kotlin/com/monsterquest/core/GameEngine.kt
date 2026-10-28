@@ -569,6 +569,11 @@ object GameEngine {
 
     /** Candy for taming a monster. */
     const val TAME_CANDY = 3
+    /** Taming a line's first form gives more candy, so catching the small ones pays. */
+    const val FIRST_FORM_CANDY = 5
+
+    /** Candy for taming [species]. */
+    fun tameCandy(species: Species): Int = if (species.stage == 1 && species.stages > 1) FIRST_FORM_CANDY else TAME_CANDY
 
     fun addCandy(state: GameState, sp: Species, n: Int): GameState =
         state.copy(candy = state.candy + (sp.family to candyOf(state, sp) + n))
@@ -1126,8 +1131,9 @@ object GameEngine {
                 party = party,
                 stats = s.stats.tamed(c),
             )
-            s = addCandy(s, c.species, TAME_CANDY)
-            msg.append(" ${if (r.tamed.size > 1) "${c.displayName}: " else ""}Personality: ${c.personality.label} (${c.personality.description}). +$TAME_CANDY ${candyName(c.species)}.")
+            s = addCandy(s, c.species, tameCandy(c.species))
+            msg.append(" ${if (r.tamed.size > 1) "${c.displayName}: " else ""}Personality: ${c.personality.label} (${c.personality.description}). +${tameCandy(c.species)} ${candyName(c.species)}." +
+                if (c.alpha) " An Alpha, with ${Alphas.PERFECT_STATS} perfect stats!" else "")
         }
         // Fighting with a weapon makes you better with it (only unfamiliar ones need it).
         if (r.outcome != BattleOutcome.FLED) s = practiceWeapons(s, msg)
