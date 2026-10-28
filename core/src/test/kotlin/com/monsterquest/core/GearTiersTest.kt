@@ -109,16 +109,17 @@ class GearTiersTest {
 
     @Test
     fun frostbiteHurtsUnlessADroughtIsOn() {
-        val foe = Monster.create(Bestiary.get("goopling"), 10, Random(8))
+        // A weak foe, so its flinching Bites can't knock the hero out before the frost lands.
+        val foe = Monster.create(Bestiary.get("goopling"), 3, Random(8))
         val frost = Armory.cursedWeapon(10, Random(9)).copy(curse = Curse.FROST)
         val b = Battle(Hero(level = 10), emptyList(), foe, EncounterType.WILD, emptyMap(), false, rng = Random(10), gear = frost)
         var turns = 0
         while (b.outcome == BattleOutcome.ONGOING && turns++ < 30 && b.log.none { "hurt by frostbite" in it }) {
-            b.current?.let { it.hp = it.maxHp }
+            b.allies.forEach { it.hp = it.maxHp }
             b.enemy.hp = b.enemy.maxHp
             b.act(BattleAction.Attack)
         }
-        assertTrue(b.log.any { "frostbite" in it })
+        assertTrue(b.log.any { "frostbite" in it }, b.log.takeLast(12).joinToString("\n"))
     }
 
     @Test

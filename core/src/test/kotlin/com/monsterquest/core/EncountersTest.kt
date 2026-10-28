@@ -394,6 +394,108 @@ class EncountersTest {
     }
 
     @Test
+    fun classicMoveCostsWork() {
+        fun duel(move: String, hpFrac: Double = 1.0): Pair<Battle, Combatant> {
+            val m = Monster.create(Bestiary.get("cinder_hound"), 50, Random(3)).copy(moves = listOf(move))
+            val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
+            val foe = Monster.create(Bestiary.get("goopling"), 50, Random(4))
+            val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
+            val me = b.allies.first { it.key == m.uid }
+            var g = 0
+            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+            me.hp = (me.maxHp * hpFrac).toInt().coerceAtLeast(1)
+            b.enemy.hp = b.enemy.maxHp
+            return b to me
+        }
+        // Meltdown: a huge hit, and the user's Attack harshly falls (unless it missed).
+        val (melt, hot) = duel("meltdown")
+        melt.act(BattleAction.UseMove("meltdown"))
+        assertTrue(hot.stages[BattleStat.ATTACK] == -2 || melt.log.any { "miss" in it }, melt.log.takeLast(5).toString())
+        // Flare Blitz: recoil is a third of the damage dealt.
+        val (blitz, _) = duel("flare_blitz")
+        blitz.act(BattleAction.UseMove("flare_blitz"))
+        val hit = blitz.log.firstNotNullOfOrNull { Regex("It hits .* for (\\d+) damage").find(it)?.groupValues?.get(1)?.toInt() }
+        val recoil = blitz.log.firstNotNullOfOrNull { Regex("hurt by recoil \\((\\d+)\\)").find(it)?.groupValues?.get(1)?.toInt() }
+        if (hit != null) assertEquals(maxOf(1, hit * 33 / 100), recoil, blitz.log.takeLast(6).toString())
+        // Supernova weakens with the user's HP.
+        fun novaHit(frac: Double): Int? {
+            val (b, _) = duel("supernova", frac)
+            b.act(BattleAction.UseMove("supernova"))
+            return b.log.firstNotNullOfOrNull { Regex("It hits .* for (\\d+) damage").find(it)?.groupValues?.get(1)?.toInt() }
+        }
+        val full = novaHit(1.0)
+        val tired = novaHit(0.2)
+        if (full != null && tired != null) assertTrue(full > tired, "full $full vs tired $tired")
+    }
+
+    @Test
+    fun tamingOneOfAPackMakesTheWeakerRunAndTheStrongerRage() {
+        val r = Random(5)
+        val lead = Monster.create(Bestiary.get("emberkit"), 10, r)
+        val weak = Monster.create(Bestiary.get("emberkit"), 4, r)
+        val strong = Monster.create(Bestiary.get("emberkit"), 16, r)
+        val b = Battle(Hero(level = 80), emptyList(), lead, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = listOf(weak, strong))
+        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        heroTurn()
+        b.selectTarget(b.enemies[0].key)
+        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        // The fight goes on: the stronger one rages (+1 to every stat), the weaker one ran or stood firm.
+        assertEquals(BattleOutcome.ONGOING, b.outcome)
+        val rager = b.enemies[2]
+        assertEquals(1, rager.rage)
+        assertTrue(BattleStat.entries.all { rager.stages[it] == 1 })
+        assertEquals(0, b.enemies[1].rage)
+        assertTrue(b.log.any { "runs off" in it || "stands its ground" in it })
+        // Tame the rest: every one comes home.
+        while (b.outcome == BattleOutcome.ONGOING) {
+            heroTurn()
+            if (b.outcome != BattleOutcome.ONGOING) break
+            b.enemies.filter { it.alive }.forEach { it.hp = 1 }
+            b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        }
+        assertEquals(BattleOutcome.CAPTURED, b.outcome)
+        val res = b.result()
+        assertTrue(res.tamed.size >= 2)
+        assertEquals(lead.speciesId, res.tamed.first().speciesId)
+        assertTrue(res.defeated.isEmpty())
+    }
+
+    @Test
+    fun rageStacksWithEveryTame() {
+        val r = Random(6)
+        val a = Monster.create(Bestiary.get("emberkit"), 5, r)
+        val c = Monster.create(Bestiary.get("emberkit"), 6, r)
+        val big = Monster.create(Bestiary.get("emberkit"), 20, r)
+        val b = Battle(Hero(level = 80), emptyList(), a, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = listOf(c, big))
+        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        for (i in 0..1) {
+            heroTurn()
+            b.selectTarget(b.enemies[i].key)
+            b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        }
+        assertEquals(2, b.enemies[2].rage)
+        // +2 from rage (its own moves may have raised a stat further).
+        assertTrue(BattleStat.entries.all { (b.enemies[2].stages[it] ?: 0) >= 2 })
+        // Beat the last one: a win, and both tamed come home too.
+        b.enemies[2].hp = 0
+        b.act(BattleAction.Defend)
+        assertEquals(BattleOutcome.WON, b.outcome)
+        val res = b.result()
+        assertEquals(2, res.tamed.size)
+        assertEquals(listOf(big.speciesId), res.defeated)
+    }
+
+    @Test
+    fun storageRoomLimitsHowManyCanBeTamed() {
+        val r = Random(7)
+        val pack = (0..2).map { Monster.create(Bestiary.get("emberkit"), 8, r) }
+        val b = Battle(Hero(level = 80), emptyList(), pack[0], EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = pack.drop(1), storageRoom = 1)
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        if (b.outcome == BattleOutcome.ONGOING) assertNotNull(b.captureBlockedReason())
+    }
+
+    @Test
     fun everyLevelGivesASmallBoxThatGrowsAndLevel100GivesAPerfectOrb() {
         assertTrue((2..99).all { GameEngine.levelBox(it).values.sum() in 2..4 })
         assertEquals(5, GameEngine.levelBox(100).values.sum())

@@ -971,6 +971,7 @@ object GameEngine {
         // Monsters out on adventures can't fight.
         state.partyMonsters.filter { it.uid !in Adventures.awayUids(state) },
         enemy, encounter, state.inventory, state.storageFull, shrineId, rng, state.equippedGear, state.heroDamage, state.wornArmor,
+        storageRoom = (state.monsterCapacity - state.monsters.size).coerceAtLeast(0),
         extraEnemies = pack,
         ambush = ambush,
         offhand = state.offhandGear,
@@ -1003,7 +1004,11 @@ object GameEngine {
                         msg.append(" ").append(won.values.joinToString { list -> "+${perMonster * list.size} ${candyName(list.first())}" }).append(".")
                     }
                 } else {
-                    msg.append("${r.enemy.displayName} was tamed! +${r.heroXp} XP.")
+                    val names = r.tamed.map { it.displayName }
+                    msg.append(
+                        if (names.size > 1) "${names.dropLast(1).joinToString()} and ${names.last()} were tamed! +${r.heroXp} XP."
+                        else "${r.enemy.displayName} was tamed! +${r.heroXp} XP.",
+                    )
                 }
                 // Monster XP: level-ups are shown as banners and a pop-up, not in the message.
                 s = s.copy(
@@ -1014,19 +1019,6 @@ object GameEngine {
                         after
                     },
                 )
-                // Capture
-                r.captured?.let { c ->
-                    if (!s.storageFull) {
-                        val party = if (s.party.size < MAX_PARTY_SIZE) s.party + c.uid else s.party
-                        s = s.copy(
-                            monsters = s.monsters + c,
-                            party = party,
-                            stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1),
-                        )
-                        s = addCandy(s, c.species, TAME_CANDY)
-                        msg.append(" Personality: ${c.personality.label} (${c.personality.description}). +$TAME_CANDY ${candyName(c.species)}.")
-                    }
-                }
                 // Drops
                 if (r.drops.isNotEmpty()) {
                     val (withDrops, lost) = addItems(s, r.drops)
@@ -1074,6 +1066,21 @@ object GameEngine {
             }
             BattleOutcome.FLED -> msg.append("You escaped.")
             BattleOutcome.ONGOING -> {}
+        }
+        // Every monster tamed in the fight is yours, even if you fled or fell after.
+        if (r.outcome == BattleOutcome.WON || r.outcome == BattleOutcome.FLED || r.outcome == BattleOutcome.LOST) {
+            if (r.tamed.isNotEmpty()) msg.append(" Tamed: ${r.tamed.joinToString { it.displayName }}.")
+        }
+        for (c in r.tamed) {
+            if (s.storageFull) break
+            val party = if (s.party.size < MAX_PARTY_SIZE) s.party + c.uid else s.party
+            s = s.copy(
+                monsters = s.monsters + c,
+                party = party,
+                stats = s.stats.copy(monstersTamed = s.stats.monstersTamed + 1),
+            )
+            s = addCandy(s, c.species, TAME_CANDY)
+            msg.append(" ${if (r.tamed.size > 1) "${c.displayName}: " else ""}Personality: ${c.personality.label} (${c.personality.description}). +$TAME_CANDY ${candyName(c.species)}.")
         }
         // Fighting with a weapon makes you better with it (only unfamiliar ones need it).
         if (r.outcome != BattleOutcome.FLED) s = practiceWeapons(s, msg)

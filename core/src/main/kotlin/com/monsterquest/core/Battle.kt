@@ -213,8 +213,12 @@ class Combatant(
     var scared: Boolean = false
     /** Swift (Water moves): moves first next round. */
     var swift: Boolean = false
+    /** A pack member that left the fight without being beaten: "Tamed" or "Ran off". */
+    var gone: String? = null
+    /** Rage stacks: a stronger pack member gets one each time you tame one of its pack. */
+    var rage: Int = 0
 
-    val alive: Boolean get() = hp > 0
+    val alive: Boolean get() = hp > 0 && gone == null
     val hpFraction: Double get() = hp.toDouble() / maxHp
 
     fun stageMultiplier(stat: BattleStat): Double = (1.0 + 0.15 * (stages[stat] ?: 0)).coerceIn(0.4, 2.0)
@@ -222,7 +226,9 @@ class Combatant(
 
     /** Short labels for the UI, e.g. "Asleep", "Def ↓1". */
     fun tags(): List<String> = buildList {
+        gone?.let { add(it) }
         if (cursed) add("Shadow-cursed")
+        if (rage > 0) add("Enraged" + if (rage > 1) " x$rage" else "")
         status?.let { add(it.label) }
         if (scorchTurns > 0) add("Scorched")
         stages.forEach { (s, n) -> if (n != 0) add("${s.label.take(3)} ${if (n < 0) "↓" else "↑"}${kotlin.math.abs(n)}") }
@@ -468,6 +474,8 @@ data class BattleResult(
     val defeated: List<String> = emptyList(),
     /** Your monsters still standing at the end (each one earns an extra taming throw at a den). */
     val standing: Int = 0,
+    /** Every monster tamed in this fight ([captured] is the first). */
+    val tamed: List<Monster> = listOfNotNull(captured),
 )
 
 /** " (strong trace)" for the battle log; nothing for a Perfect Crystal, which needs no trace. */
@@ -515,8 +523,18 @@ const val SCARED_ATTACK = 2.0 / 3.0
 /** Pay for a thug fight, per fighter on their side (thug included). */
 const val THUG_REWARD = 0.9
 
+/** Spread moves hit each foe at 75% power when there's more than one (as in later generations). */
+const val SPREAD_POWER = 0.75
+
 /** Highest a stat stage can go (stage multipliers are capped at 2x anyway). */
 private const val MAX_STAGES = 6
+
+/**
+ * Taming one of a pack doesn't end the fight. The rest react: each one weaker
+ * (lower level) than the tamed monster may run off at this chance; the
+ * others fly into a rage, +1 to every stat, stacking with every tame.
+ */
+const val PACK_FLEE_CHANCE = 0.5
 
 class Battle(
     hero: Hero,
@@ -545,6 +563,8 @@ class Battle(
     val thug: Thug? = null,
     /** Whether you bring the whole team; otherwise your side matches theirs (see [FULL_TEAM_ENCOUNTERS]). */
     val fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
+    /** Free spaces in monster storage: how many can be tamed in this fight. */
+    private val storageRoom: Int = if (storageFull) 0 else Int.MAX_VALUE,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -606,7 +626,10 @@ class Battle(
 
     private fun monsterFor(key: String): Monster = enemyMonsters[enemies.indexOfFirst { it.key == key }.coerceIn(0, enemyMonsters.size - 1)]
 
-    private var capturedKey: String? = null
+    /** Pack members tamed so far, in order. */
+    private val capturedKeys = mutableListOf<String>()
+    /** How many have been tamed in this fight. */
+    val tamedCount: Int get() = capturedKeys.size
     private val heroLevel = hero.level
     private val heroSkills = hero.spells()
     private val partyUids = fighters.map { it.uid } + swapMonsters.map { it.uid }
@@ -741,7 +764,7 @@ class Battle(
         encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your binding casts."
         encounter == EncounterType.THUG -> "A thug's monsters won't leave their master. Beat the whole crew."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
-        storageFull -> "Monster storage is full. Release a monster or upgrade storage."
+        capturedKeys.size >= storageRoom -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No Binding Crystals left."
         itemsRemainingThisBattle <= 0 -> "Item limit reached for this battle ($MAX_ITEMS_PER_BATTLE)."
         enemy.hpFraction > 0.5 && count(Item.PERFECT_ORB) <= 0 -> "Too strong to tame. Get it below 50% HP."
@@ -950,8 +973,14 @@ class Battle(
     private fun checkEnd() {
         if (outcome != BattleOutcome.ONGOING) return
         if (enemies.none { it.alive }) {
-            outcome = BattleOutcome.WON
-            log += if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
+            // Beat any of them and it's a win; if every one was tamed or ran off, it ends with the taming.
+            if (enemies.any { it.hp <= 0 }) {
+                outcome = BattleOutcome.WON
+                log += if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
+            } else {
+                outcome = BattleOutcome.CAPTURED
+                if (enemies.any { it.gone == "Ran off" }) log += "The rest of the pack is gone."
+            }
         } else if (allies.none { it.alive } && heroFighter.alive && heroFighter in reserve) {
             // The monster fighting for the hero fell: the hero steps back in.
             val i = team.indexOfFirst { !it.alive }
@@ -1086,11 +1115,12 @@ class Battle(
                 lastCast = CastRoll(success, shakesFor(success, critical, roll, chance), critical)
                 castCount++
                 if (success) {
-                    outcome = BattleOutcome.CAPTURED
-                    capturedKey = enemy.key
+                    val tamed = enemy
                     if (critical) log += "Critical catch!"
-                    log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${enemy.name} was tamed!"
-                    if (enemies.count { it.alive } > 1) log += "The rest of the pack scatters!"
+                    log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${tamed.name} was tamed!"
+                    capturedKeys += tamed.key
+                    tamed.gone = "Tamed"
+                    packReacts(tamed)
                 } else {
                     log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${enemy.name} broke free!"
                 }
@@ -1107,6 +1137,24 @@ class Battle(
             }
         }
         return true
+    }
+
+    /** The rest of the pack after [tamed] is tamed: the weaker may run off, the rest fly into a rage. */
+    private fun packReacts(tamed: Combatant) {
+        for (e in enemies.filter { it.alive }) {
+            if (e.level < tamed.level) {
+                if (rng.nextDouble() < PACK_FLEE_CHANCE) {
+                    e.gone = "Ran off"
+                    log += "${e.name} panics and runs off!"
+                } else {
+                    log += "${e.name} stands its ground."
+                }
+            } else {
+                e.rage++
+                BattleStat.entries.forEach { st -> e.stages[st] = minOf(MAX_STAGES, (e.stages[st] ?: 0) + 1) }
+                log += "${e.name} flies into a rage! All its stats rise" + (if (e.rage > 1) " (rage x${e.rage})!" else "!")
+            }
+        }
     }
 
     /** A fallen monster on your side that a waiting swap could replace. */
@@ -1236,8 +1284,9 @@ class Battle(
         }
         // Spread moves strike every foe (a little weaker each when there's more than one).
         val targets = if (MoveEffect.HitsAllFoes in move.effects) foesOf(a).filter { it.alive }.ifEmpty { listOf(d) } else listOf(d)
-        val mult = if (targets.size > 1) 0.8 else 1.0
+        val mult = if (targets.size > 1) SPREAD_POWER else 1.0
         var landed = false
+        moveDealt = 0
         for (t in targets) {
             if (hitTarget(a, t, move, mult)) {
                 applyEffects(a, t, move, onFoe = true, onSelf = false)
@@ -1245,7 +1294,14 @@ class Battle(
             }
         }
         if (landed) applyEffects(a, d, move, onFoe = false, onSelf = true)
+        // Reckless moves: a share of the damage comes back.
+        move.effects.filterIsInstance<MoveEffect.RecoilPct>().firstOrNull()?.let { fx ->
+            if (a.alive && moveDealt > 0) hurt(a, maxOf(1, moveDealt * fx.percent / 100), "is hurt by recoil")
+        }
     }
+
+    /** Damage dealt by the move being used (for recoil). */
+    private var moveDealt = 0
 
     /** The other side, from [a]'s point of view. */
     private fun foesOf(a: Combatant): List<Combatant> = if (Combatant.isEnemy(a.key)) allies else enemies
@@ -1279,7 +1335,9 @@ class Battle(
         // Status Bonus: hits harder when the foe is already asleep, shocked, poisoned...
         val bonus = move.effects.filterIsInstance<MoveEffect.StatusBonus>().firstOrNull()
             ?.takeIf { t.status != null }?.multiplier ?: 1.0
-        val power = ((if (airborne) smack!!.groundedPower else move.power) * mult * bonus).roundToInt()
+        // Eruption-style moves weaken as the user tires.
+        val hpScale = if (MoveEffect.HpScaled in move.effects) a.hpFraction else 1.0
+        val power = ((if (airborne) smack!!.groundedPower else move.power) * mult * bonus * hpScale).roundToInt().coerceAtLeast(1)
         val useDefense = MoveEffect.DefenseStrike in move.effects
         var count = 0
         var dealt = 0
@@ -1287,6 +1345,7 @@ class Battle(
             dealt += strike(a, t, power, move.type, useMagic = false, verb = null, style = style, extraCrit = crit, pierce = pierce, useDefense = useDefense)
             count++
         }
+        moveDealt += dealt
         if (multi != null) log += "Hit $count time${if (count == 1) "" else "s"}!"
         if (airborne && t.alive) {
             t.immuneEarth = false
@@ -1372,9 +1431,13 @@ class Battle(
                     a.protecting = true
                     log += "${a.name} raises a ${move.name}!"
                 }
-                is MoveEffect.RaiseSelf -> if (a.alive) {
+                is MoveEffect.RaiseSelf -> if (a.alive && rng.nextDouble() < fx.chance) {
                     fx.stats.forEach { a.stages[it] = ((a.stages[it] ?: 0) + fx.stages).coerceAtMost(4) }
                     log += "${a.name}'s ${fx.stats.joinToString(" and ") { it.label }} ${if (fx.stages > 1) "sharply rose" else "rose"}!"
+                }
+                is MoveEffect.LowerSelf -> if (a.alive) {
+                    fx.stats.forEach { a.stages[it] = ((a.stages[it] ?: 0) - fx.stages).coerceAtLeast(-4) }
+                    log += "${a.name}'s ${fx.stats.joinToString(" and ") { it.label }} ${if (fx.stages > 1) "harshly fell" else "fell"}!"
                 }
                 MoveEffect.CureSelf -> if (a.status != null || a.scorchTurns > 0) {
                     a.status = null
@@ -1393,7 +1456,7 @@ class Battle(
                     log += "The whole team's ${fx.stats.joinToString(" and ") { it.label }} rose!"
                 }
                 is MoveEffect.MultiHit, MoveEffect.HighCrit, MoveEffect.SureHit, MoveEffect.HitsAllFoes, MoveEffect.Pierce, is MoveEffect.LifeDrain,
-                is MoveEffect.SmackDown, is MoveEffect.StatusBonus, MoveEffect.DefenseStrike -> {}
+                is MoveEffect.SmackDown, is MoveEffect.StatusBonus, MoveEffect.DefenseStrike, is MoveEffect.RecoilPct, MoveEffect.HpScaled -> {}
                 MoveEffect.Swift -> if (a.alive) {
                     a.swift = true
                     log += "${a.name} will move first next round!"
@@ -1595,17 +1658,16 @@ class Battle(
         }
         // Wayfarer, Scholar and Treasure Hunter add to the spoils.
         val xpMult = 1 + heroPerks.xpPct / 100.0
-        val heroXp = when (outcome) {
-            BattleOutcome.WON -> lvl * 3 * bossMult
-            BattleOutcome.CAPTURED -> GameEngine.captureXp(lvl) * bossMult
-            else -> 0
-        }.let { (it * rewardMult * xpMult).roundToInt() }
+        val tamedMonsters = capturedKeys.map { monsterFor(it) }
+        // Win XP for the fight, plus taming XP for each one tamed (kept even if you flee or fall after).
+        val heroXp = ((if (outcome == BattleOutcome.WON) lvl * 3 * bossMult else 0) +
+            tamedMonsters.sumOf { GameEngine.captureXp(it.level) * bossMult }).let { (it * rewardMult * xpMult).roundToInt() }
         val gold = if (outcome == BattleOutcome.WON) {
             ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult * (1 + heroPerks.goldPct / 100.0)).roundToInt()
         } else {
             0
         }
-        val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED) {
+        val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED || tamedMonsters.isNotEmpty()) {
             partyUids.associateWith { uid ->
                 val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult * xpMult).roundToInt()
                 // Swap-slot monsters that never stepped in get half, like those who fell.
@@ -1636,17 +1698,19 @@ class Battle(
                 }
             }
         }
-        val captured = if (outcome == BattleOutcome.CAPTURED) monsterFor(capturedKey ?: Combatant.ENEMY_KEY).copy(uid = newId(rng), xp = 0) else null
+        val captured = tamedMonsters.map { it.copy(uid = newId(rng), xp = 0) }
         val fainted = partyUids.filter { combatant(it)?.alive == false }.toSet()
         // Damage carries over: remember how hurt everyone still standing is.
         val damage = (allies + reserve).filter { it.alive }.associate { it.key to (it.maxHp - it.hp) }
         val heroFell = !heroFighter.alive
         return BattleResult(
-            outcome, encounter, captured ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured, shrineId, fainted,
+            outcome, encounter, captured.firstOrNull() ?: enemyMonster, heroXp, gold, monsterXp, itemsUsed.toMap(), drops, captured.firstOrNull(), shrineId, fainted,
             damage, heroFell, heroFighter.maxMp - heroFighter.mp,
             heroFighter.weaponUses, heroFighter.armorHits,
-            if (outcome == BattleOutcome.WON) enemyMonsters.map { it.speciesId } else emptyList(),
+            // Only the ones knocked out count as beaten (not the tamed or the ones that ran).
+            if (outcome == BattleOutcome.WON) enemyMonsters.filterIndexed { i, _ -> enemies[i].hp <= 0 }.map { it.speciesId } else emptyList(),
             standing = allies.count { !it.isHero && it.alive },
+            tamed = captured,
         )
     }
 }

@@ -1225,14 +1225,16 @@ class GameTest {
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }
         fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
-        myTurn(); b.act(BattleAction.UseMove("fury_swipes"))
+        // Fury Swipes can miss (80% accuracy): swipe until it lands.
+        repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.act(BattleAction.UseMove("fury_swipes")) } }
         assertTrue(b.log.any { it.matches(Regex("Hit [2-5] times!")) })
         myTurn(); b.act(BattleAction.UseMove("focus"))
         assertTrue((me.stages[BattleStat.ATTACK] ?: 0) >= 2)
         me.status = Status.BURN; me.statusTurns = 3
         myTurn(); b.act(BattleAction.UseMove("kindle"))
         assertTrue(b.log.any { it.contains("shakes off") })
-        assertEquals(77.0, Moves.get("ember_barrage").expectedPower, 0.01)
+        // 20 power, 3.5 hits on average, 85% accuracy.
+        assertEquals(59.5, Moves.get("ember_barrage").expectedPower, 0.01)
     }
 
     @Test
@@ -1262,11 +1264,11 @@ class GameTest {
             return b to b.allies.first { it.key == m.uid }
         }
         // Spread moves hit the whole pack.
-        val (spread, _) = fight("terraursa", "tectonic_fury")
+        val (spread, _) = fight("thunderhorn", "storm_antlers")
         val before = spread.enemies.map { it.hp }
-        spread.act(BattleAction.UseMove("tectonic_fury"))
+        spread.act(BattleAction.UseMove("storm_antlers"))
         // It's aimed at all three: each one is hit, dodges or is missed.
-        val start = spread.log.indexOfFirst { it.contains("uses Tectonic Fury") }
+        val start = spread.log.indexOfFirst { it.contains("uses Storm Antlers") }
         val after = spread.log.drop(start + 1).takeWhile { !it.contains(" uses ") }
         assertEquals(3, after.count { it.startsWith("It hits") || it.contains("misses") || it.contains("dodges") }, "spread: $after")
         assertTrue(spread.enemies.indices.any { spread.enemies[it].hp < before[it] })
