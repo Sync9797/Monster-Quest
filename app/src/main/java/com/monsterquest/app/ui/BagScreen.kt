@@ -58,6 +58,25 @@ import com.monsterquest.core.smeltParts
 fun BagScreen(vm: GameViewModel) {
     val s = vm.state
     var using by remember { mutableStateOf<Item?>(null) }
+    val itemRow: @Composable (Item) -> Unit = { item ->
+        GameCard(Modifier.padding(vertical = 3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GIcon(item.icon(), Modifier.size(28.dp), item.color())
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("${item.label} x${s.count(item)}", fontWeight = FontWeight.SemiBold)
+                    Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (item.kind == ItemKind.HEAL_HP) SmallButton("Use", { using = item }, outlined = true)
+                if (item.kind == ItemKind.HEAL_MP) {
+                    SmallButton("Use", { vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY) }, outlined = true, enabled = s.heroEnergyUsed > 0)
+                }
+                if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
+                if (item.kind == ItemKind.FOOD) SmallButton("Set out", { vm.useFood(item) }, outlined = true)
+                TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
+            }
+        }
+    }
     val bag: @Composable () -> Unit = {
         LootBoxSection(vm)
         EggsSection(vm)
@@ -81,29 +100,22 @@ fun BagScreen(vm: GameViewModel) {
         )
         val owned = Item.entries.filter { s.count(it) > 0 }
         if (owned.isEmpty()) Text("Your bag is empty.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        owned.forEach { item ->
-            GameCard(Modifier.padding(vertical = 3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    GIcon(item.icon(), Modifier.size(28.dp), item.color())
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("${item.label} x${s.count(item)}", fontWeight = FontWeight.SemiBold)
-                        Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (item.kind == ItemKind.HEAL_HP) SmallButton("Use", { using = item }, outlined = true)
-                    if (item.kind == ItemKind.HEAL_MP) {
-                        SmallButton("Use", { vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY) }, outlined = true, enabled = s.heroEnergyUsed > 0)
-                    }
-                    if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
-                    if (item.kind == ItemKind.FOOD) SmallButton("Set out", { vm.useFood(item) }, outlined = true)
-                    TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
-                }
+        // Items by kind, each in a section that folds away.
+        BAG_GROUPS.forEach { group ->
+            val items = owned.filter { it.kind in group.kinds }
+            if (items.isEmpty()) return@forEach
+            BagFold(group.title, group.icon, group.tint, "${items.sumOf { s.count(it) }} • ${items.size} kind${if (items.size == 1) "" else "s"}", startOpen = group.startOpen) {
+                items.forEach { item -> itemRow(item) }
             }
         }
-
     }
     val gear: @Composable () -> Unit = {
-        SectionTitle("Weapons")
+        val klepto = s.hero.rankOf(Trait.KLEPTOMANIAC) > 0
+        BagFold(
+            "Weapons", GameIcon.SWORD, Gold,
+            (s.equippedGear?.let { "${it.name} equipped • " } ?: "") + "${s.gear.size} spare",
+            startOpen = true,
+        ) {
         Text(
             "Any class can use any weapon. Your class's own types (Warrior: sword, broadsword • Rogue: dagger, sword • " +
                 "Mage: staff, wand) get +20% power and +2/4/6/8 to all stats by rarity. Others take that much off until " +
@@ -125,7 +137,6 @@ fun BagScreen(vm: GameViewModel) {
                 TextButton(onClick = vm::unequip) { Text("Remove") }
             }
         }
-        val klepto = s.hero.rankOf(Trait.KLEPTOMANIAC) > 0
         s.offhandGear?.let { w ->
             GearCard(w, s.hero, equipped = true, where = "off hand") {
                 TextButton(onClick = vm::unequipOffhand) { Text("Remove") }
@@ -142,7 +153,8 @@ fun BagScreen(vm: GameViewModel) {
                 SmallButton("Equip", { vm.equip(w.id) })
             }
         }
-        SectionTitle("Armor")
+        }
+        BagFold("Armor", GameIcon.PLATE, Gold, "${s.wornArmor.size} worn • ${s.armor.size} spare") {
         Text(
             "Wear one piece in each slot: body (Plate for Warriors, Leather for Rogues, Robes for Mages), " +
                 "a hood, a cloak, pants and boots. Each has its own buffs; Rare and better add more. Anyone can wear anything.",
@@ -163,35 +175,26 @@ fun BagScreen(vm: GameViewModel) {
                 SmallButton("Wear", { vm.equipArmor(a.id) })
             }
         }
+        }
         // All candy, folded into one line until opened.
         val candies = s.candy.filterValues { it > 0 }
         if (candies.isNotEmpty()) {
-            var candyOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-            GameCard(Modifier.padding(top = 8.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { candyOpen = !candyOpen },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    GIcon(GameIcon.CANDY, Modifier.size(20.dp), Gold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Candy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Text("${candies.values.sum()} • ${candies.size} line${if (candies.size == 1) "" else "s"}  ${if (candyOpen) "\u25B2" else "\u25BC"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (candyOpen) {
-                    Text("Doesn't take bag space. Spend it on a monster's page.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-                    candies.entries.sortedByDescending { it.value }.forEach { (family, n) ->
-                        val first = com.monsterquest.core.Bestiary.all.first { it.family == family }
-                        Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                            com.monsterquest.app.ui.art.MonsterArt(first, Modifier.size(28.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(GameEngine.candyName(first), modifier = Modifier.weight(1f), fontSize = 13.sp)
-                            Text("x$n", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
+            BagFold("Candy", GameIcon.CANDY, Gold, "${candies.values.sum()} • ${candies.size} line${if (candies.size == 1) "" else "s"}") {
+                Text("Doesn't take bag space. Spend it on a monster's page.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                candies.entries.sortedByDescending { it.value }.forEach { (family, n) ->
+                    val first = com.monsterquest.core.Bestiary.all.first { it.family == family }
+                    Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.monsterquest.app.ui.art.MonsterArt(first, Modifier.size(28.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(GameEngine.candyName(first), modifier = Modifier.weight(1f), fontSize = 13.sp)
+                        Text("x$n", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                 }
             }
         }
-        SectionTitle("Weapon parts")
+        val partsTotal = WeaponType.entries.sumOf { s.parts[it] ?: 0 }
+        val partsReady = WeaponType.entries.count { (s.parts[it] ?: 0) >= PARTS_TO_FORGE }
+        BagFold("Weapon parts", GameIcon.PARTS, SilverColor, "$partsTotal" + if (partsReady > 0) " • $partsReady ready to forge" else "", startOpen = partsReady > 0) {
         WeaponType.entries.forEach { type ->
             val n = s.parts[type] ?: 0
             Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -201,8 +204,11 @@ fun BagScreen(vm: GameViewModel) {
                 SmallButton("Forge", { vm.forge(type) }, enabled = n >= PARTS_TO_FORGE && !s.bagFull, outlined = true)
             }
         }
+        }
         // Armor scrap: from thugs, villains and smelting armor.
-        SectionTitle("Armor scrap")
+        val scrapTotal = com.monsterquest.core.ArmorType.entries.sumOf { s.armorParts[it] ?: 0 }
+        val scrapReady = com.monsterquest.core.ArmorType.entries.count { (s.armorParts[it] ?: 0) >= PARTS_TO_FORGE }
+        BagFold("Armor scrap", GameIcon.PLATE, SilverColor, "$scrapTotal" + if (scrapReady > 0) " • $scrapReady ready to forge" else "", startOpen = scrapReady > 0) {
         com.monsterquest.core.ArmorType.entries.forEach { type ->
             val n = s.armorParts[type] ?: 0
             Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -212,9 +218,10 @@ fun BagScreen(vm: GameViewModel) {
                 SmallButton("Forge", { vm.forgeArmor(type) }, enabled = n >= PARTS_TO_FORGE && !s.bagFull, outlined = true)
             }
         }
+        }
         val pages = s.spellPages.filterValues { it > 0 }
         if (pages.isNotEmpty()) {
-            SectionTitle("Spell sheets")
+            BagFold("Spell sheets", GameIcon.PAGE, Gold, "${pages.values.sum()} pages • ${pages.size} spell${if (pages.size == 1) "" else "s"}") {
             pages.forEach { (id, n) ->
                 val sp = Spells.byId(id) ?: return@forEach
                 Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -228,6 +235,7 @@ fun BagScreen(vm: GameViewModel) {
                         else "${sp.name}: $n pages (rank up on the Hero tab)",
                     )
                 }
+            }
             }
         }
     }
@@ -569,6 +577,44 @@ private fun FoodStoreCard(vm: GameViewModel, food: Item) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** A kind of item in the Bag, shown in its own folding section. */
+private class BagGroup(val title: String, val icon: GameIcon, val tint: androidx.compose.ui.graphics.Color, val kinds: Set<ItemKind>, val startOpen: Boolean = false)
+
+private val BAG_GROUPS = listOf(
+    BagGroup("Healing", GameIcon.POTION, androidx.compose.ui.graphics.Color(0xFF9CD2BD), setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.RESTORE), startOpen = true),
+    BagGroup("Binding Crystals", GameIcon.CRYSTAL, androidx.compose.ui.graphics.Color(0xFFC3A6F0), setOf(ItemKind.CAPTURE)),
+    BagGroup("Baits & berries", GameIcon.BERRY, androidx.compose.ui.graphics.Color(0xFFE5739A), setOf(ItemKind.BAIT)),
+    BagGroup("Food", GameIcon.PAW, androidx.compose.ui.graphics.Color(0xFFE07A6E), setOf(ItemKind.FOOD)),
+    BagGroup("Lures & treats", GameIcon.LURE, androidx.compose.ui.graphics.Color(0xFFF2A198), setOf(ItemKind.LURE, ItemKind.TREAT, ItemKind.PERSONALITY)),
+)
+
+/**
+ * A Bag section that folds to one line (title and a short summary) and opens
+ * with a tap. Remembers whether it's open while you move around the app.
+ */
+@Composable
+private fun BagFold(
+    title: String,
+    icon: GameIcon,
+    tint: androidx.compose.ui.graphics.Color,
+    summary: String,
+    startOpen: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    var open by androidx.compose.runtime.saveable.rememberSaveable(title) { mutableStateOf(startOpen) }
+    GameCard(Modifier.padding(top = 8.dp)) {
+        Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+            GIcon(icon, Modifier.size(20.dp), tint)
+            Spacer(Modifier.width(8.dp))
+            Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("$summary  ${if (open) "\u25B2" else "\u25BC"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+        if (open) {
+            Column(Modifier.padding(top = 4.dp)) { content() }
         }
     }
 }
