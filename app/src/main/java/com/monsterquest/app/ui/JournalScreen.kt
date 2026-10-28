@@ -3,6 +3,8 @@ package com.monsterquest.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,7 +148,7 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
         onDismissRequest = onDismiss,
         title = { Text(sp.name) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                     MonsterArt(sp, Modifier.size(120.dp))
                     // Caught a shiny one? Show its colors too.
@@ -172,6 +174,14 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
                     color = if (sp.id in s.caught) Gold else MpBlue,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+                // A little lore.
+                Text(
+                    com.monsterquest.core.Lore.of(sp),
+                    fontSize = 13.sp,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                MaxStatsCard(sp)
                 if (line.size > 1) {
                     Text("Evolution line", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -189,4 +199,36 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+/**
+ * How good this species can get: its stats at level 100 with perfect genes,
+ * each bar against the best of any species, and where its total ranks.
+ */
+@Composable
+private fun MaxStatsCard(sp: Species) {
+    val max = com.monsterquest.core.MaxStats.of(sp)
+    val total = max.values.sum()
+    val count = Bestiary.all.size
+    Text("Max stats", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+    Text(
+        "At level 100 with perfect genes (Balanced personality). Total ${"%,d".format(total)} • #${com.monsterquest.core.MaxStats.rank(sp)} of $count",
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    max.forEach { (stat, v) ->
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stat.label, fontSize = 12.sp, modifier = Modifier.width(64.dp))
+            Bar(v.toFloat() / com.monsterquest.core.MaxStats.best(stat), maxStatColor(stat), Modifier.weight(1f), heightDp = 6)
+            Text("%,d".format(v), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(52.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+    }
+}
+
+private fun maxStatColor(stat: com.monsterquest.core.Stat) = when (stat) {
+    com.monsterquest.core.Stat.HP -> HpGreen
+    com.monsterquest.core.Stat.ATTACK -> HpRed
+    com.monsterquest.core.Stat.DEFENSE -> MpBlue
+    com.monsterquest.core.Stat.SPEED -> HpYellow
+    com.monsterquest.core.Stat.MAGIC -> XpPurple
 }

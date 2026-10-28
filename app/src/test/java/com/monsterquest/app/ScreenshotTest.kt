@@ -550,6 +550,16 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun journal() {
         val v = vm()
         shot("13_journal", content = onBackground { com.monsterquest.app.ui.JournalTab(v) })
+        // Open an entry: its lore and its max stats.
+        val sp = Bestiary.all.first { it.id in v.state.seen }
+        rule.mainClock.autoAdvance = true
+        val cell = androidx.compose.ui.test.hasText(sp.name) and androidx.compose.ui.test.hasClickAction()
+        rule.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(cell)
+        rule.onAllNodes(cell)[0].performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitForIdle()
+        rule.onNodeWithText(com.monsterquest.core.Lore.of(sp)).assertExists()
+        rule.onNodeWithText("Max stats").assertExists()
+        rule.onNodeWithText("Total", substring = true).assertExists()
     }
 
     /** The hero wearing each kind of gear, and bare-handed. */
