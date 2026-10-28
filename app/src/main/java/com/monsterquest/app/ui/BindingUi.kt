@@ -58,6 +58,7 @@ import com.monsterquest.core.TraceGrade
 
 /** The colors of each grade, shown as the result flashes up. */
 private fun TraceGrade.color(): Color = when (this) {
+    TraceGrade.FIZZLE -> Color(0xFFE0675A)
     TraceGrade.FAINT -> Color(0xFF9AA3A1)
     TraceGrade.GOOD -> Color(0xFF9CBFE4)
     TraceGrade.STRONG -> Color(0xFF7FD6C2)
@@ -99,7 +100,7 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
     // The glyph flares with magic while the grade shows, then the cast resolves.
     LaunchedEffect(result) {
         val r = result ?: return@LaunchedEffect
-        flare.animateTo(1f, androidx.compose.animation.core.tween(if (r == TraceGrade.FAINT) 450 else 750, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+        flare.animateTo(1f, androidx.compose.animation.core.tween(if (r <= TraceGrade.FAINT) 450 else 750, easing = androidx.compose.animation.core.FastOutSlowInEasing))
         kotlinx.coroutines.delay(150)
         done(r)
     }
@@ -153,6 +154,7 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
                 if (grade != null && f > 0f) {
                     val col = grade.color()
                     val power = when (grade) {
+                        TraceGrade.FIZZLE -> 0.15f
                         TraceGrade.FAINT -> 0.35f
                         TraceGrade.GOOD -> 0.6f
                         TraceGrade.STRONG -> 0.85f
@@ -176,7 +178,7 @@ fun TracePad(glyph: Glyph, modifier: Modifier = Modifier, onDone: (TraceGrade) -
                         )
                     }
                     // A ring of light rolls out from the center.
-                    if (grade != TraceGrade.FAINT) {
+                    if (grade > TraceGrade.FAINT) {
                         drawCircle(col.copy(alpha = 0.7f * fade), w * (0.1f + 0.45f * f), center, style = Stroke(w * 0.015f * (1f + power) * fade + 0.5f))
                         if (grade == TraceGrade.PERFECT) drawCircle(Color.White.copy(alpha = 0.5f * fade), w * (0.05f + 0.6f * f), center, style = Stroke(w * 0.008f + 0.5f))
                     }

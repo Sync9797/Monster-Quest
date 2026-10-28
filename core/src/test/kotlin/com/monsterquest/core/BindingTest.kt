@@ -38,9 +38,9 @@ class BindingTest {
         val r = Random(3)
         val wobbly = g.points.map { GlyphPoint(it.x + (r.nextFloat() - 0.5f) * 0.06f, it.y + (r.nextFloat() - 0.5f) * 0.06f) }
         assertTrue(Binding.grade(g, wobbly, g.timeLimitMs / 2) >= TraceGrade.STRONG)
-        // Half the glyph, or a scribble elsewhere: Faint.
-        assertEquals(TraceGrade.FAINT, Binding.grade(g, listOf(GlyphPoint(0.9f, 0.9f), GlyphPoint(0.95f, 0.95f)), 500))
-        assertEquals(TraceGrade.FAINT, Binding.grade(g, g.points.take(g.points.size / 2), g.timeLimitMs / 3))
+        // A mark elsewhere fizzles; half the glyph is weak.
+        assertEquals(TraceGrade.FIZZLE, Binding.grade(g, listOf(GlyphPoint(0.9f, 0.9f), GlyphPoint(0.95f, 0.95f)), 500))
+        assertTrue(Binding.grade(g, g.points.take(g.points.size / 2), g.timeLimitMs / 3) <= TraceGrade.FAINT)
     }
 
     @Test

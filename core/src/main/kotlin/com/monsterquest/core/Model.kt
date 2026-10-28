@@ -408,14 +408,15 @@ data class Monster(
 
     companion object {
         /** A new monster; it evolves straight away if [level] is past its evolution levels. */
-        fun create(species: Species, level: Int, rng: Random, shiny: Boolean = false): Monster = Monster(
+        /** A new monster; [evolve] grows it into the form its level allows (off for a wild one already shown on the map). */
+        fun create(species: Species, level: Int, rng: Random, shiny: Boolean = false, evolve: Boolean = true): Monster = Monster(
             uid = newId(rng),
             speciesId = species.id,
             personality = Personality.entries[rng.nextInt(Personality.entries.size)],
             ivs = StatBlock.random(rng, MAX_IV),
             level = level.coerceIn(1, MAX_MONSTER_LEVEL),
             shiny = shiny,
-        ).evolved().let { m -> m.copy(skill = MonsterTraits.roll(m.species, Random(m.uid.hashCode().toLong()))) }
+        ).let { if (evolve) it.evolved() else it }.let { m -> m.copy(skill = MonsterTraits.roll(m.species, Random(m.uid.hashCode().toLong()))) }
     }
 }
 

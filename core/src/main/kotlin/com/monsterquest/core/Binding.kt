@@ -6,7 +6,9 @@ import kotlin.math.sin
 
 /** How well a binding glyph was traced: speed and accuracy together. */
 enum class TraceGrade(val label: String, val multiplier: Double) {
-    FAINT("Faint", 0.8),
+    /** Missed most of the glyph or scribbled: the cast barely holds. */
+    FIZZLE("Fizzle", 0.3),
+    FAINT("Faint", 0.65),
     GOOD("Good", 1.0),
     STRONG("Strong", 1.3),
     PERFECT("Perfect", 1.6),
@@ -86,6 +88,32 @@ object Binding {
         return p.map { GlyphPoint(ox + (it.x - minX) * s, oy + (it.y - minY) * s) }
     }
 
+    /** How many times a stroke crosses itself (kept low so glyphs stay readable). */
+    fun crossings(p: List<GlyphPoint>): Int {
+        fun ccw(a: GlyphPoint, b: GlyphPoint, c: GlyphPoint) = (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
+        fun cross(a: GlyphPoint, b: GlyphPoint, c: GlyphPoint, d: GlyphPoint) = ccw(a, c, d) != ccw(b, c, d) && ccw(a, b, c) != ccw(a, b, d)
+        var n = 0
+        for (i in 0 until p.size - 1) for (j in i + 2 until p.size - 1) if (cross(p[i], p[i + 1], p[j], p[j + 1])) n++
+        return n
+    }
+
+    /** The candidate that crosses itself least (the first, on a tie). */
+    private fun clearest(candidates: List<List<GlyphPoint>>): List<GlyphPoint> = candidates.minBy { crossings(fit(it)) }
+
+    /** The shape with a short tail off its end: down, right, up or left. */
+    private fun tails(shape: List<GlyphPoint>): List<List<GlyphPoint>> {
+        val e = shape.last()
+        return listOf(0f to 0.35f, 0.35f to 0f, 0f to -0.35f, -0.35f to 0f).map { (dx, dy) -> shape + GlyphPoint(e.x + dx, e.y + dy) }
+    }
+
+    /** The shape and a copy of it: mirrored or repeated, beside it or below it. */
+    private fun doubles(shape: List<GlyphPoint>): List<List<GlyphPoint>> = listOf(
+        shape + shape.reversed().map { GlyphPoint(2.1f - it.x, it.y) },
+        shape + shape.reversed().map { GlyphPoint(it.x, 2.1f - it.y) },
+        shape + shape.map { GlyphPoint(it.x + 1.1f, it.y) },
+        shape + shape.map { GlyphPoint(it.x, it.y + 1.1f) },
+    )
+
     fun length(p: List<GlyphPoint>): Float = p.zipWithNext().sumOf { (a, b) -> hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble()) }.toFloat()
 
     /** Crystal tiers, weakest first: better crystals also give a little more time to trace. */
@@ -103,9 +131,9 @@ object Binding {
         val (name, shape) = base(species.element)
         val stroke = when (species.rarity) {
             Rarity.COMMON -> shape
-            Rarity.UNCOMMON -> shape + GlyphPoint(shape.last().x, (shape.last().y + 0.35f).coerceAtMost(1.2f))
-            // Rare and up: the shape, then its mirror image back again.
-            else -> shape + shape.reversed().map { GlyphPoint(1f - it.x, it.y + 0.45f) }
+            Rarity.UNCOMMON -> clearest(tails(shape))
+            // Rare and up: the shape twice (side by side or stacked), whichever way crosses itself least.
+            else -> clearest(doubles(shape) + tails(shape).flatMap { tails(it) })
         }
         val points = fit(stroke)
         val rarityPace = when (species.rarity) {
@@ -153,21 +181,37 @@ object Binding {
     private fun nearest(q: GlyphPoint, set: List<GlyphPoint>): Float =
         set.minOf { hypot((it.x - q.x).toDouble(), (it.y - q.y).toDouble()) }.toFloat()
 
+    /** How close (unit square) a trace must pass to count as on the line. */
+    private const val ON_LINE = 0.1f
+
     /** How much of the glyph (0..1) the trace passed over. */
     fun coverage(glyph: Glyph, trace: List<GlyphPoint>): Double {
         if (trace.size < 2) return 0.0
         val g = resample(glyph.points, 64)
-        val t = resample(trace, 64)
-        return g.count { nearest(it, t) < 0.12f } / g.size.toDouble()
+        val t = resample(trace, 96)
+        return g.count { nearest(it, t) < ON_LINE } / g.size.toDouble()
     }
 
-    /** Accuracy 0..1: how close the trace stays to the glyph, times how much of it was covered (squared: finish the glyph). */
+    /** Share of the trace (0..1) that wandered off the glyph. */
+    fun offPath(glyph: Glyph, trace: List<GlyphPoint>): Double {
+        if (trace.size < 2) return 1.0
+        val g = resample(glyph.points, 96)
+        val t = resample(trace, 64)
+        return t.count { nearest(it, g) >= ON_LINE } / t.size.toDouble()
+    }
+
+    /**
+     * Accuracy 0..1: covering the glyph, staying on it, and not drawing much
+     * more than it (so scribbling over everything scores badly).
+     */
     fun accuracy(glyph: Glyph, trace: List<GlyphPoint>): Double {
         if (trace.size < 2) return 0.0
-        val g = resample(glyph.points, 64)
-        val meanDist = resample(trace, 64).map { nearest(it, g) }.average()
         val cov = coverage(glyph, trace)
-        return ((1 - meanDist / 0.15).coerceIn(0.0, 1.0)) * cov * cov
+        val stay = 1 - offPath(glyph, trace)
+        // Up to 40% longer than the glyph is fine (wobbles); beyond that it's scribbling.
+        val extra = (length(trace) / length(glyph.points).coerceAtLeast(0.01f) - 1.4).coerceAtLeast(0.0)
+        val tidy = (1 - extra).coerceIn(0.0, 1.0)
+        return cov * cov * stay * stay * tidy
     }
 
     /** Speed 0..1: full marks finishing within half the time, nothing at the limit. */
@@ -179,12 +223,14 @@ object Binding {
     /** The grade for tracing [glyph] as [trace] (unit-square points) in [durationMs]. */
     fun grade(glyph: Glyph, trace: List<GlyphPoint>, durationMs: Long): TraceGrade {
         // Speed only counts for the part of the glyph you actually traced.
-        val score = 0.7 * accuracy(glyph, trace) + 0.3 * speed(glyph, durationMs) * coverage(glyph, trace)
+        val acc = accuracy(glyph, trace)
+        val score = 0.75 * acc + 0.25 * speed(glyph, durationMs) * acc
         return when {
             score >= 0.85 -> TraceGrade.PERFECT
-            score >= 0.65 -> TraceGrade.STRONG
-            score >= 0.40 -> TraceGrade.GOOD
-            else -> TraceGrade.FAINT
+            score >= 0.6 -> TraceGrade.STRONG
+            score >= 0.4 -> TraceGrade.GOOD
+            score >= 0.2 -> TraceGrade.FAINT
+            else -> TraceGrade.FIZZLE
         }
     }
 }

@@ -498,5 +498,6 @@ object World {
     }
 
     fun spawnMonster(spawn: WildSpawn): Monster =
-        Random(spawn.id.hashCode().toLong()).let { r -> Monster.create(spawn.species, spawn.level, r, shiny = spawn.shiny).withWildMoves(r) }
+        // The fight is with the very monster shown on the map: no evolving on the way in.
+        Random(spawn.id.hashCode().toLong()).let { r -> Monster.create(spawn.species, spawn.level, r, shiny = spawn.shiny, evolve = false).withWildMoves(r) }
 }
