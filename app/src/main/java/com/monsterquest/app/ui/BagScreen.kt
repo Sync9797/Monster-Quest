@@ -246,7 +246,7 @@ fun StoreScreen(vm: GameViewModel) {
     val buy: @Composable () -> Unit = {
         SectionTitle("Store  •  ${s.gold} gold")
         StorageShop(vm)
-        Item.entries.filter { it.price > 0 }.forEach { item ->
+        Item.entries.filter { it.price > 0 && it.kind != ItemKind.FOOD }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GIcon(item.icon(), Modifier.size(28.dp), item.color())
@@ -254,7 +254,6 @@ fun StoreScreen(vm: GameViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontWeight = FontWeight.SemiBold)
                         Text(item.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (item.kind == ItemKind.FOOD) Text(foodEatersText(s, item), fontSize = 11.sp, color = Gold)
                     }
                     if (s.hero.level < item.minLevel) {
                         // Locked until the hero is strong enough.
@@ -267,6 +266,13 @@ fun StoreScreen(vm: GameViewModel) {
                 }
             }
         }
+        SectionTitle("Food")
+        Text(
+            "Set food out (from your Bag) to draw the monsters that eat it for 30 minutes. Fine and Gourmet tiers unlock as you level up: they pull harder and bring the rarer, more evolved eaters.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        com.monsterquest.core.Foods.all.forEach { FoodStoreCard(vm, it) }
     }
 
     AdaptivePanes(
@@ -517,4 +523,36 @@ internal fun foodEatersText(s: com.monsterquest.core.GameState, food: Item): Str
     val unknown = lines.size - known.size
     return "Draws: " + (known.map { it.name } + listOfNotNull(if (unknown > 0) "$unknown line${if (unknown == 1) "" else "s"} you haven't met" else null)).joinToString() +
         " (30 min, ${com.monsterquest.core.Foods.BOOST.toInt()}x as often)"
+}
+
+/** One food in the Store with its three tiers to buy (locked until their level). */
+@Composable
+private fun FoodStoreCard(vm: GameViewModel, food: Item) {
+    val s = vm.state
+    GameCard(Modifier.padding(vertical = 3.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GIcon(food.icon(), Modifier.size(28.dp), food.color())
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(food.label, fontWeight = FontWeight.SemiBold)
+                Text(food.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(foodEatersText(s, food), fontSize = 11.sp, color = Gold)
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            com.monsterquest.core.Foods.tiers(food).forEach { tier ->
+                val label = com.monsterquest.core.Foods.TIER_LABELS[com.monsterquest.core.Foods.tier(tier) - 1]
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    if (s.hero.level < tier.minLevel) {
+                        Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { IconText(GameIcon.LOCK, "Lv ${tier.minLevel}", fontSize = 12.sp) }
+                    } else {
+                        Button(onClick = { vm.buy(tier) }, enabled = s.gold >= tier.price && !s.bagFull, modifier = Modifier.fillMaxWidth()) {
+                            IconText(GameIcon.COIN, "%,d".format(tier.price), fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

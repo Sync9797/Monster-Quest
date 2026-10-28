@@ -8,9 +8,39 @@ package com.monsterquest.core
  */
 object Foods {
     const val DURATION_MS = 30 * 60_000L
+    /** How much more often a basic food's eaters turn up. */
     const val BOOST = 4.0
 
-    val all: List<Item> = Item.entries.filter { it.kind == ItemKind.FOOD }
+    /** The basic foods (tier 1); each has a Fine and a Gourmet tier. */
+    val all: List<Item> = Item.entries.filter { it.kind == ItemKind.FOOD && tier(it) == 1 }
+
+    /** 1 basic, 2 Fine, 3 Gourmet. */
+    fun tier(food: Item): Int = food.power.toInt().coerceIn(1, 3)
+
+    /** The basic food a tier belongs to (what decides who eats it). */
+    fun base(food: Item): Item = Item.valueOf(food.name.removeSuffix("_FINE").removeSuffix("_GOURMET"))
+
+    /** All tiers of [food], basic first. */
+    fun tiers(food: Item): List<Item> = Item.entries.filter { it.kind == ItemKind.FOOD && base(it) == base(food) }.sortedBy { tier(it) }
+
+    val TIER_LABELS = listOf("Basic", "Fine", "Gourmet")
+
+    /** Pull on the whole group by tier. */
+    private val tierBoost = listOf(BOOST, 6.0, 8.0)
+
+    /** On top of that, better food favors rarer (more evolved) eaters: by tier, then rarity. */
+    private val rarityPull = listOf(
+        mapOf(Rarity.COMMON to 1.0, Rarity.UNCOMMON to 1.0, Rarity.RARE to 1.0, Rarity.EPIC to 1.0),
+        mapOf(Rarity.COMMON to 1.0, Rarity.UNCOMMON to 1.5, Rarity.RARE to 2.0, Rarity.EPIC to 2.5),
+        mapOf(Rarity.COMMON to 1.0, Rarity.UNCOMMON to 2.0, Rarity.RARE to 3.0, Rarity.EPIC to 4.0),
+    )
+
+    /** How much more often [species] turns up while [food] is out (1 if it doesn't eat it). */
+    fun boostFor(food: Item, species: Species): Double {
+        if (base(food) !in dietOf(species)) return 1.0
+        val t = tier(food) - 1
+        return tierBoost[t] * (rarityPull[t][species.rarity] ?: 1.0)
+    }
 
     /** Diets by evolution line (each line eats one or two foods). */
     private val diets: Map<String, Set<Item>> = mapOf(
@@ -56,14 +86,14 @@ object Foods {
     /** What [species] eats (nothing for legendaries and mythics). */
     fun dietOf(species: Species): Set<Item> = if (species.genderless) emptySet() else diets[species.family].orEmpty()
 
-    /** Wild lines drawn by [food], first stages first. */
-    fun eaters(food: Item): List<Species> = Bestiary.wild.filter { food in dietOf(it) }
+    /** Wild monsters drawn by [food] (any tier), first stages first. */
+    fun eaters(food: Item): List<Species> = Bestiary.wild.filter { base(food) in dietOf(it) }
 
     fun active(state: GameState, nowMs: Long): Item? = state.food?.takeIf { state.foodUntilMs > nowMs }
 
     /** Spawn weight multipliers by species id for the food set out. */
     fun boosts(state: GameState, nowMs: Long): Map<String, Double> =
-        active(state, nowMs)?.let { f -> eaters(f).associate { it.id to BOOST } }.orEmpty()
+        active(state, nowMs)?.let { f -> eaters(f).associate { it.id to boostFor(f, it) } }.orEmpty()
 
     fun use(state: GameState, food: Item, nowMs: Long): Update {
         if (food.kind != ItemKind.FOOD) return Update(state, "${food.label} isn't food.")
@@ -72,9 +102,10 @@ object Foods {
         // The same food lasts longer; a different one replaces it.
         val until = (if (active(state, nowMs) == food) state.foodUntilMs else nowMs) + DURATION_MS
         val names = eaters(food).map { Bestiary.lineOf(it).first().name }.distinct()
+        val rarer = if (tier(food) > 1) " Its rarer eaters are the most drawn." else ""
         return Update(
             state.copy(inventory = inv, food = food, foodUntilMs = until),
-            "You set out ${food.label}. For 30 minutes, ${names.take(4).joinToString()}${if (names.size > 4) " and others" else ""} turn up far more often.",
+            "You set out ${food.label}. For 30 minutes, ${names.take(4).joinToString()}${if (names.size > 4) " and others" else ""} turn up far more often.$rarer",
         )
     }
 }
