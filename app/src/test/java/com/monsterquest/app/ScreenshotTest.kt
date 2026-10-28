@@ -263,6 +263,23 @@ abstract class ScreenshotBase(private val device: String) {
         shot("06_map") { AppRoot(v, Tab.MAP) }
     }
 
+    /** Real rain on the map: a badge that says so, and what it brings out. */
+    @Test fun mapWeather() {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val v = vm()
+        v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
+        v.debugSetWeather(com.monsterquest.core.WeatherReading(com.monsterquest.core.LiveWeather.RAIN, 14.0, 12.0, System.currentTimeMillis()))
+        shot("06c_map_weather") { AppRoot(v, Tab.MAP) }
+        rule.onNodeWithText("Rain 57°F").assertExists()
+        rule.onNodeWithText("Rain 57°F").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(500)
+        rule.waitForIdle()
+        rule.onNodeWithText("More likely now").assertExists()
+        rule.onNodeWithText("Battles start in Rain", substring = true).assertExists()
+    }
+
     /** The map in dark mode (Settings > Appearance > Map). */
     @Test fun mapDark() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)

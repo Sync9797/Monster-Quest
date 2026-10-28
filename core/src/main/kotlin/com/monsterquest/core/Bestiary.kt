@@ -428,11 +428,19 @@ object Bestiary {
      * likely (time of day); [rareBoost] multiplies the odds of uncommon and
      * rarer monsters (moving around, lures).
      */
-    fun randomWild(rng: Random, level: Int = MAX_MONSTER_LEVEL, favored: Set<Element> = emptySet(), rareBoost: Double = 1.0): Species {
+    fun randomWild(
+        rng: Random,
+        level: Int = MAX_MONSTER_LEVEL,
+        favored: Set<Element> = emptySet(),
+        rareBoost: Double = 1.0,
+        /** Extra multipliers by type (the real weather); a dual type takes its better one. */
+        boosts: Map<Element, Double> = emptyMap(),
+    ): Species {
         val pool = wild.filter { it.minWildLevel <= level }
         fun weight(s: Species): Int {
             var w = s.rarity.spawnWeight.toDouble()
             if (s.element in favored) w *= 3
+            if (boosts.isNotEmpty()) w *= s.types.maxOf { boosts[it] ?: 1.0 }
             if (s.rarity.ordinal > 0) w *= rareBoost
             return w.toInt().coerceAtLeast(1)
         }

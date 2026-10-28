@@ -195,6 +195,8 @@ fun MapScreen(vm: GameViewModel) {
     val villains = vm.villainsNear(now)
     val dens = vm.densNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
+    var showWeather by remember { mutableStateOf(false) }
+    if (showWeather) WeatherDialog(vm, now) { showWeather = false }
     var focus by remember { mutableStateOf<MapFocus?>(null) }
     // The pin and card are temporary: they clear themselves after a few minutes.
     LaunchedEffect(focus) {
@@ -248,6 +250,12 @@ fun MapScreen(vm: GameViewModel) {
                         mv.overlays.clear()
                         if (loc != null) {
                             val here = GeoPoint(loc.first, loc.second)
+                            // The map only reaches about a mile around you.
+                            val dLat = MAP_REACH_M / 111_320.0
+                            val dLon = MAP_REACH_M / (111_320.0 * kotlin.math.cos(Math.toRadians(loc.first)))
+                            mv.setScrollableAreaLimitDouble(
+                                org.osmdroid.util.BoundingBox(loc.first + dLat, loc.second + dLon, loc.first - dLat, loc.second - dLon),
+                            )
                             if (following) mv.controller.setCenter(here)
                             // Reach circle for shrines.
                             mv.overlays.add(
@@ -343,6 +351,9 @@ fun MapScreen(vm: GameViewModel) {
                     },
                 )
                 if (showTracker) TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
+                vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
+                    WeatherBadge(w, vm.state.settings.imperialUnits, Modifier.align(Alignment.BottomStart).padding(10.dp)) { showWeather = true }
+                }
                 focus?.let { f -> FocusCard(vm, f, Modifier.align(Alignment.BottomCenter)) { focus = null } }
                 if (loc == null) {
                     Text(
@@ -495,6 +506,97 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
 private const val LOOK_AWAY_MS = 10_000L
 
 /** A small rounded count under the map ("8 near", "3 dens"...). */
+/** How far (meters) the map reaches around you: about a mile. */
+private const val MAP_REACH_M = 1_609.0
+
+/** The weather's icon. */
+fun com.monsterquest.core.LiveWeather.icon(): GameIcon = when (this) {
+    com.monsterquest.core.LiveWeather.CLEAR, com.monsterquest.core.LiveWeather.HOT -> GameIcon.SUN
+    com.monsterquest.core.LiveWeather.CLOUDY -> GameIcon.CLOUD
+    com.monsterquest.core.LiveWeather.FOG -> GameIcon.FOG
+    com.monsterquest.core.LiveWeather.RAIN -> GameIcon.RAIN
+    com.monsterquest.core.LiveWeather.STORM -> GameIcon.STORM
+    com.monsterquest.core.LiveWeather.SNOW -> GameIcon.SNOW
+    com.monsterquest.core.LiveWeather.WIND -> GameIcon.WIND
+}
+
+private fun temperature(c: Double, imperial: Boolean) = if (imperial) "${Math.round(c * 9 / 5 + 32)}°F" else "${Math.round(c)}°C"
+
+/** The real weather, floating on the map: tap it to see what it brings out. */
+@Composable
+private fun WeatherBadge(w: com.monsterquest.core.WeatherReading, imperial: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+            .clickable(onClickLabel = "Weather effects", onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GIcon(w.kind.icon(), Modifier.size(20.dp), Gold)
+        Spacer(Modifier.width(6.dp))
+        Text("${w.kind.label} ${temperature(w.tempC, imperial)}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        // The types it favors, as small icons.
+        w.kind.more.take(2).forEach { el ->
+            Spacer(Modifier.width(4.dp))
+            GIcon(el.icon(), Modifier.size(16.dp), el.color())
+        }
+    }
+}
+
+/** What the weather and the time of day are doing to the monsters out right now. */
+@Composable
+private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
+    val w = vm.weather
+    val imperial = vm.state.settings.imperialUnits
+    val time = vm.spawnConditions(now).timeOfDay
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { w?.let { GIcon(it.kind.icon(), Modifier.size(32.dp), Gold) } },
+        title = { Text(w?.let { "${it.kind.label}, ${temperature(it.tempC, imperial)}" } ?: "Weather") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (w == null) {
+                    Text("The weather hasn't been looked up yet.")
+                } else {
+                    if (w.kind.more.isNotEmpty()) {
+                        Text("More likely now", fontWeight = FontWeight.SemiBold)
+                        w.kind.more.forEach { el -> WeatherTypeLine(el, "x${"%.1f".format(w.kind.boosts.getValue(el))}") }
+                    }
+                    if (w.kind.fewer.isNotEmpty()) {
+                        Text("Less likely", fontWeight = FontWeight.SemiBold)
+                        w.kind.fewer.forEach { el -> WeatherTypeLine(el, "x${"%.1f".format(w.kind.boosts.getValue(el))}") }
+                    }
+                    when (w.kind.battle) {
+                        com.monsterquest.core.Weather.RAIN -> Text("Battles start in Rain: Water and Electric moves +25%, Fire −15%.", fontSize = 13.sp)
+                        com.monsterquest.core.Weather.DROUGHT -> Text("Battles start in a Drought: Fire and Corrupt moves +25%, Water −15%.", fontSize = 13.sp)
+                        com.monsterquest.core.Weather.CLEAR -> {}
+                    }
+                }
+                Text(
+                    "${time.label}: ${time.favored.joinToString(" and ") { it.label }} types are out more (x3).",
+                    fontSize = 13.sp,
+                )
+                Text(
+                    "New monsters follow the weather with the next wave (every 15 minutes). Live weather from Open-Meteo; turn it off in Settings.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("OK") } },
+    )
+}
+
+@Composable
+private fun WeatherTypeLine(el: com.monsterquest.core.Element, factor: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        GIcon(el.icon(), Modifier.size(18.dp), el.color())
+        Spacer(Modifier.width(8.dp))
+        Text(el.label, modifier = Modifier.weight(1f))
+        Text(factor, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 @Composable
 private fun MapCount(text: String) {
     Text(
@@ -558,8 +660,10 @@ private fun rememberMapView(): MapView {
             setTileSource(TileSourceFactory.MAPNIK)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(17.0)
-            // Close enough to see the neighbourhood, never so far the hero gets lost.
-            minZoomLevel = 12.0
+            // Close enough to see the neighbourhood (about a mile around), never so far the hero gets lost.
+            minZoomLevel = 14.0
+            isHorizontalMapRepetitionEnabled = false
+            isVerticalMapRepetitionEnabled = false
             maxZoomLevel = 20.0
             // Locked to the hero like Pokemon GO: pinch, double-tap, or double-tap-and-slide to zoom; no panning.
             MapGestures(this).attach()

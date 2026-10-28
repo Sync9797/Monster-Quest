@@ -71,6 +71,8 @@ data class Settings(
     val simpleCasting: Boolean = false,
     /** The Health card on Home is open (true) or folded to one line. */
     val healthOpen: Boolean = false,
+    /** Look up the real weather where you are; it changes which monsters are out. */
+    val liveWeather: Boolean = true,
 )
 
 val CALENDAR_DAYS_AHEAD_OPTIONS = listOf(1, 3, 7, 14)

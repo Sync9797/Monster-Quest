@@ -58,6 +58,12 @@ const val SAVER_AMBUSH_RANGE = 2.0
 /** At most one ambush this often. */
 const val AMBUSH_COOLDOWN_MS = 10 * 60_000L
 
+/** How often the real weather is looked up again. */
+private const val WEATHER_REFRESH_MS = 20 * 60_000L
+
+/** After a failed lookup, wait this long before trying again. */
+private const val WEATHER_RETRY_MS = 5 * 60_000L
+
 /** No ambush in the first moments after opening the map. */
 const val AMBUSH_GRACE_MS = 30_000L
 
@@ -229,6 +235,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Test hook: pretend to be somewhere with the given shrines, skipping the network. */
     @VisibleForTesting
+    /** For screenshots and tests: the weather as if it had just been looked up. */
+    fun debugSetWeather(reading: com.monsterquest.core.WeatherReading?) {
+        weather = reading
+    }
+
     fun debugSetLocation(lat: Double, lon: Double, nearby: List<Shrine>) {
         placesFetchedAt = lat to lon
         location = lat to lon
@@ -671,6 +682,52 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 loadingPlaces = false
             }
         }
+        refreshWeather(lat, lon, now)
+    }
+
+    // ---- real weather ----------------------------------------------------------
+
+    /** The real weather where you are (null until it's looked up, offline, or turned off). */
+    var weather by mutableStateOf<com.monsterquest.core.WeatherReading?>(null)
+        private set
+    private var weatherAt: Pair<Double, Double>? = null
+    private var loadingWeather = false
+
+    /** Looks the weather up again every [WEATHER_REFRESH_MS], or after a long trip. */
+    private fun refreshWeather(lat: Double, lon: Double, now: Long) {
+        if (!state.settings.liveWeather) {
+            weather = null
+            return
+        }
+        val w = weather
+        val at = weatherAt
+        val stale = w == null || now - w.atMs > WEATHER_REFRESH_MS ||
+            (at != null && World.distanceMeters(at.first, at.second, lat, lon) > 10_000)
+        if (loadingWeather || !stale) return
+        // Don't hammer the service when offline: wait a while before trying again.
+        if (w == null && now - lastWeatherTry < WEATHER_RETRY_MS) return
+        loadingWeather = true
+        lastWeatherTry = now
+        viewModelScope.launch {
+            val ua = "MonsterQuest/0.1 (${getApplication<Application>().packageName})"
+            val reading = withContext(Dispatchers.IO) { com.monsterquest.app.data.WeatherRepository.current(lat, lon, ua, now) }
+            if (reading != null) {
+                weather = reading
+                weatherAt = lat to lon
+            }
+            loadingWeather = false
+        }
+    }
+    private var lastWeatherTry = 0L
+
+    /** The weather the monsters out right now were drawn with: it changes with the next wave, so the map doesn't reshuffle. */
+    private var waveWeather: Pair<Long, com.monsterquest.core.LiveWeather?> = -1L to null
+
+    private fun weatherForWave(nowMs: Long): com.monsterquest.core.LiveWeather? {
+        if (!state.settings.liveWeather) return null
+        val window = World.spawnWindow(nowMs)
+        if (waveWeather.first != window) waveWeather = window to weather?.kind
+        return waveWeather.second
     }
 
     /** Where you were when this spawn window began: new monsters appear in a ring around it. */
@@ -732,6 +789,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour,
         activity = GameEngine.activityLevel(state, nowMs),
         lure = state.lureActive(nowMs),
+        weather = weatherForWave(nowMs),
     )
 
     fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
@@ -988,7 +1046,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         var s = state
         for (m in listOf(enemy) + pack) s = GameEngine.markSeen(s, m.speciesId)
         set(s)
-        val b = GameEngine.newBattle(state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug)
+        val b = GameEngine.newBattle(
+            state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
+            weather = weather?.kind?.takeIf { state.settings.liveWeather },
+        )
         activeBattle = b
         battle = battleView(b, null)
     }

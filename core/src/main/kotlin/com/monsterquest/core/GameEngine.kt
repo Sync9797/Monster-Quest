@@ -966,6 +966,8 @@ object GameEngine {
         ambush: Boolean = false,
         thug: Thug? = null,
         fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
+        /** The real weather where the fight happens. */
+        weather: LiveWeather? = null,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -979,6 +981,7 @@ object GameEngine {
         heroEnergyUsed = state.heroEnergyUsed,
         thug = thug,
         fullTeam = fullTeam,
+        startWeather = weather?.battle ?: Weather.CLEAR,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */

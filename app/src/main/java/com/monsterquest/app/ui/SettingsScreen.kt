@@ -254,6 +254,11 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     prefs.ambushes,
                 ) { on -> vm.updateSettings { it.copy(ambushes = on) } }
                 ToggleRow(
+                    "Live weather",
+                    "Looks up the real weather where you are (sending only a rough position, about 1 km, to Open-Meteo). Rain brings out Water and Electric types, heat brings Fire, and so on; rain and heat also carry into battles.",
+                    prefs.liveWeather,
+                ) { on -> vm.updateSettings { it.copy(liveWeather = on) } }
+                ToggleRow(
                     "Vibrate for new monsters",
                     "A short buzz when a monster comes within battle range (${formatDistance(com.monsterquest.app.ALERT_RANGE_M, prefs.imperialUnits)}), even on the battery saver screen.",
                     prefs.vibrateOnSpawn,

@@ -565,6 +565,8 @@ class Battle(
     val fullTeam: Boolean = encounter in FULL_TEAM_ENCOUNTERS,
     /** Free spaces in monster storage: how many can be tamed in this fight. */
     private val storageRoom: Int = if (storageFull) 0 else Int.MAX_VALUE,
+    /** The weather the fight starts in (from the real weather: rain, or a heatwave's drought). */
+    startWeather: Weather = Weather.CLEAR,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -646,7 +648,7 @@ class Battle(
         private set
     var round: Int = 0
         private set
-    var weather: Weather = Weather.CLEAR
+    var weather: Weather = startWeather
         private set
     /** Rounds left with reversed turn order (Wild Wind). */
     var reversedRounds: Int = 0
@@ -680,6 +682,11 @@ class Battle(
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
         }
         log += intro
+        when (weather) {
+            Weather.RAIN -> log += "It's raining: Water and Electric moves are stronger, Fire weaker."
+            Weather.DROUGHT -> log += "The heat is fierce: Fire and Corrupt moves are stronger, Water weaker."
+            Weather.CLEAR -> {}
+        }
         if (ambush) log += "Ambush! The monsters strike before you're ready!"
         if (encounter == EncounterType.WILD && teamSize > 1 && enemies.size < teamSize) {
             log += (if (enemies.size > 1) "The pack grows" else "${enemy.name} grows") + " stronger against your team of $teamSize!"
