@@ -90,6 +90,41 @@ class EggsTest {
     }
 }
 
+class EggSlotsTest {
+    @Test
+    fun fiveEggsButOnlyThreeWarm() {
+        val r = Random(3)
+        var s = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state
+        val eggs = List(Eggs.MAX_EGGS) { Eggs.gift(Bestiary.get("emberkit"), r, 0).copy(id = "e$it") }
+        assertEquals(5, Eggs.MAX_EGGS)
+        s = s.copy(eggs = eggs)
+        s = Eggs.addWalk(s, 500.0)
+        assertEquals(listOf(500.0, 500.0, 500.0, 0.0, 0.0), s.eggs.map { it.walkedMeters })
+        // Move a waiting egg up: it warms, and the third one waits.
+        s = Eggs.warmFirst(s, "e4").state
+        assertEquals("e4", s.eggs.first().id)
+        assertEquals(setOf("e4", "e0", "e1"), Eggs.warming(s))
+        s = Eggs.addWalk(s, 100.0)
+        assertEquals(100.0, s.eggs.first { it.id == "e4" }.walkedMeters)
+        assertEquals(500.0, s.eggs.first { it.id == "e2" }.walkedMeters)
+    }
+
+    @Test
+    fun incubatorHalvesTheDistanceOnce() {
+        val r = Random(3)
+        var s = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state
+        val egg = Eggs.gift(Bestiary.get("emberkit"), r, 0).copy(id = "e", walkedMeters = 300.0)
+        s = s.copy(eggs = listOf(egg), inventory = mapOf(Item.INCUBATOR to 2))
+        assertEquals(800, Item.INCUBATOR.price)
+        s = Eggs.incubate(s, "e").state
+        assertEquals(egg.meters / 2, s.eggs.single().meters)
+        assertEquals(300.0, s.eggs.single().walkedMeters)
+        assertEquals(1, s.count(Item.INCUBATOR))
+        // Once per egg.
+        assertEquals(s, Eggs.incubate(s, "e").state)
+    }
+}
+
 /** The same monster with an id that gives it [g]. */
 internal fun Monster.withGender(g: Gender): Monster {
     var i = 0

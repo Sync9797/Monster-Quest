@@ -79,20 +79,31 @@ object HealthSteps {
         val start = day.atStartOfDay(zone).toInstant()
         val end = minOf(day.plusDays(1).atStartOfDay(zone).toInstant(), Instant.now())
         if (!end.isAfter(start)) return List(24) { 0 }
-        val groups = HealthConnectClient.getOrCreate(context).aggregateGroupByDuration(
-            AggregateGroupByDurationRequest(
-                metrics = setOf(StepsRecord.COUNT_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(start, end),
-                timeRangeSlicer = Duration.ofHours(1),
-                dataOriginFilter = if (samsungOnly) setOf(DataOrigin(SAMSUNG_HEALTH)) else emptySet(),
-            ),
-        )
-        val hours = IntArray(24)
-        for (g in groups) {
-            val h = g.startTime.atZone(zone).hour
-            hours[h] += (g.result[StepsRecord.COUNT_TOTAL] ?: 0L).toInt()
-        }
-        hours.toList()
+        val client = HealthConnectClient.getOrCreate(context)
+        // The raw records, so each one's steps can be spread over the time it covers
+        // (some apps write long records that start at midnight).
+        val records = mutableListOf<StepsRecord>()
+        var page: String? = null
+        do {
+            val res = client.readRecords(
+                ReadRecordsRequest(
+                    StepsRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                    dataOriginFilter = if (samsungOnly) setOf(DataOrigin(SAMSUNG_HEALTH)) else emptySet(),
+                    pageToken = page,
+                ),
+            )
+            records += res.records
+            page = res.pageToken
+        } while (page != null && records.size < 5_000)
+        // Several apps may record the same walk: use the one with the most steps, then
+        // scale it to Health Connect's de-duplicated total for the day.
+        val main = records.groupBy { it.metadata.dataOrigin.packageName }.maxByOrNull { (_, rs) -> rs.sumOf { it.count } }?.value.orEmpty()
+        val spans = main.map { com.monsterquest.core.Health.StepSpan(it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), it.count) }
+        val hours = com.monsterquest.core.Health.spreadByHour(spans, day, zone) ?: return null
+        val total = stepsToday(context, samsungOnly) ?: hours.sum().toLong()
+        val sum = hours.sum()
+        if (sum <= 0 || total <= 0) hours else hours.map { Math.round(it.toDouble() * total / sum).toInt() }
     }.getOrNull()
 
     // ---- sleep -------------------------------------------------------------------

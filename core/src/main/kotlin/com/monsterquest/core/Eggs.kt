@@ -16,6 +16,8 @@ data class Egg(
     /** Distance to walk before it hatches. */
     val meters: Double,
     val walkedMeters: Double = 0.0,
+    /** An Incubator halved its distance (once per egg). */
+    val incubated: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
     val ready: Boolean get() = walkedMeters >= meters
@@ -30,7 +32,10 @@ data class Egg(
  * Adventures can also bring eggs home ([fromAdventure]).
  */
 object Eggs {
-    const val MAX_EGGS = 3
+    /** Eggs you can carry. */
+    const val MAX_EGGS = 5
+    /** Eggs warmed by walking at once: the first ones in your list (move one up to warm it). */
+    const val WARMING = 3
     const val BREED_LEVEL = 20
     const val BREED_COOLDOWN_MS = 24 * 60 * 60_000L
     const val BREED_GOLD = 300
@@ -129,10 +134,36 @@ object Eggs {
         return Update(s, "${a.displayName} and ${b.displayName} made an egg! Walk ${"%.1f".format(egg.meters / 1000)} km to hatch it.")
     }
 
-    /** Walking warms every egg. */
+    /** The eggs walking warms now: the first [WARMING] in your list (a ready egg keeps its spot until it hatches). */
+    fun warming(state: GameState): Set<String> = state.eggs.take(WARMING).map { it.id }.toSet()
+
+    /** Walking warms the first [WARMING] eggs; the rest wait their turn. */
     fun addWalk(state: GameState, meters: Double): GameState {
-        if (meters <= 0 || state.eggs.none { !it.ready }) return state
-        return state.copy(eggs = state.eggs.map { if (it.ready) it else it.copy(walkedMeters = minOf(it.meters, it.walkedMeters + meters)) })
+        val warm = warming(state)
+        if (meters <= 0 || state.eggs.none { !it.ready && it.id in warm }) return state
+        return state.copy(eggs = state.eggs.map { if (it.ready || it.id !in warm) it else it.copy(walkedMeters = minOf(it.meters, it.walkedMeters + meters)) })
+    }
+
+    /** Moves an egg to the front, so it's one of the ones being warmed. */
+    fun warmFirst(state: GameState, id: String): Update {
+        val egg = state.eggs.find { it.id == id } ?: return Update(state, "Egg not found.")
+        return Update(state.copy(eggs = listOf(egg) + state.eggs.filterNot { it.id == id }), "The ${egg.species.name} egg is warming now.")
+    }
+
+    /** Puts [id] in an Incubator: its distance is halved (what's walked stays). */
+    fun incubate(state: GameState, id: String): Update {
+        val egg = state.eggs.find { it.id == id } ?: return Update(state, "Egg not found.")
+        if (egg.ready) return Update(state, "That egg is ready to hatch already.")
+        if (egg.incubated) return Update(state, "That egg has been in an Incubator already.")
+        if (state.count(Item.INCUBATOR) <= 0) return Update(state, "You need an Incubator (from the Store).")
+        val meters = egg.meters * Item.INCUBATOR.power
+        val after = egg.copy(meters = meters, walkedMeters = minOf(egg.walkedMeters, meters), incubated = true)
+        val s = state.copy(
+            inventory = GameEngine.removeItems(state.inventory, mapOf(Item.INCUBATOR to 1)),
+            eggs = state.eggs.map { if (it.id == id) after else it },
+        )
+        return Update(s, "The ${egg.species.name} egg is in the Incubator: " +
+            if (after.ready) "it's ready to hatch!" else "%.1f km to go.".format((after.meters - after.walkedMeters) / 1000))
     }
 
     fun hatch(state: GameState, id: String, rng: Random = Random.Default): Update {

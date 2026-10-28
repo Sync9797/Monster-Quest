@@ -1046,10 +1046,15 @@ private fun ActionPanel(
                     ) { onMenu(Menu.Items) }
                     // Your best odds right now, so you can see when it's worth a throw.
                     val best = if (b.captureBlocked == null) b.orbs.maxOfOrNull { it.odds } else null
+                    val snap = b.snapOdds.maxOfOrNull { it.third }
                     ActionButton(
-                        if (best != null) "Tame ${(best * 100).toInt()}%" else "Tame",
+                        when {
+                            snap != null -> "Snap ${(snap * 100).toInt()}%"
+                            best != null -> "Tame ${(best * 100).toInt()}%"
+                            else -> "Tame"
+                        },
                         Modifier.weight(1f),
-                        color = if (b.captureBlocked == null) Color(0xFF5B4580) else null,
+                        color = if (snap != null) Color(0xFF8A3F7A) else if (b.captureBlocked == null) Color(0xFF5B4580) else null,
 
                     ) { onMenu(Menu.Tame) }
                     // Swap: send in a monster from the swap slots.
@@ -1096,6 +1101,29 @@ private fun ActionPanel(
                 // Berries first: feed one, then throw (it lasts one throw).
                 if (b.bait > 1.0) {
                     Text("It ate a berry: your next cast is ${b.bait}x as likely.", fontSize = 12.sp, color = Gold)
+                }
+                // Snap Bind: the first-turn gamble.
+                if (b.snapOdds.isNotEmpty()) {
+                    Text("SNAP BIND (first turn only)", fontWeight = FontWeight.Black, fontSize = 13.sp, color = Color(0xFFE08AD0))
+                    Text(
+                        "Catch it off guard, whatever its health. Land it and it's tamed" +
+                            (if (b.enemies.size > 1) " while the rest of the pack scatters (they'll run from you on the map)" else "") +
+                            ". Miss and ${if (b.enemies.size > 1) "they double down" else "it doubles down"}: all stats up and half the taming odds for the rest of the fight.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    b.snapOdds.forEach { (orb, count, odds) ->
+                        Button(
+                            onClick = { onAction(BattleAction.SnapBind(orb)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8A3F7A), contentColor = Color.White),
+                        ) {
+                            GIcon(orb.icon(), Modifier.size(18.dp), Color.White)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Snap Bind: ${orb.label} x$count  •  ${(odds * 100).toInt()}%", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
                 }
                 b.berries.forEach { (berry, count) ->
                     OutlinedButton(onClick = { onAction(BattleAction.UseItem(berry, actor.key)) }, modifier = Modifier.fillMaxWidth()) {

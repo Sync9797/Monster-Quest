@@ -592,7 +592,7 @@ private val BAG_GROUPS = listOf(
     BagGroup("Binding Crystals", GameIcon.CRYSTAL, androidx.compose.ui.graphics.Color(0xFFC3A6F0), setOf(ItemKind.CAPTURE)),
     BagGroup("Baits & berries", GameIcon.BERRY, androidx.compose.ui.graphics.Color(0xFFE5739A), setOf(ItemKind.BAIT)),
     BagGroup("Food", GameIcon.PAW, androidx.compose.ui.graphics.Color(0xFFE07A6E), setOf(ItemKind.FOOD)),
-    BagGroup("Lures & treats", GameIcon.LURE, androidx.compose.ui.graphics.Color(0xFFF2A198), setOf(ItemKind.LURE, ItemKind.TREAT, ItemKind.PERSONALITY)),
+    BagGroup("Lures & treats", GameIcon.LURE, androidx.compose.ui.graphics.Color(0xFFF2A198), setOf(ItemKind.LURE, ItemKind.TREAT, ItemKind.PERSONALITY, ItemKind.INCUBATOR)),
 )
 
 /**

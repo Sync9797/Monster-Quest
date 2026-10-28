@@ -159,6 +159,7 @@ fun Item.icon(): GameIcon = when (this) {
     Item.TREAT -> GameIcon.TREAT
     Item.MOOD_CRYSTAL -> GameIcon.SPARK
     Item.LURE -> GameIcon.LURE
+    Item.INCUBATOR -> GameIcon.HEART
     Item.SWEET_BERRY, Item.GOLDEN_BERRY -> GameIcon.BERRY
     Item.SEED_MIX, Item.SEED_MIX_FINE, Item.SEED_MIX_GOURMET, Item.RICH_COMPOST, Item.RICH_COMPOST_FINE, Item.RICH_COMPOST_GOURMET -> GameIcon.LEAF
     Item.ORCHARD_FRUIT, Item.ORCHARD_FRUIT_FINE, Item.ORCHARD_FRUIT_GOURMET -> GameIcon.BERRY
@@ -184,6 +185,7 @@ fun Item.color(): Color = when (this) {
     Item.TREAT -> Color(0xFFD9A07A)
     Item.MOOD_CRYSTAL -> Color(0xFFB59AF0)
     Item.LURE -> Color(0xFFF2A198)
+    Item.INCUBATOR -> Color(0xFFF2C27A)
     Item.SWEET_BERRY -> Color(0xFFE5739A)
     Item.GOLDEN_BERRY -> Color(0xFFEBC678)
     Item.SEED_MIX, Item.SEED_MIX_FINE, Item.SEED_MIX_GOURMET -> Color(0xFFD9C27A)

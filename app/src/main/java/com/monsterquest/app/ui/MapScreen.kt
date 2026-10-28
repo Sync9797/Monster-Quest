@@ -41,6 +41,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -197,7 +199,9 @@ fun MapScreen(vm: GameViewModel) {
     // Only monsters within the reveal distance stand on the map; farther ones show in the tracker.
     val spawns = vm.visibleSpawns(now)
     val tracked = vm.trackedSpawns(now)
-    val shrines = vm.shrines
+    // Today's risen Silver or Gold shrine joins the rest.
+    val risen = com.monsterquest.core.RoamingShrines.current(vm.state, now)
+    val shrines = vm.shrines + listOfNotNull(risen?.shrine)
     val villains = vm.villainsNear(now)
     val dens = vm.densNear(now)
     val traders = vm.tradersNear(now)
@@ -323,6 +327,19 @@ fun MapScreen(vm: GameViewModel) {
                                 },
                             )
                         }
+                        // Monsters that scattered from a Snap Bind: still out there, running from you.
+                        vm.fleeingPositions(now).forEach { (sp, pos) ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(pos.first, pos.second)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
+                                    alpha = 0.7f
+                                    setIcon(sprite("spawn_${sp.speciesId}_false_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, false, sp.shiny) })
+                                    title = sp.species.name
+                                    setOnMarkerClickListener { _, _ -> vm.toast("The ${sp.species.name} is running from you after your Snap Bind!"); true }
+                                },
+                            )
+                        }
                         dens.forEach { den ->
                             mv.overlays.add(
                                 Marker(mv).apply {
@@ -392,6 +409,7 @@ fun MapScreen(vm: GameViewModel) {
                         mv.invalidate()
                     },
                 )
+                risen?.let { RisenShrineFx(mapView, it) }
                 if (showTracker) TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
                 vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
                     WeatherBadge(w, vm.state.settings.imperialUnits, Modifier.align(Alignment.BottomStart).padding(10.dp)) { showWeather = true }
@@ -1470,6 +1488,63 @@ private fun NomadTeamRow(vm: GameViewModel, team: List<com.monsterquest.core.Mon
                 Text("Lv ${m.level}", fontSize = 11.sp)
                 Text(com.monsterquest.core.Scouting.starText(com.monsterquest.core.Scouting.stars(m.species)), fontSize = 9.sp, color = Gold)
             }
+        }
+    }
+}
+
+/**
+ * The glow around a risen Silver or Gold shrine: soft rings that pulse
+ * outward, and when it has just risen, a pillar of light and a burst. Drawn
+ * over the map at the shrine's spot; it follows the map as you pan and zoom
+ * and doesn't block touches.
+ */
+@Composable
+private fun RisenShrineFx(mapView: MapView, risen: com.monsterquest.core.RoamingShrine) {
+    var tick by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    DisposableEffect(mapView) {
+        val listener = object : org.osmdroid.events.MapListener {
+            override fun onScroll(event: org.osmdroid.events.ScrollEvent?): Boolean { tick++; return false }
+            override fun onZoom(event: org.osmdroid.events.ZoomEvent?): Boolean { tick++; return false }
+        }
+        mapView.addMapListener(listener)
+        onDispose { mapView.removeMapListener(listener) }
+    }
+    val gold = risen.shrine.tier == ShrineTier.GOLD
+    val color = if (gold) Color(0xFFFFD34D) else Color(0xFFCFE3F5)
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "risen")
+    val pulse by t.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1800), androidx.compose.animation.core.RepeatMode.Restart),
+        label = "pulse",
+    )
+    // It rose just now: play the arrival once.
+    val rise = remember(risen.shrine.id) { androidx.compose.animation.core.Animatable(if (System.currentTimeMillis() - risen.bornMs < 60_000) 0f else 1f) }
+    LaunchedEffect(risen.shrine.id) { rise.animateTo(1f, androidx.compose.animation.core.tween(1800)) }
+    @Suppress("UNUSED_VARIABLE") val read = tick
+    Canvas(Modifier.fillMaxSize()) {
+        val p = mapView.projection?.toPixels(GeoPoint(risen.shrine.lat, risen.shrine.lon), null) ?: return@Canvas
+        val c = Offset(p.x.toFloat(), p.y.toFloat())
+        val base = 34.dp.toPx()
+        // Pulsing rings.
+        for (k in 0..1) {
+            val ph = (pulse + k * 0.5f) % 1f
+            drawCircle(color.copy(alpha = (1f - ph) * 0.55f), radius = base * (0.6f + ph * 1.4f), center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx()))
+        }
+        drawCircle(
+            androidx.compose.ui.graphics.Brush.radialGradient(listOf(color.copy(alpha = 0.45f), Color.Transparent), center = c, radius = base * 1.3f),
+            radius = base * 1.3f,
+            center = c,
+        )
+        // Arrival: a pillar of light shooting up, and a burst ring.
+        val r = rise.value
+        if (r < 1f) {
+            val beamH = size.height * 0.5f * (1f - (1f - r) * (1f - r))
+            drawRect(
+                androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, color.copy(alpha = 0.8f * (1f - r))), startY = c.y - beamH, endY = c.y),
+                topLeft = Offset(c.x - base * 0.35f, c.y - beamH),
+                size = androidx.compose.ui.geometry.Size(base * 0.7f, beamH),
+            )
+            drawCircle(color.copy(alpha = 1f - r), radius = base * (0.3f + r * 3f), center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 5.dp.toPx()))
         }
     }
 }

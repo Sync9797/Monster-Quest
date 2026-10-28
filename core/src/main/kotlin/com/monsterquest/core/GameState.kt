@@ -380,6 +380,8 @@ data class GameState(
     /** Recent store demand per item (units, when last bought) for the day [demandDay] (see [Prices]). */
     val demand: Map<Item, Pair<Double, Long>> = emptyMap(),
     val demandDay: Long = -1,
+    /** The Silver or Gold shrine that rose near you today (see [RoamingShrines]). */
+    val roaming: RoamingShrine? = null,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

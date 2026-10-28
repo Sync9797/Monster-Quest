@@ -161,6 +161,15 @@ fun EggsSection(vm: com.monsterquest.app.GameViewModel) {
     val eggs = vm.state.eggs
     if (eggs.isEmpty()) return
     SectionTitle("Eggs ${eggs.size}/${com.monsterquest.core.Eggs.MAX_EGGS}")
+    val warm = com.monsterquest.core.Eggs.warming(vm.state)
+    val incubators = vm.state.count(com.monsterquest.core.Item.INCUBATOR)
+    if (eggs.size > com.monsterquest.core.Eggs.WARMING) {
+        Text(
+            "Walking warms ${com.monsterquest.core.Eggs.WARMING} eggs at a time. Hatch one, or tap Warm to swap a waiting egg in.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     eggs.forEach { egg ->
         GameCard(Modifier.padding(vertical = 3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,14 +177,26 @@ fun EggsSection(vm: com.monsterquest.app.GameViewModel) {
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text("${egg.species.name} egg", fontWeight = FontWeight.SemiBold)
+                    val warming = egg.id in warm
                     Text(
-                        if (egg.ready) "Ready to hatch!" else String.format(Locale.US, "Walk %.1f / %.1f km", egg.walkedMeters / 1000, egg.meters / 1000),
+                        when {
+                            egg.ready -> "Ready to hatch!"
+                            !warming -> String.format(Locale.US, "Waiting (%.1f / %.1f km): walking warms the first ${com.monsterquest.core.Eggs.WARMING}", egg.walkedMeters / 1000, egg.meters / 1000)
+                            else -> String.format(Locale.US, "Warming: %.1f / %.1f km", egg.walkedMeters / 1000, egg.meters / 1000)
+                        } + if (egg.incubated) " • Incubated" else "",
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (warming || egg.ready) MaterialTheme.colorScheme.onSurfaceVariant else HpYellow,
                     )
-                    if (!egg.ready) Bar(egg.progress.toFloat(), Gold, Modifier.fillMaxWidth().padding(top = 3.dp), heightDp = 5)
+                    if (!egg.ready) Bar(egg.progress.toFloat(), if (warming) Gold else MaterialTheme.colorScheme.outline, Modifier.fillMaxWidth().padding(top = 3.dp), heightDp = 5)
                 }
-                if (egg.ready) androidx.compose.material3.Button(onClick = { vm.hatchEgg(egg.id) }) { Text("Hatch") }
+                if (egg.ready) {
+                    androidx.compose.material3.Button(onClick = { vm.hatchEgg(egg.id) }) { Text("Hatch") }
+                } else {
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (egg.id !in warm) SmallButton("Warm", { vm.warmEggFirst(egg.id) }, outlined = true)
+                        if (incubators > 0 && !egg.incubated) SmallButton("Incubate", { vm.incubateEgg(egg.id) }, outlined = true)
+                    }
+                }
             }
         }
     }

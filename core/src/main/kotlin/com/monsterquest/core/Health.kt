@@ -59,6 +59,39 @@ object Health {
         if (imperial) "${glasses * GLASS_OZ} oz"
         else (glasses * GLASS_ML).let { ml -> if (ml < 1000) "$ml ml" else "%.2f".format(java.util.Locale.US, ml / 1000.0).trimEnd('0').trimEnd('.') + " L" }
 
+    /** A step record from a health app: [count] steps between [startMs] and [endMs]. */
+    data class StepSpan(val startMs: Long, val endMs: Long, val count: Long)
+
+    /** Records longer than this are too coarse to say when the steps happened. */
+    const val COARSE_SPAN_MS = 2 * 60 * 60_000L
+
+    /**
+     * Steps in each hour (0..23) of [day], from health-app records, each spread
+     * evenly over the time it covers (so a record that starts at midnight
+     * doesn't pile everything into 12 AM). Null when most steps come from
+     * records too long to place ([COARSE_SPAN_MS]): the chart then uses the
+     * game's own counts.
+     */
+    fun spreadByHour(spans: List<StepSpan>, day: LocalDate, zone: ZoneId): List<Int>? {
+        val total = spans.sumOf { it.count }
+        if (total <= 0) return List(24) { 0 }
+        val coarse = spans.filter { it.endMs - it.startMs > COARSE_SPAN_MS }.sumOf { it.count }
+        if (coarse * 2 > total) return null
+        val out = DoubleArray(24)
+        for (sp in spans) {
+            val len = (sp.endMs - sp.startMs).coerceAtLeast(1)
+            for (h in 0 until 24) {
+                // Hour boundaries in real time (DST-safe).
+                val hs = day.atStartOfDay(zone).plusHours(h.toLong()).toInstant().toEpochMilli()
+                val he = day.atStartOfDay(zone).plusHours(h + 1L).toInstant().toEpochMilli()
+                val overlap = minOf(he, sp.endMs) - maxOf(hs, sp.startMs)
+                if (sp.endMs == sp.startMs && sp.startMs in hs until he) out[h] += sp.count.toDouble()
+                else if (overlap > 0) out[h] += sp.count * overlap.toDouble() / len
+            }
+        }
+        return out.map { Math.round(it).toInt() }
+    }
+
     /** "12a", "6a", "12p", "3p"... for chart labels. */
     fun hourLabel(hour: Int): String = "${if (hour % 12 == 0) 12 else hour % 12}${if (hour < 12) "a" else "p"}"
 }

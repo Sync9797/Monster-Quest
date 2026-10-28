@@ -222,7 +222,7 @@ object World {
     /** Gold guardians before the Earth legendary arrived; their shrines keep the same guardian. */
     private const val ORIGINAL_GOLD_GUARDIANS = 12
 
-    private fun guardianFor(id: String, tier: ShrineTier): String? {
+    internal fun guardianFor(id: String, tier: ShrineTier): String? {
         val h = stableHash(id)
         return when (tier) {
             ShrineTier.ITEM -> null

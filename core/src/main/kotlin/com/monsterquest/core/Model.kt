@@ -469,7 +469,7 @@ fun newId(rng: Random = Random.Default): String =
 const val MASTER_ORB_SELL_PRICE = 200
 
 @Serializable
-enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT, PERSONALITY, FOOD }
+enum class ItemKind { HEAL_HP, HEAL_MP, REVIVE, CAPTURE, TREAT, RESTORE, LURE, BAIT, PERSONALITY, FOOD, INCUBATOR }
 
 @Serializable
 enum class Item(
@@ -503,6 +503,7 @@ enum class Item(
     /** Only from long phone-free sessions (60 to 120 minutes). */
     MOOD_CRYSTAL("Mood Crystal", ItemKind.PERSONALITY, 1.0, 0, "Gives a monster a new personality, at random. Earned from long phone-free sessions."),
     LURE("Lure", ItemKind.LURE, 30.0, 120, "Draws extra monsters to you for 30 minutes. One free each day."),
+    INCUBATOR("Incubator", ItemKind.INCUBATOR, 0.5, 800, "Put one egg in it to halve the distance it needs to hatch. One use per incubator, one per egg."),
     // Foods: set one out and, for 30 minutes, monsters that eat it turn up far more often (see Foods). Power is the tier.
     SEED_MIX("Seed Mix", ItemKind.FOOD, 1.0, 60, "Grain and seeds for grazers, small birds and rodents."),
     ORCHARD_FRUIT("Orchard Fruit", ItemKind.FOOD, 1.0, 80, "Ripe fruit and honey for apes, bears and other omnivores."),

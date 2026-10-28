@@ -67,6 +67,8 @@ data class BattleView(
     val spellHeals: Map<String, Int> = emptyMap(),
     /** The foes struck first (a monster or a thug jumped you). */
     val ambush: Boolean = false,
+    /** Snap Bind (first turn only): each crystal you have, how many, and its odds. Empty when it's not available. */
+    val snapOdds: List<Triple<Item, Int, Double>> = emptyList(),
 ) {
     /** True if you've already caught a monster of [f]'s species. */
     fun alreadyCaught(f: FighterView): Boolean = f.speciesId != null && f.speciesId in caught
@@ -119,6 +121,12 @@ data class BattleView(
                 movePp = cur?.let { c -> c.moves.associate { it.id to c.ppLeft(it) } }.orEmpty(),
                 spellHeals = cur?.let { c -> b.spellsFor(c).filter { it.kind == com.monsterquest.core.SkillKind.HEAL }.associate { it.id to b.spellHeal(c, it) } }.orEmpty(),
                 ambush = b.ambush,
+                snapOdds = if (b.snapAvailable) {
+                    Item.entries.filter { it.kind == com.monsterquest.core.ItemKind.CAPTURE && it != Item.PERFECT_ORB && b.count(it) > 0 }
+                        .map { Triple(it, b.count(it), b.snapOdds(it)) }
+                } else {
+                    emptyList()
+                },
             )
         }
     }

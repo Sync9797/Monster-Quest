@@ -67,6 +67,13 @@ private const val WEATHER_RETRY_MS = 5 * 60_000L
 /** No ambush in the first moments after opening the map. */
 const val AMBUSH_GRACE_MS = 30_000L
 
+/** Scattered monsters run for this long before they're gone. */
+private const val FLEE_MS = 10 * 60_000L
+/** They keep at least this far outside your capture ring, and run this fast (m/s), up to this far. */
+private const val FLEE_MARGIN_M = 25.0
+private const val FLEE_SPEED_MPS = 1.6
+private const val FLEE_MAX_M = 600.0
+
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SaveRepository(app)
 
@@ -721,6 +728,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun rerollPersonality(uid: String) = apply(GameEngine.rerollPersonality(state, uid))
     fun breed(a: String, b: String) = apply(com.monsterquest.core.Eggs.breed(state, a, b, System.currentTimeMillis()))
     fun hatchEgg(id: String) = apply(com.monsterquest.core.Eggs.hatch(state, id))
+    fun incubateEgg(id: String) = apply(com.monsterquest.core.Eggs.incubate(state, id))
+    fun warmEggFirst(id: String) = apply(com.monsterquest.core.Eggs.warmFirst(state, id))
     fun buy(item: Item) = apply(GameEngine.buy(state, item))
     fun sell(item: Item) = apply(GameEngine.sellItem(state, item))
     fun discard(item: Item) = apply(GameEngine.discard(state, item))
@@ -732,6 +741,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         speed = com.monsterquest.core.SpeedGuard.update(speed, lat, lon, now, speedMps)
         if (speed.justSpedUp) drivingWarning = true
         location = lat to lon
+        // On Silver and Gold days a shrine of that tier rises near you (and follows you until you use one).
+        val roamed = com.monsterquest.core.RoamingShrines.update(state, lat, lon, now)
+        if (roamed.roaming != state.roaming) {
+            set(roamed)
+            roamed.roaming?.let { message = "A ${it.shrine.name} rose nearby! Look for its glow on the map." }
+        }
         // Distance covered in a car isn't walking.
         if (tooFast(now)) lastWalkPoint = lat to lon else walkFromGps(lat, lon)
         val last = placesFetchedAt
@@ -976,10 +991,39 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun packFor(spawn: WildSpawn, nowMs: Long = System.currentTimeMillis()): List<WildSpawn> =
         World.packFor(spawn, visibleSpawns(nowMs))
 
+    /** The spawns in the current wild fight, in the order they fight ([spawn] first). */
+    private var engaged: List<WildSpawn> = emptyList()
+
+    /** A monster that scattered from a Snap Bind: it stays on the map but runs from you. */
+    data class Fleeing(val spawn: WildSpawn, val sinceMs: Long)
+
+    var fleeing by mutableStateOf<List<Fleeing>>(emptyList())
+        private set
+
+    /**
+     * Where each fleeing monster is now: always outside your capture ring,
+     * heading away from you, and gone after [FLEE_MS].
+     */
+    fun fleeingPositions(nowMs: Long): List<Pair<WildSpawn, Pair<Double, Double>>> {
+        val (plat, plon) = location ?: return emptyList()
+        return fleeing.filter { nowMs - it.sinceMs < FLEE_MS }.map { f ->
+            val mPerLat = 111_320.0
+            val mPerLon = 111_320.0 * kotlin.math.cos(Math.toRadians(plat))
+            var dx = (f.spawn.lon - plon) * mPerLon
+            var dy = (f.spawn.lat - plat) * mPerLat
+            val len = kotlin.math.hypot(dx, dy)
+            if (len < 1.0) { dx = 1.0; dy = 0.0 } else { dx /= len; dy /= len }
+            val runFor = (nowMs - f.sinceMs) / 1000.0
+            val d = (maxOf(len, World.SPAWN_RANGE_M + FLEE_MARGIN_M) + runFor * FLEE_SPEED_MPS).coerceAtMost(FLEE_MAX_M)
+            f.spawn to ((plat + dy * d / mPerLat) to (plon + dx * d / mPerLon))
+        }
+    }
+
     /** Starts a fight with [spawn] and any pack mates; all of them are used up. */
     private fun engage(spawn: WildSpawn, ambush: Boolean) {
         val now = System.currentTimeMillis()
         val pack = packFor(spawn, now)
+        engaged = listOf(spawn) + pack
         // Mark them used now so fleeing can't be abused to re-roll the fight.
         var s = state
         for (sp in listOf(spawn) + pack) {
@@ -1209,6 +1253,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             resultText = u.message
             levelUps = u.levelUps
             if (state.settings.bigMomentHaptics && u.levelUps.isNotEmpty()) Haptics.levelUp(getApplication())
+            // A Snap Bind landed: the rest of the pack is back on the map, running from you.
+            if (b.scattered) {
+                val runners = b.enemies.withIndex().filter { it.value.gone == "Scattered" }.mapNotNull { engaged.getOrNull(it.index) }
+                fleeing = fleeing + runners.map { Fleeing(it, System.currentTimeMillis()) }
+            }
             nomadRun?.let { nomad ->
                 if (b.outcome == BattleOutcome.WON) {
                     val reward = com.monsterquest.core.Wanderers.nomadReward(state, nomad, System.currentTimeMillis())

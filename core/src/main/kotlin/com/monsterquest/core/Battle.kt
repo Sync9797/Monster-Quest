@@ -56,6 +56,13 @@ sealed interface BattleAction {
     data class Swap(val inUid: String, val outKey: String?) : BattleAction
     /** Cast Binding with a crystal ([orb]); [grade] is how well its glyph was traced. */
     data class Capture(val orb: Item, val grade: TraceGrade = TraceGrade.GOOD) : BattleAction
+    /**
+     * Snap Bind: a gamble on the very first turn of a wild fight, before anyone
+     * on your side has acted. A strong chance to tame the target outright
+     * (whatever its health); the rest of the pack scatters. Miss, and the pack
+     * doubles down: tougher and harder to tame for the rest of the fight.
+     */
+    data class SnapBind(val orb: Item) : BattleAction
     data object Flee : BattleAction
     /** A fainted monster's turn passes (when the player doesn't swap it out). */
     data object Skip : BattleAction
@@ -507,6 +514,8 @@ data class BattleResult(
     val standing: Int = 0,
     /** Every monster tamed in this fight ([captured] is the first). */
     val tamed: List<Monster> = listOfNotNull(captured),
+    /** A Snap Bind landed: the rest of the pack scattered (and now flees from you on the map). */
+    val scattered: Boolean = false,
 )
 
 /** " (strong trace)" for the battle log; nothing for a Perfect Crystal, which needs no trace. */
@@ -514,6 +523,13 @@ private fun traceNote(a: BattleAction.Capture) = if (Binding.needsTrace(a.orb)) 
 
 /** Every taming cast has this chance to be a critical catch: tamed, whatever the odds. */
 const val CRITICAL_CATCH = 0.02
+
+/** Snap Bind odds by rarity (for a Binding Crystal), before the crystal and level gap. */
+val SNAP_BIND_ODDS = mapOf(Rarity.COMMON to 0.40, Rarity.UNCOMMON to 0.32, Rarity.RARE to 0.22, Rarity.EPIC to 0.12, Rarity.LEGENDARY to 0.05)
+/** Highest Snap Bind odds, whatever the crystal. */
+const val SNAP_BIND_MAX = 0.65
+/** A missed Snap Bind: taming odds for the rest of the fight are multiplied by this. */
+const val SNAP_FAIL_CATCH = 0.5
 
 /** The real chance of a throw with base odds [p], counting the critical catch. */
 fun withCriticalCatch(p: Double): Double = if (p >= 1.0) 1.0 else CRITICAL_CATCH + (1 - CRITICAL_CATCH) * p
@@ -871,8 +887,41 @@ class Battle(
     fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB) 1.0 else
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
-                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus) * captureBoost
+                encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus) * captureBoost *
+                (if (snapFailed) SNAP_FAIL_CATCH else 1.0)
             ).coerceIn(0.0, 0.95)
+
+    // ---- Snap Bind: the first-turn gamble ------------------------------------
+
+    /** How many turns your side has taken (Snap Bind only works before the first). */
+    private var allyTurns = 0
+    /** A Snap Bind missed: the pack has doubled down. */
+    var snapFailed: Boolean = false
+        private set
+    /** A Snap Bind landed: the rest of the pack scattered. */
+    var scattered: Boolean = false
+        private set
+
+    /** Snap Bind can be cast now: a wild fight's first turn, before your side has acted (not after an ambush). */
+    val snapAvailable: Boolean
+        get() = outcome == BattleOutcome.ONGOING && encounter == EncounterType.WILD && round == 1 && allyTurns == 0 && !ambush &&
+            current != null && !Combatant.isEnemy(current!!.key) && captureBlockedReasonIgnoringHp() == null
+
+    /** Snap Bind odds with [orb]: by rarity, better crystals help (square root of their power), less against higher levels. */
+    fun snapOdds(orb: Item): Double {
+        val sp = monsterFor(enemy.key).species
+        val base = SNAP_BIND_ODDS[sp.rarity] ?: 0.1
+        val levelPenalty = 0.95.pow(max(0, enemy.level - heroLevel))
+        return (base * kotlin.math.sqrt(orb.power) * levelPenalty * captureBoost).coerceIn(0.01, SNAP_BIND_MAX)
+    }
+
+    /** Why taming is blocked, leaving out the "below half HP" rule (Snap Bind ignores it). */
+    private fun captureBlockedReasonIgnoringHp(): String? = when {
+        captureLocked || encounter != EncounterType.WILD -> "Not here."
+        capturedKeys.size >= storageRoom -> "Monster storage is full."
+        Item.entries.none { it.kind == ItemKind.CAPTURE && count(it) > 0 && it != Item.PERFECT_ORB } -> "No Binding Crystals left."
+        else -> null
+    }
 
     // ---- turn handling ------------------------------------------------------
 
@@ -881,6 +930,7 @@ class Battle(
         if (outcome != BattleOutcome.ONGOING) return
         val consumedTurn = perform(actor, action)
         if (!consumedTurn) return
+        if (!Combatant.isEnemy(actor.key)) allyTurns++
         // A turn spent on anything but a move rests every move a little.
         if (action !is BattleAction.UseMove) actor.spendTurn(null)
         if (action != BattleAction.Defend) actor.defendedLast = false
@@ -1241,6 +1291,36 @@ class Battle(
                     packReacts(tamed)
                 } else {
                     log += "${actor.name} casts ${Binding.SPELL} with a ${action.orb.label}${traceNote(action)}... ${enemy.name} broke free!"
+                }
+            }
+            is BattleAction.SnapBind -> {
+                if (!snapAvailable || action.orb.kind != ItemKind.CAPTURE || action.orb == Item.PERFECT_ORB) return false
+                val chance = snapOdds(action.orb)
+                if (!useItem(action.orb)) return false
+                val roll = rng.nextDouble()
+                val success = roll < chance
+                lastCast = CastRoll(success, shakesFor(success, success, roll, chance), success)
+                castCount++
+                val target = enemy
+                if (success) {
+                    log += "SNAP BIND! ${actor.name} catches ${target.name} off guard with a ${action.orb.label}: tamed!"
+                    capturedKeys += target.key
+                    target.gone = "Tamed"
+                    // Everyone else bolts.
+                    for (e in enemies.filter { it.alive }) {
+                        e.gone = "Scattered"
+                        log += "${e.name} scatters!"
+                    }
+                    scattered = true
+                } else {
+                    snapFailed = true
+                    log += "Snap Bind! ${target.name} twists free of the ${action.orb.label}..."
+                    for (e in enemies.filter { it.alive }) {
+                        e.rage++
+                        BattleStat.entries.forEach { st -> e.stages[st] = minOf(MAX_STAGES, (e.stages[st] ?: 0) + 1) }
+                    }
+                    log += (if (enemies.count { it.alive } > 1) "The pack doubles down" else "${target.name} doubles down") +
+                        ": all stats up, and much harder to tame now!"
                 }
             }
             is BattleAction.Swap -> if (!swapIn(action)) return false
@@ -1946,6 +2026,7 @@ class Battle(
             if (outcome == BattleOutcome.WON) (retired + enemyMonsters.filterIndexed { i, _ -> enemies[i].hp <= 0 }).map { it.speciesId } else emptyList(),
             standing = allies.count { !it.isHero && it.alive },
             tamed = captured,
+            scattered = scattered,
         )
     }
 }
