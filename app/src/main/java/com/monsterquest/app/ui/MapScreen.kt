@@ -7,6 +7,9 @@ import com.monsterquest.app.ui.art.drawMonsterStanding
 import com.monsterquest.app.ui.art.drawPlayerOn
 import com.monsterquest.app.ui.art.drawShrineOn
 import com.monsterquest.app.ui.art.drawVillainOn
+import com.monsterquest.app.ui.art.drawTraderOn
+import com.monsterquest.app.ui.art.drawNomadOn
+import com.monsterquest.app.ui.art.drawWantedRing
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt

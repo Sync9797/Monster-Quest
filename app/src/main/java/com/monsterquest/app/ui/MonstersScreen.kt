@@ -799,17 +799,22 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         Spacer(Modifier.height(6.dp))
         Text("Compare with:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SmallButton("None", { compareUid = null }, outlined = other != null)
+            SmallButton("None", { compareUid = null }, Modifier.align(Alignment.CenterVertically), outlined = other != null)
             s.monsters.filter { it.uid != m.uid }.forEach { o ->
-                SmallButton(o.displayName, { compareUid = o.uid }, outlined = o.uid != compareUid)
+                CompareChip(o, selected = o.uid == compareUid) { compareUid = o.uid }
             }
         }
         GameCard {
             if (other != null) {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
-                    Text(m.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(other.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1.4f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    listOf(m, other).forEach { mon ->
+                        Column(Modifier.weight(1.4f)) {
+                            MonsterArt(mon.species, Modifier.size(40.dp), dim = mon.fainted, shiny = mon.shiny)
+                            Text(mon.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("Lv ${mon.level}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
             val scaleMax = (s.monsters + listOfNotNull(other)).flatMap { mon -> MONSTER_STATS.map { mon.stat(it) } }.maxOrNull() ?: 1
@@ -1243,5 +1248,22 @@ private fun BuddyProgress(s: com.monsterquest.core.GameState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
         )
+    }
+}
+
+/** A monster to compare against: its picture, name and level, so it's easy to spot even if you forget the name. */
+@Composable
+private fun CompareChip(m: Monster, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .width(72.dp)
+            .border(if (selected) 2.dp else 1.dp, if (selected) Gold else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        MonsterArt(m.species, Modifier.size(44.dp), dim = m.fainted, shiny = m.shiny)
+        Text(m.displayName, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        Text("Lv ${m.level}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
