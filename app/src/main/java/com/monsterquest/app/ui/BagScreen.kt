@@ -72,7 +72,7 @@ fun BagScreen(vm: GameViewModel) {
             )
         }
         Text(
-            "You can use up to $MAX_ITEMS_PER_BATTLE items per battle. Bag size grows with upgrades every 5 levels.",
+            "You can use up to $MAX_ITEMS_PER_BATTLE items per battle (Binding Crystals and berries don't count). Bag size grows with upgrades every 5 levels.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 6.dp),

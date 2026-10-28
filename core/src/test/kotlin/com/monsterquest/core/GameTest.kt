@@ -183,6 +183,26 @@ class GameTest {
     }
 
     @Test
+    fun tamingDoesNotCountTowardTheItemLimit() {
+        val s = started().copy(hero = Hero(level = 60), inventory = mapOf(Item.POTION to 10, Item.TAMING_ORB to 10, Item.SWEET_BERRY to 2))
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 5, rng), EncounterType.WILD, rng = rng)
+        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        repeat(MAX_ITEMS_PER_BATTLE) { heroTurn(); b.act(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)) }
+        assertEquals(0, b.itemsRemainingThisBattle)
+        // Item limit reached, but taming still works: a berry and a cast, and neither counts.
+        b.enemy.hp = 1
+        heroTurn()
+        assertNull(b.captureBlockedReason())
+        assertTrue(b.canFeed(Item.SWEET_BERRY))
+        b.act(BattleAction.UseItem(Item.SWEET_BERRY, Combatant.HERO_KEY))
+        heroTurn()
+        if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Capture(Item.TAMING_ORB))
+        assertEquals(0, b.itemsRemainingThisBattle)
+        // The crystal still leaves the bag.
+        assertEquals(9, b.count(Item.TAMING_ORB))
+    }
+
+    @Test
     fun fullBattleWinsAndPaysOut() {
         val s = started()
         val enemy = Monster.create(Bestiary.get("zapmouse"), 1, rng)

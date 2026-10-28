@@ -653,7 +653,10 @@ class Battle(
 
     private val bag: MutableMap<Item, Int> = inventory.toMutableMap()
     private val itemsUsed = mutableMapOf<Item, Int>()
-    val itemsUsedCount: Int get() = itemsUsed.values.sum()
+    /** Items used that count toward the per-battle limit: taming (Binding Crystals and berries) doesn't. */
+    val itemsUsedCount: Int get() = itemsUsed.filterKeys { countsTowardLimit(it) }.values.sum()
+
+    private fun countsTowardLimit(item: Item) = item.kind != ItemKind.CAPTURE && item.kind != ItemKind.BAIT
     val itemsRemainingThisBattle: Int get() = MAX_ITEMS_PER_BATTLE - itemsUsedCount
 
     val log = mutableListOf<String>()
@@ -762,7 +765,7 @@ class Battle(
 
     /** True if [berry] can be fed now: the foe can be tamed in this fight, and it hasn't eaten as good a berry. */
     fun canFeed(berry: Item): Boolean =
-        berry.kind == ItemKind.BAIT && count(berry) > 0 && itemsRemainingThisBattle > 0 && bait < berry.power &&
+        berry.kind == ItemKind.BAIT && count(berry) > 0 && bait < berry.power &&
             encounter != EncounterType.VILLAIN && encounter != EncounterType.DEN && encounter != EncounterType.THUG && !captureLocked
 
     /** The last Binding cast's roll, for the shake animation, and how many casts so far (to spot a new one). */
@@ -788,7 +791,6 @@ class Battle(
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         capturedKeys.size >= storageRoom -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No Binding Crystals left."
-        itemsRemainingThisBattle <= 0 -> "Item limit reached for this battle ($MAX_ITEMS_PER_BATTLE)."
         enemy.hpFraction > 0.5 && count(Item.PERFECT_ORB) <= 0 -> "Too strong to tame. Get it below 50% HP."
         else -> null
     }
@@ -1234,7 +1236,7 @@ class Battle(
     }
 
     private fun useItem(item: Item): Boolean {
-        if (itemsRemainingThisBattle <= 0 || count(item) <= 0) return false
+        if ((countsTowardLimit(item) && itemsRemainingThisBattle <= 0) || count(item) <= 0) return false
         bag[item] = count(item) - 1
         itemsUsed[item] = (itemsUsed[item] ?: 0) + 1
         return true
