@@ -256,6 +256,7 @@ fun MapScreen(vm: GameViewModel) {
                             mv.setScrollableAreaLimitDouble(
                                 org.osmdroid.util.BoundingBox(loc.first + dLat, loc.second + dLon, loc.first - dLat, loc.second - dLon),
                             )
+                            applyZoomFloor(mv, loc.first)
                             if (following) mv.controller.setCenter(here)
                             // Reach circle for shrines.
                             mv.overlays.add(
@@ -506,8 +507,25 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
 private const val LOOK_AWAY_MS = 10_000L
 
 /** A small rounded count under the map ("8 near", "3 dens"...). */
-/** How far (meters) the map reaches around you: about a mile. */
+/** How far (meters) the map can move away from you: about a mile. */
 private const val MAP_REACH_M = 1_609.0
+
+/** How far out you can zoom: the nearest screen edge stays within about a quarter mile of you. */
+private const val ZOOM_REACH_M = 402.0
+
+/**
+ * Keeps the map from zooming out past [ZOOM_REACH_M]: the zoom level at which
+ * half the map's shorter side covers that distance, at this latitude.
+ */
+private fun applyZoomFloor(mv: MapView, lat: Double) {
+    val halfPx = minOf(mv.width, mv.height) / 2.0
+    if (halfPx <= 0) return
+    // Meters per pixel at zoom z is 156,543 x cos(latitude) / 2^z (256-pixel tiles).
+    val z = kotlin.math.ln(156_543.03 * kotlin.math.cos(Math.toRadians(lat)) * halfPx / ZOOM_REACH_M) / kotlin.math.ln(2.0)
+    val floor = z.coerceIn(12.0, mv.maxZoomLevel - 1)
+    if (kotlin.math.abs(mv.minZoomLevel - floor) > 0.01) mv.minZoomLevel = floor
+    if (mv.zoomLevelDouble < floor) mv.controller.setZoom(floor)
+}
 
 /** The weather's icon. */
 fun com.monsterquest.core.LiveWeather.icon(): GameIcon = when (this) {
