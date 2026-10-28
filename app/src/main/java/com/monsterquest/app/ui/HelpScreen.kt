@@ -121,6 +121,8 @@ private val topics = listOf(
             "Dens are the exception: you bring your hero, all 5 party monsters and the 2 swap slots. On the Monsters tab, long-press a monster and drag it onto a party or swap slot.",
             "Each monster has 4 moves. Spells and typed moves throw bolts of their type; swords and Normal moves slash.",
             "Hold a move button to see its type, power, accuracy and side effects.",
+            "When a monster with 4 moves learns a new one, the level-up after the battle asks right away: compare it with the 4 it knows and pick one to forget, or skip it for now (swap it in later on its page).",
+            "Defend raises your shield: no damage at all until your next turn (piercing attacks get through). It can't hold twice in a row: a second Defend straight after only halves damage.",
             "Moves have uses per battle, shown on each button: Basic 12, Reliable 8, High risk 4, Support 4, Status & traps 3. Every turn a monster doesn't use a move, that move gets one use back, so sleep and shock can't be spammed. Out of everything, a monster can only Struggle (a weak hit that hurts itself). Wild monsters play by the same rules.",
             "When choosing moves on a monster's page, sort them by role (Basic, Reliable, High risk, Status & traps, Support), power, type, accuracy or the level learned.",
             "Bigger moves cost something: lower accuracy, recoil, a turn of rest, or a drop in the user's own stats. Clean, reliable attacks top out around 95 power; moves that hit every foe do 75% to each.",

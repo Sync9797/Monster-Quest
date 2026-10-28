@@ -897,10 +897,16 @@ abstract class ScreenshotBase(private val device: String) {
                 pal.key, pal.name, pal.speciesId, 20, 21,
                 stats("HP" to (118 to 124), "Attack" to (44 to 46), "Magic" to (22 to 23), "Defense" to (30 to 31), "Speed" to (41 to 43)),
                 learned = listOf("Fire Fang"),
+                canLearn = listOf("Flame Torrent"),
+                canLearnIds = listOf("flame_torrent"),
+                loadout = listOf("spit_fire", "cinder_jab", "heat_claws", "bite"),
             ),
         )
         val b = b0.copy(outcome = com.monsterquest.core.BattleOutcome.WON, resultText = "Victory! +40 XP, +30 gold.", levelUps = ups, current = null)
-        shot("33_level_up_banners", advanceMs = 1_500) { com.monsterquest.app.ui.BattleScreen(b, onAction = {}, onClose = {}) }
+        var learnedMove: Triple<String, String, String>? = null
+        shot("33_level_up_banners", advanceMs = 1_500) {
+            com.monsterquest.app.ui.BattleScreen(b, onAction = {}, onClose = {}, onLearn = { uid, new, old -> learnedMove = Triple(uid, new, old) })
+        }
         check(rule.onAllNodesWithText("LEVEL UP!").fetchSemanticsNodes().size == 2) { "a ribbon over each fighter that levelled" }
         rule.onNodeWithText("Continue").performClick()
         rule.mainClock.advanceTimeBy(300)
@@ -909,6 +915,14 @@ abstract class ScreenshotBase(private val device: String) {
         rule.mainClock.advanceTimeBy(300)
         rule.onNodeWithText("${pal.name} grew to Lv 21!").assertExists()
         rule.onNodeWithText("Learned Fire Fang!").assertExists()
+        // It wants Flame Torrent too: compare, then forget Spit Fire for it.
+        rule.onNodeWithText("${pal.name} wants to learn Flame Torrent!").assertExists()
+        rule.onNodeWithText("Skip for now").assertExists()
+        rule.onAllNodes(androidx.compose.ui.test.hasText("Spit Fire", substring = true) and androidx.compose.ui.test.hasClickAction())[0]
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(300)
+        check(learnedMove == Triple(pal.key, "flame_torrent", "spit_fire")) { "learned $learnedMove" }
+        rule.onNodeWithText("Learned Flame Torrent in place of Spit Fire!").assertExists()
         rule.onNodeWithText("OK").performClick()
     }
 

@@ -204,7 +204,12 @@ class Combatant(
     }
     /** Type of the hero's basic Attack (from their weapon). */
     var attackElement: Element = Element.NEUTRAL
+    /** Shield up (Defend): no damage until its next turn. */
     var defending: Boolean = false
+    /** Defended twice in a row: the shield only halves damage this time. */
+    var bracing: Boolean = false
+    /** Its last turn was a Defend. */
+    var defendedLast: Boolean = false
 
     // ---- conditions ----
     var status: Status? = null
@@ -261,6 +266,7 @@ class Combatant(
         traits.forEach { (t, r) -> add("${t.label} ${"★".repeat(r)}") }
         if (diving != null) add("In the air")
         if (protecting) add("Guarding")
+        if (defending) add("Shield up")
         if (shield > 0) add("Ward $shield")
         if (mustRecharge) add("Recharging")
         if (accuracyDown || missNext) add("Blinded")
@@ -820,6 +826,7 @@ class Battle(
         if (!consumedTurn) return
         // A turn spent on anything but a move rests every move a little.
         if (action !is BattleAction.UseMove) actor.spendTurn(null)
+        if (action != BattleAction.Defend) actor.defendedLast = false
         current = null
         checkEnd()
         advance()
@@ -944,6 +951,7 @@ class Battle(
     /** Ticks conditions at the start of a fighter's turn. Returns false if it loses the turn. */
     private fun beginTurn(c: Combatant): Boolean {
         c.defending = false
+        c.bracing = false
         c.protecting = false
         if (c.energyRegen > 0 && c.mp < c.maxMp) c.mp = minOf(c.maxMp, c.mp + c.energyRegen)
         if (c.regenPct > 0 && c.hp < c.maxHp) heal(c, maxOf(1, c.maxHp * c.regenPct / 100), "${c.name} regenerates")
@@ -1065,8 +1073,16 @@ class Battle(
                 }
             }
             BattleAction.Defend -> {
-                actor.defending = true
-                log += "${actor.name} braces for impact."
+                // The shield blocks every hit until the next turn, but it can't hold twice in a row.
+                if (actor.defendedLast) {
+                    actor.bracing = true
+                    actor.defendedLast = false
+                    log += "${actor.name} braces again, but the shield can't hold twice in a row: half damage this turn."
+                } else {
+                    actor.defending = true
+                    actor.defendedLast = true
+                    log += "${actor.name} raises a shield: no damage until their next turn."
+                }
             }
             is BattleAction.UseMove -> {
                 val move = actor.usableMoves.find { it.id == action.moveId } ?: return false
@@ -1634,6 +1650,12 @@ class Battle(
             record(a, d, StrikeStyle.MISS, type)
             return 0
         }
+        // A raised shield (Defend) blocks the hit entirely; piercing attacks go through.
+        if (d.defending && !pierce) {
+            log += "${d.name}'s shield blocks it!"
+            record(a, d, StrikeStyle.MISS, type)
+            return 0
+        }
         // Last Stand, Grit and Kindling power up the attacker.
         val lastStand = a.rankOf(Trait.LAST_STAND).takeIf { it > 0 && type in a.types && a.hpFraction <= 1.0 / 3 }
             ?.let { 1 + Trait.LAST_STAND.lastStandPct(it) / 100.0 } ?: 1.0
@@ -1656,7 +1678,7 @@ class Battle(
             (1 + a.powerUp / 100.0) *
             (0.85 + rng.nextDouble() * 0.15) *
             (if (crit) 1.5 + a.critDamagePct / 100.0 else 1.0) *
-            (if (d.defending && !pierce) 0.5 else 1.0) *
+            (if (d.bracing && !pierce) 0.5 else 1.0) *
             // Subclass perks and skills.
             (if (useMagic) 1 + a.spellPct / 100.0 else 1.0) *
             (1 + a.ragePct / 100.0 * (1 - a.hpFraction)) *

@@ -116,8 +116,10 @@ fun BattleScreen(
     onTarget: (String) -> Unit = {},
     /** Send a swap monster in for one that just fainted (incoming uid, fallen key). */
     onReplace: (String, String) -> Unit = { _, _ -> },
+    /** A monster learns a new move in place of one it knows (monster uid, new move id, replaced move id). */
+    onLearn: (String, String, String) -> Unit = { _, _, _ -> },
 ) {
-    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace) }
+    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace, onLearn) }
 }
 
 /** What the hero is wearing, so their battle sprite matches their equipment. */
@@ -131,6 +133,7 @@ private fun BattleContent(
     onNext: () -> Unit,
     onTarget: (String) -> Unit,
     onReplace: (String, String) -> Unit,
+    onLearn: (String, String, String) -> Unit,
 ) {
     var menu by remember { mutableStateOf<Menu>(Menu.Main) }
     // After a Binding cast, the crystal shakes before the result shows.
@@ -195,7 +198,7 @@ private fun BattleContent(
                 ActionPanel(b, actor, menu, onMenu = { menu = it }, onAction = onAction)
             }
         } else {
-            LevelUpGate(b, onClose, onNext) { close, next -> ResultPanel(b, close, next) }
+            LevelUpGate(b, onClose, onNext, onLearn) { close, next -> ResultPanel(b, close, next) }
         }
     }
     val controls: @Composable () -> Unit = {
@@ -451,6 +454,7 @@ private fun LevelUpGate(
     b: BattleView,
     onClose: () -> Unit,
     onNext: () -> Unit,
+    onLearn: (String, String, String) -> Unit,
     content: @Composable (close: () -> Unit, next: () -> Unit) -> Unit,
 ) {
     var showing by remember(b.levelUps) { mutableStateOf(-1) }
@@ -467,7 +471,7 @@ private fun LevelUpGate(
     content(gated(onClose), gated(onNext))
     val up = b.levelUps.getOrNull(showing)
     if (up != null) {
-        LevelUpDialog(up, b.allies.find { it.key == up.key }, showing, b.levelUps.size) {
+        LevelUpDialog(up, b.allies.find { it.key == up.key }, showing, b.levelUps.size, onLearn) {
             if (showing + 1 < b.levelUps.size) {
                 showing++
             } else {
@@ -481,7 +485,18 @@ private fun LevelUpGate(
 
 /** One fighter's level-up: new level, every stat before → after, moves learned, evolution. */
 @Composable
-private fun LevelUpDialog(up: LevelUp, fighter: FighterView?, index: Int, total: Int, onNext: () -> Unit) {
+private fun LevelUpDialog(
+    up: LevelUp,
+    fighter: FighterView?,
+    index: Int,
+    total: Int,
+    onLearn: (String, String, String) -> Unit,
+    onNext: () -> Unit,
+) {
+    // Moves it wants to learn: decided one at a time, right here.
+    var loadout by remember(up) { mutableStateOf(up.loadout) }
+    var decided by remember(up) { mutableStateOf(emptyMap<String, String?>()) }
+    val pending = up.canLearnIds.firstOrNull { it !in decided }
     AlertDialog(
         onDismissRequest = {},
         title = {
@@ -499,7 +514,7 @@ private fun LevelUpDialog(up: LevelUp, fighter: FighterView?, index: Int, total:
             }
         },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 if (up.evolvedFrom != null) {
                     IconText(GameIcon.SPARK, "${up.evolvedFrom} evolved into ${up.speciesId?.let { Bestiary.get(it).name } ?: up.name}!", tint = Gold, textColor = Gold, bold = true, fontSize = 14.sp)
                     Spacer(Modifier.height(6.dp))
@@ -524,9 +539,29 @@ private fun LevelUpDialog(up: LevelUp, fighter: FighterView?, index: Int, total:
                     Spacer(Modifier.height(4.dp))
                     IconText(GameIcon.BOOK, "Learned $it!", tint = MpBlue, textColor = MpBlue, bold = true, fontSize = 14.sp)
                 }
-                up.canLearn.forEach {
+                // What was decided so far.
+                decided.forEach { (newId, replaced) ->
                     Spacer(Modifier.height(4.dp))
-                    Text("Wants to learn $it, but knows 4 moves. Swap it in on its stat page.", fontSize = 13.sp, color = HpYellow)
+                    val mv = com.monsterquest.core.Moves.get(newId)
+                    if (replaced != null) {
+                        IconText(GameIcon.BOOK, "Learned ${mv.name} in place of ${com.monsterquest.core.Moves.get(replaced).name}!", tint = MpBlue, textColor = MpBlue, bold = true, fontSize = 14.sp)
+                    } else {
+                        Text("Skipped ${mv.name} for now: swap it in later on its page.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                pending?.let { newId ->
+                    LearnMovePrompt(
+                        name = up.name,
+                        newMove = com.monsterquest.core.Moves.get(newId),
+                        current = loadout.mapNotNull { com.monsterquest.core.Moves.find(it) },
+                        ownTypes = up.speciesId?.let { Bestiary.get(it).types }.orEmpty(),
+                        onReplace = { old ->
+                            onLearn(up.key, newId, old.id)
+                            loadout = loadout.map { if (it == old.id) newId else it }
+                            decided = decided + (newId to old.id)
+                        },
+                        onSkip = { decided = decided + (newId to null) },
+                    )
                 }
                 up.notes.forEach {
                     Spacer(Modifier.height(4.dp))
@@ -535,9 +570,74 @@ private fun LevelUpDialog(up: LevelUp, fighter: FighterView?, index: Int, total:
             }
         },
         confirmButton = {
+            // Leaving with a move undecided skips it (it can be swapped in later on the monster's page).
             Button(onClick = onNext) { Text(if (index + 1 < total) "Next (${index + 1}/$total)" else "OK") }
         },
     )
+}
+
+/**
+ * A new move to learn, compared side by side with the 4 it knows: pick one to
+ * forget, or skip it for now.
+ */
+@Composable
+private fun LearnMovePrompt(
+    name: String,
+    newMove: Move,
+    current: List<Move>,
+    ownTypes: List<Element>,
+    onReplace: (Move) -> Unit,
+    onSkip: () -> Unit,
+) {
+    Column(
+        Modifier
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, typeColor(newMove.type), RoundedCornerShape(10.dp))
+            .padding(8.dp),
+    ) {
+        Text("$name wants to learn ${newMove.name}!", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Gold)
+        LearnMoveLine(newMove, ownTypes, highlight = true)
+        Text(newMove.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        Text("Forget one to make room:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        current.forEach { old ->
+            OutlinedButton(onClick = { onReplace(old) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column(Modifier.fillMaxWidth()) {
+                    LearnMoveLine(old, ownTypes, highlight = false)
+                    // How the new move compares with this one.
+                    val diff = newMove.power - old.power
+                    if (newMove.isDamaging && old.isDamaging && diff != 0) {
+                        Text(
+                            "${newMove.name} is ${if (diff > 0) "+$diff" else "$diff"} power" +
+                                if (newMove.accuracy != old.accuracy) ", ${newMove.accuracy - old.accuracy}% accuracy" else "",
+                            fontSize = 11.sp,
+                            color = if (diff > 0) HpGreen else HpRed,
+                        )
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) { Text("Skip for now") }
+    }
+}
+
+/** One move in the comparison: type, name, power, accuracy, role and uses. */
+@Composable
+private fun LearnMoveLine(mv: Move, ownTypes: List<Element>, highlight: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        GIcon(mv.type.icon(), Modifier.size(16.dp), typeColor(mv.type))
+        Spacer(Modifier.width(6.dp))
+        Text(mv.name, fontWeight = if (highlight) FontWeight.Bold else FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Text(
+            (if (mv.isDamaging) "Pow ${mv.power}" else "Status") +
+                (if (MoveEffect.SureHit in mv.effects) " • Sure hit" else " • Acc ${mv.accuracy}") +
+                (if (mv.isDamaging && mv.type in ownTypes) " • +20%" else ""),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Text("${mv.role.label} • ${mv.maxPp} uses", fontSize = 11.sp, color = typeColor(mv.type))
 }
 
 @Composable

@@ -40,6 +40,27 @@ class TraitPoolsTest {
     }
 
     @Test
+    fun theHeroShieldBlocksEveryHitButNotTwiceInARow() {
+        val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.copy(party = emptyList(), hero = Hero(level = 40))
+        val foe = Monster.create(Bestiary.get("emberkit"), 8, Random(2))
+        val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3))
+        val hero = b.allies.first()
+        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        heroTurn()
+        hero.hp = hero.maxHp
+        val from = b.log.size
+        b.act(BattleAction.Defend)
+        heroTurn()
+        // Every hit until the hero's next turn was blocked.
+        val shielded = b.log.drop(from)
+        assertEquals(hero.maxHp, hero.hp, shielded.toString())
+        assertTrue(shielded.none { "hits Hero" in it }, shielded.toString())
+        // A second Defend in a row only braces.
+        b.act(BattleAction.Defend)
+        assertTrue(b.log.any { "can't hold twice in a row" in it }, b.log.takeLast(10).joinToString("\n"))
+    }
+
+    @Test
     fun newTraitsWorkInBattle() {
         val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state
         fun duel(me: Monster, foe: Monster): Pair<Battle, Combatant> {

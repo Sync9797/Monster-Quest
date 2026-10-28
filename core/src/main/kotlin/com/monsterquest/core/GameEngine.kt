@@ -30,6 +30,10 @@ data class LevelUp(
     val learned: List<String> = emptyList(),
     /** Moves it could learn but its 4 slots are full (swap on its stat page). */
     val canLearn: List<String> = emptyList(),
+    /** The same moves, by id: offered right away at the end of the battle. */
+    val canLearnIds: List<String> = emptyList(),
+    /** Its 4 moves after levelling, by id (to compare against). */
+    val loadout: List<String> = emptyList(),
     /** The species name it evolved from, if it evolved. */
     val evolvedFrom: String? = null,
     /** Anything else worth saying (e.g. attribute points to spend). */
@@ -647,6 +651,15 @@ object GameEngine {
      * Adds XP, then reports evolutions and newly learned moves. New moves fill
      * empty slots of a custom loadout; automatic loadouts update themselves.
      */
+    /** Teaches [uid] the move [newId] in place of [replaceId]. */
+    fun learnMove(state: GameState, uid: String, newId: String, replaceId: String): Update {
+        val m = state.monsters.find { it.uid == uid } ?: return Update(state, "")
+        val ids = m.activeMoves.map { it.id }
+        if (replaceId !in ids || newId in ids) return Update(state, "")
+        val u = setMoves(state, uid, ids.map { if (it == replaceId) newId else it })
+        return u.copy(message = "${m.displayName} forgot ${Moves.get(replaceId).name} and learned ${Moves.get(newId).name}!")
+    }
+
     fun grow(m: Monster, xp: Int): Pair<Monster, List<String>> {
         val (after, up) = growDetailed(m, xp)
         val notes = mutableListOf<String>()
@@ -665,6 +678,7 @@ object GameEngine {
         if (after.level == m.level) return after to null
         val learned = mutableListOf<String>()
         val canLearn = mutableListOf<String>()
+        val canLearnIds = mutableListOf<String>()
         for (mv in after.learnedMoves.filter { it.id !in before }) {
             val custom = after.moves
             if (custom != null && custom.size < Moves.MAX_MOVES) {
@@ -672,6 +686,7 @@ object GameEngine {
                 learned += mv.name
             } else if (custom != null) {
                 canLearn += mv.name
+                canLearnIds += mv.id
             } else {
                 learned += mv.name
             }
@@ -688,6 +703,8 @@ object GameEngine {
             stats = labels.indices.map { StatLine(labels[it], b[it], a[it]) },
             learned = learned,
             canLearn = canLearn,
+            canLearnIds = canLearnIds,
+            loadout = after.activeMoves.map { it.id },
             evolvedFrom = if (after.speciesId != m.speciesId) m.species.name else null,
             notes = traitNotes(m, after) + listOfNotNull(
                 after.canEvolveTo?.takeIf { m.canEvolveTo == null }?.let {
