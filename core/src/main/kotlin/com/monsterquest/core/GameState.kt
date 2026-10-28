@@ -333,6 +333,10 @@ data class GameState(
     val weatherEventDays: Map<String, Long> = emptyMap(),
     /** Eggs being walked to hatch. */
     val eggs: List<Egg> = emptyList(),
+    /** First steps: the welcome was shown, steps claimed, or the checklist dismissed. */
+    val tutorialIntroSeen: Boolean = false,
+    val tutorialClaimed: Set<String> = emptySet(),
+    val tutorialDismissed: Boolean = false,
     /** Today's quest rewards so far (see [QuestRewards]); kept on the hero, so deleting quests doesn't reset it. */
     val questLimits: QuestLimits = QuestLimits(),
     /** Daily reminders (gentle alarms on chosen days). */

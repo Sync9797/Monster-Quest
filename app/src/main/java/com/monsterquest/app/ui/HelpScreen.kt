@@ -41,6 +41,7 @@ private val topics = listOf(
             "Living well pays off too. Walking levels you and your monsters up, heals them, opens loot boxes and draws monsters to you. Time away from your screen (phone-free sessions) earns loot boxes. A full night's sleep refills your Energy.",
             "So the more you get done, move and rest in real life, the stronger your hero and team grow in the game.",
             "Goals on Home: three for today and three for the week (win battles, tame a featured type, walk, finish quests...). Claim each for gold and an item; finish a whole set for a bonus. Achievements on the Hero tab track lifetime milestones with bigger rewards.",
+            "New here? The First steps checklist on Home walks you through the basics (add and finish a quest, visit a shrine, win a battle, tame a monster, a phone-free session), with a reward for each step and a bonus for finishing them all. Hide it any time.",
             "The menu at the bottom: Quests, Map, Bag and Store, with the Hero button in the middle. Tap or hold it to choose your Hero or your Monsters.",
         ),
     ),

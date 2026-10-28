@@ -124,6 +124,7 @@ fun QuestsScreen(vm: GameViewModel) {
         Column {
             // Health (steps, water, and soon sleep): folds to one line so it stays out of the way.
             HealthCard(vm, now)
+            if (com.monsterquest.core.Tutorial.active(vm.state)) FirstStepsCard(vm)
             GoalsCard(vm)
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -132,6 +132,9 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
         }
     }
 
+    // A brand-new player: a short welcome, then the First steps checklist on Home.
+    if (com.monsterquest.core.Tutorial.showIntro(state)) WelcomeDialog(state.hero.name) { vm.finishIntro() }
+
     vm.adventureResult?.let { text ->
         AlertDialog(
             onDismissRequest = vm::dismissAdventureResult,

@@ -667,6 +667,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
     fun claimAchievement(id: String) = apply(com.monsterquest.core.Achievements.claim(state, id))
     fun claimGoal(goal: com.monsterquest.core.Goal) = apply(com.monsterquest.core.Goals.claim(state, goal))
+    fun claimTutorialStep(id: String) = apply(com.monsterquest.core.Tutorial.claim(state, id))
+    fun finishIntro() = set(state.copy(tutorialIntroSeen = true))
+    fun dismissTutorial() = set(state.copy(tutorialDismissed = true))
 
     /** Level-ups from party training during a phone-free session, shown one by one. */
     var trainingLevelUps by mutableStateOf<List<com.monsterquest.core.LevelUp>>(emptyList())
