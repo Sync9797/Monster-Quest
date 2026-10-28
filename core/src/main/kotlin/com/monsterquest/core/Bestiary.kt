@@ -443,6 +443,8 @@ object Bestiary {
         rareBoost: Double = 1.0,
         /** Extra multipliers by type (the real weather); a dual type takes its better one. */
         boosts: Map<Element, Double> = emptyMap(),
+        /** Extra multipliers by species id (the mystery of the week). */
+        speciesBoosts: Map<String, Double> = emptyMap(),
     ): Species {
         val pool = wild.filter { it.minWildLevel <= level }
         fun weight(s: Species): Int {
@@ -450,6 +452,7 @@ object Bestiary {
             if (s.element in favored) w *= 3
             if (boosts.isNotEmpty()) w *= s.types.maxOf { boosts[it] ?: 1.0 }
             if (s.rarity.ordinal > 0) w *= rareBoost
+            speciesBoosts[s.id]?.let { w *= it }
             return w.toInt().coerceAtLeast(1)
         }
         var roll = rng.nextInt(pool.sumOf { weight(it) })
@@ -459,6 +462,20 @@ object Bestiary {
         }
         return pool.last()
     }
+
+    /** [species]' line evolved as far as a trained monster of [level] would be. */
+    fun evolvedFor(species: Species, level: Int): Species {
+        var s = lineOf(species).first()
+        while (true) {
+            val next = s.evolvesTo ?: return s
+            val at = s.evolveLevel ?: return s
+            if (level < at) return s
+            s = get(next)
+        }
+    }
+
+    /** A trainer's monster: a random line, evolved to fit [level] (as a trained team would be). */
+    fun trained(rng: Random, level: Int): Species = evolvedFor(randomWild(rng, level), level)
 
     /** The full evolution line containing [species]. */
     fun lineOf(species: Species): List<Species> = all.filter { it.family == species.family }.sortedBy { it.stage }

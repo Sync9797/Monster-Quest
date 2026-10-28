@@ -75,6 +75,15 @@ object Eggs {
         return Egg(newId(rng), baby.id, ivs, personality, shiny, walkMeters(baby))
     }
 
+    /** An egg of [species]' line with [perfect] perfect stats (a gift). */
+    fun gift(species: Species, rng: Random, perfect: Int): Egg {
+        val baby = Bestiary.lineOf(species).first()
+        val best = MONSTER_STATS.shuffled(rng).take(perfect).toSet()
+        fun iv(stat: Stat) = if (stat in best) MAX_IV else rng.nextInt(MAX_IV + 1)
+        val ivs = StatBlock(iv(Stat.HP), iv(Stat.ATTACK), rng.nextInt(MAX_IV + 1), iv(Stat.DEFENSE), iv(Stat.SPEED))
+        return Egg(newId(rng), baby.id, ivs, Personality.entries.random(rng), rollShiny(rng), walkMeters(baby))
+    }
+
     /** Chance an adventure team of [ADVENTURE_EGG_TEAM]+ monsters brings home an egg. */
     const val ADVENTURE_EGG_CHANCE = 0.75
     const val ADVENTURE_EGG_TEAM = 2

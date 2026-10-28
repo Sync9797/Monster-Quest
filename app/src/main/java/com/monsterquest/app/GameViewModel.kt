@@ -169,7 +169,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun set(next: GameState) {
         // A new day or week starts its goals from the stats just before this change.
         // A new buddy (first party slot) starts its walk toward candy from zero.
-        val s = com.monsterquest.core.Buddy.sync(com.monsterquest.core.Goals.rollover(state, next, java.time.LocalDate.now().toEpochDay()))
+        val today = java.time.LocalDate.now().toEpochDay()
+        var s = com.monsterquest.core.Buddy.sync(com.monsterquest.core.Goals.rollover(state, next, today))
+        // The mystery of the week: a new one each week, revealed by taming one.
+        s = com.monsterquest.core.Mystery.track(state, com.monsterquest.core.Mystery.rollover(s, today))
         val walked = s.stats.totalSteps - state.stats.totalSteps
         // Add today's gains (levels, XP, loot, healing, tasks) for tomorrow's morning recap.
         state = com.monsterquest.core.Recap.track(state, s, System.currentTimeMillis()).withJournal()
@@ -860,6 +863,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         lure = state.lureActive(nowMs),
         weather = weatherForWave(nowMs),
         waterDistanceM = waterForWave(nowMs),
+        speciesBoosts = com.monsterquest.core.Mystery.boosts(state),
     )
 
     /** Like the weather, nearby water changes the monsters with the next wave, so the map doesn't reshuffle. */
@@ -1113,6 +1117,45 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun redeemVillainMonster(index: Int) = apply(Villains.redeem(state, index))
+
+    // ---- wanderers: traders and nomads -------------------------------------
+
+    fun tradersNear(nowMs: Long): List<com.monsterquest.core.Trader> {
+        val (lat, lon) = location ?: return emptyList()
+        return com.monsterquest.core.Wanderers.tradersNear(state, lat, lon, nowMs)
+    }
+
+    fun nomadsNear(nowMs: Long): List<com.monsterquest.core.Nomad> {
+        val (lat, lon) = location ?: return emptyList()
+        return com.monsterquest.core.Wanderers.nomadsNear(state, lat, lon, nowMs)
+    }
+
+    fun buyFromTrader(trader: com.monsterquest.core.Trader, index: Int) {
+        val d = distanceTo(trader.lat, trader.lon)
+        if (d == null || d > com.monsterquest.core.Wanderers.RANGE_M) {
+            message = "Get closer to ${trader.name} (within ${dist(com.monsterquest.core.Wanderers.RANGE_M)})."
+            return
+        }
+        apply(com.monsterquest.core.Wanderers.buy(state, trader, index, System.currentTimeMillis()))
+    }
+
+    private var nomadRun: com.monsterquest.core.Nomad? = null
+
+    fun challengeNomad(nomad: com.monsterquest.core.Nomad) {
+        val d = distanceTo(nomad.lat, nomad.lon)
+        if (d == null || d > com.monsterquest.core.Wanderers.RANGE_M) {
+            message = "Get closer to ${nomad.name} (within ${dist(com.monsterquest.core.Wanderers.RANGE_M)})."
+            return
+        }
+        nomadRun = nomad
+        startBattle(
+            nomad.active.first(), EncounterType.NOMAD, null, pack = nomad.active.drop(1),
+            enemyReserve = nomad.reserve, swapLimit = com.monsterquest.core.Wanderers.NOMAD_SWAPS, trainer = nomad.name,
+        )
+    }
+
+    fun toggleWanted(speciesId: String) = apply(com.monsterquest.core.Wanted.toggle(state, speciesId))
+    fun claimMystery() = apply(com.monsterquest.core.Mystery.claim(state))
     fun dismissSpoils() = set(Villains.dismissSpoils(state))
 
     // ---- battle ------------------------------------------------------------
@@ -1125,14 +1168,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         ambush: Boolean = false,
         thug: com.monsterquest.core.Thug? = null,
         captureBoost: Double = 1.0,
+        enemyReserve: List<Monster> = emptyList(),
+        swapLimit: Int? = null,
+        trainer: String? = null,
     ) {
         var s = state
-        for (m in listOf(enemy) + pack) s = GameEngine.markSeen(s, m.speciesId)
+        for (m in listOf(enemy) + pack + enemyReserve) s = GameEngine.markSeen(s, m.speciesId)
         set(s)
         val b = GameEngine.newBattle(
             state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
             weather = weather?.kind?.takeIf { state.settings.liveWeather },
             captureBoost = captureBoost,
+            enemyReserve = enemyReserve, swapLimit = swapLimit, trainer = trainer,
         )
         activeBattle = b
         battle = battleView(b, null)
@@ -1157,6 +1204,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             resultText = u.message
             levelUps = u.levelUps
             if (state.settings.bigMomentHaptics && u.levelUps.isNotEmpty()) Haptics.levelUp(getApplication())
+            nomadRun?.let { nomad ->
+                if (b.outcome == BattleOutcome.WON) {
+                    val reward = com.monsterquest.core.Wanderers.nomadReward(state, nomad, System.currentTimeMillis())
+                    set(reward.state)
+                    resultText += " " + reward.message
+                } else {
+                    resultText += " ${nomad.name} nods: \"Come find me again today if you want a rematch.\""
+                }
+                nomadRun = null
+            }
             val run = villainRun
             if (run != null) {
                 val next = run.camp.team.getOrNull(run.index + 1)
@@ -1192,5 +1249,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         activeBattle = null
         battle = null
         villainRun = null
+        nomadRun = null
     }
 }

@@ -160,6 +160,11 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
                     color = rarityColor(sp.rarity),
                 )
                 Text(
+                    "${com.monsterquest.core.Scouting.starText(com.monsterquest.core.Scouting.stars(sp))}  final strength of its line",
+                    color = Gold,
+                    fontSize = 14.sp,
+                )
+                Text(
                     when {
                         sp.bossOnly -> "Found only as a guardian at Gold shrines."
                         sp.id in Bestiary.silverGuardians.map { it.id } -> "Roams the wild; also guards Silver shrines."
@@ -198,6 +203,13 @@ private fun JournalEntry(vm: GameViewModel, sp: Species, onDismiss: () -> Unit) 
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        dismissButton = {
+            // Pin it: its whole line is marked on the map.
+            val wanted = sp.id in s.wanted
+            TextButton(onClick = { vm.toggleWanted(sp.id) }, enabled = wanted || sp.id in s.seen) {
+                Text(if (wanted) "\u2605 Wanted" else "\u2606 Want this")
+            }
+        },
     )
 }
 

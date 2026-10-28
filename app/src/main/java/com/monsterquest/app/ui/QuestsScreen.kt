@@ -126,6 +126,7 @@ fun QuestsScreen(vm: GameViewModel) {
             HealthCard(vm, now)
             if (com.monsterquest.core.Tutorial.active(vm.state)) FirstStepsCard(vm)
             GoalsCard(vm)
+            MysteryCard(vm)
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // A task has no due date. Anything with a date goes on the calendar (in the calendar app).

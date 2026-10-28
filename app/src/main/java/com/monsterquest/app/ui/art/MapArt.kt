@@ -166,3 +166,38 @@ fun drawDenOn(c: Canvas, w: Float, h: Float, element: com.monsterquest.core.Elem
     ArtPainter.stroke(c, "M12 30L16 26M14 34L18 30M44 22L47 27M46 20L49 25", INK_MAP, 1.2f, 0.7f)
     c.restore()
 }
+
+/** A wandering trader: a cloaked figure in a green glow, with a coin above their pack. */
+fun drawTraderOn(c: Canvas, w: Float, h: Float) {
+    ArtPainter.glow(c, w / 2, h * 0.88f, w * 0.45f, Argb.hex("6fcf8a"), 0.55f)
+    drawHero(c, w, h, com.monsterquest.core.HeroClass.ROGUE, portrait = false)
+    // Their pack and a gold coin: something to sell.
+    c.drawRoundRect(w * 0.62f, h * 0.42f, w * 0.88f, h * 0.68f, w * 0.05f, w * 0.05f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("8a5a33") })
+    ArtPainter.circle(c, w * 0.78f, h * 0.2f, w * 0.12f, Argb.hex("ebc678"))
+    ArtPainter.circle(c, w * 0.78f, h * 0.2f, w * 0.06f, Argb.hex("b8913f"))
+}
+
+/** A nomad adventurer: a hero in a blue glow, with a pennant to show they want a fair fight. */
+fun drawNomadOn(c: Canvas, w: Float, h: Float) {
+    ArtPainter.glow(c, w / 2, h * 0.88f, w * 0.45f, Argb.hex("6fa8e8"), 0.55f)
+    drawHero(c, w, h, com.monsterquest.core.HeroClass.WARRIOR, portrait = false)
+    val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("e8e1d3"); strokeWidth = w * 0.03f }
+    c.drawLine(w * 0.82f, h * 0.08f, w * 0.82f, h * 0.5f, p)
+    val flag = android.graphics.Path().apply {
+        moveTo(w * 0.82f, h * 0.08f); lineTo(w * 0.98f, h * 0.15f); lineTo(w * 0.82f, h * 0.22f); close()
+    }
+    ArtPainter.fill(c, flag, Argb.hex("3b82d6"))
+}
+
+/** A gold ring at a wanted monster's feet. */
+fun drawWantedRing(c: Canvas, w: Float, h: Float) {
+    ArtPainter.glow(c, w / 2, h / 2, w * 0.5f, Argb.hex("ffd34d"), 0.6f)
+    c.drawOval(
+        w * 0.08f, h * 0.3f, w * 0.92f, h * 0.7f,
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = w * 0.05f
+            color = Argb.hex("ffd34d")
+        },
+    )
+}

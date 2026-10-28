@@ -69,6 +69,8 @@ data class SpawnConditions(
     val weather: LiveWeather? = null,
     /** How far the nearest lake, river or coast is (null: unknown). */
     val waterDistanceM: Double? = null,
+    /** Species that turn up more often (the mystery of the week). */
+    val speciesBoosts: Map<String, Double> = emptyMap(),
 ) {
     val timeOfDay: TimeOfDay get() = TimeOfDay.of(hour)
 
@@ -362,7 +364,7 @@ object World {
                 val level = GameEngine.wildLevel(heroLevel, r) + if (sh.isBoss) 1 else 0
                 out += WildSpawn(
                     id = "h:$window:${stableHash(sh.id)}:$i",
-                    speciesId = Bestiary.randomWild(r, level, favored, rareBoost, conditions.boosts).id,
+                    speciesId = Bestiary.randomWild(r, level, favored, rareBoost, conditions.boosts, conditions.speciesBoosts).id,
                     level = level,
                     lat = sh.lat + dLat,
                     lon = sh.lon + dLon,
@@ -415,7 +417,7 @@ object World {
             val nearby = fromAnchor in NEARBY_MIN_M..SPAWN_INNER_M && r.nextDouble() < NEARBY_SHARE
             if (fromAnchor !in SPAWN_INNER_M..SPAWN_OUTER_M && !nearby) continue
             val level = GameEngine.wildLevel(heroLevel, r)
-            val species = Bestiary.randomWild(r, level, favored, rareBoost, conditions.boosts)
+            val species = Bestiary.randomWild(r, level, favored, rareBoost, conditions.boosts, conditions.speciesBoosts)
             // How quickly it closes in (share of the way per minute): most are wary, some curious.
             val curiosity = 0.018 + r.nextDouble().let { it * it } * 0.06
             val shiny = rollShiny(r, conditions.lure)

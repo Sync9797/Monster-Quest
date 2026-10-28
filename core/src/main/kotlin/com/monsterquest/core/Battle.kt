@@ -21,12 +21,14 @@ enum class EncounterType {
     /** A den's strong monster: beat it first, then you get a few taming throws. */
     DEN,
     /** A thug and their monsters jump you: an even fight, and nothing can be tamed. */
-    THUG;
+    THUG,
+    /** A wandering adventurer's challenge: 3 on 3, two swaps each. Nothing can be tamed. */
+    NOMAD;
 
     /** Enemy HP multiplier. */
     val hpMultiplier: Double
         get() = when (this) {
-            WILD, VILLAIN, THUG -> 1.0
+            WILD, VILLAIN, THUG, NOMAD -> 1.0
             DEN -> Dens.HP_MULTIPLIER
             SILVER_BOSS -> 2.2
             else -> 2.0
@@ -607,13 +609,19 @@ class Battle(
     startWeather: Weather = Weather.CLEAR,
     /** Multiplier on taming odds (a rare visitor is easier). */
     private val captureBoost: Double = 1.0,
+    /** A trainer's monsters waiting to step in when one of theirs falls (a nomad's swaps). */
+    enemyReserve: List<Monster> = emptyList(),
+    /** At most this many of your monsters wait to swap in (null: all who don't fit). */
+    swapLimit: Int? = null,
+    /** The trainer who commands the enemy side (a nomad), for the battle log. */
+    val trainer: String? = null,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
     private val able = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
     private val fighters = able.take(slots - 1)
     // In a matched fight the party members who don't fit wait on the bench, ahead of the swap slots.
-    private val swapMonsters = able.drop(slots - 1) + swaps.filter { !it.fainted }.take(MAX_SWAPS)
+    private val swapMonsters = (able.drop(slots - 1) + swaps.filter { !it.fainted }.take(MAX_SWAPS)).let { all -> swapLimit?.let { all.take(it) } ?: all }
     private val heroPerks = hero.perks
     /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
     private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
@@ -636,23 +644,48 @@ class Battle(
     /** Fighters on your side: the hero plus the party monsters able to fight. */
     val teamSize: Int = 1 + fighters.size
     /** The enemy side: one monster, or a pack of up to 4. */
-    val enemyMonsters: List<Monster> = listOf(enemyMonster) + extraEnemies.take(3)
-    // A thug's crew is an even match already: no extra scaling.
-    private val scaling = if (encounter == EncounterType.THUG) TeamScaling.Factors(1.0, 1.0, 1.0)
+    private val enemyMonsterList: MutableList<Monster> = (listOf(enemyMonster) + extraEnemies.take(3)).toMutableList()
+    val enemyMonsters: List<Monster> get() = enemyMonsterList
+    // A thug's crew and a nomad's team are an even match already: no extra scaling.
+    private val scaling = if (encounter == EncounterType.THUG || encounter == EncounterType.NOMAD) TeamScaling.Factors(1.0, 1.0, 1.0)
     else TeamScaling.pack(TeamScaling.factors(teamSize, encounter, fullTeam), enemyMonsters.size)
     private val enemyBoost = 1 + packLeader(enemyMonsters) / 100.0
-    val enemies: List<Combatant> = enemyMonsters.mapIndexed { i, m ->
+    private fun foe(m: Monster, key: String): Combatant {
         // Legendaries are built stronger to own; as shrine guardians they're scaled back to their usual challenge.
         val legend = if (m.species.rarity == Rarity.LEGENDARY && encounter != EncounterType.WILD) 1 / Bestiary.LEGENDARY_POWER else 1.0
-        Combatant.fromMonster(
+        return Combatant.fromMonster(
             m,
-            Combatant.enemyKey(i),
+            key,
             hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost,
             attackMultiplier = scaling.attack * legend * enemyBoost,
             defenseMultiplier = scaling.defense * legend * enemyBoost,
             speedMultiplier = enemyBoost,
         )
-    } + listOfNotNull(thug?.let { Combatant.fromThug(it, Combatant.enemyKey(enemyMonsters.size)) })
+    }
+    private val enemyList: MutableList<Combatant> = (
+        enemyMonsterList.mapIndexed { i, m -> foe(m, Combatant.enemyKey(i)) } +
+            listOfNotNull(thug?.let { Combatant.fromThug(it, Combatant.enemyKey(enemyMonsterList.size)) })
+        ).toMutableList()
+    val enemies: List<Combatant> get() = enemyList
+
+    /** The trainer's monsters still waiting to step in. */
+    private val enemyBench: ArrayDeque<Monster> = ArrayDeque(enemyReserve)
+    val enemyReserveLeft: Int get() = enemyBench.size
+    /** Trainer monsters knocked out and replaced (they count as beaten). */
+    private val retired = mutableListOf<Monster>()
+    private var nextEnemyKey = enemyList.size
+
+    /** A trainer sends in the next monster for each one of theirs that fell. */
+    private fun sendEnemyReserves() {
+        for (i in enemyList.indices) {
+            if (enemyList[i].hp > 0 || enemyBench.isEmpty() || i >= enemyMonsterList.size) continue
+            retired += enemyMonsterList[i]
+            val m = enemyBench.removeFirst()
+            enemyMonsterList[i] = m
+            enemyList[i] = foe(m, Combatant.enemyKey(nextEnemyKey++))
+            log += "${trainer ?: "They"} sends out ${m.displayName} (Lv ${m.level})!"
+        }
+    }
 
     /** Which enemy your attacks, spells and orbs aim at (the player can switch). */
     var targetKey: String = Combatant.ENEMY_KEY
@@ -703,10 +736,10 @@ class Battle(
     var current: Combatant? = null
         private set
 
-    val isBoss: Boolean get() = encounter !in setOf(EncounterType.WILD, EncounterType.DEN, EncounterType.THUG)
+    val isBoss: Boolean get() = encounter !in setOf(EncounterType.WILD, EncounterType.DEN, EncounterType.THUG, EncounterType.NOMAD)
     val captureLocked: Boolean
         get() = encounter == EncounterType.BOSS_CHALLENGE || encounter == EncounterType.VILLAIN || encounter == EncounterType.DEN ||
-            encounter == EncounterType.THUG
+            encounter == EncounterType.THUG || encounter == EncounterType.NOMAD
 
     init {
         val intro = when (encounter) {
@@ -723,6 +756,8 @@ class Battle(
             EncounterType.DEN -> "A fierce ${enemy.name} (Lv ${enemy.level}) charges out of its den! Beat it, then try to tame it."
             EncounterType.THUG -> "${thug?.title ?: "A thug"} of the ${thug?.crew ?: "streets"} jumps you with " +
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
+            EncounterType.NOMAD -> "${trainer ?: "The nomad"} sends out ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}" +
+                (if (enemyBench.isNotEmpty()) ", with ${enemyBench.size} more waiting!" else "!")
         }
         log += intro
         // Stormcallers and Sunbringers bring their weather with them.
@@ -818,6 +853,7 @@ class Battle(
         encounter == EncounterType.VILLAIN -> "Shadow-bound monsters can't be tamed. Defeat the whole team."
         encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your binding casts."
         encounter == EncounterType.THUG -> "A thug's monsters won't leave their master. Beat the whole crew."
+        encounter == EncounterType.NOMAD -> "The nomad's monsters are loyal partners. Win the challenge instead."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         capturedKeys.size >= storageRoom -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No Binding Crystals left."
@@ -1040,11 +1076,12 @@ class Battle(
 
     private fun checkEnd() {
         if (outcome != BattleOutcome.ONGOING) return
+        sendEnemyReserves()
         if (enemies.none { it.alive }) {
             // Beat any of them and it's a win; if every one was tamed or ran off, it ends with the taming.
             if (enemies.any { it.hp <= 0 }) {
                 outcome = BattleOutcome.WON
-                log += if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
+                log += if (trainer != null) "${trainer}'s whole team is defeated!" else if (enemies.size > 1) "The whole pack is defeated!" else "${enemy.name} is defeated!"
             } else {
                 outcome = BattleOutcome.CAPTURED
                 if (enemies.any { it.gone == "Ran off" }) log += "The rest of the pack is gone."
@@ -1836,6 +1873,8 @@ class Battle(
             EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
             // A thug's crew grows with your team, so the pay follows its size.
             EncounterType.THUG -> enemies.size * THUG_REWARD
+            // Paid by the nomad instead (see Wanderers.nomadReward); this is the usual win.
+            EncounterType.NOMAD -> (enemies.size + retired.size) * THUG_REWARD
             else -> TeamScaling.bossReward(teamSize)
         }
         // Wayfarer, Scholar and Treasure Hunter add to the spoils.
@@ -1901,7 +1940,7 @@ class Battle(
             damage, heroFell, heroFighter.maxMp - heroFighter.mp,
             heroFighter.weaponUses, heroFighter.armorHits,
             // Only the ones knocked out count as beaten (not the tamed or the ones that ran).
-            if (outcome == BattleOutcome.WON) enemyMonsters.filterIndexed { i, _ -> enemies[i].hp <= 0 }.map { it.speciesId } else emptyList(),
+            if (outcome == BattleOutcome.WON) (retired + enemyMonsters.filterIndexed { i, _ -> enemies[i].hp <= 0 }).map { it.speciesId } else emptyList(),
             standing = allies.count { !it.isHero && it.alive },
             tamed = captured,
         )

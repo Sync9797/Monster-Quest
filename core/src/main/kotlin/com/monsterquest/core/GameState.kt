@@ -365,6 +365,16 @@ data class GameState(
     /** The buddy (first party slot) the walk toward its next candy counts for, and how far you've gone. */
     val buddyUid: String? = null,
     val buddyMeters: Double = 0.0,
+    /** Species pinned in the Journal (see [Wanted]). */
+    val wanted: Set<String> = emptySet(),
+    /** This week's mystery monster (see [Mystery]). */
+    val mysteryWeek: Long = -1,
+    val mysteryId: String? = null,
+    val mysteryFound: Boolean = false,
+    val mysteryClaimed: Boolean = false,
+    /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
+    val traderBought: Map<String, Long> = emptyMap(),
+    val nomadsBeaten: Map<String, Long> = emptyMap(),
     val stepsToday: Int = 0,
     /** Steps per local hour (key: [Health.hourKey]), for the Health card's chart. About a week is kept. */
     val stepsByHour: Map<Long, Int> = emptyMap(),

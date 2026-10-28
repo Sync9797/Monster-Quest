@@ -179,6 +179,23 @@ private val topics = listOf(
             "Beat the whole team in a row for gold, loot and parts. Then use a Restore Potion to try to free one: 75% of the time it joins you.",
             "Battling with a cursed monster slowly lifts the curse; then you choose one stat to make perfect.",
             "Thugs also jump you while you walk, bringing one monster for each of yours and fighting alongside them: Brutes hit hard, Hexers cast dark magic and Cutthroats are quick and dodge. Their monsters can't be tamed.",
+            "Their teams are trained: evolved as far as their level allows, so you'll see what a line grows into.",
+        ),
+    ),
+    HelpTopic(
+        GameIcon.MAP, "Traders and nomads",
+        listOf(
+            "Green-glowing traders wander the map, changing daily. They sell weapons and armor, plus shop supplies 20-35% off. Each offer sells once.",
+            "Blue-glowing nomad adventurers want a fair fight: three of their monsters against you and two of yours, with two swaps waiting on each side. When one of theirs falls, the next steps in.",
+            "Beat a nomad for gold, 2 Hi-Potions and an egg from one of their monsters' lines with 3 perfect stats (2 Great Orbs if your egg slots are full). Each nomad can be beaten once a day; lose and you can try again.",
+        ),
+    ),
+    HelpTopic(
+        GameIcon.STAR, "Scouting: what to catch",
+        listOf(
+            "Every encounter shows stars for how strong its line ends up (by the final form's max stats), and what it becomes: a silhouette until you've seen that form.",
+            "Want a line? Pin it (from an encounter or the Journal). Wanted lines stand in a gold ring on the map, and the weather panel says when the weather favors them. You can pin up to 6.",
+            "Mystery of the week: a silhouette on Home with clues (type, weather, time of day). It turns up 4x as often all week; tame one for 500 gold, 10 candy and a Golden Berry.",
         ),
     ),
     HelpTopic(

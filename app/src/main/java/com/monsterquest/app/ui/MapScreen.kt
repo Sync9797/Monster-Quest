@@ -48,6 +48,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.offset
@@ -132,6 +133,8 @@ private sealed interface MapPick {
     data class VillainPick(val camp: VillainCamp) : MapPick
     data class TrackedPick(val spawn: WildSpawn) : MapPick
     data class DenPick(val den: Den) : MapPick
+    data class TraderPick(val trader: com.monsterquest.core.Trader) : MapPick
+    data class NomadPick(val nomad: com.monsterquest.core.Nomad) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -194,6 +197,8 @@ fun MapScreen(vm: GameViewModel) {
     val shrines = vm.shrines
     val villains = vm.villainsNear(now)
     val dens = vm.densNear(now)
+    val traders = vm.tradersNear(now)
+    val nomads = vm.nomadsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
     var showWeather by remember { mutableStateOf(false) }
     if (showWeather) WeatherDialog(vm, now) { showWeather = false }
@@ -293,6 +298,17 @@ fun MapScreen(vm: GameViewModel) {
                             )
                         }
                         spawns.forEach { sp ->
+                            // A wanted line stands in a gold ring.
+                            if (com.monsterquest.core.Wanted.matches(vm.state, sp.species)) {
+                                mv.overlays.add(
+                                    Marker(mv).apply {
+                                        position = GeoPoint(sp.lat, sp.lon)
+                                        setAnchor(Marker.ANCHOR_CENTER, 0.5f)
+                                        setIcon(sprite("wanted_ring", 70, 34) { c, w, h -> drawWantedRing(c, w, h) })
+                                        setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
+                                    },
+                                )
+                            }
                             mv.overlays.add(
                                 Marker(mv).apply {
                                     position = GeoPoint(sp.lat, sp.lon)
@@ -324,6 +340,28 @@ fun MapScreen(vm: GameViewModel) {
                                     setIcon(sprite("villain_$isVillain", 46, 69) { c, w, h -> drawVillainOn(c, w, h, isVillain) })
                                     title = v.leader
                                     setOnMarkerClickListener { _, _ -> pick = MapPick.VillainPick(v); true }
+                                },
+                            )
+                        }
+                        traders.forEach { t ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(t.lat, t.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.9f)
+                                    setIcon(sprite("trader", 52, 52) { c, w, h -> drawTraderOn(c, w, h) })
+                                    title = t.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.TraderPick(t); true }
+                                },
+                            )
+                        }
+                        nomads.forEach { n ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(n.lat, n.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.9f)
+                                    setIcon(sprite("nomad", 52, 52) { c, w, h -> drawNomadOn(c, w, h) })
+                                    title = n.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.NomadPick(n); true }
                                 },
                             )
                         }
@@ -383,6 +421,8 @@ fun MapScreen(vm: GameViewModel) {
                         MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
                         MapCount("${dens.size} dens")
                         if (villains.isNotEmpty()) MapCount("${villains.size} foes")
+                        if (traders.isNotEmpty()) MapCount("${traders.size} traders")
+                        if (nomads.isNotEmpty()) MapCount("${nomads.size} nomads")
                     }
                 }
                 if (!following) {
@@ -458,6 +498,8 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
         is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
         is MapPick.DenPick -> DenDialog(vm, p.den) { pick = null }
+        is MapPick.TraderPick -> TraderDialog(vm, p.trader) { pick = null }
+        is MapPick.NomadPick -> NomadDialog(vm, p.nomad) { pick = null }
         is MapPick.TrackedPick -> TrackedDialog(
             vm,
             p.spawn,
@@ -585,6 +627,10 @@ private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
                     com.monsterquest.core.WeatherEvent.of(w.kind)?.let { e ->
                         Text("${e.label}! ${e.text}", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         Text("Its type surges (x${com.monsterquest.core.WeatherEvent.SURGE} more), and once a day it brings a rare visitor.", fontSize = 12.sp)
+                    }
+                    val wanted = com.monsterquest.core.Wanted.boostedBy(vm.state, w.kind)
+                    if (wanted.isNotEmpty()) {
+                        Text("Wanted lines more likely now: ${wanted.joinToString { it.name }}", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                     if (w.kind.more.isNotEmpty()) {
                         Text("More likely now", fontWeight = FontWeight.SemiBold)
@@ -1015,6 +1061,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
                 MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = spawn.shiny)
                 if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
                 Text("Level ${spawn.level} • ${sp.typeLabel} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
+                ScoutLine(vm, sp)
                 if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
                 Text(distanceText(dist, vm.state.settings.imperialUnits), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
@@ -1305,6 +1352,115 @@ private fun NearbyList(
                     }
                     if (e.inRange) Text("In range", fontSize = 12.sp, color = Gold)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Sizing a monster up: how strong its line ends up (stars) and what it
+ * becomes (a silhouette until you've seen that form), plus a Wanted pin.
+ */
+@Composable
+internal fun ScoutLine(vm: GameViewModel, sp: com.monsterquest.core.Species) {
+    val final = com.monsterquest.core.Scouting.finalForm(sp)
+    val stars = com.monsterquest.core.Scouting.stars(sp)
+    val seen = final.id in vm.state.seen
+    val wanted = com.monsterquest.core.Wanted.matches(vm.state, sp)
+    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text("${com.monsterquest.core.Scouting.starText(stars)}  final strength", color = Gold, fontSize = 14.sp)
+            Text(
+                if (final.id == sp.id) "This is its final form." else "Becomes ${if (seen) final.name else "???"} (#${com.monsterquest.core.MaxStats.rank(final)} of ${com.monsterquest.core.Bestiary.all.size})",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (final.id != sp.id) MonsterArt(final, Modifier.size(44.dp), silhouette = !seen)
+    }
+    TextButton(onClick = { vm.toggleWanted(final.id) }) {
+        Text(if (wanted) "\u2605 On your Wanted list" else "\u2606 Add ${if (seen) final.name else "this line"} to Wanted")
+    }
+}
+
+@Composable
+private fun TraderDialog(vm: GameViewModel, trader: com.monsterquest.core.Trader, onDismiss: () -> Unit) {
+    val dist = vm.distanceTo(trader.lat, trader.lon)
+    val inRange = dist != null && dist <= com.monsterquest.core.Wanderers.RANGE_M
+    // Fresh stock from the current state (sold offers drop off).
+    val now = System.currentTimeMillis()
+    val live = vm.tradersNear(now).find { it.id == trader.id } ?: trader.copy(offers = emptyList())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { PlaceTitle(GameIcon.STORE, trader.name, Color(0xFF6FCF8A), "Wandering trader • ${distanceText(dist, vm.state.settings.imperialUnits)}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Gear from the road and supplies below shop prices. Each offer sells once; the trader moves on tomorrow.", fontSize = 13.sp)
+                Text("You have ${vm.state.gold} gold", color = Gold, fontSize = 13.sp, modifier = Modifier.padding(vertical = 4.dp))
+                if (live.offers.isEmpty()) Text("Sold out. Come back tomorrow.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                live.offers.forEach { o ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(o.label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            val sub = when {
+                                o.item != null -> "${o.discountPct}% off (shop: ${o.item!!.price * o.qty})"
+                                o.gear != null -> "Lv ${o.gear!!.level} ${o.gear!!.type.label}"
+                                o.armor != null -> "Lv ${o.armor!!.level} armor"
+                                else -> ""
+                            }
+                            Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        OutlinedButton(onClick = { vm.buyFromTrader(live, o.index) }, enabled = inRange && vm.state.gold >= o.price) { Text("${o.price}g") }
+                    }
+                }
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(com.monsterquest.core.Wanderers.RANGE_M, vm.state.settings.imperialUnits)} to trade.", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(trader.lat, trader.lon, trader.name)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
+@Composable
+private fun NomadDialog(vm: GameViewModel, nomad: com.monsterquest.core.Nomad, onDismiss: () -> Unit) {
+    val dist = vm.distanceTo(nomad.lat, nomad.lon)
+    val inRange = dist != null && dist <= com.monsterquest.core.Wanderers.RANGE_M
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { PlaceTitle(GameIcon.SWORD, nomad.name, Color(0xFF6FA8E8), "Nomad adventurer, Lv ${nomad.level} • ${distanceText(dist, vm.state.settings.imperialUnits)}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "\"A fair fight? Three of mine against you and two of yours, two swaps each.\" " +
+                        "Win for ${nomad.level * com.monsterquest.core.Wanderers.NOMAD_GOLD_PER_LEVEL} gold, 2 Hi-Potions and an egg from one of their monsters' lines " +
+                        "(${com.monsterquest.core.Wanderers.NOMAD_EGG_PERFECT} perfect stats). Their monsters can't be tamed.",
+                    fontSize = 13.sp,
+                )
+                Text("Fighting", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+                NomadTeamRow(vm, nomad.active)
+                Text("Swaps", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                NomadTeamRow(vm, nomad.reserve)
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(com.monsterquest.core.Wanderers.RANGE_M, vm.state.settings.imperialUnits)} to accept.", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(nomad.lat, nomad.lon, nomad.name)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.challengeNomad(nomad); onDismiss() }, enabled = inRange) { Text("Accept!") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
+    )
+}
+
+@Composable
+private fun NomadTeamRow(vm: GameViewModel, team: List<com.monsterquest.core.Monster>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        team.forEach { m ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                MonsterArt(m.species, Modifier.size(48.dp))
+                Text("Lv ${m.level}", fontSize = 11.sp)
+                Text(com.monsterquest.core.Scouting.starText(com.monsterquest.core.Scouting.stars(m.species)), fontSize = 9.sp, color = Gold)
             }
         }
     }

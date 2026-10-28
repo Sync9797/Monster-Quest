@@ -50,6 +50,8 @@ object Villains {
     const val REDEEM_CHANCE = 0.75
 
     private const val CELL_DEG = 0.006 // ~650 m
+    /** Share of map cells with a camp today. */
+    const val CAMP_CHANCE = 0.32
     private const val CELL_RADIUS = 3
 
     private val thugLeaders = listOf("Brick", "Snitch", "Grub", "Rook", "Moss", "Knuckles", "Vex", "Sly")
@@ -73,7 +75,7 @@ object Villains {
         val level = (heroLevel + rng.nextInt(-1, 2)).coerceAtLeast(2)
         val team = List(monsters.coerceIn(1, MAX_PARTY_SIZE)) {
             val lvl = GameEngine.wildLevel(heroLevel, rng)
-            Monster.create(Bestiary.randomWild(rng, lvl), lvl, rng)
+            Monster.create(Bestiary.trained(rng, lvl), lvl, rng)
         }
         val cls = listOf(HeroClass.WARRIOR, HeroClass.MAGE, HeroClass.ROGUE).random(rng)
         return Thug(thugLeaders.random(rng), thugCrews.random(rng), level, cls) to team
@@ -89,7 +91,7 @@ object Villains {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, day))
-            if (r.nextDouble() > 0.22) continue
+            if (r.nextDouble() > CAMP_CHANCE) continue
             val id = "v:$day:$x:$y"
             if (id in state.villainsDefeated) continue
             val tier = if (r.nextDouble() < 0.25) VillainTier.VILLAIN else VillainTier.THUGS
@@ -97,7 +99,7 @@ object Villains {
             val size = r.nextInt(tier.teamSize.first, tier.teamSize.last + 1)
             val team = (1..size).map {
                 val lvl = (level + r.nextInt(-1, 2)).coerceAtLeast(1)
-                Monster.create(Bestiary.randomWild(r, lvl), lvl, r).copy(cursed = true)
+                Monster.create(Bestiary.trained(r, lvl), lvl, r).copy(cursed = true)
             }
             out += VillainCamp(
                 id = id,

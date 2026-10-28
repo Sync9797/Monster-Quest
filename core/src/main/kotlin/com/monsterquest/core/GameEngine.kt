@@ -1002,6 +1002,10 @@ object GameEngine {
         weather: LiveWeather? = null,
         /** Better taming odds (a rare visitor). */
         captureBoost: Double = 1.0,
+        /** A trainer's monsters waiting to step in, a cap on your swaps, and the trainer's name (a nomad). */
+        enemyReserve: List<Monster> = emptyList(),
+        swapLimit: Int? = null,
+        trainer: String? = null,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -1017,6 +1021,9 @@ object GameEngine {
         fullTeam = fullTeam,
         startWeather = weather?.battle ?: Weather.CLEAR,
         captureBoost = captureBoost,
+        enemyReserve = enemyReserve,
+        swapLimit = swapLimit,
+        trainer = trainer,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */
