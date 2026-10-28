@@ -1,6 +1,7 @@
 package com.monsterquest.app.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -160,6 +161,34 @@ fun BagScreen(vm: GameViewModel) {
             ArmorCard(a, s.hero.heroClass, equipped = false) {
                 TextButton(onClick = { vm.dropArmor(a.id) }) { Text("Drop") }
                 SmallButton("Wear", { vm.equipArmor(a.id) })
+            }
+        }
+        // All candy, folded into one line until opened.
+        val candies = s.candy.filterValues { it > 0 }
+        if (candies.isNotEmpty()) {
+            var candyOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+            GameCard(Modifier.padding(top = 8.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().clickable { candyOpen = !candyOpen },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    GIcon(GameIcon.CANDY, Modifier.size(20.dp), Gold)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Candy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("${candies.values.sum()} • ${candies.size} line${if (candies.size == 1) "" else "s"}  ${if (candyOpen) "\u25B2" else "\u25BC"}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (candyOpen) {
+                    Text("Doesn't take bag space. Spend it on a monster's page.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    candies.entries.sortedByDescending { it.value }.forEach { (family, n) ->
+                        val first = com.monsterquest.core.Bestiary.all.first { it.family == family }
+                        Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                            com.monsterquest.app.ui.art.MonsterArt(first, Modifier.size(28.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(GameEngine.candyName(first), modifier = Modifier.weight(1f), fontSize = 13.sp)
+                            Text("x$n", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+                    }
+                }
             }
         }
         SectionTitle("Weapon parts")
