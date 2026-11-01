@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,8 +14,8 @@ android {
         applicationId = "com.monsterquest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 134
-        versionName = "3.0.0"
+        versionCode = 135
+        versionName = "3.0.1"
     }
 
     signingConfigs {
@@ -48,10 +50,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -91,7 +89,7 @@ dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
 
     // OpenStreetMap map view (no API key needed).
-    implementation("org.maplibre.gl:android-sdk:12.3.0")
+    implementation("org.maplibre.gl:android-sdk:13.7.1")
 
     // Screenshot tests: render screens on the JVM at foldable sizes.
     testImplementation("junit:junit:4.13.2")
@@ -99,4 +97,8 @@ dependencies {
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+kotlin {
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
