@@ -73,6 +73,10 @@ object PlacesRepository {
         val waterKnown: Boolean,
         val venues: List<Venue> = emptyList(),
         val streets: List<Pair<Double, Double>> = emptyList(),
+        /** Tiles whose places and streets are known: elsewhere the game scatters things instead. */
+        val venueTiles: Set<String> = emptySet(),
+        /** Every tile around is up to date (otherwise try again in a little while). */
+        val complete: Boolean = true,
     )
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -94,15 +98,24 @@ object PlacesRepository {
         val tiles = keys.associateWith { read(dir, it) }.toMutableMap()
         // Older tiles (from before venues and streets) are looked up again.
         val missing = keys.filter { k -> tiles[k].let { it == null || it.v < TILE_VERSION || nowMs - it.fetchedAt > REFRESH_MS } }
-        // Look up a row of tiles at a time, to keep each query small.
+        // Look up a row of tiles at a time, to keep each query small; if a busy row times
+        // out, try its tiles one by one.
         for (row in missing.groupBy { it.substringBefore(':') }.values) {
-            try {
-                fetch(row, userAgent, nowMs).forEach { (k, t) ->
+            val parts = try {
+                listOf(fetch(row, userAgent, nowMs))
+            } catch (e: Exception) {
+                Log.w("MonsterQuest", "Overpass lookup failed for ${row.size} tiles; trying them one at a time", e)
+                row.mapNotNull { k ->
+                    runCatching { fetch(listOf(k), userAgent, nowMs) }
+                        .onFailure { Log.w("MonsterQuest", "Overpass lookup failed for tile $k; using what's cached", it) }
+                        .getOrNull()
+                }
+            }
+            parts.forEach { got ->
+                got.forEach { (k, t) ->
                     write(dir, k, t)
                     tiles[k] = t
                 }
-            } catch (e: Exception) {
-                Log.w("MonsterQuest", "Overpass lookup failed for ${row.size} tiles; using what's cached", e)
             }
         }
         val shrines = keys.flatMap { k ->
@@ -117,7 +130,8 @@ object PlacesRepository {
         val streets = keys.flatMap { tiles[it]?.streets.orEmpty() }.map { it[0] to it[1] }
             .filter { World.distanceMeters(lat, lon, it.first, it.second) <= RADIUS_M }
         // Waystones fill the gaps so there's always a stop within a short walk.
-        return Area(shrines + World.waystones(lat, lon, shrines), water, keys.all { tiles[it] != null }, venues, streets)
+        val known = keys.filter { (tiles[it]?.v ?: 0) >= TILE_VERSION }.toSet()
+        return Area(shrines + World.waystones(lat, lon, shrines), water, keys.all { tiles[it] != null }, venues, streets, known, known.size == keys.size)
     }
 
     /** The old entry point: shrines only. */
@@ -132,7 +146,7 @@ object PlacesRepository {
         val e = bounds.maxOf { it[3] }
         val bbox = String.format(Locale.US, "%.6f,%.6f,%.6f,%.6f", s, w, n, e)
         val query = """
-            [out:json][timeout:60];
+            [out:json][timeout:90];
             (
               nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist|pharmacy|hospital)$"];
               nwr($bbox)["healthcare"~"^(doctor|clinic|dentist|pharmacy|hospital)$"];
@@ -157,7 +171,7 @@ object PlacesRepository {
         try {
             conn.requestMethod = "POST"
             conn.connectTimeout = 15_000
-            conn.readTimeout = 60_000
+            conn.readTimeout = 100_000
             conn.doOutput = true
             conn.setRequestProperty("User-Agent", userAgent)
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")

@@ -138,7 +138,7 @@ fun ResourceHeader(
             Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
         }
         IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
-        IconText(GameIcon.FLAME, "$tokens", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
+        IconText(GameIcon.FLAME, "$tokens torch${if (tokens == 1) "" else "es"}", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
         if (onSaver != null) {
             androidx.compose.material3.IconButton(onClick = onSaver, modifier = Modifier.semantics { contentDescription = "Battery saver" }) {
                 com.monsterquest.app.ui.art.GIcon(GameIcon.BATTERY, Modifier.size(22.dp), if (saverOn) Mint else MaterialTheme.colorScheme.onSurfaceVariant)

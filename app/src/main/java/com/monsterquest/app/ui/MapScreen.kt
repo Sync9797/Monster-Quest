@@ -515,6 +515,11 @@ fun MapScreen(vm: GameViewModel) {
                 spawns = spawns + tracked,
                 villains = villains,
                 dens = dens,
+                dungeons = dungeons,
+                traders = traders,
+                nomads = nomads,
+                facilities = facilities,
+                onOther = { pick = it },
                 onDen = { den ->
                     focusOn(MapFocus(den.lat, den.lon, den.name, "Lv ${den.monster.level} ${den.species.name} • strong", pin = false) { pick = MapPick.DenPick(den) })
                 },
@@ -1358,7 +1363,14 @@ private fun NearbyList(
     onShrine: (Shrine) -> Unit,
     onSpawn: (WildSpawn) -> Unit,
     onVillain: (VillainCamp) -> Unit,
+    dungeons: List<com.monsterquest.core.Dungeon> = emptyList(),
+    traders: List<com.monsterquest.core.Trader> = emptyList(),
+    nomads: List<com.monsterquest.core.Nomad> = emptyList(),
+    facilities: List<com.monsterquest.core.Venue> = emptyList(),
+    onOther: (MapPick) -> Unit = {},
 ) {
+    fun far(lat: Double, lon: Double) = vm.distanceTo(lat, lon) ?: Double.MAX_VALUE
+    fun away(d: Double) = distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits)
     val entries = shrines.map { sh ->
         val d = vm.distanceTo(sh.lat, sh.lon) ?: Double.MAX_VALUE
         Entry(
@@ -1396,6 +1408,24 @@ private fun NearbyList(
             "${v.tier.label} • ${v.team.size} cursed monsters • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= Villains.RANGE_M,
         ) { onVillain(v) }
+    } + dungeons.map { dg ->
+        val d = far(dg.lat, dg.lon)
+        Entry(d, { GIcon(GameIcon.FIGHT, Modifier.size(28.dp), Gold) }, dg.name,
+            "Dungeon ${starsText(dg.stars)} • Lv ${dg.level}" + (dg.place?.let { " • $it" } ?: "") + " • " + away(d),
+            d <= com.monsterquest.core.Dungeons.RANGE_M) { onOther(MapPick.DungeonPick(dg)) }
+    } + traders.map { t ->
+        val d = far(t.lat, t.lon)
+        Entry(d, { GIcon(GameIcon.STORE, Modifier.size(28.dp), Color(0xFF6FCF8A)) }, t.name, "Trader • ${t.offers.size} offers • " + away(d),
+            d <= com.monsterquest.core.Wanderers.RANGE_M) { onOther(MapPick.TraderPick(t)) }
+    } + nomads.map { n ->
+        val d = far(n.lat, n.lon)
+        Entry(d, { GIcon(GameIcon.SWORD, Modifier.size(28.dp), Color(0xFF6FA8E8)) }, n.name, "Nomad • Lv ${n.level} • " + away(d),
+            d <= com.monsterquest.core.Wanderers.RANGE_M) { onOther(MapPick.NomadPick(n)) }
+    } + facilities.map { f ->
+        val d = far(f.lat, f.lon)
+        Entry(d, { GIcon(if (f.role == com.monsterquest.core.VenueRole.GYM) GameIcon.FIST else GameIcon.HEART, Modifier.size(28.dp), if (f.role == com.monsterquest.core.VenueRole.HOSPITAL) HpRed else HpGreen) },
+            com.monsterquest.core.Facilities.label(f.role), listOfNotNull(f.name ?: f.kind, away(d)).joinToString(" • "),
+            d <= com.monsterquest.core.Facilities.RANGE_M) { onOther(MapPick.FacilityPick(f)) }
     }
 
     LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp)) {

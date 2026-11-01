@@ -99,6 +99,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Real places that host dungeons and traders, and points along streets (empty where map data isn't loaded). */
     private var venues by mutableStateOf<List<com.monsterquest.core.Venue>>(emptyList())
     private var streets by mutableStateOf<List<Pair<Double, Double>>>(emptyList())
+    /** Map tiles whose places and streets are known; things are scattered elsewhere. */
+    private var venueTiles by mutableStateOf<Set<String>>(emptySet())
+    /** Some map tiles didn't load: try again after this time. */
+    private var placesRetryAt = Long.MAX_VALUE
+
+    /** Whether a point lies in a tile without place data (so it gets scattered spawns). */
+    private fun scattered(lat: Double, lon: Double) = World.tileKey(lat, lon) !in venueTiles
     private var waterAt: Pair<Double, Double>? = null
     private var waterDistanceCache: Double? = null
 
@@ -761,7 +768,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         // Distance covered in a car isn't walking.
         if (tooFast(now)) lastWalkPoint = lat to lon else walkFromGps(lat, lon)
         val last = placesFetchedAt
-        if (!loadingPlaces && (last == null || World.distanceMeters(last.first, last.second, lat, lon) > 500)) {
+        if (!loadingPlaces && (last == null || World.distanceMeters(last.first, last.second, lat, lon) > 500 || now >= placesRetryAt)) {
+            placesRetryAt = Long.MAX_VALUE
             loadingPlaces = true
             placesFetchedAt = lat to lon
             viewModelScope.launch {
@@ -772,6 +780,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 waterPoints = area.water
                 venues = area.venues
                 streets = area.streets
+                venueTiles = area.venueTiles
+                // Some tiles didn't load (a busy area can time out): try again in a couple of minutes.
+                if (!area.complete) placesRetryAt = System.currentTimeMillis() + 2 * 60_000L
                 waterKnown = area.waterKnown
                 waterAt = null
                 loadingPlaces = false
@@ -1101,12 +1112,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun densNear(nowMs: Long): List<com.monsterquest.core.Den> {
         val (lat, lon) = location ?: return emptyList()
-        // Where real places are known, dens take over some of them for the day.
-        if (venues.isNotEmpty()) return com.monsterquest.core.Venues.dens(state, venues, nowMs)
-        // Elsewhere they're scattered, clear of shrines so the map never feels crowded.
+        // Where real places are known, dens take over some of them for the day; elsewhere
+        // they're scattered, clear of shrines so the map never feels crowded.
         val spots = shrines
-        return com.monsterquest.core.Dens.near(state, lat, lon, nowMs)
-            .filter { d -> spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
+        return com.monsterquest.core.Venues.dens(state, venues, nowMs) + com.monsterquest.core.Dens.near(state, lat, lon, nowMs)
+            .filter { d -> scattered(d.lat, d.lon) && spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
     }
 
     fun challengeDen(den: com.monsterquest.core.Den) {
@@ -1142,10 +1152,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun villainsNear(nowMs: Long): List<VillainCamp> {
         val (lat, lon) = location ?: return emptyList()
         // Thugs and villains stand on real streets where we know them.
-        if (streets.isNotEmpty()) {
-            return com.monsterquest.core.Venues.streetCamps(state, streets, nowMs, nightlife = venues.filter { it.role == com.monsterquest.core.VenueRole.NIGHTLIFE })
-        }
-        return Villains.near(state, lat, lon, nowMs)
+        val onStreets = com.monsterquest.core.Venues.streetCamps(state, streets, nowMs, nightlife = venues.filter { it.role == com.monsterquest.core.VenueRole.NIGHTLIFE })
+        return onStreets + Villains.near(state, lat, lon, nowMs).filter { scattered(it.lat, it.lon) }
     }
 
     fun challengeVillain(camp: VillainCamp) {
@@ -1174,8 +1182,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun tradersNear(nowMs: Long): List<com.monsterquest.core.Trader> {
         val (lat, lon) = location ?: return emptyList()
         // A trader at every grocery store where we know them.
-        if (venues.isNotEmpty()) return com.monsterquest.core.Venues.traders(state, venues, nowMs)
-        return com.monsterquest.core.Wanderers.tradersNear(state, lat, lon, nowMs)
+        return com.monsterquest.core.Venues.traders(state, venues, nowMs) +
+            com.monsterquest.core.Wanderers.tradersNear(state, lat, lon, nowMs).filter { scattered(it.lat, it.lon) }
     }
 
     fun nomadsNear(nowMs: Long): List<com.monsterquest.core.Nomad> {
@@ -1213,10 +1221,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun dungeonsNear(nowMs: Long): List<com.monsterquest.core.Dungeon> {
         val (lat, lon) = location ?: return emptyList()
         // A dungeon in every coffee shop, doctor's office and most restaurants where we know them.
-        if (venues.isNotEmpty()) return com.monsterquest.core.Venues.dungeons(state, venues, nowMs)
         val spots = shrines
-        return com.monsterquest.core.Dungeons.near(state, lat, lon, nowMs)
-            .filter { d -> spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
+        return com.monsterquest.core.Venues.dungeons(state, venues, nowMs) + com.monsterquest.core.Dungeons.near(state, lat, lon, nowMs)
+            .filter { d -> scattered(d.lat, d.lon) && spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
     }
 
     fun enterDungeon(d: com.monsterquest.core.Dungeon) {
