@@ -1311,7 +1311,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun springTrap() = apply(com.monsterquest.core.Dungeons.springTrap(state))
 
     /** Pharmacies, gyms and hospitals nearby. */
-    fun facilitiesNear(): List<com.monsterquest.core.Venue> = com.monsterquest.core.Venues.facilities(venues)
+    fun facilitiesNear(): List<com.monsterquest.core.Venue> = com.monsterquest.core.Venues.facilities(venues, streets)
 
     /** Uses a pharmacy, gym or hospital (you have to be there). */
     fun useFacility(v: com.monsterquest.core.Venue) {

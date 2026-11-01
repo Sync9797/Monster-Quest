@@ -104,7 +104,52 @@ object Venues {
         Instant.ofEpochMilli(nowMs).atZone(zone).hour.let { it >= 20 || it < 4 }
 
     /** Pharmacies, gyms and hospitals near you (they're the same every day). */
-    fun facilities(venues: List<Venue>): List<Venue> = venues.filter { it.role in FACILITIES }
+    fun facilities(venues: List<Venue>, streets: List<Pair<Double, Double>> = emptyList()): List<Venue> =
+        venues.filter { it.role in FACILITIES && it.role != VenueRole.SCHOOL } + academies(venues.filter { it.role == VenueRole.SCHOOL }, streets)
+
+    /** Academy spots on a university campus, and on a college's. */
+    const val UNIVERSITY_ACADEMIES = 3
+    const val COLLEGE_ACADEMIES = 2
+    /** How far from a campus's middle its extra academy spots stand. */
+    const val CAMPUS_SPREAD_M = 110.0
+    /** A school's academy stands on a street at least this far from the school (never on its grounds)... */
+    const val OFF_CAMPUS_MIN_M = 150.0
+    /** ...and no further than this; with no street in between, that school has none. */
+    const val OFF_CAMPUS_MAX_M = 400.0
+
+    private fun isHigherEd(v: Venue) = v.kind?.let { it.contains("University", true) || it.contains("College", true) } == true
+
+    /**
+     * Where the hero can study: a few spots across each university and
+     * college campus, and for schools (primary and high schools), a spot on
+     * a nearby street off the grounds, so nobody needs to go onto a school's
+     * campus.
+     */
+    fun academies(schools: List<Venue>, streets: List<Pair<Double, Double>>): List<Venue> = schools.flatMap { v ->
+        if (isHigherEd(v)) {
+            val n = if (v.kind?.contains("University", true) == true) UNIVERSITY_ACADEMIES else COLLEGE_ACADEMIES
+            val turn = Math.floorMod(v.id.hashCode(), 360).toDouble()
+            (0 until n).map { k ->
+                if (k == 0) {
+                    v.copy(id = "${v.id}#0")
+                } else {
+                    val a = Math.toRadians(turn + 360.0 * (k - 1) / (n - 1))
+                    v.copy(
+                        id = "${v.id}#$k",
+                        lat = v.lat + CAMPUS_SPREAD_M * kotlin.math.sin(a) / 111_320.0,
+                        lon = v.lon + CAMPUS_SPREAD_M * cos(a) / (111_320.0 * cos(Math.toRadians(v.lat))),
+                    )
+                }
+            }
+        } else {
+            val spot = streets
+                .map { it to World.distanceMeters(v.lat, v.lon, it.first, it.second) }
+                .filter { (_, d) -> d >= OFF_CAMPUS_MIN_M && d <= OFF_CAMPUS_MAX_M }
+                .minByOrNull { it.second }?.first
+            if (spot == null) emptyList()
+            else listOf(Venue("${v.id}#st", v.name?.let { "Across from $it" } ?: "Near a school", "Study spot", spot.first, spot.second, VenueRole.SCHOOL))
+        }
+    }
 
     /** Share of restaurants that hold a dungeon. */
     const val RESTAURANT_DUNGEON_PCT = 70

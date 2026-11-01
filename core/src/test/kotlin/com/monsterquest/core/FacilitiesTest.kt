@@ -71,4 +71,27 @@ class FacilitiesTest {
         assertEquals(s, Facilities.study(s, at(15), utc).state)
         assertEquals(tomes + 2, Facilities.study(s, at(10) + 86_400_000L, utc).state.tomes.size)
     }
+
+    @Test
+    fun academiesSpreadOverCampusesAndStayOffSchoolGrounds() {
+        val uni = Venue("u1", "State University", "University", 40.0, -74.0, VenueRole.SCHOOL)
+        val college = Venue("c1", "City College", "College", 40.01, -74.0, VenueRole.SCHOOL)
+        val school = Venue("s1", "Lincoln High", "School", 40.02, -74.0, VenueRole.SCHOOL)
+        // A street running past the school: points every 20 m.
+        val street = (-30..30).map { 40.02 + it * 20 / 111_320.0 to -74.0 + 0.0015 }
+        val spots = Venues.facilities(listOf(uni, college, school), street)
+        assertEquals(3, spots.count { it.id.startsWith("u1#") })
+        assertEquals(2, spots.count { it.id.startsWith("c1#") })
+        val study = spots.single { it.id.startsWith("s1#") }
+        val d = World.distanceMeters(school.lat, school.lon, study.lat, study.lon)
+        assertTrue(d >= Venues.OFF_CAMPUS_MIN_M && d <= Venues.OFF_CAMPUS_MAX_M, "$d m")
+        assertTrue(street.any { it.first == study.lat && it.second == study.lon })
+        assertEquals("Across from Lincoln High", study.name)
+        // Campus spots are apart from each other, and the same every time.
+        val campus = spots.filter { it.id.startsWith("u1#") }
+        for (a in campus) for (b in campus) if (a !== b) assertTrue(World.distanceMeters(a.lat, a.lon, b.lat, b.lon) > 50)
+        assertEquals(spots, Venues.facilities(listOf(uni, college, school), street))
+        // No street nearby: a school gets no academy rather than one on its grounds.
+        assertTrue(Venues.facilities(listOf(school), emptyList()).isEmpty())
+    }
 }
