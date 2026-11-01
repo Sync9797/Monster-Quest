@@ -127,16 +127,26 @@ class GameMap internal constructor(val fake: Boolean) {
             fakeZoom = z.coerceIn(MIN_ZOOM, MAX_ZOOM); tick++; return
         }
         val zz = z.coerceIn(m.minZoomLevel, m.maxZoomLevel)
-        m.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).zoom(zz).tilt(tiltFor(zz)).build()))
+        m.moveCamera(CameraUpdateFactory.newCameraPosition(framed(CameraPosition.Builder(m.cameraPosition), zz).build()))
     }
 
     fun zoomBy(levels: Double) = zoomTo(zoom + levels)
+
+    /**
+     * Sets [zoom], the tilt to go with it, and how far down the screen the hero
+     * stands: lower as you zoom in, so you see more of what's ahead, like
+     * looking down the road (padding at the top moves the camera's focus down).
+     */
+    private fun framed(b: CameraPosition.Builder, zoom: Double): CameraPosition.Builder {
+        val h = (view?.height ?: heightPx).toDouble()
+        return b.zoom(zoom).tilt(tiltFor(zoom)).padding(0.0, h * lookAhead(zoom), 0.0, 0.0)
+    }
 
     /** One level in, smoothly (a double-tap). */
     fun zoomIn() {
         val m = map ?: return zoomBy(1.0)
         val z = (m.cameraPosition.zoom + 1).coerceAtMost(m.maxZoomLevel)
-        m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).zoom(z).tilt(tiltFor(z)).build()), 250)
+        m.animateCamera(CameraUpdateFactory.newCameraPosition(framed(CameraPosition.Builder(m.cameraPosition), z).build()), 250)
     }
 
     /** Turns the map [deg] degrees clockwise. */
@@ -157,7 +167,7 @@ class GameMap internal constructor(val fake: Boolean) {
             placed = true
             m.moveCamera(
                 CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.Builder().target(LatLng(lat, lon)).zoom(START_ZOOM).tilt(tiltFor(START_ZOOM)).bearing(0.0).build(),
+                    framed(CameraPosition.Builder().target(LatLng(lat, lon)).bearing(0.0), START_ZOOM).build(),
                 ),
             )
             return
@@ -286,6 +296,17 @@ class GameMap internal constructor(val fake: Boolean) {
         private const val SOURCE_ZOOM = 14
         private const val STREET_STEP_M = 70.0
         private val STREET_CLASSES = setOf("primary", "secondary", "tertiary", "minor")
+
+        /**
+         * Share of the screen's height kept clear above the hero's focus: 0 when
+         * zoomed out (hero in the middle), up to 0.4 zoomed in (hero about 70% of
+         * the way down, with the road ahead filling the screen).
+         */
+        fun lookAhead(zoom: Double): Double = when {
+            zoom <= 15.5 -> 0.0
+            zoom >= 17.5 -> 0.4
+            else -> (zoom - 15.5) / 2.0 * 0.4
+        }
 
         /** Looking straight down when zoomed out, tipping toward the horizon as you zoom in. */
         fun tiltFor(zoom: Double): Double = when {
@@ -424,7 +445,8 @@ fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, content: @Composable
                     var mode = if (second) 1 else 0
                     val startZoom = gm.zoom
                     var prev = down.position
-                    val center = Offset(size.width / 2f, size.height / 2f)
+                    // Turning pivots around the hero, who stands lower on screen when zoomed in.
+                    val center = Offset(size.width / 2f, size.height * (0.5f + GameMap.lookAhead(gm.zoom).toFloat() / 2f))
                     if (second) down.consume()
                     while (true) {
                         val ev = awaitPointerEvent(PointerEventPass.Initial)
