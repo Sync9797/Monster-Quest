@@ -71,7 +71,6 @@ fun BagScreen(vm: GameViewModel) {
                 if (item.kind == ItemKind.HEAL_MP) {
                     SmallButton("Use", { vm.usePotion(item, com.monsterquest.core.Combatant.HERO_KEY) }, outlined = true, enabled = s.heroEnergyUsed > 0)
                 }
-                if (item.kind == ItemKind.LURE) SmallButton("Use", vm::useLure, outlined = true)
                 if (item.kind == ItemKind.FOOD) SmallButton("Set out", { vm.useFood(item) }, outlined = true)
                 TextButton(onClick = { vm.discard(item) }) { Text("Drop") }
             }
@@ -270,7 +269,7 @@ fun StoreScreen(vm: GameViewModel) {
     val buy: @Composable () -> Unit = {
         SectionTitle("Store  •  ${s.gold} gold")
         StorageShop(vm)
-        Item.entries.filter { it.price > 0 && it.kind != ItemKind.FOOD }.forEach { item ->
+        Item.entries.filter { it.price > 0 && it.kind != ItemKind.FOOD && it.kind != ItemKind.LURE }.forEach { item ->
             GameCard(Modifier.padding(vertical = 3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GIcon(item.icon(), Modifier.size(28.dp), item.color())
@@ -292,13 +291,6 @@ fun StoreScreen(vm: GameViewModel) {
                 }
             }
         }
-        SectionTitle("Food")
-        Text(
-            "Set food out (from your Bag) to draw the monsters that eat it for 30 minutes. Fine and Gourmet tiers unlock as you level up: they pull harder, bring the rarer, more evolved eaters, and make rarer monsters of every kind more likely.",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        com.monsterquest.core.Foods.all.forEach { FoodStoreCard(vm, it) }
     }
 
     AdaptivePanes(

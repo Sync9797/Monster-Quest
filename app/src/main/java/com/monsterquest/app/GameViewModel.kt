@@ -391,7 +391,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         applyReminderTaps()
         rescheduleReminders()
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
-        GameEngine.claimDailyLure(state, System.currentTimeMillis())?.let(::apply)
         // Pull in last night's sleep, then show the morning recap if it's the first open today.
         refreshSleep(thenRecap = true)
         val f = state.focus ?: return
@@ -796,10 +795,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (reading != null) {
                 weather = reading
                 weatherAt = lat to lon
-                // Storms, heatwaves, fog and snow set off an event (one special visitor a day each).
-                com.monsterquest.core.WeatherEvent.of(reading.kind)?.let { e ->
-                    com.monsterquest.core.WeatherEvent.trigger(state, e, now, java.time.LocalDate.now().toEpochDay(), kotlin.random.Random.Default)?.let { apply(it) }
-                }
             }
             loadingWeather = false
         }
@@ -824,28 +819,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      * Every wild monster around you right now, at its current (approaching)
      * position, plus monsters that followed you from walking.
      */
-    fun spawnsNear(nowMs: Long): List<WildSpawn> {
-        val (lat, lon) = location ?: return emptyList()
-        // No monsters at driving speed.
-        if (tooFast(nowMs)) return emptyList()
-        val window = World.spawnWindow(nowMs)
-        val anchor = spawnAnchor
-        // A new window, or a big jump (a drive), starts a fresh ring around where you are.
-        if (anchor == null || window != anchorWindow ||
-            World.distanceMeters(anchor.first, anchor.second, lat, lon) > World.SPAWN_OUTER_M
-        ) {
-            spawnAnchor = lat to lon
-            anchorWindow = window
-        }
-        val (aLat, aLon) = spawnAnchor ?: (lat to lon)
-        val wild = World.spawnsNear(lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), aLat, aLon)
-            .filter { it.id !in state.usedSpawns }
-        val bonded = state.shrines.filterValues { it.bond == com.monsterquest.core.ShrineBond.BONDED }.keys
-        val guards = World.shrineSpawns(shrines, lat, lon, nowMs, state.hero.level, spawnConditions(nowMs), bonded)
-            .filter { it.id !in state.usedSpawns }
-        val followers = GameEngine.activeFollowers(state, nowMs).mapIndexed { i, f -> GameEngine.followerSpawn(f, lat, lon, i) }
-        return followers + guards + wild
-    }
+    /**
+     * 2.29: no wild monsters roam the map any more. Monsters live in dens and
+     * dungeons; wild fights only happen while walking in battery-saver mode.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun spawnsNear(nowMs: Long): List<WildSpawn> = emptyList()
 
     /**
      * The nearest landmark to a spot: a real named place (cafe, park, museum...)

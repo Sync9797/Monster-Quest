@@ -412,7 +412,6 @@ fun MapScreen(vm: GameViewModel) {
                     },
                 )
                 risen?.let { RisenShrineFx(mapView, it) }
-                if (showTracker) TrackerBar(vm, tracked, Modifier.align(Alignment.TopCenter)) { pick = MapPick.TrackedPick(it) }
                 vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
                     WeatherBadge(w, vm.state.settings.imperialUnits, Modifier.align(Alignment.BottomStart).padding(10.dp)) { showWeather = true }
                 }
@@ -425,7 +424,6 @@ fun MapScreen(vm: GameViewModel) {
                     )
                 }
             }
-            SpawnInfoRow(vm, now)
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -439,8 +437,6 @@ fun MapScreen(vm: GameViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        MapCount("${spawns.size} near")
-                        MapCount("${tracked.size} tracked")
                         MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
                         MapCount("${dens.size} dens")
                         if (villains.isNotEmpty()) MapCount("${villains.size} foes")

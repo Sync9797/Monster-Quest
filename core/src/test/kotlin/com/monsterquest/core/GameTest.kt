@@ -1005,21 +1005,6 @@ class GameTest {
     }
 
     @Test
-    fun walkingDrawsFollowers() {
-        val now = 1_700_000_000_000L
-        var s = started()
-        s = GameEngine.walk(s, 1_500, now).state
-        assertEquals(2, s.followers.size)
-        assertEquals(300, s.followerStepBank)
-        s = GameEngine.walk(s, 5_000, now).state
-        assertEquals(GameEngine.MAX_FOLLOWERS, s.followers.size)
-        assertTrue(GameEngine.activeFollowers(s, now + GameEngine.FOLLOWER_TTL_MS + 1).isEmpty())
-        val spawn = GameEngine.followerSpawn(s.followers.first(), 40.0, -75.0, 0)
-        assertTrue(World.distanceMeters(40.0, -75.0, spawn.lat, spawn.lon) < World.SPAWN_RANGE_M)
-        assertEquals(GameEngine.MAX_FOLLOWERS - 1, GameEngine.removeFollower(s, spawn.id).followers.size)
-    }
-
-    @Test
     fun densHoldStrongMonstersThatMustBeBeatenFirst() {
         val now = 1_700_000_000_000L
         val s = started().copy(hero = started().hero.copy(level = 10))
