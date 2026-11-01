@@ -11,6 +11,7 @@ import com.monsterquest.core.SkillKind
 fun Skill.spellIcon(): GameIcon = when (kind) {
     SkillKind.HEAL -> GameIcon.POTION
     SkillKind.SHIELD -> GameIcon.SHIELD
+    SkillKind.AEGIS -> GameIcon.SHIELD
     SkillKind.FORTIFY -> GameIcon.STAR
     SkillKind.HASTE -> GameIcon.WING
     SkillKind.EMPOWER -> GameIcon.FIST
@@ -22,6 +23,7 @@ fun Skill.spellIcon(): GameIcon = when (kind) {
 fun Skill.spellColor(): Color = when (kind) {
     SkillKind.HEAL -> HpGreen
     SkillKind.SHIELD -> MpBlue
+    SkillKind.AEGIS -> Gold
     SkillKind.FORTIFY -> Gold
     SkillKind.HASTE -> Color(0xFF9CBFE4)
     SkillKind.EMPOWER -> Color(0xFFE07A6E)
@@ -34,6 +36,7 @@ fun Skill.spellColor(): Color = when (kind) {
 fun Skill.spellEffect(): String = when (kind) {
     SkillKind.HEAL -> "heals $power+"
     SkillKind.SHIELD -> "ward $power+"
+    SkillKind.AEGIS -> "shield $power% of your HP"
     SkillKind.FORTIFY -> "Def +$power"
     SkillKind.HASTE -> "Spd +$power"
     SkillKind.EMPOWER -> "Atk +$power"

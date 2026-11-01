@@ -353,19 +353,20 @@ abstract class ScreenshotBase(private val device: String) {
         shot("07_battle") { AppRoot(v) }
     }
 
-    /** One on one: before the fight, pick the hero or a monster to start; the rest wait on the bench. */
+    /** Against a lone foe, pick which monster fights beside the hero; the rest wait on the bench. */
     @Test fun whoStarts() {
         val v = vm()
         v.hunt()
-        val pick = checkNotNull(v.leadChoice) { "a one-on-one asks who starts" }
+        val pick = checkNotNull(v.leadChoice) { "a lone foe asks which monster fights beside the hero" }
+        check(pick.options.size > 1)
         shot("07c_who_starts") { AppRoot(v) }
-        rule.onNodeWithText("Who starts?").assertExists()
-        val m = pick.options.first()
+        rule.onNodeWithText("Who fights beside you?").assertExists()
+        val m = pick.options[1]
         rule.onAllNodesWithText(m.displayName)[0].performClick()
         rule.waitForIdle()
         val b = checkNotNull(v.battle) { "the fight starts" }
-        check(!b.allies.first().isHero && b.allies.first().key == m.uid) { "the monster leads" }
-        check(b.swaps.any { it.isHero }) { "the hero waits to step in" }
+        // Always the hero and one monster: the one picked.
+        check(b.allies.map { it.key } == listOf("hero", m.uid)) { "hero and ${m.displayName}: ${b.allies.map { it.key }}" }
     }
 
     /** A foe you've already caught has a small orb next to its name. */

@@ -1325,7 +1325,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             when (v.role) {
                 com.monsterquest.core.VenueRole.PHARMACY -> com.monsterquest.core.Facilities.infirmary(state, now)
                 com.monsterquest.core.VenueRole.HOSPITAL -> com.monsterquest.core.Facilities.hospital(state, now)
-                com.monsterquest.core.VenueRole.SCHOOL -> com.monsterquest.core.Facilities.study(state, now)
+                com.monsterquest.core.VenueRole.SCHOOL -> com.monsterquest.core.Facilities.study(state, now, venue = v)
                 else -> com.monsterquest.core.Facilities.train(state, now)
             },
         )
@@ -1374,22 +1374,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             activeBattle = b
             battle = battleView(b, null)
         }
-        // One on one: you pick who starts, the hero or one of your monsters.
         val options = GameEngine.leadOptions(state, swapLimit)
-        if (!tutorial && options.isNotEmpty() && GameEngine.isOneOnOne(pack, thug, type in com.monsterquest.core.FULL_TEAM_ENCOUNTERS)) {
+        // A lone foe: you pick which monster fights beside the hero (when there's a choice).
+        if (!tutorial && options.size > 1 && GameEngine.isOneOnOne(pack, thug, type in com.monsterquest.core.FULL_TEAM_ENCOUNTERS)) {
             leadChoice = LeadChoice(enemy, options, ::begin)
         } else {
             begin(null)
         }
     }
 
-    /** A one-on-one fight waiting for you to pick who starts it. */
+    /** A fight against a lone foe, waiting for you to pick the monster beside the hero. */
     class LeadChoice(val enemy: Monster, val options: List<Monster>, internal val start: (String?) -> Unit)
 
     var leadChoice by mutableStateOf<LeadChoice?>(null)
         private set
 
-    /** Starts the waiting one-on-one fight with this monster (uid) up front, or the hero (null). */
+    /** Starts the waiting fight with this monster (uid) beside the hero (null: the first in the party). */
     fun chooseLead(uid: String?) {
         val c = leadChoice ?: return
         leadChoice = null

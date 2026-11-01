@@ -303,7 +303,8 @@ fun MapScreen(vm: GameViewModel) {
                         add(MapSprite("tr:${t.id}", t.lat, t.lon, sprite("trader", 52, 52) { c, w, h -> drawTraderOn(c, w, h) }, 52, 52, anchorY = 0.9f) { pick = MapPick.TraderPick(t) })
                     }
                     facilities.forEach { f ->
-                        add(MapSprite("fc:${f.id}", f.lat, f.lon, sprite("facility_${f.role}", 34, 34) { c, w, h -> drawFacilityOn(c, w, h, f.role) }, 34, 34, anchorY = 0.5f) { pick = MapPick.FacilityPick(f) })
+                        val locked = !com.monsterquest.core.Facilities.academyOpen(f, now)
+                        add(MapSprite("fc:${f.id}", f.lat, f.lon, sprite("facility_${f.role}_$locked", 34, 34) { c, w, h -> drawFacilityOn(c, w, h, f.role, locked) }, 34, 34, anchorY = 0.5f) { pick = MapPick.FacilityPick(f) })
                     }
                     dungeons.forEach { dg ->
                         add(MapSprite("dg:${dg.id}", dg.lat, dg.lon, sprite("dungeon_${dg.stars}", 60, 60) { c, w, h -> drawDungeonOn(c, w, h, dg.stars) }, 60, 60, anchorY = 0.95f) { pick = MapPick.DungeonPick(dg) })
@@ -1404,6 +1405,7 @@ private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, on
     val inRange = dist != null && dist <= com.monsterquest.core.Facilities.RANGE_M
     val now = System.currentTimeMillis()
     val used = com.monsterquest.core.Facilities.usedToday(vm.state, v.role, now)
+    val closed = !com.monsterquest.core.Facilities.academyOpen(v, now)
     val (what, action) = when (v.role) {
         com.monsterquest.core.VenueRole.PHARMACY -> "A free full heal for your hero and every monster that's still standing, once a day." to "Get patched up"
         com.monsterquest.core.VenueRole.HOSPITAL -> "Wakes every fainted monster at full health, once a day." to "Wake my monsters"
@@ -1426,6 +1428,12 @@ private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, on
         text = {
             Column {
                 Text(what)
+                if (closed) {
+                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        GIcon(GameIcon.LOCK, Modifier.size(16.dp), HpYellow)
+                        Text(" By a school: opens at ${com.monsterquest.core.Facilities.SCHOOL_DAY_END_HOUR} PM on school days (weekends all day).", color = HpYellow)
+                    }
+                }
                 if (used) Text("Already used today. Come back tomorrow.", color = HpYellow, modifier = Modifier.padding(top = 6.dp))
                 if (!inRange) {
                     Text("Walk within ${formatDistance(com.monsterquest.core.Facilities.RANGE_M, vm.state.settings.imperialUnits)} to use it (${distanceText(dist, vm.state.settings.imperialUnits)}).", modifier = Modifier.padding(top = 6.dp))
@@ -1433,7 +1441,7 @@ private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, on
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { vm.useFacility(v); onDismiss() }, enabled = inRange && !used) { Text(action) } },
+        confirmButton = { TextButton(onClick = { vm.useFacility(v); onDismiss() }, enabled = inRange && !used && !closed) { Text(action) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
 }

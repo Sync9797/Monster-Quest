@@ -90,17 +90,17 @@ class EncountersTest {
     fun yourSideMatchesTheirsOutsideDens() {
         val s = withMonsters(7)
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
-        // One wild monster: the hero alone, the party waits on the bench.
+        // One wild monster: the hero and one monster (never fewer); the rest wait on the bench.
         val one = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
-        assertEquals(1, one.allies.size)
-        assertTrue(one.allies.single().isHero)
-        assertEquals(s.party.size, one.swapsWaiting.size)
+        assertEquals(MIN_SIDE, one.allies.size)
+        assertTrue(one.allies.first().isHero)
+        assertEquals(s.party.size - 1, one.swapsWaiting.count { it.key in s.party })
         // A pack of 3: the hero and 2 monsters.
         val pack = (1..2).map { Monster.create(Bestiary.get("emberkit"), 10, rng) }
         val three = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4), pack = pack)
         assertEquals(3, three.allies.size)
         // Bosses and villains match too; dens bring the whole team.
-        assertEquals(1, GameEngine.newBattle(s, foe, EncounterType.BOSS_CHALLENGE, rng = Random(4)).allies.size)
+        assertEquals(MIN_SIDE, GameEngine.newBattle(s, foe, EncounterType.BOSS_CHALLENGE, rng = Random(4)).allies.size)
         assertEquals(1 + s.party.size, GameEngine.newBattle(s, foe, EncounterType.DEN, rng = Random(4)).allies.size)
     }
 
@@ -122,18 +122,18 @@ class EncountersTest {
         val s = withMonsters(3).let { it.copy(hero = it.hero.copy(level = 60)) }
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
-        val sub = s.party.first()
+        val sub = s.party[1]
         b.step(BattleAction.Swap(sub, Combatant.HERO_KEY))
-        assertEquals(listOf(sub), b.allies.map { it.key })
+        assertEquals(listOf(sub, s.party.first()), b.allies.map { it.key })
         assertTrue(b.swapsWaiting.any { it.isHero })
         assertTrue(b.log.any { "steps back" in it })
-        // The monster falls: not a loss, the player picks who steps in (here, the hero).
-        val fallen = b.allies.single()
-        fallen.hp = 0
+        // Both monsters fall: not a loss, the player picks who steps in (here, the hero).
+        b.allies.forEach { it.hp = 0 }
+        val fallen = b.allies.first()
         assertTrue(b.mustSwap)
         assertTrue(b.replaceFainted(Combatant.HERO_KEY, fallen.key))
         assertEquals(BattleOutcome.ONGOING, b.outcome, b.log.joinToString("\n"))
-        assertTrue(b.allies.single().isHero)
+        assertTrue(b.allies.first().isHero)
         assertTrue(b.log.any { "takes ${fallen.name}'s place" in it })
     }
 

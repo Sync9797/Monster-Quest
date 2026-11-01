@@ -458,8 +458,9 @@ object TeamScaling {
             Factors(hp(teamSize) / hp(4), attack(teamSize) / attack(4), defense(teamSize) / defense(4))
         }
 
+    // A lone foe always faces the hero and a monster (2 on your side), scaled to make it a real fight (3.6).
     private val hpByTeam = listOf(0.35, 1.2, 2.6, 4.2, 5.6, 7.0)
-    private val attackByTeam = listOf(0.45, 1.1, 1.6, 2.0, 2.3, 2.55)
+    private val attackByTeam = listOf(0.45, 1.0, 1.6, 2.0, 2.3, 2.55)
     private val defenseByTeam = listOf(1.0, 1.0, 1.1, 1.2, 1.25, 1.3)
 
     private fun pick(table: List<Double>, teamSize: Int) = table[(teamSize - 1).coerceIn(0, table.size - 1)]
@@ -550,7 +551,7 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 }
 
 /** Hero spells aimed at an ally (or the hero) instead of an enemy. */
-val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER, SkillKind.CLEANSE, SkillKind.MEND_ALL)
+val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.AEGIS, SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER, SkillKind.CLEANSE, SkillKind.MEND_ALL)
 
 private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT, Trait.SPORE_COAT)
 
@@ -573,6 +574,9 @@ const val MAX_SWAPS = 2
  * included, and the rest of the party waits on the bench to swap in.
  */
 val FULL_TEAM_ENCOUNTERS = setOf(EncounterType.DEN)
+
+/** Your side in any fight: at least the hero and one monster. */
+const val MIN_SIDE = 2
 
 /** Scare and Intimidate: the foe's Attack drops to 66.7% (two thirds). */
 const val SCARED_ATTACK = 2.0 / 3.0
@@ -648,18 +652,23 @@ class Battle(
     private val restFactor: Double = 1.0,
     /** The tutorial dungeon: foes hit softly and every Binding cast tames. */
     val tutorial: Boolean = false,
-    /**
-     * In a one-on-one fight, the monster (uid) who starts instead of the hero;
-     * the hero waits on the bench and can step in later. Null: the hero starts.
-     */
+    /** The monster (uid) who fights beside the hero; null: the first one in the party. */
     lead: String? = null,
 ) {
-    /** How many of your side fight at once, the hero included: theirs, or the whole team. */
-    val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
-    private val able = party.filter { !it.fainted }.take(MAX_PARTY_SIZE)
+    /**
+     * How many of your side fight at once, the hero included: theirs, or the
+     * whole team; never less than the hero and one monster ([MIN_SIDE]).
+     */
+    val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else maxOf(MIN_SIDE, 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0))
+    private val able = (party + swaps).filter { !it.fainted }.let { all ->
+        // The chosen companion steps up first (even from a swap slot); the rest keep their order.
+        val pick = lead?.let { uid -> all.find { it.uid == uid } }
+        val ordered = party.filter { !it.fainted }
+        if (pick == null) ordered else listOf(pick) + ordered.filter { it.uid != pick.uid }
+    }.take(MAX_PARTY_SIZE)
     private val fighters = able.take(slots - 1)
     // In a matched fight the party members who don't fit wait on the bench, ahead of the swap slots.
-    private val swapMonsters = (able.drop(slots - 1) + swaps.filter { !it.fainted }.take(MAX_SWAPS)).let { all -> swapLimit?.let { all.take(it) } ?: all }
+    private val swapMonsters = (able.drop(slots - 1) + swaps.filter { !it.fainted && it.uid !in able.map { a -> a.uid } }.take(MAX_SWAPS)).let { all -> swapLimit?.let { all.take(it) } ?: all }
     private val heroPerks = hero.perks
     /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
     private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
@@ -681,17 +690,6 @@ class Battle(
     /** Monsters that actually stepped into the fight (they earn full XP). */
     private val fought: MutableSet<String> = fighters.map { it.uid }.toMutableSet()
 
-    /** The monster who opened a one-on-one fight in the hero's place, if one did. */
-    val leader: Combatant? = lead?.takeIf { slots == 1 }?.let { uid -> reserve.find { it.key == uid && it.alive } }
-
-    init {
-        leader?.let { m ->
-            team[0] = m
-            reserve.remove(m)
-            reserve.add(0, heroFighter)
-            fought += m.key
-        }
-    }
     /** Fighters on your side: the hero plus the party monsters able to fight. */
     val teamSize: Int = 1 + fighters.size
     /** The enemy side: one monster, or a pack of up to 4. */
@@ -815,7 +813,6 @@ class Battle(
                 (if (enemyBench.isNotEmpty()) ", with ${enemyBench.size} more waiting!" else "!")
         }
         log += intro
-        leader?.let { log += "${it.name} leads the fight! ${heroFighter.name} waits to step in." }
         // Stormcallers and Sunbringers bring their weather with them.
         (allies + enemies).firstOrNull { it.rankOf(Trait.STORMCALLER) > 0 || it.rankOf(Trait.SUNBRINGER) > 0 }?.let { c ->
             weather = if (c.rankOf(Trait.STORMCALLER) > 0) Weather.RAIN else Weather.DROUGHT
@@ -1251,6 +1248,13 @@ class Battle(
                             val amount = ((skill.power + actor.magic * 1.2) * (1 + actor.healPct / 100.0)).roundToInt()
                             target.shield = max(target.shield, amount)
                             log += "${actor.name} casts ${skill.name}: ${target.name} is shielded (absorbs ${target.shield})."
+                            record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
+                        }
+                        SkillKind.AEGIS -> {
+                            // Worth a share of the caster's max HP: half at first, more as it ranks up.
+                            val amount = (actor.maxHp * skill.power / 100.0).roundToInt().coerceAtLeast(1)
+                            target.shield = max(target.shield, amount)
+                            log += "${actor.name} casts ${skill.name}: ${target.name} is behind a great shield (absorbs ${target.shield})."
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
                         }
                         SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER -> {

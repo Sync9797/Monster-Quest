@@ -151,6 +151,8 @@ enum class SkillKind {
     PHYSICAL, MAGICAL, HEAL,
     /** Hero spell: a barrier on one ally (or the hero) that soaks up damage. */
     SHIELD,
+    /** Hero spell: a great barrier that soaks up a share (its power, in percent) of the hero's max HP. */
+    AEGIS,
     /** Hero spell: raises one ally's Defense. */
     FORTIFY,
     /** Hero spell: raises one ally's Speed. */
@@ -198,6 +200,11 @@ object Spells {
     const val MUD_SHOT_ACCURACY = 10
     const val MUD_SHOT_STACKS = 5
 
+    /** Aegis: a shield worth half your max HP, more at higher ranks (not lowered by mastery). */
+    const val AEGIS = "aegis"
+    const val AEGIS_BASE_PCT = 50
+    const val AEGIS_PCT_PER_RANK = 10
+
     private fun bolt(id: String, name: String, element: Element, flavor: String) =
         Skill(id, name, element, SkillKind.MAGICAL, 24, mpCost = 4, powerPerRank = 7, description = flavor)
 
@@ -239,6 +246,11 @@ object Spells {
             description = "Washes one ally clean: cures sleep, shock, poison, burn and frostbite, undoes lowered stats, and heals a little.",
         ),
         Skill(
+            AEGIS, "Aegis", Element.NEUTRAL, SkillKind.AEGIS, AEGIS_BASE_PCT, mpCost = 8, powerPerRank = AEGIS_PCT_PER_RANK,
+            description = "A great shield on one ally or yourself that absorbs damage equal to $AEGIS_BASE_PCT% of your max HP " +
+                "before it breaks (+$AEGIS_PCT_PER_RANK% per rank, up to ${AEGIS_BASE_PCT + AEGIS_PCT_PER_RANK * (MAX_RANK - 1)}%).",
+        ),
+        Skill(
             "healing_circle", "Healing Circle", Element.NEUTRAL, SkillKind.MEND_ALL, 14, mpCost = 9, powerPerRank = 6,
             description = "A ring of light under your whole team: heals every ally at once.",
         ),
@@ -262,6 +274,7 @@ object Spells {
     fun ranked(skill: Skill, rank: Int, heroLevel: Int): Skill {
         val r = rank.coerceIn(1, MAX_RANK)
         val power = if (skill.kind in STAGE_SPELLS) fortifyStages(r)
+        else if (skill.kind == SkillKind.AEGIS) skill.power + skill.powerPerRank * (r - 1)
         else ((skill.power + skill.powerPerRank * (r - 1)) * mastery(heroLevel)).roundToInt()
         return skill.copy(power = power)
     }

@@ -39,6 +39,22 @@ object Facilities {
         else -> false
     }
 
+    /** Study spots by a primary or high school are closed on school days until this hour (4 PM). */
+    const val SCHOOL_DAY_START_HOUR = 7
+    const val SCHOOL_DAY_END_HOUR = 4
+    private const val SCHOOL_DAY_END_24H = 16
+
+    /** Whether [v] is a study spot by a primary or high school (rather than on a campus). */
+    fun bySchool(v: Venue): Boolean = v.role == VenueRole.SCHOOL && v.id.endsWith("#st")
+
+    /** Whether an academy can be used now: spots by schools are closed 7 AM to 4 PM, Monday to Friday. */
+    fun academyOpen(v: Venue, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean {
+        if (!bySchool(v)) return true
+        val t = Instant.ofEpochMilli(nowMs).atZone(zone)
+        val weekday = t.dayOfWeek.value <= 5
+        return !(weekday && t.hour >= SCHOOL_DAY_START_HOUR && t.hour < SCHOOL_DAY_END_24H)
+    }
+
     /** Pages in the Scholar's Tome a day's study at an academy gives (you choose the spell). */
     const val STUDY_PAGES = 2
 
@@ -47,7 +63,8 @@ object Facilities {
      * comes away with a Scholar's Tome of [STUDY_PAGES] pages, for any spell
      * you choose on the Hero tab (to learn a new one or rank one up).
      */
-    fun study(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Update {
+    fun study(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault(), venue: Venue? = null): Update {
+        if (venue != null && !academyOpen(venue, nowMs, zone)) return Update(state, "This study spot is by a school: it opens at $SCHOOL_DAY_END_HOUR PM on school days.")
         if (usedToday(state, VenueRole.SCHOOL, nowMs, zone)) return Update(state, "You've studied here today. The academy opens again tomorrow.")
         val s = state.copy(tomes = state.tomes + STUDY_PAGES, academyDay = day(nowMs, zone))
         return Update(s, "A day of study! You copy out a Scholar's Tome: $STUDY_PAGES pages for any spell you choose (on the Hero tab).")

@@ -473,26 +473,20 @@ private fun HeroMenuBubbles(onPick: (Tab) -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-/** Before a one-on-one fight: the hero or one of your monsters steps up first; the rest wait to swap in. */
+/** Before a fight against a lone foe: pick the monster who fights beside your hero; the rest wait on the bench. */
 @Composable
-private fun LeadPicker(vm: GameViewModel, choice: GameViewModel.LeadChoice, outfit: HeroOutfit) {
-    val hero = vm.state.hero
+private fun LeadPicker(vm: GameViewModel, choice: GameViewModel.LeadChoice, @Suppress("UNUSED_PARAMETER") outfit: HeroOutfit) {
     androidx.compose.material3.AlertDialog(
-        // Backing out still starts the fight, with the hero up front.
+        // Backing out still starts the fight, with the first monster in your party.
         onDismissRequest = { vm.chooseLead(null) },
-        title = { Text("Who starts?") },
+        title = { Text("Who fights beside you?") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "${choice.enemy.displayName} (Lv ${choice.enemy.level}) stands alone. Pick who faces it first; the others wait and can swap in.",
+                    "${choice.enemy.displayName} (Lv ${choice.enemy.level}) stands alone. ${vm.state.hero.name} fights with one monster; the others wait on the bench and can swap in.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                LeadRow(
-                    title = hero.name,
-                    subtitle = "Lv ${hero.level} ${hero.heroClass.label} • spells and items",
-                    onClick = { vm.chooseLead(null) },
-                ) { com.monsterquest.app.ui.art.HeroArt(hero.heroClass, Modifier.size(44.dp), outfit = outfit) }
                 choice.options.forEach { m ->
                     LeadRow(
                         title = m.displayName,

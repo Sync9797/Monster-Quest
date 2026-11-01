@@ -139,7 +139,7 @@ private val topics = listOf(
                 "Services",
                 "Pharmacies (green cross): an infirmary that heals your hero and every standing monster to full, free once a day.",
                 "Hospitals (red cross): a healing hall that wakes every fainted monster, once a day.",
-                "Schools, colleges and universities (purple book): an academy. Universities have 3 study spots around campus and colleges 2; for primary and high schools the spot is on a nearby street, off the school grounds, so you never need to go onto a school campus. Study once a day for a Scholar's Tome of 2 pages for any spell you choose, to learn a new one or rank one up.",
+                "Schools, colleges and universities (purple book): an academy. Universities have 3 study spots around campus and colleges 2; for primary and high schools the spot is on a nearby street, off the school grounds, so you never need to go onto a school campus. Spots by a school are locked from 7 AM to 4 PM on weekdays (a lock shows on the map). Study once a day for a Scholar's Tome of 2 pages for any spell you choose, to learn a new one or rank one up.",
                 "Gyms (dumbbell): a training ground. Spend a torch and every party monster gains part of a level: 30%, then 20%, then 10%, for up to 3 sessions a day.",
                 "Levels stay fair: monsters can't get more than 5 levels above your hero (extra XP is saved and pays out as your hero levels up), and beating foes far below your level gives much less XP.",
                 "Libraries and bookstores: their shrines hold extra spell pages.",
@@ -159,7 +159,7 @@ private val topics = listOf(
             section(
                 "The basics",
                 "Turn-based, in Speed order (the strip at the top shows who's next). Your side matches theirs: one monster means your hero alone, a pack of 3 means your hero and 2 monsters. Dens bring your whole team.",
-                "Swap sends a monster in from the bench; your hero can step back and let a monster fight. In a one-on-one fight you pick who starts: your hero or any monster able to fight (the rest wait on the bench). If everyone fighting is knocked out (the hero too), it isn't over while someone on the bench can still fight: you pick who steps in. You only lose when nobody is left. Defend blocks all damage until your next turn (not twice in a row).",
+                "Swap sends a monster in from the bench; your hero can step back and let a monster fight. Every fight is at least your hero and one monster; against a lone foe you pick which monster fights beside you (the rest wait on the bench). If everyone fighting is knocked out (the hero too), it isn't over while someone on the bench can still fight: you pick who steps in. You only lose when nobody is left. Defend blocks all damage until your next turn (not twice in a row).",
                 "Battles happen in a painted scene: the dungeon you're in, or the outdoors at this time of day.",
             ),
             section(

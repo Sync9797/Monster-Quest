@@ -225,7 +225,20 @@ fun drawDungeonOn(c: Canvas, w: Float, h: Float, stars: Int) {
 }
 
 /** A real-world service: a pharmacy (green cross), a hospital (red cross) or a gym (dumbbell), on a white badge. */
-fun drawFacilityOn(c: Canvas, w: Float, h: Float, role: com.monsterquest.core.VenueRole) {
+fun drawFacilityOn(c: Canvas, w: Float, h: Float, role: com.monsterquest.core.VenueRole, locked: Boolean = false) {
+    drawFacilityBadge(c, w, h, role)
+    if (locked) {
+        // Closed for now: a dark lock badge in the corner.
+        val disc = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("1c2427") }
+        c.drawCircle(w * 0.78f, h * 0.24f, w * 0.22f, disc)
+        c.save()
+        c.translate(w * 0.64f, h * 0.10f)
+        drawIcon(c, w * 0.28f, h * 0.28f, GameIcon.LOCK, Argb.hex("f5f2ea"), Argb.hex("f5f2ea"))
+        c.restore()
+    }
+}
+
+private fun drawFacilityBadge(c: Canvas, w: Float, h: Float, role: com.monsterquest.core.VenueRole) {
     val badge = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("f5f2ea") }
     val edge = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         style = android.graphics.Paint.Style.STROKE; strokeWidth = w * 0.06f; color = Argb.hex("2a2f33")
