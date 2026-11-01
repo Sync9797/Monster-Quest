@@ -1229,14 +1229,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         when (room) {
             com.monsterquest.core.RoomKind.BOSS -> {
                 val champ = com.monsterquest.core.Dungeons.champion(run.dungeon)
-                startBattle(foes.first(), EncounterType.DUNGEON_BOSS, null, foes.drop(1), thug = champ, trainer = champ.title)
+                startBattle(foes.first(), EncounterType.DUNGEON_BOSS, null, foes.drop(1), thug = champ, trainer = champ.title, tutorial = run.dungeon.tutorial)
             }
-            com.monsterquest.core.RoomKind.COMBAT -> startBattle(foes.first(), EncounterType.DUNGEON_GUARD, null, foes.drop(1))
-            else -> startBattle(foes.first(), EncounterType.WILD, null, foes.drop(1))
+            com.monsterquest.core.RoomKind.COMBAT -> startBattle(foes.first(), EncounterType.DUNGEON_GUARD, null, foes.drop(1), tutorial = run.dungeon.tutorial)
+            else -> startBattle(foes.first(), EncounterType.WILD, null, foes.drop(1), tutorial = run.dungeon.tutorial)
         }
     }
 
     fun springTrap() = apply(com.monsterquest.core.Dungeons.springTrap(state))
+
+    /** A new player's first dungeon (after the intro). */
+    fun startTutorial() = set(com.monsterquest.core.Dungeons.startTutorial(state))
+    fun tutorialStarter(speciesId: String) = apply(com.monsterquest.core.Dungeons.pickStarter(state, speciesId))
     fun leaveDungeon() = apply(com.monsterquest.core.Dungeons.leave(state))
 
     /** The scene a battle (or dungeon) is drawn in: the dungeon's, or the outdoors at this time of day. */
@@ -1261,6 +1265,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         enemyReserve: List<Monster> = emptyList(),
         swapLimit: Int? = null,
         trainer: String? = null,
+        tutorial: Boolean = false,
     ) {
         var s = state
         for (m in listOf(enemy) + pack + enemyReserve) s = GameEngine.markSeen(s, m.speciesId)
@@ -1269,7 +1274,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
             weather = weather?.kind?.takeIf { state.settings.liveWeather },
             captureBoost = captureBoost,
-            enemyReserve = enemyReserve, swapLimit = swapLimit, trainer = trainer,
+            enemyReserve = enemyReserve, swapLimit = swapLimit, trainer = trainer, tutorial = tutorial,
         )
         activeBattle = b
         battle = battleView(b, null)

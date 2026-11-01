@@ -86,7 +86,9 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     val state = vm.state
     ArtQuality.reduced = state.settings.reducedEffects
     if (!state.starterChosen) {
-        StarterScreen(onChoose = vm::chooseStarter)
+        // A new player: the basics, then the tutorial dungeon, where the starter joins in the first room.
+        val run = state.dungeonRun
+        if (run != null) DungeonScreen(vm, run) else TutorialIntro(onStart = vm::startTutorial)
         return
     }
     val focus = state.focus

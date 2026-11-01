@@ -397,6 +397,8 @@ data class GameState(
     val dungeonRun: DungeonRun? = null,
     val dungeonsCleared: Map<String, Long> = emptyMap(),
     val championStatDay: Long = -1,
+    /** The 0-star tutorial dungeon has been finished (it's one of a kind). */
+    val tutorialDungeonDone: Boolean = false,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

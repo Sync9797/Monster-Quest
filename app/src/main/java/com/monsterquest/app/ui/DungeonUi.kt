@@ -62,6 +62,7 @@ private fun RoomKind.icon(): GameIcon = when (this) {
     RoomKind.FOUNTAIN -> GameIcon.DROP
     RoomKind.EMPTY -> GameIcon.MOON
     RoomKind.BOSS -> GameIcon.FIGHT
+    RoomKind.STARTER -> GameIcon.MONSTERS
 }
 
 private fun RoomKind.color(): Color = when (this) {
@@ -73,6 +74,7 @@ private fun RoomKind.color(): Color = when (this) {
     RoomKind.FOUNTAIN -> Color(0xFF7FD6C2)
     RoomKind.EMPTY -> Color(0xFF9AA3A1)
     RoomKind.BOSS -> Color(0xFFFF6B5E)
+    RoomKind.STARTER -> Gold
 }
 
 /**
@@ -83,6 +85,11 @@ private fun RoomKind.color(): Color = when (this) {
 fun DungeonScreen(vm: GameViewModel, run: DungeonRun) {
     val d = run.dungeon
     val s = vm.state
+    // The tutorial's first room: choose the monster that joins you.
+    if (d.tutorial && !s.starterChosen) {
+        StarterScreen(onChoose = vm::tutorialStarter)
+        return
+    }
     var trapDoor by remember { mutableStateOf<Boolean?>(null) }
     var confirmLeave by remember { mutableStateOf(false) }
     // A room's fight was interrupted (the app closed): pick it back up.
@@ -98,7 +105,7 @@ fun DungeonScreen(vm: GameViewModel, run: DungeonRun) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(d.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("${starsText(d.stars)}  •  Lv ${d.level}", color = Gold, fontSize = 14.sp)
+            Text(if (d.tutorial) "Tutorial dungeon" else "${starsText(d.stars)}  •  Lv ${d.level}", color = Gold, fontSize = 14.sp)
             Spacer(Modifier.height(8.dp))
             // Progress: a dot per room, then the champion.
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -157,6 +164,12 @@ fun DungeonScreen(vm: GameViewModel, run: DungeonRun) {
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
                 Button(onClick = { vm.openDoor(true) }, modifier = Modifier.fillMaxWidth()) { Text("Face the champion") }
+            } else if (d.tutorial) {
+                // The tutorial: one door at a time, with what each room is about.
+                val room = Dungeons.doors(run).first
+                TutorialGuide(room)
+                Spacer(Modifier.height(8.dp))
+                Door(room, false, Modifier.fillMaxWidth(0.6f)) { if (room == RoomKind.TRAP) trapDoor = true else vm.openDoor(true) }
             } else {
                 Text("Choose a door", color = Color.White, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
@@ -180,7 +193,7 @@ fun DungeonScreen(vm: GameViewModel, run: DungeonRun) {
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
             )
-            TextButton(onClick = { confirmLeave = true }) { Text("Leave the dungeon", color = Color.White) }
+            if (!d.tutorial) TextButton(onClick = { confirmLeave = true }) { Text("Leave the dungeon", color = Color.White) }
         }
     }
 
@@ -301,4 +314,63 @@ fun DungeonDialog(vm: GameViewModel, d: Dungeon, distance: Double?, onDismiss: (
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
     )
+}
+
+/** The tutorial's guide: what this room is, and what to do. */
+@Composable
+private fun TutorialGuide(room: RoomKind) {
+    val text = when (room) {
+        RoomKind.TREASURY -> "Behind this door is a treasury. Chests hold gold, crystals, potions, spell pages and sometimes torches. Open it: you'll need what's inside."
+        RoomKind.MONSTERS -> "A monster lair. Wild monsters live in dungeons and dens. Weaken it, then press Tame, pick a Binding Crystal and trace the glyph in one stroke. (Here, every cast works.)"
+        RoomKind.TRAP -> "A trap room. In real dungeons you'll see your odds first and decide whether to risk it; if it goes wrong, everyone takes damage but you carry on. This one is safe."
+        RoomKind.COMBAT -> "A guarded hall. Cursed guardians defend dungeons. They can't be tamed: fight your way through together."
+        RoomKind.FOUNTAIN -> "A fairy fountain. It restores you and your monsters to full strength. Rest up: the champion is next."
+        else -> "Each room in a dungeon is a choice of two doors. Their signs tell you what's behind them (some are hidden)."
+    }
+    Text(
+        text,
+        color = Color.White,
+        fontSize = 14.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Gold.copy(alpha = 0.25f)).padding(12.dp),
+    )
+}
+
+/** A new player's first screens: the game in four short pages, then into the tutorial dungeon. */
+@Composable
+fun TutorialIntro(onStart: () -> Unit) {
+    var page by remember { mutableStateOf(0) }
+    val pages = listOf(
+        Triple(GameIcon.QUESTS, "Your life is the quest", "Your tasks and calendar are your quests. Finishing them earns XP and gold for your hero."),
+        Triple(GameIcon.WALK, "Walk to light torches", "Every 1,000 steps lights a torch, and a few wait for you each morning. Torches open dungeons. Walking also heals your team."),
+        Triple(GameIcon.MOON, "Rest well", "8 hours of sleep makes your team stronger for the day; under 7 makes it weaker. Time off your phone earns loot boxes."),
+        Triple(GameIcon.MAP, "Explore and tame", "Monsters live in dens and dungeons on the map. Fight, tame and raise them, and beat dungeon champions to grow stronger for good."),
+    )
+    val (icon, title, body) = pages[page]
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Backdrop(Scene.DUSK, Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f })
+        Column(
+            Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text("MONSTER QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(24.dp))
+            GIcon(icon, Modifier.size(72.dp), Gold)
+            Spacer(Modifier.height(12.dp))
+            Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            Text(body, fontSize = 16.sp, color = Color.White, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                pages.indices.forEach { i -> Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(if (i == page) Gold else Color.White.copy(alpha = 0.3f))) }
+            }
+            Spacer(Modifier.height(24.dp))
+            if (page < pages.lastIndex) {
+                Button(onClick = { page++ }) { Text("Next") }
+            } else {
+                Button(onClick = onStart) { Text("Enter your first dungeon") }
+            }
+        }
+    }
 }

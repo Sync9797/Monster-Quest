@@ -29,6 +29,8 @@ enum class RoomKind(val label: String, val hint: String) {
     FOUNTAIN("Fairy fountain", "Restores you and your monsters"),
     EMPTY("Quiet room", "Nothing at all"),
     BOSS("Champion", "The dungeon's champion"),
+    /** The tutorial's first room: choose your starter. */
+    STARTER("Starter's chamber", "Choose your first monster"),
     ;
 
     val isFight: Boolean get() = this in setOf(MONSTERS, ELITE, COMBAT, BOSS)
@@ -47,10 +49,12 @@ data class Dungeon(
     val lat: Double,
     val lon: Double,
     val seed: Long,
+    /** The 0-star tutorial: one of a kind, every room shown once, and it can't be lost. */
+    val tutorial: Boolean = false,
 ) {
     /** Rooms (each a choice of two doors) before the champion: more the harder it is. */
-    val rooms: Int get() = 2 + stars * 2
-    val torchCost: Int get() = (stars + 1) / 2
+    val rooms: Int get() = if (tutorial) Dungeons.TUTORIAL_ROOMS.size else 2 + stars * 2
+    val torchCost: Int get() = if (tutorial) 0 else (stars + 1) / 2
     /** The champion's class (the boss is a hero, with monsters of the dungeon's type). */
     val bossClass: HeroClass get() = listOf(HeroClass.WARRIOR, HeroClass.MAGE, HeroClass.ROGUE)[Math.floorMod(seed, 3L).toInt()]
     /** The stat the champion's defeat raises for good. */
@@ -91,6 +95,28 @@ data class BossReward(val label: String, val pct: Int)
  */
 object Dungeons {
     const val RANGE_M = 100.0
+
+    /** The tutorial's rooms in order: one of each kind, then its champion. */
+    val TUTORIAL_ROOMS = listOf(RoomKind.STARTER, RoomKind.TREASURY, RoomKind.MONSTERS, RoomKind.TRAP, RoomKind.COMBAT, RoomKind.FOUNTAIN)
+
+    /** The tutorial dungeon (0 stars): a Warrior champion, a cave, level 1. */
+    val tutorialDungeon = Dungeon("tutorial", "Hollow of Beginnings", DungeonTheme.CAVE, 0, 1, 0.0, 0.0, seed = 3L, tutorial = true)
+
+    /** Starts the tutorial dungeon for a new player (once). */
+    fun startTutorial(state: GameState): GameState =
+        if (state.tutorialDungeonDone || state.dungeonRun != null) state
+        else state.copy(
+            dungeonRun = DungeonRun(tutorialDungeon, last = "Your adventure begins in the Hollow of Beginnings. Every room here teaches you something, and nothing here can beat you."),
+            tutorialIntroSeen = true,
+        )
+
+    /** The tutorial's first room: your starter joins you. */
+    fun pickStarter(state: GameState, speciesId: String, rng: Random = Random.Default): Update {
+        val run = state.dungeonRun ?: return Update(state, "")
+        if (!run.dungeon.tutorial || run.step != 0) return Update(state, "")
+        val u = GameEngine.chooseStarter(state, speciesId, rng)
+        return advance(u.state, run, u.message + " Together you head deeper in.")
+    }
     private const val CELL_DEG = 0.007 // ~780 m
     private const val CELL_RADIUS = 2
     const val CHANCE = 0.45
@@ -164,6 +190,8 @@ object Dungeons {
     /** The two doors at this step (left, right): drawn at random for the difficulty, never both the same. */
     fun doors(run: DungeonRun): Pair<RoomKind, RoomKind> {
         if (run.atBoss) return RoomKind.BOSS to RoomKind.BOSS
+        // The tutorial shows every kind of room once, in order.
+        if (run.dungeon.tutorial) TUTORIAL_ROOMS[run.step].let { return it to it }
         val r = rng(run, 1)
         val w = roomWeights(run.dungeon.stars).filterValues { it > 0 }
         fun draw(except: RoomKind?): RoomKind {
@@ -178,12 +206,18 @@ object Dungeons {
 
     /** Whether a door's sign is hidden ("?"): more often in harder dungeons. */
     fun hidden(run: DungeonRun, left: Boolean): Boolean =
-        !run.atBoss && rng(run, if (left) 2 else 3).nextDouble() < 0.08 * run.dungeon.stars
+        !run.atBoss && !run.dungeon.tutorial && rng(run, if (left) 2 else 3).nextDouble() < 0.08 * run.dungeon.stars
 
     /** Who fights in a room (the champion's monsters for the boss). */
     fun monstersFor(run: DungeonRun, room: RoomKind): List<Monster> {
         val d = run.dungeon
         val r = rng(run, 4 + room.ordinal)
+        if (d.tutorial) {
+            // Gentle first fights: one small monster each.
+            val id = when (room) { RoomKind.COMBAT -> "gloomwisp"; RoomKind.BOSS -> "pebblit"; else -> "zapmouse" }
+            val m = Monster.create(Bestiary.get(id), 2, r, evolve = false).withWildMoves(r)
+            return listOf(if (room == RoomKind.COMBAT) m.copy(cursed = true) else m)
+        }
         fun lvl() = (d.level + r.nextInt(-1, 2)).coerceAtLeast(1)
         return when (room) {
             RoomKind.MONSTERS -> {
@@ -219,6 +253,7 @@ object Dungeons {
 
     /** The champion at the end: a hero of the dungeon's boss class. */
     fun champion(d: Dungeon): Thug {
+        if (d.tutorial) return Thug("Brannoc", d.name, 2, d.bossClass, fullTitle = "Brannoc the Gatekeeper")
         val name = championNames[Math.floorMod(d.seed shr 3, championNames.size.toLong()).toInt()]
         val title = when (d.bossClass) {
             HeroClass.WARRIOR -> "$name the Warlord"
@@ -232,6 +267,7 @@ object Dungeons {
 
     fun enter(state: GameState, d: Dungeon): Update {
         if (state.dungeonRun != null) return Update(state, "You're already in a dungeon.")
+        if (d.tutorial) return Update(startTutorial(state), "")
         if (state.torches < d.torchCost) return Update(state, "You need ${d.torchCost} torch${if (d.torchCost == 1) "" else "es"} to enter (you have ${state.torches}). Walk to light more.")
         if (state.monsters.none { it.uid in state.party && !it.fainted }) return Update(state, "Bring at least one monster that can fight.")
         val run = DungeonRun(d, last = "You light a torch and step into the ${d.name}.")
@@ -240,6 +276,7 @@ object Dungeons {
 
     /** A trap's odds: worse in harder dungeons, better for a quick hero (Rogues most of all). */
     fun trapChance(state: GameState, d: Dungeon): Double {
+        if (d.tutorial) return 1.0
         val base = 0.85 - 0.08 * (d.stars - 1)
         val rogue = if (state.hero.heroClass == HeroClass.ROGUE) 0.12 else 0.0
         val quick = (state.hero.attr(HeroAttribute.SPEED) - STARTING_ATTRIBUTE) * 0.01
@@ -270,6 +307,7 @@ object Dungeons {
         return when {
             room.isFight -> Update(state.copy(dungeonRun = run.copy(fighting = room)), "")
             room == RoomKind.TRAP -> Update(state, "") // the player decides first (see [springTrap])
+            room == RoomKind.STARTER -> Update(state, "") // chosen on its own screen (see [pickStarter])
             else -> resolve(state, run, room, rng)
         }
     }
@@ -311,6 +349,11 @@ object Dungeons {
     /** A chest: gold, and often potions, crystals, spell pages, torches, now and then gear. Better in harder dungeons. */
     private fun treasure(state: GameState, run: DungeonRun, rng: Random): Pair<DungeonRun, String> {
         val d = run.dungeon
+        if (d.tutorial) {
+            // Everything you need for the rooms ahead.
+            val r = run.copy(gold = run.gold + 100, torches = run.torches + 3, items = run.items + (Item.TAMING_ORB to 5) + (Item.POTION to 3))
+            return r to "A treasury! The chest holds 100 gold, 3 torches, 5 Binding Crystals and 3 Potions. Chests in other dungeons are random, and better the harder the dungeon."
+        }
         var r = run
         val found = mutableListOf<String>()
         val gold = d.level * (4 + d.stars * 2) + rng.nextInt(20)
@@ -352,6 +395,12 @@ object Dungeons {
     fun afterFight(state: GameState, outcome: BattleOutcome, nowMs: Long, rng: Random = Random.Default, zone: ZoneId = ZoneId.systemDefault()): Update {
         val run = state.dungeonRun ?: return Update(state, "")
         val room = run.fighting ?: return Update(state, "")
+        // The tutorial can't be lost: a fall just means your team picks itself up and goes on.
+        if (run.dungeon.tutorial && outcome != BattleOutcome.WON && outcome != BattleOutcome.CAPTURED) {
+            val healed = state.copy(heroDamage = 0, monsters = state.monsters.map { it.copy(fainted = false, damage = 0) })
+            return if (room == RoomKind.BOSS) clear(healed, run, nowMs, rng, zone)
+            else advance(healed, run, "Your team picks itself up and pushes on. (In real dungeons, falling ends the run and loses half your finds.)")
+        }
         return when (outcome) {
             BattleOutcome.WON, BattleOutcome.CAPTURED -> if (room == RoomKind.BOSS) clear(state, run, nowMs, rng, zone)
             else advance(state, run, "The way ahead is clear.")
@@ -377,6 +426,16 @@ object Dungeons {
     private fun clear(state: GameState, run: DungeonRun, nowMs: Long, rng: Random, zone: ZoneId): Update {
         val d = run.dungeon
         val day = epochDay(nowMs, zone)
+        if (d.tutorial) {
+            // Your first champion: +1 to their class's stat, and the tutorial is done.
+            val h = state.hero
+            val s = state.copy(hero = h.copy(attributes = h.attributes + (d.bossStat to h.attr(d.bossStat) + 1)), tutorialDungeonDone = true)
+            val banked = bank(s, run.copy(gold = run.gold + 150), half = false)
+            return Update(
+                banked.state.copy(dungeonRun = null),
+                "Brannoc the Gatekeeper is defeated! +1 ${d.bossStat.label} for good. Real dungeons wait on your map: walk to light torches and explore them. ${banked.message}".trim(),
+            )
+        }
         var r = run.copy(gold = run.gold + d.level * 30)
         val got = mutableListOf<String>()
         var s = state

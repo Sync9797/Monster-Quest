@@ -646,6 +646,8 @@ class Battle(
     val trainer: String? = null,
     /** Today's rest (see [Rest]): a good night makes your side 10% better, a short one 10% worse. */
     private val restFactor: Double = 1.0,
+    /** The tutorial dungeon: foes hit softly and every Binding cast tames. */
+    val tutorial: Boolean = false,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -690,8 +692,8 @@ class Battle(
         return Combatant.fromMonster(
             if (alpha > 1.0) m.copy(nickname = "Alpha ${m.displayName}") else m,
             key,
-            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost * alpha,
-            attackMultiplier = scaling.attack * legend * enemyBoost * alpha,
+            hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost * alpha * (if (tutorial) 0.6 else 1.0),
+            attackMultiplier = scaling.attack * legend * enemyBoost * alpha * (if (tutorial) 0.35 else 1.0),
             defenseMultiplier = scaling.defense * legend * enemyBoost * alpha,
             speedMultiplier = enemyBoost,
         )
@@ -903,7 +905,7 @@ class Battle(
     fun catchOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = withCriticalCatch(captureOdds(orb, grade))
 
     /** Status conditions (sleep, shock, poison, burn) make taming easier. */
-    fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB) 1.0 else
+    fun captureOdds(orb: Item, grade: TraceGrade = TraceGrade.GOOD): Double = if (orb == Item.PERFECT_ORB || tutorial) 1.0 else
         (
             captureChance(enemy.hpFraction, monsterFor(enemy.key).species.rarity, enemy.level - heroLevel, orb) * bait * grade.multiplier *
                 encounter.captureMultiplier * (enemy.status?.captureBonus ?: 1.0) * (1 + heroFighter.tameBonus) * captureBoost *

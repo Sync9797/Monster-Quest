@@ -1013,6 +1013,8 @@ object GameEngine {
         enemyReserve: List<Monster> = emptyList(),
         swapLimit: Int? = null,
         trainer: String? = null,
+        /** The tutorial dungeon's gentle fights. */
+        tutorial: Boolean = false,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -1032,6 +1034,7 @@ object GameEngine {
         swapLimit = swapLimit,
         trainer = trainer,
         restFactor = Rest.today(state, System.currentTimeMillis()).statFactor,
+        tutorial = tutorial,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */

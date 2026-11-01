@@ -1215,6 +1215,25 @@ abstract class ScreenshotBase(private val device: String) {
         // The commands must be on screen, not pushed below the bottom edge.
         rule.onNodeWithText("Flee").assertIsDisplayed()
     }
+
+    /** A new player's intro pages, then the tutorial dungeon with its guide. */
+    @Test fun tutorialDungeon() {
+        val v = vm(GameState())
+        shot("40_tutorial_intro") { AppRoot(v) }
+        v.startTutorial()
+        v.tutorialStarter("voltfawn")
+        androidx.compose.runtime.snapshots.Snapshot.sendApplyNotifications()
+        capture("41_tutorial_room", 1_000)
+        rule.onNodeWithText("Treasury", substring = true).assertExists()
+    }
+
+    /** A dungeon room: the painted forge, progress, the team and two doors. */
+    @Test fun dungeonRoom() {
+        val d = com.monsterquest.core.Dungeon("dg:1:1:1", "Ember Forge", com.monsterquest.core.DungeonTheme.FORGE, 3, 12, 0.0, 0.0, seed = 7L)
+        val v = vm(sampleState().copy(dungeonRun = com.monsterquest.core.DungeonRun(d, step = 2, gold = 120, last = "A treasury! The chest holds 96 gold and 2 torches.")))
+        shot("42_dungeon_room") { AppRoot(v) }
+        rule.onNodeWithText("Choose a door").assertExists()
+    }
 }
 
 /** Galaxy Z Fold cover screen (the narrowest common foldable). */
