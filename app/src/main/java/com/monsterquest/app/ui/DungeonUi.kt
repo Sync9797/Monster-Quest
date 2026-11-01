@@ -2,6 +2,7 @@ package com.monsterquest.app.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,6 +101,8 @@ fun DungeonScreen(vm: GameViewModel, run: DungeonRun) {
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Backdrop(Scene.of(d.theme), Modifier.fillMaxSize().graphicsLayer { alpha = 0.35f + 0.65f * enter.value })
+        // Your party walks into each new room along the ground.
+        PartyWalk(vm, run.step, Modifier.align(Alignment.BottomCenter))
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -370,6 +373,78 @@ fun TutorialIntro(onStart: () -> Unit) {
                 Button(onClick = { page++ }) { Text("Next") }
             } else {
                 Button(onClick = onStart) { Text("Enter your first dungeon") }
+            }
+        }
+    }
+}
+
+/**
+ * The party walking along the dungeon floor: on every new room they stride in
+ * from the left (the hero leading, monsters following, each bobbing with its
+ * steps and kicking up dust), then stand and breathe until the next door.
+ */
+@Composable
+private fun PartyWalk(vm: GameViewModel, step: Int, modifier: Modifier) {
+    val s = vm.state
+    val outfit = com.monsterquest.app.ui.art.HeroOutfit.of(s.equippedGear, s.equippedArmor, s.equippedPieces)
+    val walk = remember(step) { Animatable(0f) }
+    LaunchedEffect(step) { walk.animateTo(1f, tween(1700, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) }
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "party")
+    val phase by t.animateFloat(
+        0f, (2 * Math.PI).toFloat(),
+        androidx.compose.animation.core.infiniteRepeatable(tween(560, easing = androidx.compose.animation.core.LinearEasing)),
+        label = "stride",
+    )
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().fillMaxSize()) {
+        val walking = walk.value < 1f
+        val members = listOf<Pair<com.monsterquest.core.Monster?, Int>>(null to 76) + s.partyMonsters.map { it to 58 }
+        // Feet on the painted ground (about 86% down the screen).
+        val feetY = maxHeight * 0.87f
+        val startX = -maxWidth * 0.7f
+        val x = startX + (maxWidth * 0.7f) * walk.value
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = x.toPx() }
+                .padding(top = feetY - 80.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            // Followers first (left), the hero leading on the right.
+            members.reversed().forEachIndexed { i, (m, dimDp) ->
+                val down = m?.fainted == true
+                val stride = phase + i * 1.3f
+                val bob = when {
+                    down -> 0f
+                    walking -> kotlin.math.abs(kotlin.math.sin(stride)) * 7f
+                    else -> (kotlin.math.sin(phase * 0.5f + i) + 1f) * 1.2f
+                }
+                Box(
+                    Modifier.padding(horizontal = 2.dp).graphicsLayer {
+                        translationY = -bob * density
+                        rotationZ = if (walking && !down) kotlin.math.sin(stride) * 4f else 0f
+                        // A little squash on each footfall.
+                        scaleY = if (walking && !down) 1f - (1f - kotlin.math.abs(kotlin.math.sin(stride))) * 0.05f else 1f
+                    },
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    if (walking && !down) {
+                        // Dust kicked up behind each step.
+                        val puff = (kotlin.math.sin(stride) + 1f) / 2f
+                        Box(
+                            Modifier
+                                .size((10 + 8 * puff).dp)
+                                .graphicsLayer { translationX = -dimDp * 0.45f * density; alpha = 0.35f * (1f - puff) }
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFFD9C8A8)),
+                        )
+                    }
+                    if (m == null) {
+                        com.monsterquest.app.ui.art.HeroArt(s.hero.heroClass, Modifier.size(dimDp.dp), portrait = false, outfit = outfit)
+                    } else {
+                        MonsterArt(m.species, Modifier.size(dimDp.dp), dim = down, shiny = m.shiny)
+                    }
+                }
             }
         }
     }
