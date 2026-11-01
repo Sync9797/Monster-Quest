@@ -153,6 +153,14 @@ enum class SkillKind {
     SHIELD,
     /** Hero spell: raises one ally's Defense. */
     FORTIFY,
+    /** Hero spell: raises one ally's Speed. */
+    HASTE,
+    /** Hero spell: raises one ally's Attack. */
+    EMPOWER,
+    /** Hero spell: clears one ally's status and lowered stats, and heals a little. */
+    CLEANSE,
+    /** Hero spell: heals every ally at once (less than Mend on one). */
+    MEND_ALL,
 }
 
 @Serializable
@@ -218,6 +226,22 @@ object Spells {
             "fortify", "Fortify", Element.NEUTRAL, SkillKind.FORTIFY, 1, mpCost = 4,
             description = "Raises one ally's Defense for the rest of the battle (more at higher ranks).",
         ),
+        Skill(
+            "haste", "Haste", Element.NEUTRAL, SkillKind.HASTE, 1, mpCost = 4,
+            description = "Quickens one ally: its Speed rises for the rest of the battle (more at higher ranks).",
+        ),
+        Skill(
+            "empower", "Empower", Element.NEUTRAL, SkillKind.EMPOWER, 1, mpCost = 5,
+            description = "Strengthens one ally: its Attack rises for the rest of the battle (more at higher ranks).",
+        ),
+        Skill(
+            "cleanse", "Cleanse", Element.NEUTRAL, SkillKind.CLEANSE, 10, mpCost = 4, powerPerRank = 6,
+            description = "Washes one ally clean: cures sleep, shock, poison, burn and frostbite, undoes lowered stats, and heals a little.",
+        ),
+        Skill(
+            "healing_circle", "Healing Circle", Element.NEUTRAL, SkillKind.MEND_ALL, 14, mpCost = 9, powerPerRank = 6,
+            description = "A ring of light under your whole team: heals every ally at once.",
+        ),
     )
 
     val starting: Set<String> = setOf("ember_bolt", "mend", "ward")
@@ -228,13 +252,16 @@ object Spells {
     fun mastery(heroLevel: Int): Double =
         (0.75 + 0.25 * (heroLevel - 1) / (MASTERY_LEVEL - 1).toDouble()).coerceIn(0.75, 1.0)
 
-    /** Defense stages Fortify gives: +1, +2 at rank 3, +3 at rank 5. */
+    /** Spells whose power is a number of stat stages. */
+    val STAGE_SPELLS = setOf(SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER)
+
+    /** Stages Fortify, Haste and Empower give: +1, +2 at rank 3, +3 at rank 5. */
     fun fortifyStages(rank: Int): Int = 1 + (rank - 1) / 2
 
     /** The spell as it works for this hero right now: power from rank and mastery. */
     fun ranked(skill: Skill, rank: Int, heroLevel: Int): Skill {
         val r = rank.coerceIn(1, MAX_RANK)
-        val power = if (skill.kind == SkillKind.FORTIFY) fortifyStages(r)
+        val power = if (skill.kind in STAGE_SPELLS) fortifyStages(r)
         else ((skill.power + skill.powerPerRank * (r - 1)) * mastery(heroLevel)).roundToInt()
         return skill.copy(power = power)
     }

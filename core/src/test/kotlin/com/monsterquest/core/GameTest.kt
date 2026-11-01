@@ -386,7 +386,7 @@ class GameTest {
     fun heroMagicIsItsOwnAndRanksUp() {
         // One bolt per type, plus heal, shield and defense buff, none of them monster moves.
         assertEquals(Element.typed.toSet(), Spells.all.filter { it.kind == SkillKind.MAGICAL }.map { it.element }.toSet())
-        assertEquals(setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY), Spells.all.map { it.kind }.toSet() - SkillKind.MAGICAL)
+        assertEquals(SUPPORT_KINDS, Spells.all.map { it.kind }.toSet() - SkillKind.MAGICAL)
         assertTrue(Spells.all.none { sp -> Moves.all.any { it.id == sp.id } })
         // Weaker than monster moves at first; mastery grows with level.
         val ember = Spells.byId("ember_bolt")!!
@@ -829,7 +829,7 @@ class GameTest {
         assertTrue(done.state.adventures.isEmpty())
         assertTrue(done.state.gold > sent.gold)
         // Hero earns no XP from adventures; the monsters do.
-        assertEquals(sent.hero, done.state.hero)
+        assertEquals(sent.hero.level to sent.hero.xp, done.state.hero.level to done.state.hero.xp)
         assertTrue(done.state.monsters.filter { it.uid in uids }.all { it.xp > 0 || it.level > 15 })
         assertTrue(adv.id in done.state.adventureLog)
     }

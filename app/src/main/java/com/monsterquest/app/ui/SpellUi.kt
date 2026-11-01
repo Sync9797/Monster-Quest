@@ -12,6 +12,10 @@ fun Skill.spellIcon(): GameIcon = when (kind) {
     SkillKind.HEAL -> GameIcon.POTION
     SkillKind.SHIELD -> GameIcon.SHIELD
     SkillKind.FORTIFY -> GameIcon.STAR
+    SkillKind.HASTE -> GameIcon.WING
+    SkillKind.EMPOWER -> GameIcon.FIST
+    SkillKind.CLEANSE -> GameIcon.DROP
+    SkillKind.MEND_ALL -> GameIcon.HEART
     else -> element.icon()
 }
 
@@ -19,6 +23,10 @@ fun Skill.spellColor(): Color = when (kind) {
     SkillKind.HEAL -> HpGreen
     SkillKind.SHIELD -> MpBlue
     SkillKind.FORTIFY -> Gold
+    SkillKind.HASTE -> Color(0xFF9CBFE4)
+    SkillKind.EMPOWER -> Color(0xFFE07A6E)
+    SkillKind.CLEANSE -> Color(0xFF7FD6C2)
+    SkillKind.MEND_ALL -> HpGreen
     else -> element.color()
 }
 
@@ -27,5 +35,9 @@ fun Skill.spellEffect(): String = when (kind) {
     SkillKind.HEAL -> "heals $power+"
     SkillKind.SHIELD -> "ward $power+"
     SkillKind.FORTIFY -> "Def +$power"
+    SkillKind.HASTE -> "Spd +$power"
+    SkillKind.EMPOWER -> "Atk +$power"
+    SkillKind.CLEANSE -> "cure, heals $power+"
+    SkillKind.MEND_ALL -> "heals all $power+"
     else -> if (id == com.monsterquest.core.Spells.MUD_SHOT) "power $power, foe accuracy −${com.monsterquest.core.Spells.MUD_SHOT_ACCURACY}%" else "power $power"
 }

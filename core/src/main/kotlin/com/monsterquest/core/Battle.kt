@@ -545,7 +545,7 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 }
 
 /** Hero spells aimed at an ally (or the hero) instead of an enemy. */
-val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY)
+val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER, SkillKind.CLEANSE, SkillKind.MEND_ALL)
 
 private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT, Trait.SPORE_COAT)
 
@@ -1221,11 +1221,28 @@ class Battle(
                             log += "${actor.name} casts ${skill.name}: ${target.name} is shielded (absorbs ${target.shield})."
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
                         }
-                        SkillKind.FORTIFY -> {
-                            val now = target.stages[BattleStat.DEFENSE] ?: 0
-                            target.stages[BattleStat.DEFENSE] = minOf(MAX_STAGES, now + skill.power)
-                            log += "${actor.name} casts ${skill.name}: ${target.name}'s Defense rises!"
+                        SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER -> {
+                            val (stat, label) = when (skill.kind) {
+                                SkillKind.HASTE -> BattleStat.SPEED to "Speed"
+                                SkillKind.EMPOWER -> BattleStat.ATTACK to "Attack"
+                                else -> BattleStat.DEFENSE to "Defense"
+                            }
+                            val now = target.stages[stat] ?: 0
+                            target.stages[stat] = minOf(MAX_STAGES, now + skill.power)
+                            log += "${actor.name} casts ${skill.name}: ${target.name}'s $label rises!"
                             record(actor, target, StrikeStyle.WARD, Element.NEUTRAL)
+                        }
+                        SkillKind.CLEANSE -> {
+                            val cured = target.status
+                            target.status = null
+                            target.statusTurns = 0
+                            BattleStat.entries.forEach { st -> if ((target.stages[st] ?: 0) < 0) target.stages[st] = 0 }
+                            heal(target, spellHeal(actor, skill), "${actor.name} casts ${skill.name}" + (cured?.let { " (${target.name} is no longer ${it.label.lowercase()})" } ?: ""))
+                        }
+                        SkillKind.MEND_ALL -> {
+                            val amount = spellHeal(actor, skill)
+                            log += "${actor.name} casts ${skill.name}!"
+                            for (a in allies.filter { it.alive }) heal(a, amount, "  ${skill.name}")
                         }
                         else -> heal(target, spellHeal(actor, skill), "${actor.name} casts ${skill.name}")
                     }
