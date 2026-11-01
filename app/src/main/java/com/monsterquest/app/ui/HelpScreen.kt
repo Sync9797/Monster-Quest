@@ -38,6 +38,22 @@ private class HelpTopic(val icon: GameIcon, val title: String, val sections: Lis
 
 private fun section(title: String, vararg points: String) = HelpSection(title, points.toList())
 
+/** One section per class path: what the class does, its weapons, and its three subclasses. Built from the game's own data. */
+private fun classPaths(): List<HelpSection> = listOf(
+    com.monsterquest.core.HeroClass.WARRIOR,
+    com.monsterquest.core.HeroClass.MAGE,
+    com.monsterquest.core.HeroClass.ROGUE,
+    com.monsterquest.core.HeroClass.NONE,
+).map { cls ->
+    val weapons = com.monsterquest.core.WeaponType.entries.filter { cls in it.classes }.joinToString(" and ") { it.label.lowercase() + "s" }
+    val what = if (cls == com.monsterquest.core.HeroClass.NONE) "No class: no strengths or weaknesses, and any weapon works" else cls.summary
+    HelpSection(
+        "${cls.label} path",
+        listOf("$what." + if (weapons.isNotEmpty()) " Best with $weapons." else "") +
+            com.monsterquest.core.Subclass.entries.filter { it.parent == cls }.map { "${it.label}: ${it.summary}." },
+    )
+}
+
 private val topics = listOf(
     HelpTopic(
         GameIcon.STAR, "Getting started",
@@ -206,6 +222,14 @@ private val topics = listOf(
                 "Each level gives 3 attribute points. At level 5 choose Warrior, Mage or Rogue; at 15 a subclass. Dungeon champions raise a stat for good.",
                 "Skills open at levels 30, 45 and 60 and rank up every 10 levels.",
             ),
+            section(
+                "Choosing your path",
+                "At level ${com.monsterquest.core.CLASS_UNLOCK_LEVEL} pick a class on the Hero tab: Warrior, Mage, Rogue, or stay an Adventurer. The first pick is free and comes with a Rare weapon for that path.",
+                "At level ${com.monsterquest.core.SUBCLASS_UNLOCK_LEVEL} pick one of your class's three subclasses (free the first time).",
+                "You can change later: a new class costs ${com.monsterquest.core.CLASS_CHANGE_COST} gold and clears your subclass; a new subclass costs ${com.monsterquest.core.SUBCLASS_CHANGE_COST} gold.",
+                "Weapons and armor made for your class get +20%. Below are the four paths.",
+            ),
+            *classPaths().toTypedArray(),
             section(
                 "Spells",
                 "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold.",
