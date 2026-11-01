@@ -148,7 +148,7 @@ object PlacesRepository {
         val query = """
             [out:json][timeout:90];
             (
-              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist|pharmacy|hospital)$"];
+              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist|pharmacy|hospital|school|college|university)$"];
               nwr($bbox)["healthcare"~"^(doctor|clinic|dentist|pharmacy|hospital)$"];
               nwr($bbox)["leisure"="fitness_centre"]["name"];
               nwr($bbox)["leisure"~"^(park|garden|playground|fitness_station|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
@@ -257,6 +257,7 @@ object PlacesRepository {
             val role = when {
                 amenity == "pharmacy" || healthcare == "pharmacy" -> VenueRole.PHARMACY
                 amenity == "hospital" || healthcare == "hospital" -> VenueRole.HOSPITAL
+                amenity == "school" || amenity == "college" || amenity == "university" -> VenueRole.SCHOOL
                 leisure == "fitness_centre" -> VenueRole.GYM
                 amenity == "cafe" || amenity in doctorAmenity || healthcare in setOf("doctor", "clinic", "dentist") -> VenueRole.DUNGEON
                 (amenity == "restaurant" || amenity == "fast_food") && Math.floorMod(placeId.hashCode(), 100) < RESTAURANT_DUNGEON_PCT -> VenueRole.DUNGEON

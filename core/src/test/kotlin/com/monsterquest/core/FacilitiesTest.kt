@@ -55,4 +55,20 @@ class FacilitiesTest {
         val day = Venues.streetCamps(s, street, at(14), utc, bars)
         assertTrue(day.none { c -> bars.any { World.distanceMeters(it.lat, it.lon, c.lat, c.lon) < Venues.BAR_CLEAR_M } })
     }
+
+    @Test
+    fun schoolsTeachMagicOnceADay() {
+        assertEquals(VenueRole.SCHOOL, Venues.roleForPoi("school", "school", "s"))
+        assertEquals(VenueRole.SCHOOL, Venues.roleForPoi("university", "college", "u"))
+        assertTrue(VenueRole.SCHOOL in Venues.FACILITIES)
+        var s = start()
+        val tomes = s.tomes.size
+        s = Facilities.study(s, at(10), utc).state
+        assertEquals(tomes + 1, s.tomes.size)
+        assertEquals(Facilities.STUDY_PAGES, s.tomes.last())
+        assertTrue(Facilities.usedToday(s, VenueRole.SCHOOL, at(15), utc))
+        // Only once a day.
+        assertEquals(s, Facilities.study(s, at(15), utc).state)
+        assertEquals(tomes + 2, Facilities.study(s, at(10) + 86_400_000L, utc).state.tomes.size)
+    }
 }

@@ -405,6 +405,8 @@ data class GameState(
     /** Gym sessions: the day of the last ones and how many that day (see [XpRules.TRAINING_SHARES]). */
     val trainingDay: Long = -1,
     val trainingCount: Int = 0,
+    /** The last day the hero studied at an academy (a school). */
+    val academyDay: Long = -1,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

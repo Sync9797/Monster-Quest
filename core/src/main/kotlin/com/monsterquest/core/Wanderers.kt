@@ -59,7 +59,7 @@ data class Nomad(
  */
 object Wanderers {
     const val RANGE_M = 100.0
-    const val TRADER_CHANCE = 0.12
+    const val TRADER_CHANCE = 0.35
     const val NOMAD_CHANCE = 0.12
     /** The nomad fights too: with two monsters, a 3 on 3 against the hero and two of yours. */
     const val NOMAD_ACTIVE = 2

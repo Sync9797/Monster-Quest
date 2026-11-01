@@ -234,6 +234,18 @@ fun drawFacilityOn(c: Canvas, w: Float, h: Float, role: com.monsterquest.core.Ve
     c.drawRoundRect(w * 0.12f, h * 0.12f, w * 0.88f, h * 0.88f, w * 0.18f, w * 0.18f, edge)
     val mark = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
     when (role) {
+        com.monsterquest.core.VenueRole.SCHOOL -> {
+            // An open book.
+            mark.color = Argb.hex("6b4fbf")
+            c.drawRect(w * 0.24f, h * 0.32f, w * 0.48f, h * 0.70f, mark)
+            c.drawRect(w * 0.52f, h * 0.32f, w * 0.76f, h * 0.70f, mark)
+            val page = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("f5f2ea"); strokeWidth = w * 0.03f }
+            for (k in 0..2) {
+                val y = h * (0.42f + k * 0.08f)
+                c.drawLine(w * 0.29f, y, w * 0.44f, y, page)
+                c.drawLine(w * 0.56f, y, w * 0.71f, y, page)
+            }
+        }
         com.monsterquest.core.VenueRole.GYM -> {
             mark.color = Argb.hex("4a5560")
             c.drawRect(w * 0.3f, h * 0.46f, w * 0.7f, h * 0.54f, mark)

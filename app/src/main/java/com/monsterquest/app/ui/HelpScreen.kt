@@ -139,6 +139,7 @@ private val topics = listOf(
                 "Services",
                 "Pharmacies (green cross): an infirmary that heals your hero and every standing monster to full, free once a day.",
                 "Hospitals (red cross): a healing hall that wakes every fainted monster, once a day.",
+                "Schools, colleges and universities (purple book): an academy. Study once a day for a Scholar's Tome of 2 pages for any spell you choose, to learn a new one or rank one up.",
                 "Gyms (dumbbell): a training ground. Spend a torch and every party monster gains part of a level: 30%, then 20%, then 10%, for up to 3 sessions a day.",
                 "Levels stay fair: monsters can't get more than 5 levels above your hero (extra XP is saved and pays out as your hero levels up), and beating foes far below your level gives much less XP.",
                 "Libraries and bookstores: their shrines hold extra spell pages.",

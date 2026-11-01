@@ -1325,6 +1325,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             when (v.role) {
                 com.monsterquest.core.VenueRole.PHARMACY -> com.monsterquest.core.Facilities.infirmary(state, now)
                 com.monsterquest.core.VenueRole.HOSPITAL -> com.monsterquest.core.Facilities.hospital(state, now)
+                com.monsterquest.core.VenueRole.SCHOOL -> com.monsterquest.core.Facilities.study(state, now)
                 else -> com.monsterquest.core.Facilities.train(state, now)
             },
         )

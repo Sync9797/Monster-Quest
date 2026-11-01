@@ -1209,7 +1209,13 @@ private fun NearbyList(
             d <= com.monsterquest.core.Wanderers.RANGE_M) { onOther(MapPick.NomadPick(n)) }
     } + facilities.map { f ->
         val d = far(f.lat, f.lon)
-        Entry(d, { GIcon(if (f.role == com.monsterquest.core.VenueRole.GYM) GameIcon.FIST else GameIcon.HEART, Modifier.size(28.dp), if (f.role == com.monsterquest.core.VenueRole.HOSPITAL) HpRed else HpGreen) },
+        Entry(d, {
+            when (f.role) {
+                com.monsterquest.core.VenueRole.GYM -> GIcon(GameIcon.FIST, Modifier.size(28.dp), HpGreen)
+                com.monsterquest.core.VenueRole.SCHOOL -> GIcon(GameIcon.BOOK, Modifier.size(28.dp), Color(0xFF9B7FE8))
+                else -> GIcon(GameIcon.HEART, Modifier.size(28.dp), if (f.role == com.monsterquest.core.VenueRole.HOSPITAL) HpRed else HpGreen)
+            }
+        },
             com.monsterquest.core.Facilities.label(f.role), listOfNotNull(f.name ?: f.kind, away(d)).joinToString(" • "),
             d <= com.monsterquest.core.Facilities.RANGE_M) { onOther(MapPick.FacilityPick(f)) }
     }
@@ -1401,6 +1407,7 @@ private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, on
     val (what, action) = when (v.role) {
         com.monsterquest.core.VenueRole.PHARMACY -> "A free full heal for your hero and every monster that's still standing, once a day." to "Get patched up"
         com.monsterquest.core.VenueRole.HOSPITAL -> "Wakes every fainted monster at full health, once a day." to "Wake my monsters"
+        com.monsterquest.core.VenueRole.SCHOOL -> "Study magic once a day: you come away with a Scholar's Tome of ${com.monsterquest.core.Facilities.STUDY_PAGES} pages for any spell you choose (on the Hero tab), to learn a new one or rank one up." to "Study magic"
         else -> com.monsterquest.core.Facilities.nextTrainingShare(vm.state, now).let { share ->
             if (share == null) "Your team has trained ${com.monsterquest.core.XpRules.TRAINING_SHARES.size} times today. Come back tomorrow." to "Train"
             else "Spend ${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch to train: every party monster gains ${(share * 100).toInt()}% of a level " +

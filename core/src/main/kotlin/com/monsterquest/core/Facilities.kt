@@ -27,6 +27,7 @@ object Facilities {
         VenueRole.PHARMACY -> "Infirmary"
         VenueRole.GYM -> "Training ground"
         VenueRole.HOSPITAL -> "Healing hall"
+        VenueRole.SCHOOL -> "Academy"
         else -> ""
     }
 
@@ -34,7 +35,22 @@ object Facilities {
         VenueRole.PHARMACY -> state.infirmaryDay == day(nowMs, zone)
         VenueRole.HOSPITAL -> state.hospitalDay == day(nowMs, zone)
         VenueRole.GYM -> nextTrainingShare(state, nowMs, zone) == null
+        VenueRole.SCHOOL -> state.academyDay == day(nowMs, zone)
         else -> false
+    }
+
+    /** Pages in the Scholar's Tome a day's study at an academy gives (you choose the spell). */
+    const val STUDY_PAGES = 2
+
+    /**
+     * A school, college or university: once a day the hero studies magic and
+     * comes away with a Scholar's Tome of [STUDY_PAGES] pages, for any spell
+     * you choose on the Hero tab (to learn a new one or rank one up).
+     */
+    fun study(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Update {
+        if (usedToday(state, VenueRole.SCHOOL, nowMs, zone)) return Update(state, "You've studied here today. The academy opens again tomorrow.")
+        val s = state.copy(tomes = state.tomes + STUDY_PAGES, academyDay = day(nowMs, zone))
+        return Update(s, "A day of study! You copy out a Scholar's Tome: $STUDY_PAGES pages for any spell you choose (on the Hero tab).")
     }
 
     /** A pharmacy: your hero and every monster back to full health (not fainted ones), once a day. */

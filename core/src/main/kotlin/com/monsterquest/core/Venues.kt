@@ -26,6 +26,8 @@ enum class VenueRole {
     WATERSIDE,
     /** Bars, pubs and nightclubs: thugs gather here at night, and keep away by day. */
     NIGHTLIFE,
+    /** Schools, colleges and universities: an academy where the hero studies magic once a day. */
+    SCHOOL,
 }
 
 /** A real place (from OpenStreetMap) that hosts a dungeon or a trader. */
@@ -125,6 +127,7 @@ object Venues {
             "park", "garden" -> VenueRole.NATURE
             "fountain" -> VenueRole.WATERSIDE
             "bar", "pub", "nightclub", "biergarten" -> VenueRole.NIGHTLIFE
+            "school", "college", "university" -> VenueRole.SCHOOL
             else -> null
         }
     }
@@ -138,6 +141,7 @@ object Venues {
             "fitness_centre" to "Gym", "supermarket" to "Supermarket", "convenience" to "Convenience store",
             "grocery" to "Grocery store", "greengrocer" to "Greengrocer", "fast_food" to "Fast food", "pub" to "Pub",
             "nightclub" to "Nightclub", "biergarten" to "Beer garden",
+            "school" to "School", "college" to "College", "university" to "University",
         )
         return special[raw] ?: raw.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
@@ -159,7 +163,7 @@ object Venues {
         }
         return out
     }
-    val FACILITIES = setOf(VenueRole.PHARMACY, VenueRole.GYM, VenueRole.HOSPITAL)
+    val FACILITIES = setOf(VenueRole.PHARMACY, VenueRole.GYM, VenueRole.HOSPITAL, VenueRole.SCHOOL)
 
     /** A dungeon's look, from the kind of place: coffee roasters are forges, doctor's offices crypts, the rest random. */
     private fun themeFor(v: Venue, r: Random): DungeonTheme = when {
