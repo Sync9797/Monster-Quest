@@ -9,7 +9,7 @@ import java.time.ZoneId
  * good night's sleep adds more.
  */
 object Torches {
-    const val STEPS_PER_TORCH = 1_000
+    const val STEPS_PER_TORCH = 500
     const val MORNING = 3
     const val MAX = 30
 
