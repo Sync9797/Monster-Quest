@@ -26,9 +26,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.calculateCentroid
-import androidx.compose.ui.input.pointer.calculateRotation
-import androidx.compose.ui.input.pointer.calculateZoom
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
@@ -75,7 +75,7 @@ import kotlin.math.tan
  * the map is a plain backdrop with a flat projection.
  */
 class GameMap internal constructor(val fake: Boolean) {
-    var map: MapLibreMap? = null
+    var map: MapLibreMap? by mutableStateOf(null)
         internal set
     var view: MapView? = null
         internal set
@@ -141,6 +141,16 @@ class GameMap internal constructor(val fake: Boolean) {
         if (m == null) {
             fakeCenter = LatLng(lat, lon); tick++; return
         }
+        if (!placed) {
+            // First fix: jump straight to the hero, zoomed in and tilted.
+            placed = true
+            m.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder().target(LatLng(lat, lon)).zoom(START_ZOOM).tilt(tiltFor(START_ZOOM)).bearing(0.0).build(),
+                ),
+            )
+            return
+        }
         val t = m.cameraPosition.target
         if (t != null && World.distanceMeters(t.latitude, t.longitude, lat, lon) < 0.5) return
         m.moveCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)))
@@ -155,6 +165,7 @@ class GameMap internal constructor(val fake: Boolean) {
         m.animateCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)), 600)
     }
 
+    private var placed = false
     private var boundsAt: Pair<Double, Double>? = null
     private var floorFor = 0
 
@@ -195,8 +206,8 @@ class GameMap internal constructor(val fake: Boolean) {
         val region = m.projection.visibleRegion.latLngBounds
         // Vector tiles stop at zoom 14 and are overzoomed past it; the z14 tiles under the screen are loaded whole.
         val n = 1 shl SOURCE_ZOOM
-        val x0 = tileX(region.lonWest, n); val x1 = tileX(region.lonEast, n)
-        val y0 = tileY(region.latNorth, n); val y1 = tileY(region.latSouth, n)
+        val x0 = tileX(region.getLonWest(), n); val x1 = tileX(region.getLonEast(), n)
+        val y0 = tileY(region.getLatNorth(), n); val y1 = tileY(region.getLatSouth(), n)
         val north = tileLat(y0, n); val south = tileLat(y1 + 1, n)
         val west = x0.toDouble() / n * 360 - 180; val east = (x1 + 1).toDouble() / n * 360 - 180
         val tiles = HashSet<String>()
@@ -371,11 +382,6 @@ private fun createMapView(context: Context, gm: GameMap): MapView {
                 isLogoEnabled = false
                 isAttributionEnabled = false
             }
-            m.moveCamera(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.Builder().zoom(GameMap.START_ZOOM).tilt(GameMap.tiltFor(GameMap.START_ZOOM)).build(),
-                ),
-            )
             m.addOnCameraMoveListener { gm.tick++ }
             m.addOnCameraIdleListener { gm.tick++ }
             gm.map = m
