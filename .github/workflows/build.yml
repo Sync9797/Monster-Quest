@@ -87,7 +87,8 @@ jobs:
             exit 0
           fi
           cp app/build/outputs/apk/release/app-release.apk "MonsterQuest-$VERSION.apk"
-          awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          # Release notes: the commit message, without its attribution lines.
+          git log -1 --format=%B "${GITHUB_SHA}" | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.md
           gh release create "v$VERSION" "MonsterQuest-$VERSION.apk" \
             --title "Monster Quest $VERSION" \
             --notes-file notes.md \

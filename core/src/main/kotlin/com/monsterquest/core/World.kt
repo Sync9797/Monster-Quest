@@ -418,7 +418,7 @@ object World {
     }
 
     /**
-     * Wild monsters around you, Pokémon GO style but on the move:
+     * Wild monsters around you, on the move:
      * - They appear out in a ring 300–800 m from where you were when they
      *   spawned ([anchorLat], [anchorLon]), so you head toward them.
      * - They hear you: each one drifts toward your current position over its

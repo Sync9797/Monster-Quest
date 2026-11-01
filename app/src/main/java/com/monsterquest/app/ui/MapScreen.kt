@@ -711,7 +711,7 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
             providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
                 .maxByOrNull { it.time }
                 ?.let { onLocation(it.latitude, it.longitude, null) }
-            // Every second while you play (like Pokemon GO); slow and cheap with the battery saver.
+            // Every second while you play; slow and cheap with the battery saver.
             val (interval, distance) = if (batterySaver) 20_000L to 25f else 1_000L to 0f
             providers.forEach { lm.requestLocationUpdates(it, interval, distance, listener, Looper.getMainLooper()) }
         } catch (e: SecurityException) {
@@ -1019,7 +1019,7 @@ private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Un
 }
 
 /**
- * Like Pokémon GO's "Nearby": monsters you can sense but not yet see, nearest
+ * Monsters you can sense but not yet see, nearest
  * first, with footprints for distance (one is close, three is far) and the
  * direction to walk. Walking draws them toward you.
  */

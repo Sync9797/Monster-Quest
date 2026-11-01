@@ -1,291 +1,96 @@
-# ⚔️ Monster Quest
+# Monster Quest
 
-An Android RPG to-do list: Final Fantasy-style turn-based battles meet
-PoGO-style monster taming and exploration. Your real-life tasks power
-your hero.
+An Android RPG to-do list. Your real-life tasks, walks and phone-free time
+power a hero who explores the real world with a team of monsters: clearing
+dungeons, taming monsters in their dens and facing the thugs on your streets.
 
-## How to play
+## Download
 
-- **Quests:** your phone's calendar events become quests automatically. Use
-  **+ To-do** for tasks that aren't on the calendar, and **Calendar** to open
-  the calendar app. Completing a quest gives **XP, gold and a hunt token**.
-- **Dashboard** (Quests tab, under This week): steps today and this week,
-  your quest streak, and a month calendar. Days with a completed quest are
-  filled in, days with 5,000+ steps get a dot, and today is ringed in gold.
-- **Phone-free challenge:** pick 15 to 120 minutes and put your phone down.
-  - The screen stays on with the timer and dims itself after 15 seconds (tap
-    to brighten), so the phone never locks. Turning the screen off with the
-    power button is fine too.
-  - Stay in Monster Quest until time's up to win a **loot box**. Longer
-    sessions give better odds of rare boxes.
-  - Leaving for another app (and not coming back within 15 seconds) or giving
-    up costs gold and a hunt token. Phone calls don't count: after you hang
-    up you have 15 seconds to come back.
-- **Loot boxes** open by walking. You can hold **6** and unlock **2 at a time**.
+Every push to `main` builds the app and publishes it as the
+[`latest` release](../../releases/tag/latest); each new version is also kept as
+its own release.
 
-  | Level | Walk | Contains |
-  |---|---|---|
-  | 1 | 1 mile | Gold and potions |
-  | 2 | 3 miles | + weapon parts |
-  | 3 | 5 miles | + spell sheets (5 of a spell teach it) |
-  | 4 | 10 miles | + a boss fight, 20% chance of a legendary |
-
-  Level 4 boxes only come from sessions of 60 minutes or more.
-- **Walking:** every **100 steps** gives you and your battle party **10 XP and
-  10 HP**. Steps come from the phone's step counter (GPS if there isn't one).
-- **Hero:** each level gives 3 points to spend on **Attack, Energy, Magic,
-  Defense and Speed**. HP carries over between battles; heal by walking or
-  with potions.
-- **Hero magic:** the hero copies monster magic, so it's simpler and a little
-  weaker at first (75% strength, full strength by level 25). One bolt for each
-  of the 7 types, plus **Mend** (heal), **Ward** (a shield on one ally or
-  yourself) and **Fortify** (Defense up). Ember Bolt, Mend and Ward are known
-  from the start; learn the rest with **5 spell-book pages**, then rank every
-  spell up to 5 with more pages and gold.
-- **Classes** unlock at level 5:
-  - **Warrior:** more Attack and Speed, less Magic.
-  - **Mage:** more Magic and Defense, less Attack.
-  - **Rogue:** more Speed, and dodges some attacks.
-  - **Adventurer:** stay neutral, with no strengths and no weaknesses.
-
-  Your first choice is free and comes with a **Rare weapon** for that path;
-  switching later costs 300 gold. The bonus is 3% at level 5 and grows 1.5%
-  per level, to 40% at level 30.
-- **Weapons:** any class can use any weapon, but a matching class gets +20%.
-
-  | Weapon | Best for | Style |
-  |---|---|---|
-  | Sword | Warrior, Rogue | Balanced |
-  | Broadsword | Warrior | Heavy hits, slower |
-  | Dagger | Rogue | Weaker, strikes twice |
-  | Staff | Mage | Weak swings, strong magic |
-  | Wand | Mage | Weak hits, restores Energy each turn |
-
-  Rarities are **Normal, Rare, Epic and Legendary**. Rarer weapons hit
-  harder and carry 1 to 3 secondary effects (crits, lifesteal, burn, shock,
-  poison, speed, defense, energy, taming luck). Higher levels find better
-  weapons. Weapon parts are typed; 5 of one type forge that weapon.
-- **Armor:** **Plate** (Warrior: big Defense, slower), **Leather** (Rogue:
-  lighter, adds dodge) and **Robes** (Mage: less Defense, adds Magic). Armor
-  has the same rarities and can roll effects too.
-- **Your hero wears what you equip:** the avatar shows your weapon and armor,
-  or bare hands and traveler's clothes when you have none.
-- **Storage:** you can keep **20 monsters** and 20 bag items to start (up to
-  3 monsters fight in each battle). Every 5 levels a free upgrade adds **+5
-  bag slots and +5 monster storage**, or pay **1,000 gold** to add **+50**
-  to either.
-- **Types:** seven, and every type is strong against two and weak to two:
-
-  | Type | Strong vs | Weak to |
-  |---|---|---|
-  | Water | Fire, Gas | Earth, Electric |
-  | Fire | Corrupt, Earth | Water, Flight |
-  | Corrupt | Gas, Flight | Fire, Electric |
-  | Gas | Earth, Electric | Water, Corrupt |
-  | Earth (stone and grass) | Flight, Water | Fire, Gas |
-  | Flight | Electric, Fire | Corrupt, Earth |
-  | Electric | Water, Corrupt | Gas, Flight |
-
-- **119 monsters** (mythics and legendaries are numbered last, #111 to #119):
-  - **4 starter lines** (#1 Voltfawn, Electric; #4 Cindrake, Fire; #7
-    Drizzlet, Water; #10 Mosscub, Earth): pick one when you start. Each evolves twice (at 16 and
-    36) into a pseudo-legendary, stronger than every other monster except the
-    legendaries. They're very rare in the wild.
-  - 6 four-stage lines (3 evolutions)
-  - 7 hound breeds with three stages (2 evolutions), one per type
-  - **Earth** also has the Twiglet tree line (Twiglet, Barkwarden, Ancient
-    Treant)
-  - 5 more three-stage lines: **Goopling** (Gas slime), **Pebblit** (Fire rock
-    golem), **Zipwing** (Electric thunderbird), **Shellsnap** (Water shell
-    turtle) and **Impling** (Corrupt imp)
-  - 5 more per type (1.33): a three-stage and a two-stage line each, from
-    Cinderskink and Cinderlamb (Fire) to Rollpip and Stubhorn (Earth)
-  - 2 rare mythics
-  - 7 legendary bosses, one per type (Earth's is the Worldroot Colossus)
-
-  Monsters evolve at set levels. Each also rolls a **personality** and hidden
-  **potential**, so no two are alike.
-- **Candy:** every evolution line has its own candy. Taming a monster gives
-  **3**, and releasing one gives more for evolved, higher-level monsters.
-  Spend candy on a monster's page to level it up; each level costs more.
-  Candy doesn't use bag space. Leveling and evolving never change a
-  monster's **stat points**, which are set when it's tamed, so better
-  monsters come from taming more.
-- **Shinies:** about 1 in 200 wild monsters (1 in 100 with a lure) is a
-  shiny, with rare colors and sparkles. Shinies you catch are marked in the
-  Journal.
-- **Journal** (Monsters, then Journal): every species in order. Monsters you
-  haven't met are shadows, ones you've battled are shown, and ones you've
-  owned are marked caught. Tap one to see its evolution line.
-- **Monster stat pages:** tap a monster to see its stats and compare it with
-  another monster. Monsters use HP, Attack, Defense and Speed, and run well
-  above the hero's stats.
-- **Moves:**
-  - Every monster has **4 move slots**. It learns its own type's moves plus
-    **Normal** moves as it levels up (no monster is Normal type).
-  - Moves can inflict **sleep, shock, poison and burn**, lower stats, set
-    **rain or drought**, guard, dive out of reach, or reverse turn order.
-    Stat drops and weather last one battle.
-  - Status conditions make monsters easier to tame.
-- **Adventures** unlock once you have 5 monsters (Monsters, then Adventures).
-  - Real places near you post adventures daily, at difficulty 1 to 5 stars.
-  - Send a team of 1 to 5 monsters (one per star). Higher levels mean better
-    odds.
-  - They fight on their own at 75% strength and bring back gold, items and
-    weapon parts.
-  - Your hero gets no XP, and the team can't battle until it returns, which
-    takes 30 minutes to 8 hours.
-  - A failed adventure pays a little gold, and the weakest team member
-    returns fainted.
-- **Resting:** every hour the hero and every monster heal 5% of their max HP
-  (a full heal in about 20 hours), on top of walking's 10 HP per 100 steps.
-- **Fainting:** a monster knocked out in battle rests back to 10% HP and wakes
-  up after about 2 hours, or a **Restore Potion** brings it back instantly at
-  full HP. If all your monsters are down, your strongest also recovers once a
-  day.
-- **Battles:** turn-based, ordered by Speed. You fight alongside up to **5 party
-  monsters** and can use up to **3 items per battle**. Losing costs 10% of
-  your gold.
-  - **Wild monsters scale with your team:** bring more fighters and they get
-    more HP, Attack and Defense (about 7x HP and 2.5x Attack against a full
-    team of 6, weaker against a lone hero). Rewards follow the monster's
-    strength: XP, gold and monster XP are x0.6 alone, x1.25 with 2, x2 with 3,
-    x2.75 with 4, x3.4 with 5 and x4 with a full team of 6, and teams of 3 or
-    more earn bonus drops (with a small chance of a Restore Potion).
-  - **Bosses and villains** are built for a team of 4: they get easier with
-    fewer fighters, and tougher with 5 or 6, paying up to 1.45x more.
-- **Battle animations:** spells and typed moves throw a bolt of their type,
-  and swords and Normal moves slash. The attacker is ringed in gold, the
-  fighter whose turn it is pulses, and a **turn order** strip shows who acts
-  next.
-- **Taming:** get a monster below 50% HP and throw an orb.
-- **Wild spawns** work like Pokémon GO, but the monsters come to you:
-  - New monsters appear out in a ring 300-800 m away and creep toward you.
-    They hear you walking, so moving draws them in much faster; curious ones
-    reach you even if you stand still. Only monsters within about 200 m stand
-    on the map.
-  - The **tracker bar** at the top of the map shows monsters farther out, with
-    their distance (feet and miles, or meters) and direction. Tap one to see
-    which landmark it's near, whether it's closing in, and to pan the map
-    there. On big screens and unfolded phones the Nearby list beside the map
-    shows them instead.
-  - **Walking reward:** every 600 steps a monster follows your footsteps,
-    even with the phone in your pocket (up to 4 wait beside you).
-  - **Shrine monsters:** monsters gather around shrines, favoring types that
-    suit the place (Water by fountains, Earth in parks, Fire at cafes). They
-    stay by their shrine and never ambush.
-  - **Dens:** rocky caves holding one strong ordinary monster (a few levels
-    above you, great stats, no loot). Beat it, then you get 5 to 10 throws to
-    tame it; each is a long shot. Dens move daily.
-  - **Packs:** nearby monsters may team up against you (2 vs 4, 3 vs 3, 4 vs
-    4...). Tap one to target it. Packs are tougher and pay up to 2.1x more.
-  - **Ambushes:** aggressive monsters (more at night) that reach you attack
-    first. At most one every 10 minutes; can be turned off in Settings.
-  - The phone vibrates when a monster comes within battle range.
-  - Moving around also raises how many monsters appear and how rare they are.
-  - The time of day changes which types are out: Flight and Water at dawn,
-    Fire and Electric by day, Gas and Water at dusk, Corrupt and Gas at night.
-  - Even standing still, a monster wanders up to you most 5-minute windows,
-    so the game is playable at home or at a desk.
-  - **Lures** draw extra, rarer monsters to you for 30 minutes. You get one
-    free each day; buy more in the Shop or find them at shrines.
-- **Map (GPS):** shrines are tall stone beacons with a floating crystal and,
-  when ready, a beam of light (blue gem for item shrines, silver obelisk,
-  gold crown-crystal; purple while recharging, gray and locked off-day).
-  Monsters stand on the map themselves, villain camps fly dark banners, and
-  your hero stands in a gold ring.
-  - **Battery saver:** on the map, hold your phone upside down (top pointing
-    at the ground, like hanging at your side or in a pocket) and the screen
-    goes black at minimum brightness while the game keeps counting your walk
-    and watching for monsters. Turn it upright to return. Can be turned off
-    in Settings.
-  - The phone **vibrates when a new monster appears** within 200 m (turn it
-    off in Settings).
-  - **Item shrines** are at cafes, restaurants, parks, playgrounds, public
-    art, fountains, libraries, bookstores and shops and more. Each gets a
-    themed name (Supply Cache, Lore Shrine, Grove Shrine...) with the real
-    place and street underneath, e.g. "Barnes & Noble on Wards Road". Tap
-    **Walk here** on any shrine, monster or villain for walking directions in
-    your map app. **Waystones** fill the gaps so there's
-    always a stop within a short walk. They give weapons, armor, spell pages,
-    orbs, potions and lures, and are always open.
-  - **Silver shrines** are at cinemas, arcades, bowling alleys, sports
-    centres and escape rooms.
-    - Open **Tuesday and Thursday** if you've done 50% of this week's quests
-      (at least 2).
-    - Guardians are tough evolved monsters (never legendary). They're harder
-      to tame but always have at least 3 perfect stats.
-  - **Gold shrines** are at museums, stadiums, theatres, zoos and landmarks.
-    - Open **Saturday and Sunday** if you completed 70% of your Monday to
-      Friday quests (at least 5).
-    - Legendary-class guardians. Defeat one once, then tame it on a later visit.
-  - **Thugs and villains** roam the map and change daily. Their monsters carry
-    the **shadow curse** (Defense -50%, Attack +25%) and can't be tamed.
-    - Beat the whole team in a row for gold, loot and weapon parts (villains
-      also drop a weapon).
-    - Then use a Restore Potion on one of their monsters: 75% of the time it
-      joins you, still cursed.
-    - Battling with a cursed monster slowly lifts the curse (longer for strong
-      monsters). Once it's cured, you choose one stat to make perfect.
-
-## Settings
-
-Tap the gear left of your level. **Help** at the top explains how everything
-works.
-- **Step sync:** count steps from the **phone's step counter**, **Samsung
-  Health**, **Health Connect** (Google Fit, Fitbit, Garmin and others) or
-  **GPS distance**. Samsung Health shares steps through Health Connect: in
-  Samsung Health open Settings, then Health Connect, and allow Steps.
-  Switching sources never counts the same steps twice.
-- **Calendar:** choose exactly which of your phone's calendars to sync (or
-  all of them), sync automatically or by hand, look 1 to 14 days ahead,
-  include or skip all-day events, or clear unfinished calendar quests.
-- **Performance:** frame rate (120 fps by default, or 60 fps or Auto),
-  reduced visual effects (no glows, auras, mist or engraving) and battery
-  saver GPS.
-
-## Art
-
-All artwork is vector art drawn in code, in the style of Questbound:
-- **Hero:** the hooded adventurer, recolored per class, wearing whatever
-  weapon and armor you have equipped. Rarer gear is brighter, and Epic and
-  Legendary gear glows.
-- **Legendaries:** the six Questbound bosses.
-- **Other monsters:** one body shape per evolution line, colored by type.
-  Evolutions look more legendary at each stage: a gem and a type-themed aura
-  (flames, lightning, water, wind, gas or shadow), then spirit wings and
-  horns, and on final forms a gold-edged halo and a crown of light.
-- **Icons:** every icon is drawn the same way. The app uses no emoji.
-
-## Foldable and large-screen support
-
-- **Navigation** is always a bottom bar, folded or open, so it stays in thumb
-  reach.
-- **Folded / regular phone:** single column.
-- **Unfolded (or tablet):** two-pane layouts. Quests
-  and monsters are shown in a grid; hero, bag and map get side-by-side panes.
-- **Book posture** (half-open, vertical hinge): panes split exactly at the
-  hinge, so nothing is drawn across the fold.
-- **Tabletop posture** (half-open, horizontal hinge, including flip phones):
-  - Battles show the enemy and battle log on the top half and your party and
-    commands on the bottom half.
-  - The map sits on top with the nearby list below.
-- Folding or unfolding mid-battle keeps all game state.
-
-## Install on your phone
-
-Every push to `main` builds the app on GitHub Actions and publishes it as the
-[`latest` release](../../releases/tag/latest).
-1. On your phone, open the release page and download `MonsterQuest.apk`.
+1. On your Android phone, open the release page and download the APK.
 2. Open the file and allow installing from your browser if Android asks.
 
 Updates install over the previous version and keep your save.
 
+## The game
+
+### Real life
+- **Quests:** your calendar events and your own to-dos. Completing one gives
+  XP and gold. Rewards are fair-use limited: a to-do pays 15 minutes after it's
+  added, and only so many quests pay in full each day.
+- **Phone-free sessions:** put the phone down for 15 to 120 minutes to win a
+  loot box; long sessions give the best rewards.
+- **Walking:** every 500 steps lights a **torch**, and you get 3 each morning.
+  Torches open dungeons and pay for gym training. Walking also heals your team.
+- **Sleep:** 8+ hours makes the next day's fights easier (and brings torches);
+  under 7 makes them harder.
+
+### The map
+The map is built from OpenStreetMap data and real places host the game:
+- **Dungeons** in coffee shops, doctor's offices and restaurants (one per
+  block, a different place each day).
+- **Traders** at grocery stores, **dens** with a strong monster to beat and
+  tame, and **thug crews** on the streets (and outside bars at night).
+- **Services:** pharmacies heal, hospitals revive, gyms train your team and
+  schools are academies where your hero studies magic.
+- **Shrines** at landmarks give items, and Silver and Gold shrines hold bosses.
+
+The map tilts as you zoom in, follows you every second and can turn with your
+phone. With the **battery saver** on, wild monsters find you as you walk; food
+set out draws the ones that eat it.
+
+### Battles and dungeons
+- Turn-based battles ordered by Speed. Your hero always fights with at least
+  one monster; the rest wait on the bench and can swap in, and a fight is only
+  lost when nobody is left standing.
+- **Dungeons** are rated 1 to 5 stars. Pick a door in each room (monsters,
+  traps, treasure, fountains) and beat the champion at the end for a permanent
+  stat point and a roll on the reward pool.
+
+### Your hero
+- **Classes** at level 5: Warrior, Mage, Rogue, or stay an Adventurer, each
+  with three subclasses at level 15.
+- **Spells:** learn them with spell pages and rank them up to 5.
+- **Gear:** weapons and armor in four rarities with bonus effects; forge new
+  gear from parts.
+- **Star ranks:** every 50 levels earns a star and a star reward box.
+
+### Monsters
+98 species in 39 evolution lines and 7 types. Each type is strong against two
+and weak to two:
+
+| Type | Strong against | Weak to |
+|---|---|---|
+| Water | Fire, Gas | Earth, Electric |
+| Fire | Corrupt, Earth | Water, Flight |
+| Corrupt | Gas, Flight | Fire, Electric |
+| Gas | Earth, Electric | Water, Corrupt |
+| Earth | Flight, Water | Fire, Gas |
+| Flight | Electric, Fire | Corrupt, Earth |
+| Electric | Water, Corrupt | Gas, Flight |
+
+Every monster rolls its own genes and personality, learns moves as it levels,
+gains a skill at level 30 and evolves when you choose to. Monsters can't get
+more than 5 levels ahead of your hero.
+
+### Also
+- A home-screen widget with your next quests and the date.
+- Foldable support: two-pane layouts when unfolded, tabletop and book postures.
+- Light and dark themes.
+
+The in-game Help screen covers everything in detail.
+
 ## Project layout
 
-- `core/`: the pure-Kotlin game engine (battles, stats, leveling, rewards,
-  GPS spawns). It has unit tests and builds without the Android SDK:
+- `core/`: the game engine in plain Kotlin (battles, monsters, dungeons, the
+  world, rewards), with unit tests. It builds without the Android SDK:
   `CORE_ONLY=1 ./gradlew :core:test`.
-- `app/`: the Android app (Jetpack Compose UI, osmdroid map, step counter, phone-free service).
+- `app/`: the Android app (Jetpack Compose, MapLibre map, widget, step counter,
+  phone-free service).
+- `tools/beasts/`: the source for the evolved monsters' art (`BeastArt.kt`).
+- `docs/`: ideas for later.
 
-Map data © OpenStreetMap contributors.
+Map data © OpenStreetMap contributors, map tiles by OpenFreeMap and OpenMapTiles.

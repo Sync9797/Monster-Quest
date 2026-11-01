@@ -18,7 +18,7 @@ private fun tierColors(tier: ShrineTier): Pair<Int, Int> = when (tier) {
 }
 
 /**
- * A shrine as a standing beacon (like a Pokémon GO stop): a carved stone
+ * A shrine as a standing beacon: a carved stone
  * pillar with a floating crystal and, when it's ready, a beam of light.
  * Drawn in a 60x110 box with the base at the bottom center.
  */

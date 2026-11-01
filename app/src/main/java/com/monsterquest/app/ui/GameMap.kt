@@ -68,8 +68,8 @@ import kotlin.math.sinh
 import kotlin.math.tan
 
 /**
- * The world map, drawn by MapLibre from OpenFreeMap's vector tiles. Like
- * Pokemon GO it stays locked on the hero: pinch or double-tap to zoom, drag
+ * The world map, drawn by MapLibre from OpenFreeMap's vector tiles. It
+ * stays locked on the hero: pinch or double-tap to zoom, drag
  * round the hero to turn it, and the camera tilts toward the horizon as you
  * zoom in. Everything on it (shrines, dens, dungeons...) is drawn by Compose
  * on top, placed through the map's projection.
