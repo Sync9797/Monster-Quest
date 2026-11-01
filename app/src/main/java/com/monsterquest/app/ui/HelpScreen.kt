@@ -30,199 +30,181 @@ import com.monsterquest.app.ui.art.GIcon
 import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.IconText
 
-private class HelpTopic(val icon: GameIcon, val title: String, val points: List<String>)
+/** A short section of help: a title and a few points. */
+private class HelpSection(val title: String, val points: List<String>)
+
+/** A help category: its icon, title and sections. */
+private class HelpTopic(val icon: GameIcon, val title: String, val sections: List<HelpSection>)
+
+private fun section(title: String, vararg points: String) = HelpSection(title, points.toList())
 
 private val topics = listOf(
     HelpTopic(
-        GameIcon.STAR, "What is Monster Quest?",
+        GameIcon.STAR, "Getting started",
         listOf(
-            "Monster Quest is an adventure RPG tied to the real world: you explore your own neighborhood to find, fight and tame monsters, visit shrines and raid dens.",
-            "It's also your own to-do list and planner. Your tasks and calendar events are your quests, and finishing them powers your adventure: XP for your hero, gold, hunt tokens, and the Silver and Gold shrines that open when you keep up through the week.",
-            "Living well pays off too. Walking levels you and your monsters up, heals them, opens loot boxes and draws monsters to you. Time away from your screen (phone-free sessions) earns loot boxes. A full night's sleep refills your Energy.",
-            "So the more you get done, move and rest in real life, the stronger your hero and team grow in the game.",
-            "Goals on Home: three for today and three for the week (win battles, tame a featured type, walk, finish quests...). Claim each for gold and an item; finish a whole set for a bonus. Achievements on the Hero tab track lifetime milestones with bigger rewards.",
-            "New here? The First steps checklist on Home walks you through the basics (add and finish a quest, visit a shrine, win a battle, tame a monster, a phone-free session), with a reward for each step and a bonus for finishing them all. Hide it any time.",
-            "The menu at the bottom: Quests, Map, Bag and Store, with the Hero button in the middle. Tap or hold it to choose your Hero or your Monsters.",
+            section(
+                "What is Monster Quest?",
+                "An adventure RPG powered by your real life. Your tasks and calendar are your quests; walking, sleeping well and time off your phone make you stronger.",
+                "Get things done for XP and gold, walk for torches, and use torches to explore dungeons where monsters live. Tame them, raise them and take on champions.",
+            ),
+            section(
+                "Getting around",
+                "The menu at the bottom: Quests (Home), Map, Bag and Store, with the Hero button in the middle (tap or hold it for your Hero or your Monsters).",
+                "The top bar shows your level, gold and torches. The battery button turns on the battery saver (see Walking).",
+            ),
+            section(
+                "First steps, goals and achievements",
+                "New here? The First steps checklist on Home walks you through the basics, with a reward for each step. Hide it any time.",
+                "Goals on Home: three for today and three for the week. Claim each for gold and an item; finish a whole set for a bonus. Achievements on the Hero tab track lifetime milestones.",
+                "Mystery of the week: a silhouette on Home with clues. Tame one for 500 gold, 10 candy and a Golden Berry. Solved ones move to Mysteries at the bottom of Home.",
+            ),
         ),
     ),
     HelpTopic(
-        GameIcon.QUESTS, "Quests: get work done",
+        GameIcon.QUESTS, "Quests and focus",
         listOf(
-            "Your phone's calendar events become quests automatically. To add something with a date, add it in your calendar (the Calendar button opens it), then tap Sync if it hasn't shown up yet.",
-            "Quest rewards are limited to keep things fair: a new task pays out 15 minutes after you add it (calendar quests once they start), the first 8 quests each day pay in full and the next 4 pay half, only 3 Hard quests a day pay the Hard rate, and doing the same quest twice in a day pays half. Everything still counts for your streak.",
-            "Use + Task for things without a due date. Tap any quest to change its priority. The list is grouped like a planner: overdue, due within the hour, later today, tomorrow, this week and later, most important first.",
-            "Anything due within the hour glows amber with a countdown and is listed in a banner at the top; overdue quests turn red.",
-            "Completing a quest gives XP, gold and a hunt token (spend tokens on the Hero tab to find a monster anywhere).",
-            "Finishing your weekday quests opens the Silver (Tue/Thu) and Gold (weekend) shrines.",
-            "The dashboard under This week shows your steps, streak and a calendar of days you got things done.",
+            section(
+                "Quests",
+                "Your phone's calendar events become quests automatically; use + Task for things without a date. Tap a quest to change its priority.",
+                "Completing a quest gives XP, gold and a hunt token. Rewards are capped to keep things fair: a new task pays after 15 minutes, the first 8 quests a day pay in full and the next 4 half, and only 3 Hard quests a day pay the Hard rate.",
+                "Keeping up with your weekday quests opens the Silver (Tue/Thu) and Gold (weekend) shrines.",
+            ),
+            section(
+                "Phone-free sessions",
+                "Pick 15 to 120 minutes and put your phone down. Finish to win a loot box (rarer for longer sessions). Leaving for another app fails it; calls never count.",
+                "Long sessions pay extra: party training, Scholar's Tomes (spell pages you assign), Energy, Mood Crystals (60+ minutes) and, at two hours, 5 torches.",
+                "Loot boxes open by walking: 1, 3, 5 or 10 miles depending on the box.",
+            ),
         ),
     ),
     HelpTopic(
-        GameIcon.PHONE_OFF, "Phone-free sessions: stay off your phone",
+        GameIcon.WALK, "Walking, sleep and health",
         listOf(
-            "Pick 15 to 120 minutes and put your phone down. The screen stays on and dims; just don't leave the game.",
-            "Finish to win a loot box. Longer sessions give rarer boxes; 60+ minutes can give a Legendary box with a boss inside.",
-            "Long sessions pay extra. 60 minutes: your party trains (+10% of a level each). 90 minutes: no Common boxes, half the walk to open, a Scholar's Tome (3 pages for any spell you choose), +25% of a level for the party and +50% Energy. 120 minutes is the jackpot: always an Epic or Legendary box at half the walk, a 5-page Scholar's Tome (enough to learn a spell), +50% of a level for the party and full Energy.",
-            "Read a Scholar's Tome on the Hero tab, under Magic: pick the spell its pages go to.",
-            "After a two-hour session, a rare visitor (an Epic or rarer monster) waits beside you on the map for 15 minutes, and it's 1.5x easier to tame.",
-            "Sessions of an hour or more can also give a Mood Crystal (25% at 60 minutes, 50% at 90, always at 120): use it on a monster's page to give it a new personality.",
-            "Leaving for another app (and not coming back within 15 seconds) fails the session. Phone calls never count.",
-            "Loot boxes open by walking: 1, 3, 5 or 10 miles depending on the box.",
+            section(
+                "Walking and torches",
+                "Every 1,000 steps lights a torch (up to 30). You also get 3 every morning. Torches let you into dungeons.",
+                "Walking heals: every 100 steps restores 10 HP for your hero and battle party and 2 Energy. It also opens loot boxes, warms eggs and earns buddy candy. It no longer gives XP.",
+                "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",
+            ),
+            section(
+                "Battery saver and wild encounters",
+                "Wild monsters don't roam the map any more. Turn on the battery saver (the battery button at the top, or hold the phone upside down on the map) and walk: now and then a monster, or a thug and their crew, finds you. The phone buzzes three times and the fight starts. The battery saver comes back on afterwards.",
+                "Turn these encounters off with Ambushes in Settings.",
+            ),
+            section(
+                "Sleep and rest",
+                "Sleep syncs from Health Connect (or log it by hand on the Health card). A full night (7+ hours) refills your Energy, once a day.",
+                "8 hours or more: you're Well rested, so your hero and monsters fight 10% better all day, plus 2 torches. Under 7 hours: Tired, 10% weaker for the day.",
+            ),
+            section(
+                "Buddy, eggs and water",
+                "Your first party slot is your buddy: it finds its line's candy as you walk (every mile for Common monsters, up to 10 for Legendary).",
+                "Eggs: a male and a female of the same line (level 20+) can make one; adventures and nomads bring some too. Carry 5, but walking warms only 3 at a time (tap Warm to swap one in). An Incubator (800 gold) halves an egg's distance once.",
+                "The Health card shows steps by hour, water (just for you, no rewards) and sleep. Each morning a recap shows yesterday.",
+                "Everyone rests on their own: 5% HP an hour; fainted monsters wake after about 2 hours.",
+            ),
         ),
     ),
     HelpTopic(
-        GameIcon.WALK, "Walking: monsters come to you",
+        GameIcon.MAP, "The map",
         listOf(
-            "Every 100 steps gives you and your battle party 10 XP and heals 10 HP.",
-            "Every 600 steps a wild monster follows your footsteps, even with the phone in your pocket. Up to 4 wait beside you on the map for 4 hours.",
-            "Monsters hear you moving: while you walk, every monster nearby closes in on you much faster.",
-            "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.HEART, "Health: walking, sleep and water",
-        listOf(
-            "The Health card at the top of Home shows today's steps by hour (tap a bar for its count), your water and your sleep. Tap its title to open or fold it.",
-            "Buddy: the monster in your first party slot is your buddy (outlined on the Monsters tab). It finds its line's candy as you walk: every mile for Common monsters, 2 for Uncommon, 3 for Rare, 5 for Epic and 10 for Legendary. Moving it out of the first slot resets the walk.",
-            "Genders: every monster is male or female, except legendaries and mythics, which have no gender and can't make eggs.",
-            "You can carry 5 eggs, but walking warms only 3 at a time (the first 3 in your list). Tap Warm to swap a waiting egg in. An Incubator (800 gold, one use) halves an egg's distance; each egg can be incubated once.",
-            "Eggs from adventures: a team of two or more has a 75% chance to bring home an egg, win or lose. With a male and a female of the same line on the team it's their egg, with their best genes; otherwise it's an egg of one member's line.",
-            "Eggs: a male and a female of the same line at level 20+ can make an egg (on a monster's page, for gold and line candy). Walk 2 to 6 km to hatch it: it's the line's first stage, with at least 3 of its parents' best genes, maybe a parent's personality, and better shiny odds if a parent was shiny. Both parents rest for a day.",
-            "Walking helps your adventure: every 100 steps gives you and your battle party 10 XP, heals 10 HP and restores 2 Energy. Steps also open loot boxes, bring monsters to follow you, and count toward the 5,000-step goal on the calendar.",
-            "Sleep helps too: a full night (7 hours or more) that ended this morning refills your Energy, once a day. Sleep syncs from Health Connect (Samsung Health, Fitbit, Google Fit...) with Sync sleep, or tap Log sleep to enter it by hand. The card shows last night, its stages when your watch records them, and the week.",
-            "Water is just for you: tap + for each glass and set a daily goal. It pays no rewards.",
-            "Each morning, the first time you open the game, a recap shows what yesterday brought (steps, levels, monster XP, loot, HP restored and tasks done) and how you slept.",
-            "Your monsters also rest on their own: everyone heals 5% of their HP each hour, and fainted monsters wake after about 2 hours.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.MAP, "The map: monsters, tracker and shrines",
-        listOf(
-            "The map stays centered on you and follows you as you walk. Pinch to zoom, double-tap to zoom in, or double-tap and hold, then slide down to zoom in or up to zoom out.",
-            "Monsters wander all around you: some close by, more out at the edge of your range creeping toward you. Only the ones within about 650 ft (200 m) stand on the map; the rest show in the tracker.",
-            "The tracker bar at the top (or the Nearby list beside the map on big screens) shows monsters farther out, with their distance (feet and miles, or meters) and the direction to walk. Tap one to see what landmark it is near and whether it is heading your way.",
-            "Get within 330 ft (100 m) of a monster to battle it. The phone buzzes when one comes into range.",
-            "You can zoom out to about a quarter mile around you, and the map never moves more than a mile away. The weather badge in its corner shows the real weather where you are: rain brings out Water and Electric types, heat Fire, fog Gas and Corrupt, wind Flight, storms Electric. Tap it to see the details. Rain and heat also carry into battles (Rain or Drought).",
-            "Weather events: a real thunderstorm (Storm surge), heatwave, fog or snowfall surges its type and, once a day each, brings a rare visitor that waits on your map for 15 minutes. The weather badge turns gold during one.",
-            "The time of day matters too: Dawn favors Flight and Earth, Day Fire and Electric, Dusk Gas and Water, Night Corrupt and Gas.",
-            "Item shrines you keep visiting bond with you: Familiar at 5 visits (+1 loot), Trusted at 15 (+1 loot, 1.5x gold, recharges in 20 min), Bonded at 40 (+2 loot, 2x gold, 15 min, and more monsters gather there).",
-            "Shrines are permanent: each stands at a real place and stays put, so your local routes stay the same. Lakes, rivers and the coast bring out Water types (x2.5 within about 250 m); far from any water they're rare.",
-            "Monsters gather around shrines too: a fountain draws Water types, a park Earth, a cafe Fire. They stay by their shrine and never ambush. Walking makes more of them turn up everywhere.",
-            "Dens (rocky caves with glowing eyes) hold one strong monster: a few levels above you with great stats, but no loot. Beat it, then you get 5 Binding casts to tame it, plus 1 for each of your monsters still standing (up to 10). Den casts don't use crystals. The den screen shows your catch rate and overall odds. Dens move every day.",
-            "Every Binding cast has a 2% critical catch: the monster is tamed whatever the odds. The Tame button shows your best catch rate.",
-            "Berries: feed a Sweet Berry (1.5x) or a rare Golden Berry (2.5x) before a cast to make it likelier. They're only found in the wild (item shrines and wild monsters). In battle they're on the Tame menu; at a den, feeding doesn't use a cast. One berry per cast.",
-            "Some monsters are aggressive (more at night). If one reaches you it ambushes (never in your first 30 seconds on the map): the fight starts on its own and it strikes first. Turn ambushes off in Settings.",
-            "Hold the phone upside down on the map for battery saver; turn it upright to return.",
-            "Keep your eyes open while you walk with the map open: now and then a monster (sometimes 2 or 3 of the same kind, each weaker) leaps out in front of you. The phone gives a long buzz and the fight starts. Turn this off with Ambushes in Settings.",
-            "Lures (one free each day) draw extra, rarer monsters to you for 30 minutes.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.ITEM_SHRINE, "Collecting items",
-        listOf(
-            "Blue crystal beacons are item shrines at real places (cafes, shops, parks, art, fountains) plus Waystones in between. Tap one to see the real place and street, e.g. Supply Cache: Barnes & Noble on Wards Road.",
-            "Tap Walk here on any shrine, monster or villain for walking directions in your map app.",
-            "Walk within 60 m and tap one to collect gold, potions, Binding Crystals, berries, spell pages, weapons, armor and lures. A pop-up shows what you got.",
-            "A shrine recharges for 30 minutes (it turns purple). Your bag has limited space; it grows every 5 levels, and the Store sells expansions.",
-            "On Silver days (Tue, Thu) and Gold days (Sat, Sun) a glowing shrine of that tier rises within about 0.2 mile of you. Walk out of its range and a new one rises near you, until you use one; then it stays put for the day. Your weekly quest goals still decide if it's open.",
-            "Store prices rise if you keep buying the same item (after the first 3, each one costs 15% more, up to 2.5x). They ease each hour and reset the next day. Walking heals for free.",
+            section(
+                "Getting around the map",
+                "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile); it never moves more than a mile away. Tap Walk here on anything for directions.",
+                "The weather badge shows the real weather: rain and heat also carry into battles (Rain or Drought).",
+            ),
+            section(
+                "Item shrines",
+                "Blue crystal beacons at real places. Walk within 60 m and tap one for gold, potions, crystals, berries, spell pages and gear. It recharges for 30 minutes.",
+                "Shrines you keep visiting bond with you: Familiar (5 visits), Trusted (15) and Bonded (40), each giving more loot and gold and recharging faster.",
+            ),
+            section(
+                "Dens",
+                "Rocky caves with glowing eyes, all over the map. Each holds one big monster a few levels above you with great stats. Beat it, then get 5 Binding casts (plus 1 for each of your monsters still standing) to tame it. Dens move every day.",
+            ),
+            section(
+                "Dungeons",
+                "Stone archways with torches, rated 1 to 5 stars (stars above the arch). Tap one to see its level, rooms, the monsters inside, the champion and the reward pool with odds. Entering costs 1 to 3 torches.",
+                "Each room offers two doors: monster lairs (tameable, 1 to 4 monsters; easy dungeons send at most 3), Alpha dens, cursed guardians (can't be tamed), traps (you see your odds; fail and everyone takes damage, but you go on), treasuries, fairy fountains (full heal) and quiet rooms. Some doors are hidden. Harder dungeons have more rooms, fights and traps.",
+                "At the end waits a champion: a Warrior, Mage or Rogue with their monsters. Beat them for +1 Attack, Magic or Speed for good (once a day) and a roll on the reward pool.",
+                "Leave whenever you like and keep what you found. If your team falls, you lose half of it.",
+            ),
+            section(
+                "Silver and Gold shrines",
+                "Silver shrines open Tue and Thu when you've done 50% of this week's quests (at least 2); Gold shrines on weekends at 70% of your weekday quests (at least 5). Gold ones hold legendaries.",
+                "On those days a glowing shrine of that tier also rises within about 0.2 mile of you, and follows you until you use one.",
+                "Bosses act twice per round. Defeat a Gold guardian once, then come back to tame it.",
+            ),
+            section(
+                "People you meet",
+                "Thugs and villains (dark banners): cursed monsters you can't tame. Beat the whole team for loot, then try a Restore Potion to free one (75%).",
+                "Traders (green glow) sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Hi-Potions and an egg with 3 perfect stats.",
+            ),
         ),
     ),
     HelpTopic(
         GameIcon.FIGHT, "Battles",
         listOf(
-            "Fights are turn-based in Speed order. The turn order strip shows who acts next; the fighter whose turn it is pulses gold.",
-            "Your side matches theirs: one wild monster is your hero alone, a pack of 3 is your hero and 2 monsters. The rest of your party waits on the bench.",
-            "Tap Swap to send a monster in from the bench. Your hero can step back too, and a monster fights in their place; if it falls, your hero steps back in.",
-            "Dens are the exception: you bring your hero, all 5 party monsters and the 2 swap slots. On the Monsters tab, long-press a monster and drag it onto a party or swap slot.",
-            "Each monster has 4 moves. Spells and typed moves throw bolts of their type; swords and Normal moves slash.",
-            "Hold a move button to see its type, power, accuracy and side effects.",
-            "Statuses: poison takes 8% of max HP a turn, a burn 6% and weakens physical attacks to 75%, a shock halves Speed and can stop a turn, sleep stops turns.",
-            "When a monster with 4 moves learns a new one, the level-up after the battle asks right away: compare it with the 4 it knows and pick one to forget, or skip it for now (swap it in later on its page).",
-            "Defend raises your shield: no damage at all until your next turn (piercing attacks get through). It can't hold twice in a row: a second Defend straight after only halves damage.",
-            "Moves have uses per battle, shown on each button: Basic 12, Reliable 8, High risk 4, Support 4, Status & traps 3. Every turn a monster doesn't use a move, that move gets one use back, so sleep and shock can't be spammed. Out of everything, a monster can only Struggle (a weak hit that hurts itself). Wild monsters play by the same rules.",
-            "When choosing moves on a monster's page, sort them by role (Basic, Reliable, High risk, Status & traps, Support), power, type, accuracy or the level learned.",
-            "Bigger moves cost something: lower accuracy, recoil, a turn of rest, or a drop in the user's own stats. Clean, reliable attacks top out around 95 power; moves that hit every foe do 75% to each.",
-            "Each type fights its own way: Fire hits hardest; Water is quick (some moves let it go first next round); Flight powers itself up; Earth builds Defense and some moves hit with Defense instead of Attack; Electric and Gas spread status and hit statused foes harder; Corrupt fights dirty and tears down stats.",
-            "Scare (an attack) and Intimidate (a skill) both drop the foe's Attack to 67% for the battle. They don't stack.",
-            "Seven types, each strong against two and weak to two: Water > Fire & Gas, Fire > Earth & Electric, Corrupt > Fire & Flight, Gas > Corrupt & Electric, Earth > Water & Corrupt, Flight > Earth & Gas, Electric > Water & Flight. Super-effective hits do 1.5x; the Type chart on the Monsters tab shows it all.",
-            "Dual types: every starter's final form and some of the strongest final evolutions have two types (like Thunderbird, Electric / Flight). Both count: two weaknesses stack to 2.25x, and they get the same-type bonus and learn moves for both types.",
-            "Wild monsters are mostly first forms at every level: evolved ones are rare finds, so catch a small one and evolve it. First forms give 5 candy when tamed (others 3).",
-            "Alphas: from level 15, some first forms spawn big in a red glow. They're half again as tough, know a strong move beyond their level, have 3 perfect stats, and are a little harder to tame.",
-            "Snap Bind: on the very first turn of a wild fight, before your side acts, you can gamble a crystal on a strong catch (up to 65%, best on common monsters), even at full health. Land it and the rest of the pack scatters: they stay on the map but run from you for 10 minutes. Miss and the pack doubles down: all stats up and half the taming odds for the rest of the fight.",
-            "Same-type bonus (STAB): a move of one of the monster's own types hits 1.5x as hard, as in the classic games. Move buttons and details mark it.",
-            "Monsters grow stronger the more fighters you bring, and pay more. A one-on-one wild fight pays x1.25; in a den, a full team of 6 faces a much tougher monster for up to x4.",
-            "Packs: nearby monsters may team up (2, 3 or 4 of them), and you bring as many fighters. Tap a pack member to target it. Packs are tougher and pay up to 2.1x more. Not every monster joins in.",
-            "Tame more than one: taming a pack member doesn't end the fight. Each weaker one (lower level than the one you tamed) may panic and run off (50%); the stronger ones fly into a rage, +1 to every stat, stacking with every tame. Everyone you tame is yours, even if you flee or fall afterwards.",
-            "Everyone rests: each hour the hero and every monster heal 5% of their max HP. Walking heals too (10 HP per 100 steps).",
-            "Knocked-out monsters rest back to 10% HP and wake up (about 2 hours), or use a Restore Potion to bring one back instantly. Losing a battle costs 10% of your gold.",
+            section(
+                "The basics",
+                "Turn-based, in Speed order (the strip at the top shows who's next). Your side matches theirs: one monster means your hero alone, a pack of 3 means your hero and 2 monsters. Dens bring your whole team.",
+                "Swap sends a monster in from the bench; your hero can step back and let a monster fight. Defend blocks all damage until your next turn (not twice in a row).",
+                "Battles happen in a painted scene: the dungeon you're in, or the outdoors at this time of day.",
+            ),
+            section(
+                "Moves and types",
+                "Each monster has 4 moves with limited uses (each rests back a use every turn it isn't used). Hold a move to see its details.",
+                "Seven types, each strong against two and weak to two (the Type chart on the Monsters tab). Super-effective hits do 1.5x. A move of the monster's own type (STAB) also hits 1.5x.",
+                "Statuses show on the fighter's picture: sleep (Zz), shock (bolt), poison, burn and frostbite.",
+            ),
+            section(
+                "Losing and healing",
+                "Knocked-out monsters wake after about 2 hours, or right away with a Restore Potion. Losing a battle costs 10% of your gold.",
+                "Store prices rise if you keep buying the same item (after 3, each costs 15% more, up to 2.5x) and settle back over hours. Walking heals for free.",
+            ),
         ),
     ),
     HelpTopic(
-        GameIcon.ORB, "Taming and candy",
+        GameIcon.ORB, "Monsters",
         listOf(
-            "Taming uses the Binding Tome, a capture spell that costs no Energy. Get a monster below 50% HP, press Tame, pick a Binding Crystal, then trace the glyph that appears in one stroke. Its shape follows the monster's type; rarer monsters have longer glyphs and less time.",
-            "Your trace is graded on how much of the glyph you cover, how well you stay on it and how fast you are: Fizzle (0.3x odds), Faint (0.65x), Good (1x), Strong (1.3x) or Perfect (1.6x). Scribbling or missing much of it fizzles. The odds for each grade show before you trace. Better crystals tame more easily and give more time to trace. Sleep, shock, poison and burn make it easier too. Prefer tapping? Turn on Simple casting in Settings (always a Good trace).",
-            "Taming gives 3 candy for that monster's line and hero XP (more than beating it); beating one gives 1 candy (3 for bosses and den monsters); releasing one gives more. Spend candy on a monster's page to level it up.",
-            "Monsters don't evolve on their own. Once one reaches its evolution level, an Evolve button appears on its page: it costs 10 candy of its line for the first evolution, 25 for the second and 50 for the third.",
-            "Leveling never changes a monster's stat points (0 to 15 per stat). Better ones come from taming more monsters.",
-            "The Journal records every monster you've seen and caught.",
-            "Shinies: about 1 in 200 wild monsters (1 in 100 with a lure) has rare colors and sparkles. They're marked in battle, on the map up close, and in your Journal.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.GOLD_SHRINE, "Boss raids",
-        listOf(
-            "Silver shrines (cinemas, arcades, sports centres) open Tuesday and Thursday when you've done 50% of this week's quests (at least 2). Their guardians are tough evolved monsters with 3 perfect stats.",
-            "Gold shrines (museums, stadiums, landmarks) open on weekends when you've done 70% of your weekday quests (at least 5). They hold legendaries.",
-            "Bosses act twice per round. Defeat a Gold guardian once, then come back to tame it.",
-            "Bosses are built for a team of 4: they get easier with fewer fighters, and tougher with 5 or 6 (paying up to 1.45x more).",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.SKULL, "Thugs and villains",
-        listOf(
-            "Dark banners on the map are thug crews and villains, changing daily. Their monsters carry the shadow curse and can't be tamed.",
-            "Beat the whole team in a row for gold, loot and parts. Then use a Restore Potion to try to free one: 75% of the time it joins you.",
-            "Battling with a cursed monster slowly lifts the curse; then you choose one stat to make perfect.",
-            "Thugs also jump you while you walk, bringing one monster for each of yours and fighting alongside them: Brutes hit hard, Hexers cast dark magic and Cutthroats are quick and dodge. Their monsters can't be tamed.",
-            "Their teams are trained: evolved as far as their level allows, so you'll see what a line grows into.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.MAP, "Traders and nomads",
-        listOf(
-            "Green-glowing traders wander the map, changing daily. They sell weapons and armor, plus shop supplies 20-35% off. Each offer sells once.",
-            "Blue-glowing nomad adventurers want a fair fight: the nomad and two of their monsters against you and two of yours, with two swaps waiting on each side. The nomad fights too (a brawler, a caster or a quick striker). When one of their monsters falls, the next steps in.",
-            "Beat a nomad for gold, 2 Hi-Potions and an egg from one of their monsters' lines with 3 perfect stats (2 Great Orbs if your egg slots are full). Each nomad can be beaten once a day; lose and you can try again.",
-        ),
-    ),
-    HelpTopic(
-        GameIcon.STAR, "Scouting: what to catch",
-        listOf(
-            "Every encounter shows stars for how strong its line ends up (by the final form's max stats), and what it becomes: a silhouette until you've seen that form.",
-            "Want a line? Pin it (from an encounter or the Journal). Wanted lines stand in a gold ring on the map, and the weather panel says when the weather favors them. You can pin up to 6.",
-            "Food: the Store sells food that draws the monsters who eat it, 4x as often for 30 minutes (set it out from your Bag). Diets fit the creature: Seed Mix for grazers and small birds, Raw Meat for hunters, Fresh Fish for fish and seabirds, Rich Compost for trees and fungi, Mineral Salts for rock eaters, Spirit Incense for spirits, and a Dragon's Feast for dragons. Legendaries and mythics can't be lured.",
-            "Every food comes in three tiers. Basic is open from the start; Fine unlocks around level 20 (pulls 6x, and rarer eaters up to 2.5x more on top) and Gourmet around level 40 (8x, rarer eaters up to 4x more). The better the food, the more likely its eaters arrive evolved and rare. Fine and Gourmet food also raise the odds of rarer monsters of every kind while they're out (+30% and +60%).",
-            "Mystery of the week: a silhouette on Home with clues (type, weather, time of day). It turns up 4x as often all week; tame one for 500 gold, 10 candy and a Golden Berry.",
+            section(
+                "Taming",
+                "Get a monster below 50% HP, press Tame, pick a Binding Crystal and trace its glyph in one stroke. Your trace is graded: Fizzle (0.3x odds), Faint (0.65x), Good, Strong (1.3x) or Perfect (1.6x). Scribbling fizzles.",
+                "Snap Bind: on the very first turn of a wild fight you can gamble a crystal on a strong catch, even at full health. Land it and the rest scatter; miss and they double down.",
+                "Berries (Sweet 1.5x, Golden 2.5x) before a cast make it likelier. Every cast has a 2% critical catch.",
+            ),
+            section(
+                "Candy, evolving and levels",
+                "Taming gives candy for the line (5 for first forms, 3 otherwise). Spend it on a monster's page to level up, or to evolve once it reaches its evolution level.",
+                "Levelling is slow: it takes a while to raise a monster, so every battle counts.",
+                "Alphas: big first forms with 3 perfect stats and a strong move. They wait in dungeons' Alpha dens.",
+            ),
+            section(
+                "Skills, genders and the Journal",
+                "Monsters gain a skill at level 30, rolled from a few that suit their kind. Every monster is male or female except legendaries and mythics.",
+                "The Journal records every monster you've seen and caught, with lore, max stats and a star rating for its line. Pin a line to your Wanted list there.",
+            ),
         ),
     ),
     HelpTopic(
         GameIcon.HERO, "Your hero",
         listOf(
-            "Each level gives 3 attribute points. At level 5 choose Warrior, Mage, Rogue or stay an Adventurer; it comes with a Rare weapon.",
-            "Hero magic copies monster magic: simpler, and 75% as strong at first, reaching full strength by level 25. One bolt per type, Mud Shot (weak, but each hit lowers the foe's accuracy 10%, stacking), Mend (heal), Ward (a shield on one ally or yourself) and Fortify (Defense up).",
-            "Every level gives a small box of items that gets better as you level. Better Binding Crystals unlock in the Store at levels 10 (Resonant), 25 (Radiant), 50 (Prismatic) and 75 (Perfect: always tames with no trace, 2,000 gold; you also get one at level 100).",
-            "Learn spells with 5 spell-book pages, then rank each up to 5 on the Hero tab with more pages and gold.",
-            "Energy doesn't refill after a battle. It comes back slowly over time (all of it in 6 hours), faster by walking (2 for every 100 steps), at once with a Mana Draught, or with a full night's sleep (7 hours or more, synced or logged on the Health card, once a day).",
-            "Weapons (sword, broadsword, dagger, staff, wand) and armor (plate, leather, robe) give a +20% bonus to their matching class.",
-            "A weapon of your class also adds +2/4/6/8 to all stats (by rarity). One outside your class takes that much off until you've fought 10 battles with that particular weapon.",
-            "Gear comes in wood or leather, bronze, iron, gold and diamond. Better materials get common at level milestones: bronze from 10, iron from 30 (the usual find at 40), gold from 50 (usual at 65). Diamond is always rare.",
-            "At level 15 pick a subclass: three per class, each with its own perks. Switching costs gold.",
-            "Skills open at levels 30, 45 and 60 (Intimidate, Hover, Kleptomaniac and more) and rank up every 10 levels; from rank 3 some cover your whole team. Monsters get one skill of their own at level 30.",
-            "Each monster's skill is rolled when it's born from a few that suit its kind: winged and flying monsters usually Levitate, sharks get Barbed Hide, rams Iron Skull, spiders Snare Aura, trees Sun Chaser... Its page shows its skill and what others of its kind may have.",
-            "The Store buys items at half price and gear by rarity and level. Smelt a weapon for 50 gold to get its parts back.",
-            "Adventures (Monsters tab, 5+ monsters) send a team to real places for gold and items while you're away.",
+            section(
+                "Classes and stats",
+                "Each level gives 3 attribute points. At level 5 choose Warrior, Mage or Rogue; at 15 a subclass. Dungeon champions raise a stat for good.",
+                "Skills open at levels 30, 45 and 60 and rank up every 10 levels.",
+            ),
+            section(
+                "Spells",
+                "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold.",
+                "Bolts of every type, Mud Shot, and support magic: Mend (heal), Ward (shield), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
+                "Energy comes back slowly, faster by walking, at once with a Mana Draught, or with a full night's sleep.",
+            ),
+            section(
+                "Gear",
+                "Weapons and armor of your class get +20% and extra stats by rarity. Better materials turn up as you level; diamond is always rare. Smelt a weapon for its parts and forge new gear from parts.",
+                "Adventures (Monsters tab) send a team to real places for gold, items and sometimes eggs while you're away.",
+            ),
         ),
     ),
 )
@@ -247,27 +229,41 @@ fun HelpScreen(onBack: () -> Unit) {
             topics.forEachIndexed { i, t ->
                 val expanded = open == i
                 GameCard(
-                    Modifier.padding(vertical = 4.dp).animateContentSize().clickable { open = if (expanded) null else i },
+                    Modifier.padding(vertical = 4.dp).animateContentSize(),
                     border = if (expanded) Gold else null,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.clickable { open = if (expanded) null else i }, verticalAlignment = Alignment.CenterVertically) {
                         GIcon(t.icon, Modifier.size(22.dp), Gold)
                         Spacer(Modifier.width(10.dp))
                         Text(t.title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                         Text(if (expanded) "-" else "+", color = Gold, fontSize = 18.sp)
                     }
                     if (expanded) {
-                        Spacer(Modifier.height(6.dp))
-                        t.points.forEach { p ->
-                            Row(Modifier.padding(vertical = 3.dp)) {
-                                Text("•  ", color = Gold, fontSize = 13.sp)
-                                Text(p, fontSize = 13.sp)
-                            }
-                        }
+                        // Subsections, each folding on its own.
+                        t.sections.forEach { sec -> HelpSectionRow(sec) }
                     }
                 }
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun HelpSectionRow(sec: HelpSection) {
+    var open by rememberSaveable(sec.title) { mutableStateOf(false) }
+    Column(Modifier.padding(top = 8.dp).animateContentSize()) {
+        Row(Modifier.clickable { open = !open }.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(sec.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
+            Text(if (open) "\u25B2" else "\u25BC", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (open) {
+            sec.points.forEach { p ->
+                Row(Modifier.padding(vertical = 3.dp)) {
+                    Text("•  ", color = Gold, fontSize = 13.sp)
+                    Text(p, fontSize = 13.sp)
+                }
+            }
         }
     }
 }
