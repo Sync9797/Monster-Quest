@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The 2x2 widget's glass: a soft neutral tone, about three-quarters opaque. -->
+<!-- The widgets' glass: a see-through mid-grey with a hint of warmth. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:alpha="0.72" android:color="#FFE6E1E6" />
+    <item android:alpha="0.66" android:color="#FF8C897F" />
 </selector>
