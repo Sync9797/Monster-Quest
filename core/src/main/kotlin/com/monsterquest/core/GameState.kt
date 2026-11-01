@@ -393,6 +393,10 @@ data class GameState(
     /** How rested the hero is on [restDay] (see [Rest]). */
     val restDay: Long = -1,
     val rest: Rest = Rest.NORMAL,
+    /** The dungeon you're in (see [Dungeons]), dungeons cleared (id -> day), and the day a champion last raised a stat. */
+    val dungeonRun: DungeonRun? = null,
+    val dungeonsCleared: Map<String, Long> = emptyMap(),
+    val championStatDay: Long = -1,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),
@@ -575,6 +579,7 @@ data class Lifetime(
     val focusMinutes: Int = 0,
     val totalSteps: Long = 0,
     val villainsBeaten: Int = 0,
+    val dungeonsCleared: Int = 0,
     /** The longest phone-free session finished, in minutes. */
     val longestFocus: Int = 0,
     /** Monsters tamed of each type (a dual type counts for both). */

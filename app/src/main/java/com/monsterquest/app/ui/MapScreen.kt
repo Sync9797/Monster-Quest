@@ -9,6 +9,7 @@ import com.monsterquest.app.ui.art.drawShrineOn
 import com.monsterquest.app.ui.art.drawVillainOn
 import com.monsterquest.app.ui.art.drawTraderOn
 import com.monsterquest.app.ui.art.drawNomadOn
+import com.monsterquest.app.ui.art.drawDungeonOn
 import com.monsterquest.app.ui.art.drawWantedRing
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
@@ -140,6 +141,7 @@ private sealed interface MapPick {
     data class DenPick(val den: Den) : MapPick
     data class TraderPick(val trader: com.monsterquest.core.Trader) : MapPick
     data class NomadPick(val nomad: com.monsterquest.core.Nomad) : MapPick
+    data class DungeonPick(val dungeon: com.monsterquest.core.Dungeon) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -205,6 +207,7 @@ fun MapScreen(vm: GameViewModel) {
     val dens = vm.densNear(now)
     val traders = vm.tradersNear(now)
     val nomads = vm.nomadsNear(now)
+    val dungeons = vm.dungeonsNear(now)
     var pick by remember { mutableStateOf<MapPick?>(null) }
     var showWeather by remember { mutableStateOf(false) }
     if (showWeather) WeatherDialog(vm, now) { showWeather = false }
@@ -375,6 +378,17 @@ fun MapScreen(vm: GameViewModel) {
                                 },
                             )
                         }
+                        dungeons.forEach { dg ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(dg.lat, dg.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
+                                    setIcon(sprite("dungeon_${dg.stars}", 60, 60) { c, w, h -> drawDungeonOn(c, w, h, dg.stars) })
+                                    title = dg.name
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.DungeonPick(dg); true }
+                                },
+                            )
+                        }
                         nomads.forEach { n ->
                             mv.overlays.add(
                                 Marker(mv).apply {
@@ -438,6 +452,7 @@ fun MapScreen(vm: GameViewModel) {
                     ) {
                         MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
                         MapCount("${dens.size} dens")
+                        if (dungeons.isNotEmpty()) MapCount("${dungeons.size} dungeons")
                         if (villains.isNotEmpty()) MapCount("${villains.size} foes")
                         if (traders.isNotEmpty()) MapCount("${traders.size} traders")
                         if (nomads.isNotEmpty()) MapCount("${nomads.size} nomads")
@@ -518,6 +533,7 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.DenPick -> DenDialog(vm, p.den) { pick = null }
         is MapPick.TraderPick -> TraderDialog(vm, p.trader) { pick = null }
         is MapPick.NomadPick -> NomadDialog(vm, p.nomad) { pick = null }
+        is MapPick.DungeonPick -> DungeonDialog(vm, p.dungeon, vm.distanceTo(p.dungeon.lat, p.dungeon.lon)) { pick = null }
         is MapPick.TrackedPick -> TrackedDialog(
             vm,
             p.spawn,

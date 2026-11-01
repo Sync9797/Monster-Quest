@@ -204,3 +204,22 @@ fun drawWantedRing(c: Canvas, w: Float, h: Float) {
         },
     )
 }
+
+/** A dungeon entrance: a stone archway onto darkness, a torch on each side, a ring of [stars] glowing above. */
+fun drawDungeonOn(c: Canvas, w: Float, h: Float, stars: Int) {
+    val stone = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("7d746a") }
+    val dark = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("140d0a") }
+    // The arch.
+    c.drawRoundRect(w * 0.15f, h * 0.28f, w * 0.85f, h * 0.95f, w * 0.35f, w * 0.35f, stone)
+    c.drawRoundRect(w * 0.3f, h * 0.42f, w * 0.7f, h * 0.95f, w * 0.2f, w * 0.2f, dark)
+    // Torches.
+    for (x in listOf(w * 0.1f, w * 0.9f)) {
+        ArtPainter.glow(c, x, h * 0.42f, w * 0.14f, Argb.hex("ff9a3a"), 0.8f)
+        ArtPainter.circle(c, x, h * 0.42f, w * 0.04f, Argb.hex("ffd27a"))
+    }
+    // Difficulty: one small star per level, above the arch.
+    val starPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("ebc678") }
+    val gap = w * 0.16f
+    val x0 = w / 2 - gap * (stars - 1) / 2
+    repeat(stars) { i -> c.drawCircle(x0 + i * gap, h * 0.14f, w * 0.055f, starPaint) }
+}

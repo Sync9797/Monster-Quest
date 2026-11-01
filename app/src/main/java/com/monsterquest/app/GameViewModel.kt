@@ -1194,6 +1194,56 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    // ---- dungeons ---------------------------------------------------------------
+
+    /** Today's dungeons nearby (kept clear of shrines). */
+    fun dungeonsNear(nowMs: Long): List<com.monsterquest.core.Dungeon> {
+        val (lat, lon) = location ?: return emptyList()
+        val spots = shrines
+        return com.monsterquest.core.Dungeons.near(state, lat, lon, nowMs)
+            .filter { d -> spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
+    }
+
+    fun enterDungeon(d: com.monsterquest.core.Dungeon) {
+        val dist = distanceTo(d.lat, d.lon)
+        if (dist == null || dist > com.monsterquest.core.Dungeons.RANGE_M) {
+            message = "Walk to the ${d.name} first (within ${dist(com.monsterquest.core.Dungeons.RANGE_M)})."
+            return
+        }
+        apply(com.monsterquest.core.Dungeons.enter(state, d))
+    }
+
+    /** Opens the left or right door: a fight starts a battle, a trap waits for your choice, the rest happen at once. */
+    fun openDoor(left: Boolean) {
+        val u = com.monsterquest.core.Dungeons.open(state, left)
+        set(u.state)
+        if (state.dungeonRun?.fighting != null) startDungeonFight()
+    }
+
+    /** Starts (or restarts, after the app was closed) the fight in the current room. */
+    fun startDungeonFight() {
+        val run = state.dungeonRun ?: return
+        val room = run.fighting ?: return
+        if (battle != null) return
+        val foes = com.monsterquest.core.Dungeons.monstersFor(run, room)
+        when (room) {
+            com.monsterquest.core.RoomKind.BOSS -> {
+                val champ = com.monsterquest.core.Dungeons.champion(run.dungeon)
+                startBattle(foes.first(), EncounterType.DUNGEON_BOSS, null, foes.drop(1), thug = champ, trainer = champ.title)
+            }
+            com.monsterquest.core.RoomKind.COMBAT -> startBattle(foes.first(), EncounterType.DUNGEON_GUARD, null, foes.drop(1))
+            else -> startBattle(foes.first(), EncounterType.WILD, null, foes.drop(1))
+        }
+    }
+
+    fun springTrap() = apply(com.monsterquest.core.Dungeons.springTrap(state))
+    fun leaveDungeon() = apply(com.monsterquest.core.Dungeons.leave(state))
+
+    /** The scene a battle (or dungeon) is drawn in: the dungeon's, or the outdoors at this time of day. */
+    val scene: com.monsterquest.app.ui.Scene
+        get() = state.dungeonRun?.dungeon?.theme?.let { com.monsterquest.app.ui.Scene.of(it) }
+            ?: com.monsterquest.app.ui.Scene.outdoors(java.time.LocalTime.now().hour)
+
     fun toggleWanted(speciesId: String) = apply(com.monsterquest.core.Wanted.toggle(state, speciesId))
     fun claimMystery() = apply(com.monsterquest.core.Mystery.claim(state))
     fun dismissSpoils() = set(Villains.dismissSpoils(state))
@@ -1244,6 +1294,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             resultText = u.message
             levelUps = u.levelUps
             if (state.settings.bigMomentHaptics && u.levelUps.isNotEmpty()) Haptics.levelUp(getApplication())
+            // A dungeon room's fight: on to the next room, the champion's reward, or out.
+            if (state.dungeonRun?.fighting != null) {
+                val d = com.monsterquest.core.Dungeons.afterFight(state, b.outcome, System.currentTimeMillis())
+                set(d.state)
+                if (d.message.isNotEmpty()) resultText += " " + d.message
+            }
             // A Snap Bind landed: the rest of the pack is back on the map, running from you.
             if (b.scattered) {
                 val runners = b.enemies.withIndex().filter { it.value.gone == "Scattered" }.mapNotNull { engaged.getOrNull(it.index) }

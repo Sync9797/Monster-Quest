@@ -23,12 +23,17 @@ enum class EncounterType {
     /** A thug and their monsters jump you: an even fight, and nothing can be tamed. */
     THUG,
     /** A wandering adventurer's challenge: 3 on 3, two swaps each. Nothing can be tamed. */
-    NOMAD;
+    NOMAD,
+    /** A dungeon's cursed guardians: an even fight, and they can't be tamed. */
+    DUNGEON_GUARD,
+    /** The champion at the end of a dungeon (a hero of one of the classes) and their monsters. */
+    DUNGEON_BOSS;
 
     /** Enemy HP multiplier. */
     val hpMultiplier: Double
         get() = when (this) {
-            WILD, VILLAIN, THUG, NOMAD -> 1.0
+            WILD, VILLAIN, THUG, NOMAD, DUNGEON_GUARD -> 1.0
+            DUNGEON_BOSS -> 1.3
             DEN -> Dens.HP_MULTIPLIER
             SILVER_BOSS -> 2.2
             else -> 2.0
@@ -556,6 +561,9 @@ const val CURSE_DRAIN_HEAL = 30
 /** Cursed Life Drain armor steals this share of the damage taken back from the attacker (percent). */
 const val CURSE_ARMOR_STEAL = 10
 
+/** Fights already built as an even match: no extra scaling, nothing tamed, and no double turns. */
+val EVEN_MATCHES = setOf(EncounterType.THUG, EncounterType.NOMAD, EncounterType.DUNGEON_GUARD, EncounterType.DUNGEON_BOSS)
+
 /** Monsters that wait in the swap slots, ready to be sent in. */
 const val MAX_SWAPS = 2
 
@@ -671,7 +679,7 @@ class Battle(
     private val enemyMonsterList: MutableList<Monster> = (listOf(enemyMonster) + extraEnemies.take(3)).toMutableList()
     val enemyMonsters: List<Monster> get() = enemyMonsterList
     // A thug's crew and a nomad's team are an even match already: no extra scaling.
-    private val scaling = if (encounter == EncounterType.THUG || encounter == EncounterType.NOMAD) TeamScaling.Factors(1.0, 1.0, 1.0)
+    private val scaling = if (encounter in EVEN_MATCHES) TeamScaling.Factors(1.0, 1.0, 1.0)
     else TeamScaling.pack(TeamScaling.factors(teamSize, encounter, fullTeam), enemyMonsters.size)
     private val enemyBoost = 1 + packLeader(enemyMonsters) / 100.0
     private fun foe(m: Monster, key: String): Combatant {
@@ -762,10 +770,10 @@ class Battle(
     var current: Combatant? = null
         private set
 
-    val isBoss: Boolean get() = encounter !in setOf(EncounterType.WILD, EncounterType.DEN, EncounterType.THUG, EncounterType.NOMAD)
+    val isBoss: Boolean get() = encounter !in setOf(EncounterType.WILD, EncounterType.DEN) + EVEN_MATCHES
     val captureLocked: Boolean
         get() = encounter == EncounterType.BOSS_CHALLENGE || encounter == EncounterType.VILLAIN || encounter == EncounterType.DEN ||
-            encounter == EncounterType.THUG || encounter == EncounterType.NOMAD
+            encounter in EVEN_MATCHES
 
     init {
         val intro = when (encounter) {
@@ -782,6 +790,8 @@ class Battle(
             EncounterType.DEN -> "A fierce ${enemy.name} (Lv ${enemy.level}) charges out of its den! Beat it, then try to tame it."
             EncounterType.THUG -> "${thug?.title ?: "A thug"} of the ${thug?.crew ?: "streets"} jumps you with " +
                 "${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
+            EncounterType.DUNGEON_GUARD -> "The dungeon's guardians rise: ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}! They can't be tamed."
+            EncounterType.DUNGEON_BOSS -> "${trainer ?: "The champion"} blocks the way out with ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}!"
             EncounterType.NOMAD -> "${trainer ?: "The nomad"} steps up${if (thug != null) " to fight" else ""} with ${enemyMonsters.joinToString { "${it.displayName} (Lv ${it.level})" }}" +
                 (if (enemyBench.isNotEmpty()) ", with ${enemyBench.size} more waiting!" else "!")
         }
@@ -880,6 +890,8 @@ class Battle(
         encounter == EncounterType.DEN -> "Den monsters are too fierce. Beat it first, then you'll get your binding casts."
         encounter == EncounterType.THUG -> "A thug's monsters won't leave their master. Beat the whole crew."
         encounter == EncounterType.NOMAD -> "The nomad's monsters are loyal partners. Win the challenge instead."
+        encounter == EncounterType.DUNGEON_GUARD -> "Cursed guardians can't be tamed. Fight your way through."
+        encounter == EncounterType.DUNGEON_BOSS -> "The champion's monsters stay loyal. Beat them all."
         captureLocked -> "Defeat this boss first. Then it can be tamed on a later visit."
         capturedKeys.size >= storageRoom -> "Monster storage is full. Release a monster or upgrade storage."
         orbs().isEmpty() -> "No Binding Crystals left."
@@ -1979,7 +1991,7 @@ class Battle(
             EncounterType.WILD -> TeamScaling.reward(if (fullTeam) teamSize else maxOf(teamSize, 2)) * TeamScaling.packReward(enemies.size)
             EncounterType.DEN -> TeamScaling.reward(teamSize) * Dens.REWARD_MULTIPLIER
             // A thug's crew grows with your team, so the pay follows its size.
-            EncounterType.THUG -> enemies.size * THUG_REWARD
+            EncounterType.THUG, EncounterType.DUNGEON_GUARD -> enemies.size * THUG_REWARD
             // Paid by the nomad instead (see Wanderers.nomadReward); this is the usual win.
             EncounterType.NOMAD -> (enemies.size + retired.size) * THUG_REWARD
             else -> TeamScaling.bossReward(teamSize)

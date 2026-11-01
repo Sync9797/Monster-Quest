@@ -120,9 +120,14 @@ fun BattleScreen(
     onLearn: (String, String, String) -> Unit = { _, _, _ -> },
     /** Animation speed: 1 normal, 0.5 fast, 0 instant. */
     speed: Float = 1f,
+    /** Where the fight happens, for the painted background (null: plain). */
+    scene: Scene? = null,
 ) {
-    CompositionLocalProvider(LocalOutfit provides outfit) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace, onLearn, speed) }
+    CompositionLocalProvider(LocalOutfit provides outfit, LocalScene provides scene) { BattleContent(b, onAction, onClose, onNext, onTarget, onReplace, onLearn, speed) }
 }
+
+/** The battle's scene, for its backdrop. */
+private val LocalScene = staticCompositionLocalOf<Scene?> { null }
 
 /** What the hero is wearing, so their battle sprite matches their equipment. */
 private val LocalOutfit = staticCompositionLocalOf<HeroOutfit?> { null }
@@ -219,6 +224,8 @@ private fun BattleContent(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         CompositionLocalProvider(LocalBattleFx provides fx) {
             Box(Modifier.fillMaxSize()) {
+                // The place the fight happens, faintly behind everything.
+                LocalScene.current?.let { Backdrop(it, Modifier.fillMaxSize().graphicsLayer { alpha = 0.45f }) }
                 AdaptivePanes(
                     modifier = Modifier.safeDrawingPadding().padding(12.dp),
                     compact = {
