@@ -209,6 +209,7 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
                     onSettings = { settingsOpen = !settingsOpen },
                     saverOn = vm.batterySaver,
                     onSaver = { vm.batterySaver = !vm.batterySaver },
+                    xpFraction = state.hero.xp.toFloat() / com.monsterquest.core.heroXpForNext(state.hero.level).coerceAtLeast(1),
                 )
                 if (settingsOpen) {
                     SettingsScreen(vm) { settingsOpen = false }

@@ -289,14 +289,14 @@ fun MapScreen(vm: GameViewModel) {
         com.monsterquest.core.Foods.active(vm.state, now)?.let { food ->
             Row(
                 mod
-                    .background(Color(0xE61C2427), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                     .clickable { vm.toast("${food.label} is out: monsters that eat it are far likelier to find you on battery-saver walks. ${foodEatersText(vm.state, food)}") }
                     .padding(horizontal = 8.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 GIcon(food.icon(), Modifier.size(18.dp), food.color())
                 Spacer(Modifier.width(4.dp))
-                Text(formatDuration(vm.state.foodUntilMs - now), fontSize = 12.sp, color = Color(0xFFF5F2EA))
+                Text(formatDuration(vm.state.foodUntilMs - now), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
@@ -424,7 +424,8 @@ fun MapScreen(vm: GameViewModel) {
     }
     val imperial = vm.state.settings.imperialUnits
     AdaptivePanes(
-        firstWeight = 0.62f,
+        // The map takes about two thirds; the side pane lines up with the Bag button below.
+        firstWeight = 0.68f,
         compact = { mapPane(true) },
         first = { mapPane(false) },
         second = {

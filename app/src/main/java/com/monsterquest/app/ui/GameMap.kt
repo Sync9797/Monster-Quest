@@ -593,10 +593,13 @@ fun MapCircle(gm: GameMap, lat: Double, lon: Double, radiusM: Double, fill: Colo
 /** The map's compass: the red needle points north; tap it to turn the map north up again. */
 @Composable
 fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
+    // Follows the app's light or dark theme.
+    val face = androidx.compose.material3.MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+    val tail = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         modifier
             .size(40.dp)
-            .background(Color(0xE61C2427), androidx.compose.foundation.shape.CircleShape)
+            .background(face, androidx.compose.foundation.shape.CircleShape)
             .clickable(onClickLabel = "Face north") { gm.resetNorth() }
             .semanticsLabel("Compass"),
     ) {
@@ -607,7 +610,7 @@ fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
             val north = Path().apply { moveTo(c.x, c.y - len); lineTo(c.x - half, c.y); lineTo(c.x + half, c.y); close() }
             val south = Path().apply { moveTo(c.x, c.y + len); lineTo(c.x - half, c.y); lineTo(c.x + half, c.y); close() }
             drawPath(north, Color(0xFFE0574A))
-            drawPath(south, Color(0xFFF5F2EA))
+            drawPath(south, tail)
         }
     }
 }

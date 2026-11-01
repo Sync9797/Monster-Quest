@@ -4,6 +4,11 @@ import kotlin.math.roundToInt
 import com.monsterquest.app.ui.art.IconText
 import com.monsterquest.app.ui.art.GameIcon
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -112,7 +117,12 @@ fun SmallButton(
     }
 }
 
-/** Header strip showing level, gold and hunt tokens. */
+/**
+ * The top bar: your level (with its star and a thin XP bar), gold and torches
+ * as compact pills on the left, and the battery saver and settings buttons
+ * together on the right. It keeps a fixed spacing, so it doesn't stretch out
+ * on a wide foldable screen.
+ */
 @Composable
 fun ResourceHeader(
     level: Int,
@@ -123,30 +133,59 @@ fun ResourceHeader(
     /** The battery saver button: while it's on, wild monsters can find you as you walk. */
     saverOn: Boolean = false,
     onSaver: (() -> Unit)? = null,
+    /** How far through the current level the hero is (0..1). */
+    xpFraction: Float = 0f,
 ) {
+    val pill = MaterialTheme.colorScheme.surfaceVariant
     Row(
-        modifier.fillMaxWidth().padding(start = if (onSettings != null) 4.dp else 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (onSettings != null) {
-                androidx.compose.material3.IconButton(onClick = onSettings) {
-                    com.monsterquest.app.ui.art.GIcon(com.monsterquest.app.ui.art.GameIcon.GEAR, Modifier.size(22.dp), MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            // Every 50 levels earns a star; the level shown starts over within it.
-            val stars = com.monsterquest.core.Stars.of(level)
+        // Every 50 levels earns a star; the level shown starts over within it.
+        val stars = com.monsterquest.core.Stars.of(level)
+        Column(
+            Modifier
+                .background(pill, androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .padding(start = 12.dp, end = 12.dp, top = 5.dp, bottom = 5.dp)
+                .semantics(mergeDescendants = true) { contentDescription = com.monsterquest.core.Stars.label(level) },
+        ) {
             Text(
-                (if (stars > 0) "★$stars " else "") + "LV ${com.monsterquest.core.Stars.shownLevel(level)}",
-                fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp,
+                (if (stars > 0) "★$stars  " else "") + "LV ${com.monsterquest.core.Stars.shownLevel(level)}",
+                fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 1.sp, fontSize = 14.sp,
             )
+            // Progress to the next level.
+            Box(Modifier.padding(top = 3.dp).width(52.dp).height(3.dp).background(Gold.copy(alpha = 0.25f), androidx.compose.foundation.shape.RoundedCornerShape(50))) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(xpFraction.coerceIn(0f, 1f)).background(Gold, androidx.compose.foundation.shape.RoundedCornerShape(50)))
+            }
         }
-        IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
-        IconText(GameIcon.FLAME, "$tokens torch${if (tokens == 1) "" else "es"}", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
+        Row(
+            Modifier
+                .background(pill, androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+                .semantics(mergeDescendants = true) { contentDescription = "$gold gold" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconText(GameIcon.COIN, "%,d".format(gold), tint = Gold, textColor = Gold, bold = true)
+        }
+        Row(
+            Modifier
+                .background(pill, androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+                .semantics(mergeDescendants = true) { contentDescription = "$tokens torch${if (tokens == 1) "" else "es"}" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconText(GameIcon.FLAME, "$tokens", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
+        }
+        Spacer(Modifier.weight(1f))
         if (onSaver != null) {
             androidx.compose.material3.IconButton(onClick = onSaver, modifier = Modifier.semantics { contentDescription = "Battery saver" }) {
                 com.monsterquest.app.ui.art.GIcon(GameIcon.BATTERY, Modifier.size(22.dp), if (saverOn) Mint else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (onSettings != null) {
+            androidx.compose.material3.IconButton(onClick = onSettings, modifier = Modifier.semantics { contentDescription = "Settings" }) {
+                com.monsterquest.app.ui.art.GIcon(com.monsterquest.app.ui.art.GameIcon.GEAR, Modifier.size(22.dp), MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
