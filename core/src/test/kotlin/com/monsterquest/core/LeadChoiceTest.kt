@@ -40,4 +40,38 @@ class LeadChoiceTest {
         val hurt = state.copy(monsters = state.monsters.map { it.copy(fainted = true) })
         assertTrue(GameEngine.leadOptions(hurt).isEmpty())
     }
+
+    @Test
+    fun aFallenHeroIsReplacedFromTheBenchInsteadOfLosing() {
+        // The hero is hanging on at 1 HP against a strong foe; the starter waits on the bench.
+        val hurt = state.copy(heroDamage = 100_000)
+        val brute = Monster.create(Bestiary.get("zapmouse"), 40, Random(5))
+        val b = GameEngine.newBattle(hurt, brute, EncounterType.WILD, rng = Random(6))
+        var guard = 0
+        while (b.allies.first().alive && b.outcome == BattleOutcome.ONGOING && guard++ < 30) b.act(BattleAction.Attack)
+        val hero = b.allies.first()
+        assertTrue(hero.isHero && !hero.alive, "the hero fell")
+        // Not a game over: the fight waits for someone to step in.
+        assertEquals(BattleOutcome.ONGOING, b.outcome)
+        assertTrue(b.mustSwap)
+        assertEquals(hero.key, b.current?.key)
+        // It can't be skipped.
+        b.act(BattleAction.Skip)
+        assertTrue(b.mustSwap)
+        assertTrue(b.replaceFainted(starter.uid, hero.key))
+        assertFalse(b.mustSwap)
+        assertEquals(starter.uid, b.allies.first().key)
+        assertTrue(b.allies.first().alive)
+        assertTrue(b.log.any { "takes ${hero.name}'s place" in it })
+    }
+
+    @Test
+    fun theFightIsLostOnlyWhenNobodyIsLeft() {
+        val alone = state.copy(heroDamage = 100_000, monsters = state.monsters.map { it.copy(fainted = true) })
+        val brute = Monster.create(Bestiary.get("zapmouse"), 40, Random(5))
+        val b = GameEngine.newBattle(alone, brute, EncounterType.WILD, rng = Random(6))
+        var guard = 0
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 30) b.act(BattleAction.Attack)
+        assertEquals(BattleOutcome.LOST, b.outcome)
+    }
 }

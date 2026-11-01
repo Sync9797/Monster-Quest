@@ -150,14 +150,20 @@ private fun BattleContent(
     b.castRoll?.takeIf { sealing }?.let { roll -> BindingSeal(roll, Gold) { sealSeen = b.castId } }
     // When a monster faints and someone waits in a swap slot, offer to send them in (once per faint).
     val asked = remember { mutableStateListOf<String>() }
-    val fallen = b.allies.firstOrNull { !it.isHero && !it.alive && it.key !in asked }
+    // With everyone out front down it isn't over: someone from the bench must step in.
+    val forced = b.mustSwap && b.outcome == BattleOutcome.ONGOING
+    val fallen = if (forced) b.allies.firstOrNull { !it.alive } else b.allies.firstOrNull { !it.alive && it.key !in asked }
     if (fallen != null && b.outcome == BattleOutcome.ONGOING && b.swaps.any { it.alive }) {
         AlertDialog(
-            onDismissRequest = { asked += fallen.key },
-            title = { Text("${fallen.name} fainted!") },
+            onDismissRequest = { if (!forced) asked += fallen.key },
+            title = { Text(if (fallen.isHero) "${fallen.name} is down!" else "${fallen.name} fainted!") },
             text = {
                 Column {
-                    Text("Send in a monster from your swap slots? It won't use a turn.", fontSize = 14.sp)
+                    Text(
+                        if (forced) "It's not over: send in someone from the bench to keep fighting."
+                        else "Send in someone from the bench? It won't use a turn.",
+                        fontSize = 14.sp,
+                    )
                     Spacer(Modifier.height(8.dp))
                     b.swaps.filter { it.alive }.forEach { w ->
                         OutlinedButton(onClick = { asked += fallen.key; onReplace(w.key, fallen.key) }, modifier = Modifier.fillMaxWidth()) {
@@ -168,7 +174,7 @@ private fun BattleContent(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { asked += fallen.key }) { Text("Not now") } },
+            confirmButton = { if (!forced) TextButton(onClick = { asked += fallen.key }) { Text("Not now") } },
         )
     }
     val fx = rememberBattleFx(b, speed)
@@ -1012,7 +1018,7 @@ private fun ActionPanel(
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ActionButton("Swap", Modifier.weight(1f), icon = GameIcon.PAW) { onMenu(Menu.Swap()) }
-                    ActionButton("Skip", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Skip) }
+                    if (!b.mustSwap) ActionButton("Skip", Modifier.weight(1f), color = Color(0xFF3A4E50)) { onAction(BattleAction.Skip) }
                 }
             }
             return@Column

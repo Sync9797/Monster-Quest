@@ -73,14 +73,14 @@ class EncountersTest {
         assertEquals(2, b.swapsWaiting.size)
         // Swap in on the first ally turn, in place of a party monster.
         val out = b.allies[1].key
-        b.act(BattleAction.Swap(extra[0].uid, out))
+        b.step(BattleAction.Swap(extra[0].uid, out))
         assertTrue(b.allies.any { it.key == extra[0].uid })
         assertTrue(b.swapsWaiting.any { it.key == out })
         assertTrue(b.log.any { "Go, " in it })
 
         // Win: the one who stepped in gets full XP, the one who waited gets half.
         b.enemies.forEach { it.hp = 0 }
-        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.step(BattleAction.Defend)
         val r = b.result()
         val full = r.monsterXp.getValue(extra[0].uid)
         assertEquals(full / 2, r.monsterXp.getValue(extra[1].uid))
@@ -110,7 +110,7 @@ class EncountersTest {
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
         b.enemies.forEach { it.hp = 0 }
-        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.step(BattleAction.Defend)
         val xp = b.result().monsterXp
         // The whole party sat on the bench in a one-on-one win: each gets half, like a swap slot.
         assertEquals(s.party.toSet(), xp.keys)
@@ -123,18 +123,18 @@ class EncountersTest {
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(4))
         val sub = s.party.first()
-        b.act(BattleAction.Swap(sub, Combatant.HERO_KEY))
+        b.step(BattleAction.Swap(sub, Combatant.HERO_KEY))
         assertEquals(listOf(sub), b.allies.map { it.key })
         assertTrue(b.swapsWaiting.any { it.isHero })
         assertTrue(b.log.any { "steps back" in it })
-        // The monster falls: the hero steps back in instead of losing.
-        b.allies.single().hp = 0
-        while (b.current != null && b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Skip)
-        // Let the enemy act so the end-of-fight check runs.
-        if (b.current?.isHero != true) b.act(BattleAction.Defend)
+        // The monster falls: not a loss, the player picks who steps in (here, the hero).
+        val fallen = b.allies.single()
+        fallen.hp = 0
+        assertTrue(b.mustSwap)
+        assertTrue(b.replaceFainted(Combatant.HERO_KEY, fallen.key))
         assertEquals(BattleOutcome.ONGOING, b.outcome, b.log.joinToString("\n"))
         assertTrue(b.allies.single().isHero)
-        assertTrue(b.log.any { "steps back into the fight" in it })
+        assertTrue(b.log.any { "takes ${fallen.name}'s place" in it })
     }
 
     @Test
@@ -205,7 +205,7 @@ class EncountersTest {
         var tries = 0
         while (b.enemy.immuneEarth && b.outcome == BattleOutcome.ONGOING && tries++ < 20) {
             val c = b.current ?: break
-            if (c.key == bear.uid) b.act(BattleAction.UseMove("smack_down")) else b.act(BattleAction.Defend)
+            if (c.key == bear.uid) b.step(BattleAction.UseMove("smack_down")) else b.step(BattleAction.Defend)
         }
         assertFalse(b.enemy.immuneEarth)
         assertTrue(b.enemy.grounded)
@@ -228,7 +228,7 @@ class EncountersTest {
         assertEquals(50, r4.allies[1].earthResistPct)
         // Fight until the hero takes a hit: the team drops, the hero keeps floating.
         var tries = 0
-        while (b.allies.drop(1).any { it.immuneEarth } && b.outcome == BattleOutcome.ONGOING && tries++ < 60) b.act(BattleAction.Defend)
+        while (b.allies.drop(1).any { it.immuneEarth } && b.outcome == BattleOutcome.ONGOING && tries++ < 60) b.step(BattleAction.Defend)
         if (b.outcome == BattleOutcome.ONGOING) {
             assertTrue(b.allies.first().immuneEarth)
             assertTrue(b.allies.drop(1).none { it.immuneEarth })
@@ -243,10 +243,10 @@ class EncountersTest {
         // Cast a spell, then win: the Energy spent stays spent.
         val foe = Monster.create(Bestiary.get("emberkit"), 3, rng)
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1))
-        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
-        b.act(BattleAction.CastSpell("ember_bolt"))
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
+        b.step(BattleAction.CastSpell("ember_bolt"))
         b.enemies.forEach { it.hp = 0 }
-        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.step(BattleAction.Defend)
         s = GameEngine.applyBattleResult(s, b.result(), 0).state
         assertTrue(s.heroEnergyUsed > 0)
         val used = s.heroEnergyUsed
@@ -300,7 +300,7 @@ class EncountersTest {
             c.mp = c.maxMp
             c.hp = c.maxHp
             b.enemy.hp = b.enemy.maxHp
-            b.act(BattleAction.CastSpell(Spells.MUD_SHOT))
+            b.step(BattleAction.CastSpell(Spells.MUD_SHOT))
             casts++
         }
         val muddied = b.enemy.muddiedPct
@@ -388,8 +388,8 @@ class EncountersTest {
         assertNull(b.captureBlockedReason())
         assertEquals(listOf(Item.PERFECT_ORB), b.orbs())
         assertEquals(1.0, b.captureOdds(Item.PERFECT_ORB))
-        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
-        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
+        b.step(BattleAction.Capture(Item.PERFECT_ORB))
         assertEquals(BattleOutcome.CAPTURED, b.outcome)
     }
 
@@ -431,14 +431,14 @@ class EncountersTest {
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == m.uid }
         val spore = Moves.get("spore_cloud")
-        fun myTurn() { var g = 0; while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) { b.allies.forEach { it.hp = it.maxHp }; b.enemies.forEach { it.hp = it.maxHp }; b.act(BattleAction.Defend) } }
-        repeat(3) { myTurn(); b.act(BattleAction.UseMove("spore_cloud")) }
+        fun myTurn() { var g = 0; while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) { b.allies.forEach { it.hp = it.maxHp }; b.enemies.forEach { it.hp = it.maxHp }; b.step(BattleAction.Defend) } }
+        repeat(3) { myTurn(); b.step(BattleAction.UseMove("spore_cloud")) }
         assertEquals(0, me.ppLeft(spore))
         // Out of uses: it can't be picked...
         myTurn()
         assertTrue(spore !in me.usableMoves)
         // ...until a turn spent on something else gives one back.
-        b.act(BattleAction.UseMove("tackle"))
+        b.step(BattleAction.UseMove("tackle"))
         assertEquals(1, me.ppLeft(spore))
         // Out of everything: Struggle.
         me.pp.keys.forEach { me.pp[it] = 0 }
@@ -454,7 +454,7 @@ class EncountersTest {
             val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
             val me = b.allies.first { it.key == m.uid }
             var g = 0
-            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
             me.hp = (me.maxHp * hpFrac).toInt().coerceAtLeast(1)
             b.enemy.hp = b.enemy.maxHp
             return b to me
@@ -472,7 +472,7 @@ class EncountersTest {
         // Supernova weakens with the user's HP.
         fun novaHit(frac: Double): Int? {
             val (b, _) = duel("supernova", frac)
-            b.act(BattleAction.UseMove("supernova"))
+            b.step(BattleAction.UseMove("supernova"))
             return b.log.firstNotNullOfOrNull { Regex("It hits .* for (\\d+) damage").find(it)?.groupValues?.get(1)?.toInt() }
         }
         val full = novaHit(1.0)
@@ -487,10 +487,10 @@ class EncountersTest {
         val weak = Monster.create(Bestiary.get("emberkit"), 4, r)
         val strong = Monster.create(Bestiary.get("emberkit"), 16, r)
         val b = Battle(Hero(level = 80), emptyList(), lead, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = listOf(weak, strong))
-        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         heroTurn()
         b.selectTarget(b.enemies[0].key)
-        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        b.step(BattleAction.Capture(Item.PERFECT_ORB))
         // The fight goes on: the stronger one rages (+1 to every stat), the weaker one ran or stood firm.
         assertEquals(BattleOutcome.ONGOING, b.outcome)
         val rager = b.enemies[2]
@@ -503,7 +503,7 @@ class EncountersTest {
             heroTurn()
             if (b.outcome != BattleOutcome.ONGOING) break
             b.enemies.filter { it.alive }.forEach { it.hp = 1 }
-            b.act(BattleAction.Capture(Item.PERFECT_ORB))
+            b.step(BattleAction.Capture(Item.PERFECT_ORB))
         }
         assertEquals(BattleOutcome.CAPTURED, b.outcome)
         val res = b.result()
@@ -519,18 +519,18 @@ class EncountersTest {
         val c = Monster.create(Bestiary.get("emberkit"), 6, r)
         val big = Monster.create(Bestiary.get("emberkit"), 20, r)
         val b = Battle(Hero(level = 80), emptyList(), a, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = listOf(c, big))
-        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        fun heroTurn() { while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         for (i in 0..1) {
             heroTurn()
             b.selectTarget(b.enemies[i].key)
-            b.act(BattleAction.Capture(Item.PERFECT_ORB))
+            b.step(BattleAction.Capture(Item.PERFECT_ORB))
         }
         assertEquals(2, b.enemies[2].rage)
         // +2 from rage (its own moves may have raised a stat further).
         assertTrue(BattleStat.entries.all { (b.enemies[2].stages[it] ?: 0) >= 2 })
         // Beat the last one: a win, and both tamed come home too.
         b.enemies[2].hp = 0
-        b.act(BattleAction.Defend)
+        b.step(BattleAction.Defend)
         assertEquals(BattleOutcome.WON, b.outcome)
         val res = b.result()
         assertEquals(2, res.tamed.size)
@@ -542,8 +542,8 @@ class EncountersTest {
         val r = Random(7)
         val pack = (0..2).map { Monster.create(Bestiary.get("emberkit"), 8, r) }
         val b = Battle(Hero(level = 80), emptyList(), pack[0], EncounterType.WILD, mapOf(Item.PERFECT_ORB to 3), false, rng = Random(3), extraEnemies = pack.drop(1), storageRoom = 1)
-        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
-        b.act(BattleAction.Capture(Item.PERFECT_ORB))
+        while (b.current?.isHero != true && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
+        b.step(BattleAction.Capture(Item.PERFECT_ORB))
         if (b.outcome == BattleOutcome.ONGOING) assertNotNull(b.captureBlockedReason())
     }
 
@@ -595,21 +595,21 @@ class EncountersTest {
         var guard = 0
         while (b.current?.key != second.key && b.outcome == BattleOutcome.ONGOING && guard++ < 40) {
             b.enemies.forEach { it.hp = it.maxHp }
-            b.act(BattleAction.Defend)
+            b.step(BattleAction.Defend)
         }
         assertEquals(second.key, b.current?.key)
         // Attacking from the grave does nothing; skipping passes the turn.
-        b.act(BattleAction.Attack)
+        b.step(BattleAction.Attack)
         assertEquals(second.key, b.current?.key)
-        b.act(BattleAction.Skip)
+        b.step(BattleAction.Skip)
         assertTrue(b.log.any { "turn passes" in it })
         // Next time round it can swap in the last waiting monster.
         guard = 0
         while (b.current?.key != second.key && b.outcome == BattleOutcome.ONGOING && guard++ < 40) {
             b.enemies.forEach { it.hp = it.maxHp }
-            b.act(BattleAction.Defend)
+            b.step(BattleAction.Defend)
         }
-        b.act(BattleAction.Swap(s.monsters[6].uid, null))
+        b.step(BattleAction.Swap(s.monsters[6].uid, null))
         assertTrue(b.allies.any { it.key == s.monsters[6].uid })
         // With nobody left to swap in, fallen monsters stop getting turns.
         assertFalse(b.allies.any { b.awaitsSwap(it) })

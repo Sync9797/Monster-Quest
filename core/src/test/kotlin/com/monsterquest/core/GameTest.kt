@@ -132,7 +132,7 @@ class GameTest {
         assertNotNull(battle.captureBlockedReason())
         battle.enemy.hp = 1
         // Even at 1 HP, capture is refused during the first challenge.
-        battle.current?.let { battle.act(BattleAction.Capture(Item.TAMING_ORB)) }
+        battle.current?.let { battle.step(BattleAction.Capture(Item.TAMING_ORB)) }
         assertNotEquals(BattleOutcome.CAPTURED, battle.outcome)
     }
 
@@ -178,7 +178,7 @@ class GameTest {
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 1, rng), EncounterType.WILD, rng = rng)
         var uses = 0
         while (b.outcome == BattleOutcome.ONGOING && uses < 10) {
-            b.act(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)); uses++
+            b.step(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)); uses++
         }
         assertTrue(b.itemsUsedCount <= MAX_ITEMS_PER_BATTLE)
     }
@@ -187,17 +187,17 @@ class GameTest {
     fun tamingDoesNotCountTowardTheItemLimit() {
         val s = started().copy(hero = Hero(level = 60), inventory = mapOf(Item.POTION to 10, Item.TAMING_ORB to 10, Item.SWEET_BERRY to 2))
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 5, rng), EncounterType.WILD, rng = rng)
-        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
-        repeat(MAX_ITEMS_PER_BATTLE) { heroTurn(); b.act(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)) }
+        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
+        repeat(MAX_ITEMS_PER_BATTLE) { heroTurn(); b.step(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)) }
         assertEquals(0, b.itemsRemainingThisBattle)
         // Item limit reached, but taming still works: a berry and a cast, and neither counts.
         b.enemy.hp = 1
         heroTurn()
         assertNull(b.captureBlockedReason())
         assertTrue(b.canFeed(Item.SWEET_BERRY))
-        b.act(BattleAction.UseItem(Item.SWEET_BERRY, Combatant.HERO_KEY))
+        b.step(BattleAction.UseItem(Item.SWEET_BERRY, Combatant.HERO_KEY))
         heroTurn()
-        if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Capture(Item.TAMING_ORB))
+        if (b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Capture(Item.TAMING_ORB))
         assertEquals(0, b.itemsRemainingThisBattle)
         // The crystal still leaves the bag.
         assertEquals(9, b.count(Item.TAMING_ORB))
@@ -209,7 +209,7 @@ class GameTest {
         val enemy = Monster.create(Bestiary.get("zapmouse"), 1, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = rng)
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Attack)
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.step(BattleAction.Attack)
         assertEquals(BattleOutcome.WON, b.outcome)
         val u = GameEngine.applyBattleResult(s, b.result(), 0)
         assertTrue(u.state.gold > s.gold)
@@ -222,7 +222,7 @@ class GameTest {
         val boss = Monster.create(Bestiary.get("thunder_titan"), 60, rng)
         val b = GameEngine.newBattle(s, boss, EncounterType.WILD, rng = rng)
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.step(BattleAction.Defend)
         assertEquals(BattleOutcome.LOST, b.outcome)
         val u = GameEngine.applyBattleResult(s, b.result(), 0)
         assertEquals(180, u.state.gold)
@@ -235,7 +235,7 @@ class GameTest {
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = Random(1))
         b.enemy.hp = 1
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 10) b.act(BattleAction.Capture(Item.MASTER_ORB))
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 10) b.step(BattleAction.Capture(Item.MASTER_ORB))
         if (b.outcome == BattleOutcome.CAPTURED) {
             val u = GameEngine.applyBattleResult(s, b.result(), 0)
             assertEquals(2, u.state.monsters.size)
@@ -363,9 +363,9 @@ class GameTest {
         val me = b.allies.first { it.key == treant.uid }
         me.hp = me.maxHp / 2
         var guard = 0
-        while (b.current?.key != treant.uid && guard++ < 20) b.act(BattleAction.Defend)
+        while (b.current?.key != treant.uid && guard++ < 20) b.step(BattleAction.Defend)
         val before = me.hp
-        b.act(BattleAction.UseMove("mulch"))
+        b.step(BattleAction.UseMove("mulch"))
         assertTrue(me.hp > before)
         assertTrue(b.log.any { it.contains("restores itself") })
     }
@@ -412,15 +412,15 @@ class GameTest {
         val s = started().let { it.copy(hero = it.hero.copy(knownSpells = it.hero.knownSpells + "fortify")) }
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("bubblefin"), 5, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
         var guard = 0
-        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
+        while (b.current?.isHero != true && guard++ < 20) b.step(BattleAction.Defend)
         val pal = b.allies.first { !it.isHero }
-        b.act(BattleAction.CastSpell("ward", pal.key))
+        b.step(BattleAction.CastSpell("ward", pal.key))
         // The ward goes up (and may already have soaked a hit before we look).
         assertTrue(b.log.any { it.contains("is shielded") })
         assertTrue(b.events.any { it.style == StrikeStyle.WARD && it.targetKey == pal.key })
         guard = 0
-        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
-        b.act(BattleAction.CastSpell("fortify", pal.key))
+        while (b.current?.isHero != true && guard++ < 20) b.step(BattleAction.Defend)
+        b.step(BattleAction.CastSpell("fortify", pal.key))
         assertEquals(1, pal.stages[BattleStat.DEFENSE])
     }
 
@@ -635,7 +635,7 @@ class GameTest {
         val enemy = Monster.create(Bestiary.get("zapmouse"), 6, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = rng)
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Attack)
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.step(BattleAction.Attack)
         val after = GameEngine.applyBattleResult(s, b.result(), 0).state
         val hurt = after.heroDamage > 0 || after.monsters.any { it.damage > 0 || it.fainted }
         assertTrue(hurt)
@@ -748,7 +748,7 @@ class GameTest {
         b.enemy.statusTurns = 99
         assertTrue(b.captureOdds(Item.TAMING_ORB) > awake)
         val heroHp = b.allies.first().hp
-        repeat(5) { b.act(BattleAction.Defend) }
+        repeat(5) { b.step(BattleAction.Defend) }
         assertEquals(heroHp, b.allies.first().hp)
     }
 
@@ -768,7 +768,7 @@ class GameTest {
         val brute = Monster.create(Bestiary.get("thunder_titan"), 60, rng)
         val b = GameEngine.newBattle(s, brute, EncounterType.WILD, rng = rng, fullTeam = true)
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) b.step(BattleAction.Defend)
         val r = b.result()
         assertTrue(starter.uid in r.faintedUids)
         s = GameEngine.applyBattleResult(s, r, 0).state
@@ -877,7 +877,7 @@ class GameTest {
         var dodges = 0
         repeat(20) { seed ->
             val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 30, Random(seed)), EncounterType.WILD, rng = Random(seed))
-            repeat(10) { if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+            repeat(10) { if (b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
             dodges += b.log.count { it.contains("nimbly dodges") }
         }
         assertTrue(dodges > 0)
@@ -1077,7 +1077,7 @@ class GameTest {
         // Berries are on the Tame menu, not with the potions.
         assertTrue(Item.SWEET_BERRY in b.berries() && Item.SWEET_BERRY !in b.battleItems())
         val me = b.current!!
-        b.act(BattleAction.UseItem(Item.SWEET_BERRY, me.key))
+        b.step(BattleAction.UseItem(Item.SWEET_BERRY, me.key))
         assertEquals(1.5, b.bait)
         assertTrue(b.captureOdds(Item.TAMING_ORB) > before)
         assertTrue(b.log.any { "Sweet Berry" in it })
@@ -1232,14 +1232,14 @@ class GameTest {
         val s = started().let { it.copy(monsters = listOf(user), party = listOf(user.uid)) }
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }
-        fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         // Frenzy Swipes can miss (80% accuracy): swipe until it lands.
-        repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.act(BattleAction.UseMove("fury_swipes")) } }
+        repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.step(BattleAction.UseMove("fury_swipes")) } }
         assertTrue(b.log.any { it.matches(Regex("Hit [2-5] times!")) })
-        myTurn(); b.act(BattleAction.UseMove("focus"))
+        myTurn(); b.step(BattleAction.UseMove("focus"))
         assertTrue((me.stages[BattleStat.ATTACK] ?: 0) >= 2)
         me.status = Status.BURN; me.statusTurns = 3
-        myTurn(); b.act(BattleAction.UseMove("kindle"))
+        myTurn(); b.step(BattleAction.UseMove("kindle"))
         assertTrue(b.log.any { it.contains("shakes off") })
         // 20 power, 3.5 hits on average, 85% accuracy.
         assertEquals(59.5, Moves.get("ember_barrage").expectedPower, 0.01)
@@ -1268,7 +1268,7 @@ class GameTest {
             val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)).copy(skill = Trait.STATIC) }
             val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1), fullTeam = true)
             var g = 0
-            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+            while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
             return b to b.allies.first { it.key == m.uid }
         }
         // Spread moves hit the whole pack.
@@ -1315,7 +1315,7 @@ class GameTest {
         assertEquals("enemy3", b.enemy.key)
         var guard = 0
         while (b.outcome == BattleOutcome.ONGOING && guard++ < 200) {
-            if (b.current != null) b.act(BattleAction.Attack) else break
+            if (b.current != null) b.step(BattleAction.Attack) else break
         }
         if (b.outcome == BattleOutcome.WON) {
             assertTrue(b.enemies.none { it.alive })
@@ -1435,7 +1435,7 @@ class GameTest {
         assertEquals(b.current?.key, order.first())
         assertTrue(order.size >= 4)
         assertTrue(Combatant.ENEMY_KEY in order)
-        repeat(6) { if (b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Attack) }
+        repeat(6) { if (b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Attack) }
         // Hero sword attacks are slashes; every event is numbered in order.
         assertTrue(b.events.isNotEmpty())
         assertEquals(b.events.indices.toList(), b.events.map { it.seq })
@@ -1475,7 +1475,7 @@ class GameTest {
             val b = battle(n, EncounterType.WILD)
             var guard = 0
             while (b.outcome == BattleOutcome.ONGOING && guard++ < 300) {
-                if (b.current != null) b.act(BattleAction.Attack) else break
+                if (b.current != null) b.step(BattleAction.Attack) else break
             }
             return if (b.outcome == BattleOutcome.WON) b.result().heroXp else -1
         }
@@ -1662,13 +1662,13 @@ class GameTest {
         val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(6))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(7), fullTeam = true)
         var guard = 0
-        while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
+        while (b.current?.isHero != true && guard++ < 20) b.step(BattleAction.Defend)
         val hero = b.current!!
         val mend = b.spellsFor(hero).first { it.id == "mend" }
         hero.hp = 1
         hero.mp = hero.maxMp
         val expected = minOf(hero.maxHp, 1 + b.spellHeal(hero, mend))
-        b.act(BattleAction.CastSpell("mend", hero.key))
+        b.step(BattleAction.CastSpell("mend", hero.key))
         assertEquals(expected, hero.hp)
     }
 

@@ -22,7 +22,7 @@ class SnapBindTest {
         val odds = b.snapOdds(Item.TAMING_ORB)
         assertTrue(odds in 0.3..SNAP_BIND_MAX, "$odds")
         assertTrue(b.snapOdds(Item.GREAT_ORB) > odds)
-        b.act(BattleAction.Defend)
+        b.step(BattleAction.Defend)
         assertTrue(!b.snapAvailable)
         assertTrue(b.outcome != BattleOutcome.ONGOING || b.current == null || !b.snapAvailable)
     }
@@ -35,7 +35,7 @@ class SnapBindTest {
             val b = battle(seed)
             if (!b.snapAvailable) continue
             val before = b.captureOdds(Item.TAMING_ORB)
-            b.act(BattleAction.SnapBind(Item.TAMING_ORB))
+            b.step(BattleAction.SnapBind(Item.TAMING_ORB))
             if (b.scattered) {
                 won = true
                 assertEquals(BattleOutcome.CAPTURED, b.outcome)

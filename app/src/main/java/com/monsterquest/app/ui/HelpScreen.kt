@@ -157,7 +157,7 @@ private val topics = listOf(
             section(
                 "The basics",
                 "Turn-based, in Speed order (the strip at the top shows who's next). Your side matches theirs: one monster means your hero alone, a pack of 3 means your hero and 2 monsters. Dens bring your whole team.",
-                "Swap sends a monster in from the bench; your hero can step back and let a monster fight. In a one-on-one fight you pick who starts: your hero or any monster able to fight (the rest wait on the bench). Defend blocks all damage until your next turn (not twice in a row).",
+                "Swap sends a monster in from the bench; your hero can step back and let a monster fight. In a one-on-one fight you pick who starts: your hero or any monster able to fight (the rest wait on the bench). If everyone fighting is knocked out (the hero too), it isn't over while someone on the bench can still fight: you pick who steps in. You only lose when nobody is left. Defend blocks all damage until your next turn (not twice in a row).",
                 "Battles happen in a painted scene: the dungeon you're in, or the outdoors at this time of day.",
             ),
             section(

@@ -1112,6 +1112,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Sends a swap monster in for one that just fainted (doesn't use a turn). */
     fun replaceFainted(inUid: String, outKey: String) {
         val b = activeBattle ?: return
+        // Everyone out front was down: sending someone in carries the fight on (and it may end), like a turn.
+        if (b.mustSwap) {
+            battleAction(BattleAction.Swap(inUid, outKey))
+            return
+        }
         if (!b.replaceFainted(inUid, outKey)) return
         battle = battle?.let { battleView(b, it.resultText, it.nextOpponent) }
     }

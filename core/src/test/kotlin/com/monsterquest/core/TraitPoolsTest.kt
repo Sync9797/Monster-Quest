@@ -45,18 +45,18 @@ class TraitPoolsTest {
         val foe = Monster.create(Bestiary.get("emberkit"), 8, Random(2))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3))
         val hero = b.allies.first()
-        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend) }
+        fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         heroTurn()
         hero.hp = hero.maxHp
         val from = b.log.size
-        b.act(BattleAction.Defend)
+        b.step(BattleAction.Defend)
         heroTurn()
         // Every hit until the hero's next turn was blocked.
         val shielded = b.log.drop(from)
         assertEquals(hero.maxHp, hero.hp, shielded.toString())
         assertTrue(shielded.none { "hits Hero" in it }, shielded.toString())
         // A second Defend in a row only braces.
-        b.act(BattleAction.Defend)
+        b.step(BattleAction.Defend)
         assertTrue(b.log.any { "can't hold twice in a row" in it }, b.log.takeLast(10).joinToString("\n"))
     }
 
@@ -67,7 +67,7 @@ class TraitPoolsTest {
             val st = s.copy(monsters = listOf(me), party = listOf(me.uid))
             val b = GameEngine.newBattle(st, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
             var g = 0
-            while (b.current?.key != me.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.act(BattleAction.Defend)
+            while (b.current?.key != me.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)
             return b to b.allies.first { it.key == me.uid }
         }
         // Lightning Eater: an Electric attack heals it instead.
@@ -118,7 +118,7 @@ class TraitPoolsTest {
             fight.enemies.forEach { it.hp = it.maxHp }
             fight.allies.forEach { it.hp = it.maxHp }
             val c = fight.current ?: return@repeat
-            if (c.key == hitter.uid) fight.act(BattleAction.UseMove("heat_claws")) else fight.act(BattleAction.Defend)
+            if (c.key == hitter.uid) fight.step(BattleAction.UseMove("heat_claws")) else fight.step(BattleAction.Defend)
         }
         assertTrue(fight.events.none { it.targetKey == Combatant.ENEMY_KEY && it.crit })
     }

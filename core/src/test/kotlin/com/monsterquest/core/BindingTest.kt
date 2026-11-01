@@ -71,7 +71,7 @@ class BindingTest {
         b.enemy.hp = b.enemy.maxHp / 3
         var guard = 0
         while (b.castCount == 0 && b.outcome == BattleOutcome.ONGOING && guard++ < 20) {
-            if (b.current?.let { !Combatant.isEnemy(it.key) } == true) b.act(BattleAction.Capture(Item.TAMING_ORB, TraceGrade.STRONG)) else break
+            if (b.current?.let { !Combatant.isEnemy(it.key) } == true) b.step(BattleAction.Capture(Item.TAMING_ORB, TraceGrade.STRONG)) else break
         }
         assertEquals(1, b.castCount)
         val roll = b.lastCast!!

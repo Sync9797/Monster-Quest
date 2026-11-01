@@ -62,7 +62,7 @@ class GearTiersTest {
         val crew = Villains.ambusher(10, 1, Random(3))
         val b = GameEngine.newBattle(hero(10), crew.second.first(), EncounterType.THUG, rng = Random(4), thug = crew.first)
         b.enemies.forEach { it.hp = 0 }
-        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.step(BattleAction.Defend)
         val after = GameEngine.applyBattleResult(hero(10), b.result(), 1_000).state
         assertTrue(after.parts.values.sum() > 0)
         assertTrue(after.armorParts.values.sum() > 0)
@@ -86,7 +86,7 @@ class GearTiersTest {
             // Hurt (so life drain has something to heal) but never down.
             b.current?.let { it.hp = it.maxHp / 2 }
             b.enemy.hp = b.enemy.maxHp
-            b.act(BattleAction.Attack)
+            b.step(BattleAction.Attack)
         }
         assertTrue(b.log.any { "drained by a curse" in it })
         assertTrue(b.log.any { "drinks life" in it })
@@ -117,7 +117,7 @@ class GearTiersTest {
         while (b.outcome == BattleOutcome.ONGOING && turns++ < 30 && b.log.none { "hurt by frostbite" in it }) {
             b.allies.forEach { it.hp = it.maxHp }
             b.enemy.hp = b.enemy.maxHp
-            b.act(BattleAction.Attack)
+            b.step(BattleAction.Attack)
         }
         assertTrue(b.log.any { "frostbite" in it }, b.log.takeLast(12).joinToString("\n"))
     }
@@ -162,7 +162,7 @@ class GearTiersTest {
         val s = hero(10)
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(15), pack = pack)
         b.enemies.forEach { it.hp = 0 }
-        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.act(BattleAction.Defend)
+        while (b.outcome == BattleOutcome.ONGOING && b.current != null) b.step(BattleAction.Defend)
         val after = GameEngine.applyBattleResult(s, b.result(), 1_000).state
         assertEquals(2 * GameEngine.DEFEAT_CANDY, after.candy[foe.species.family])
     }

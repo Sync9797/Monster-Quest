@@ -980,6 +980,11 @@ class Battle(
 
     private fun advance() {
         while (outcome == BattleOutcome.ONGOING) {
+            // Everyone out front is down but someone waits on the bench: the fight waits for you to send them in.
+            if (mustSwap) {
+                current = team.first { !it.alive }
+                return
+            }
             if (queue.isEmpty()) startRound()
             val key = queue.removeFirst()
             val c = combatant(key) ?: continue
@@ -1178,14 +1183,7 @@ class Battle(
                 outcome = BattleOutcome.CAPTURED
                 if (enemies.any { it.gone == "Ran off" }) log += "The rest of the pack is gone."
             }
-        } else if (allies.none { it.alive } && heroFighter.alive && heroFighter in reserve) {
-            // The monster fighting for the hero fell: the hero steps back in.
-            val i = team.indexOfFirst { !it.alive }
-            reserve.remove(heroFighter)
-            reserve += team[i]
-            team[i] = heroFighter
-            log += "${heroFighter.name} steps back into the fight!"
-        } else if (allies.none { it.alive }) {
+        } else if (allies.none { it.alive } && reserve.none { it.alive }) {
             outcome = BattleOutcome.LOST
             log += "Your party has fallen..."
         }
@@ -1198,6 +1196,8 @@ class Battle(
             return when (action) {
                 is BattleAction.Swap -> swapIn(action.copy(outKey = actor.key))
                 BattleAction.Skip -> {
+                    // With nobody else standing out front, someone has to step in.
+                    if (mustSwap) return false
                     log += "${actor.name} can't fight. Its turn passes."
                     true
                 }
@@ -1414,9 +1414,16 @@ class Battle(
         }
     }
 
-    /** A fallen monster on your side that a waiting swap could replace. */
+    /** A fallen fighter on your side (the hero too) that someone waiting on the bench could replace. */
     fun awaitsSwap(c: Combatant): Boolean =
-        !c.alive && !c.isHero && !Combatant.isEnemy(c.key) && c in team && reserve.any { it.alive }
+        !c.alive && !Combatant.isEnemy(c.key) && c in team && reserve.any { it.alive }
+
+    /**
+     * Everyone fighting on your side is down but someone on the bench can
+     * still fight: it isn't over, you must send them in (no skipping).
+     */
+    val mustSwap: Boolean
+        get() = outcome == BattleOutcome.ONGOING && team.none { it.alive } && reserve.any { it.alive }
 
     /**
      * Replaces a monster that has just fainted with one from the swap slots,
@@ -1425,11 +1432,18 @@ class Battle(
     fun replaceFainted(inUid: String, outKey: String): Boolean {
         if (outcome != BattleOutcome.ONGOING) return false
         val out = team.find { it.key == outKey } ?: return false
-        if (out.alive || out.isHero) return false
+        if (out.alive) return false
         val wasTurn = current?.key == outKey
+        // Everyone was down: the fight was only waiting for this; it carries on in turn order.
+        val forced = mustSwap
         if (!swapIn(BattleAction.Swap(inUid, outKey))) return false
-        // If it was the fallen monster's turn, the newcomer takes it.
-        if (wasTurn) current = team.find { it.key == inUid }
+        if (forced) {
+            current = null
+            advance()
+        } else if (wasTurn) {
+            // If it was the fallen one's turn, the newcomer takes it.
+            current = team.find { it.key == inUid }
+        }
         return true
     }
 
@@ -1446,17 +1460,22 @@ class Battle(
             val i = team.indexOfFirst { it.key == outKey }
             if (i < 0) return false
             val out = team[i]
-            // The hero can step back (and a monster fights in their place), but not while down.
-            if (out.isHero && !out.alive) return false
             team[i] = incoming
             reserve.remove(incoming)
             reserve += out
-            queue.remove(outKey)
+            if (out.alive) {
+                // Swapping out a fighter who's standing uses up their turn.
+                queue.remove(outKey)
+            } else {
+                // In for someone who fell: the newcomer gets the fallen one's turn if it hasn't come yet.
+                val q = queue.indexOf(outKey)
+                if (q >= 0) queue[q] = incoming.key
+            }
             log += when {
+                !out.alive -> "${incoming.name} takes ${out.name}'s place!"
                 out.isHero -> "${out.name} steps back. Go, ${incoming.name}!"
                 incoming.isHero -> "${out.name}, come back! ${incoming.name} steps in!"
-                out.alive -> "${out.name}, come back! Go, ${incoming.name}!"
-                else -> "${incoming.name} takes ${out.name}'s place!"
+                else -> "${out.name}, come back! Go, ${incoming.name}!"
             }
         }
         fought += incoming.key

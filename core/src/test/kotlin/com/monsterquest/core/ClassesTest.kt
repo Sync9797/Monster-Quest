@@ -163,7 +163,7 @@ class ClassesTest {
         assertNotNull(earthMove)
         repeat(6) {
             val c = battle.current ?: return@repeat
-            if (c.key == earthUser.uid) battle.act(BattleAction.UseMove(earthMove.id)) else battle.act(BattleAction.Defend)
+            if (c.key == earthUser.uid) battle.step(BattleAction.UseMove(earthMove.id)) else battle.step(BattleAction.Defend)
         }
         assertTrue(battle.log.any { "floats above" in it })
         assertTrue(battle.enemy.hp == hp || battle.events.none { it.targetKey == Combatant.ENEMY_KEY && it.element == Element.EARTH && it.amount > 0 })
@@ -240,7 +240,7 @@ class ClassesTest {
         fun win(h: Hero): BattleResult {
             val b = Battle(h, emptyList(), foe, EncounterType.WILD, emptyMap(), false, rng = Random(9))
             b.enemies.forEach { it.hp = 0 }
-            b.act(BattleAction.Defend)
+            b.step(BattleAction.Defend)
             if (b.outcome == BattleOutcome.ONGOING) return win(h)
             return b.result()
         }
@@ -287,7 +287,7 @@ class ClassesTest {
             b.allies.forEach { it.hp = it.maxHp }
             b.enemies.forEach { it.hp = it.maxHp }
             val cur = b.current ?: break
-            b.act(if (cur.isHero) BattleAction.Defend else BattleAction.UseMove("ripple_dart"))
+            b.step(if (cur.isHero) BattleAction.Defend else BattleAction.UseMove("ripple_dart"))
         }
         assertTrue(b.log.any { "move first next round" in it })
         val swifter = (b.allies + b.enemies).first { it.swift }

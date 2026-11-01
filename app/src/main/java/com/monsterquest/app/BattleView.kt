@@ -50,6 +50,8 @@ data class BattleView(
     val levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
     /** Monsters in the swap slots, ready to be sent in. */
     val swaps: List<FighterView> = emptyList(),
+    /** Everyone out front is down but someone on the bench can fight: send them in (no skipping). */
+    val mustSwap: Boolean = false,
     /** Species you've already caught: marked next to the foe's name. */
     val caught: Set<String> = emptySet(),
     /** Berries you can feed the foe now, with how many you have. */
@@ -114,6 +116,7 @@ data class BattleView(
                 fullTeam = b.fullTeam,
                 levelUps = levelUps,
                 swaps = b.swapsWaiting.map { FighterView.of(it) },
+                mustSwap = b.mustSwap,
                 berries = b.berries().filter { b.canFeed(it) }.map { it to b.count(it) },
                 bait = b.bait,
                 castRoll = b.lastCast,

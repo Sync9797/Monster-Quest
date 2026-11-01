@@ -18,15 +18,15 @@ class BalanceReport {
         while (battle.outcome == BattleOutcome.ONGOING && guard++ < 400) {
             val c = battle.current ?: break
             if (c.isHero) {
-                if (battle.allies.any { it.key == a.uid }) battle.act(BattleAction.Defend)
-                else battle.act(BattleAction.Swap(a.uid, Combatant.HERO_KEY))
+                if (battle.allies.any { it.key == a.uid }) battle.step(BattleAction.Defend)
+                else battle.step(BattleAction.Swap(a.uid, Combatant.HERO_KEY))
                 continue
             }
             val foe = battle.enemy
             val usable = c.usableMoves
             val move = if (rng.nextDouble() < 0.7) usable.maxBy { it.expectedPower * it.type.multiplierAgainst(foe.types) + if (it.isDamaging) 0.0 else 25.0 }
             else usable.random(rng)
-            battle.act(BattleAction.UseMove(move.id))
+            battle.step(BattleAction.UseMove(move.id))
         }
         return when (battle.outcome) {
             BattleOutcome.WON -> true

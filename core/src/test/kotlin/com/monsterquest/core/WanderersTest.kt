@@ -100,7 +100,7 @@ class WanderersTest {
         assertEquals(2, b.enemyReserveLeft)
         assertTrue(b.captureLocked)
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 400) b.act(BattleAction.Attack)
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 400) b.step(BattleAction.Attack)
         assertEquals(BattleOutcome.WON, b.outcome)
         assertEquals(0, b.enemyReserveLeft)
         assertTrue(b.log.any { "sends out" in it })
