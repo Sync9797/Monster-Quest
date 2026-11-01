@@ -126,7 +126,39 @@ fun drawMonsterStanding(c: Canvas, w: Float, h: Float, sp: com.monsterquest.core
 }
 
 /** The player on the map: the hero in their gear, standing in a gold ring. */
-fun drawPlayerOn(c: Canvas, w: Float, h: Float, cls: com.monsterquest.core.HeroClass, outfit: HeroOutfit) {
+fun drawPlayerOn(c: Canvas, w: Float, h: Float, cls: com.monsterquest.core.HeroClass, outfit: HeroOutfit, stars: Int = 0) {
+    drawPlayerFigure(c, w, h, cls, outfit)
+    if (stars > 0) {
+        // A gold star badge (with the count past one) over the hero's shoulder.
+        val cx = w * 0.80f
+        val cy = h * 0.16f
+        val r = w * 0.13f
+        val path = android.graphics.Path()
+        for (i in 0 until 10) {
+            val a = Math.toRadians(-90.0 + i * 36.0)
+            val rr = if (i % 2 == 0) r else r * 0.45f
+            val x = cx + (rr * kotlin.math.cos(a)).toFloat()
+            val y = cy + (rr * kotlin.math.sin(a)).toFloat()
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        c.drawPath(path, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("ffd34d") })
+        c.drawPath(path, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = w * 0.015f; color = Argb.hex("7a5a12")
+        })
+        if (stars > 1) {
+            c.drawText(
+                "$stars", cx + r * 0.9f, cy + r * 1.1f,
+                android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Argb.hex("ffd34d"); textSize = r * 1.1f; isFakeBoldText = true
+                    setShadowLayer(r * 0.2f, 0f, 0f, Argb.hex("1c2427"))
+                },
+            )
+        }
+    }
+}
+
+private fun drawPlayerFigure(c: Canvas, w: Float, h: Float, cls: com.monsterquest.core.HeroClass, outfit: HeroOutfit) {
     val feetY = h * 0.86f
     ArtPainter.glow(c, w / 2, feetY, w * 0.42f, Argb.hex("ebc678"), 0.45f)
     c.drawOval(

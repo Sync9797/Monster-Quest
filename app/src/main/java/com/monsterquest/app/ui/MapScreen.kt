@@ -314,7 +314,8 @@ fun MapScreen(vm: GameViewModel) {
                     }
                     if (loc != null) {
                         val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor, vm.state.equippedPieces)
-                        add(MapSprite("hero", loc.first, loc.second, sprite("player_${vm.state.hero.heroClass}_$outfit", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit) }, 60, 60, anchorY = 0.86f) {})
+                        val stars = com.monsterquest.core.Stars.of(vm.state.hero.level)
+                        add(MapSprite("hero", loc.first, loc.second, sprite("player_${vm.state.hero.heroClass}_${outfit}_$stars", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit, stars) }, 60, 60, anchorY = 0.86f) {})
                     }
                     focus?.takeIf { it.pin }?.let { f ->
                         add(MapSprite("focus", f.lat, f.lon, sprite("focus_pin", 30, 40) { c, w, h -> drawFocusPin(c, w, h) }, 30, 40, anchorY = 1f) { f.details() })

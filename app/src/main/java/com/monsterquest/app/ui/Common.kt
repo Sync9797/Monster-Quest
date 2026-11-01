@@ -135,7 +135,12 @@ fun ResourceHeader(
                     com.monsterquest.app.ui.art.GIcon(com.monsterquest.app.ui.art.GameIcon.GEAR, Modifier.size(22.dp), MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
+            // Every 50 levels earns a star; the level shown starts over within it.
+            val stars = com.monsterquest.core.Stars.of(level)
+            Text(
+                (if (stars > 0) "★$stars " else "") + "LV ${com.monsterquest.core.Stars.shownLevel(level)}",
+                fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp,
+            )
         }
         IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
         IconText(GameIcon.FLAME, "$tokens torch${if (tokens == 1) "" else "es"}", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)

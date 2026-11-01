@@ -106,6 +106,8 @@ object GameEngine {
         val upgradesGained: Int,
         /** Items from the level-up boxes, already in the bag. */
         val boxItems: Map<Item, Int> = emptyMap(),
+        /** Star reward boxes opened (already in the bag), one per new star. */
+        val starBoxes: List<Stars.Box> = emptyList(),
     )
 
     /**
@@ -158,6 +160,9 @@ object GameEngine {
         hero = hero.copy(xp = xp)
         // Level-up boxes always arrive in full, even past the bag's size (you're never
         // punished for levelling); an over-full bag just can't take anything else until you make room.
+        // Every 50 levels: a new star, and its reward box.
+        val starBoxes = (Stars.of(state.hero.level) + 1..Stars.of(hero.level)).map { Stars.box(it, hero.level, hero.name) }
+        starBoxes.forEach { b -> b.items.forEach { (item, n) -> boxes[item] = (boxes[item] ?: 0) + n } }
         val inv = state.inventory.toMutableMap()
         boxes.forEach { (item, n) -> inv[item] = (inv[item] ?: 0) + n }
         // The hero levelled: monsters at the limit get the XP they were holding.
@@ -165,15 +170,24 @@ object GameEngine {
             if (m.heldXp <= 0) m else growDetailed(m.copy(heldXp = 0), m.heldXp, XpRules.monsterCap(hero.level)).first
         }
         return XpGain(
-            state.copy(hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades, inventory = inv, monsters = monsters),
+            state.copy(
+                hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades, inventory = inv, monsters = monsters,
+                gear = state.gear + starBoxes.map { it.weapon },
+                armor = state.armor + starBoxes.map { it.armor },
+            ),
             levels,
             upgrades,
             boxes,
+            starBoxes,
         )
     }
 
     fun levelUpText(gain: XpGain): String = buildString {
-        if (gain.levelsGained > 0) append(" LEVEL UP! Now level ${gain.state.hero.level}.")
+        if (gain.levelsGained > 0) append(" LEVEL UP! Now ${Stars.label(gain.state.hero.level)}.")
+        gain.starBoxes.forEachIndexed { i, b ->
+            val star = Stars.of(gain.state.hero.level) - gain.starBoxes.size + 1 + i
+            append(" ★ STAR $star! Your star reward box holds ${b.weapon.name} (${b.weapon.rarity.label}), ${b.armor.name} (${b.armor.rarity.label}) and ${boxText(b.items)}.")
+        }
         if (gain.boxItems.isNotEmpty()) append(" Level-up box: ${boxText(gain.boxItems)}.")
         if (gain.upgradesGained > 0) append(" Storage upgrade unlocked!")
         val h = gain.state.hero

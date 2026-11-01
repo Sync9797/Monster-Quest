@@ -141,6 +141,7 @@ private val topics = listOf(
                 "Hospitals (red cross): a healing hall that wakes every fainted monster, once a day.",
                 "Schools, colleges and universities (purple book): an academy. Universities have 3 study spots around campus and colleges 2; for primary and high schools the spot is on a nearby street, off the school grounds, so you never need to go onto a school campus. Spots by a school are locked from 7 AM to 4 PM on weekdays (a lock shows on the map). Study once a day for a Scholar's Tome of 2 pages for any spell you choose, to learn a new one or rank one up.",
                 "Gyms (dumbbell): a training ground. Spend a torch and every party monster gains part of a level: 30%, then 20%, then 10%, for up to 3 sessions a day.",
+                "Star ranks: every 50 levels earns a star. Level 51 shows as ★1 · Lv 1, level 101 as ★2 · Lv 1, and your star shows by your name and on your map marker. Nothing drops: your hero keeps all their strength and the world keeps up. Each new star opens a star reward box: an Epic weapon, Epic armor, 3 Prismatic Crystals, 2 Restore Potions and 2 Phoenix Downs.",
                 "Levels stay fair: monsters can't get more than 5 levels above your hero (extra XP is saved and pays out as your hero levels up), and beating foes far below your level gives much less XP.",
                 "Libraries and bookstores: their shrines hold extra spell pages.",
                 "Parks and gardens host dens of Earth, Flight and Gas monsters; fountains host Water dens.",

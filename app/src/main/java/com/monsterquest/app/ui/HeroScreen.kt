@@ -170,7 +170,7 @@ fun HeroScreen(vm: GameViewModel) {
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(h.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Level ${h.level} ${h.activeSubclass?.label ?: h.heroClass.label}", color = XpPurple)
+                    Text("${com.monsterquest.core.Stars.label(h.level).replace("Lv", "Level")} ${h.activeSubclass?.label ?: h.heroClass.label}", color = XpPurple)
                 }
                 TextButton(onClick = { renaming = true }, contentPadding = PaddingValues(4.dp)) {
                     GIcon(GameIcon.EDIT, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurfaceVariant)

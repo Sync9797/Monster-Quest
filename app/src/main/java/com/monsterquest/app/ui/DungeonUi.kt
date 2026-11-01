@@ -276,7 +276,7 @@ fun DungeonDialog(vm: GameViewModel, d: Dungeon, distance: Double?, onDismiss: (
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Recommended level ${d.level} (you're ${s.hero.level}) • ${d.rooms} rooms, then the champion • " +
+                    "Recommended level ${d.level} (you're ${com.monsterquest.core.Stars.label(s.hero.level)}) • ${d.rooms} rooms, then the champion • " +
                         "costs ${d.torchCost} torch${if (d.torchCost == 1) "" else "es"} (you have ${s.torches})",
                     fontSize = 13.sp,
                 )
