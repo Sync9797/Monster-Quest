@@ -1468,7 +1468,12 @@ object GameEngine {
             shrines = state.shrines + (shrine.id to after),
             stats = state.stats.copy(shrinesVisited = state.stats.shrinesVisited + 1),
         )
-        val loot = grantLoot(s, rollLoot(s, rng.nextInt(2, 4) + bond.extraRolls, rng))
+        val rolled = rollLoot(s, rng.nextInt(2, 4) + bond.extraRolls, rng)
+        // Libraries and bookstores are full of spell pages.
+        val bookish = shrine.kind != null && (shrine.kind.contains("Library", true) || shrine.kind.contains("Book", true))
+        val extra = if (bookish) pageCandidates(s).randomOrNull(rng)?.let { sp -> mapOf(sp.id to 1 + rng.nextInt(2)) }.orEmpty() else emptyMap()
+        val pages = (rolled.pages.keys + extra.keys).associateWith { (rolled.pages[it] ?: 0) + (extra[it] ?: 0) }
+        val loot = grantLoot(s, rolled.copy(pages = pages))
         s = loot.state
         val bondUp = if (after.bond != bond) " This shrine is now ${after.bond.label} with you!" else ""
         return Update(s, "${shrine.name}: ${loot.message}, +$gold gold.$bondUp", listOf(Reward.Gold(gold)) + loot.rewards)

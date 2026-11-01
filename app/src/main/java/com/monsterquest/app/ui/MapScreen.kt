@@ -10,6 +10,7 @@ import com.monsterquest.app.ui.art.drawVillainOn
 import com.monsterquest.app.ui.art.drawTraderOn
 import com.monsterquest.app.ui.art.drawNomadOn
 import com.monsterquest.app.ui.art.drawDungeonOn
+import com.monsterquest.app.ui.art.drawFacilityOn
 import com.monsterquest.app.ui.art.drawWantedRing
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
@@ -142,6 +143,7 @@ private sealed interface MapPick {
     data class TraderPick(val trader: com.monsterquest.core.Trader) : MapPick
     data class NomadPick(val nomad: com.monsterquest.core.Nomad) : MapPick
     data class DungeonPick(val dungeon: com.monsterquest.core.Dungeon) : MapPick
+    data class FacilityPick(val venue: com.monsterquest.core.Venue) : MapPick
 }
 
 internal fun hasLocationPermission(context: Context) =
@@ -208,6 +210,7 @@ fun MapScreen(vm: GameViewModel) {
     val traders = vm.tradersNear(now)
     val nomads = vm.nomadsNear(now)
     val dungeons = vm.dungeonsNear(now)
+    val facilities = vm.facilitiesNear()
     var pick by remember { mutableStateOf<MapPick?>(null) }
     var showWeather by remember { mutableStateOf(false) }
     if (showWeather) WeatherDialog(vm, now) { showWeather = false }
@@ -378,6 +381,17 @@ fun MapScreen(vm: GameViewModel) {
                                 },
                             )
                         }
+                        facilities.forEach { f ->
+                            mv.overlays.add(
+                                Marker(mv).apply {
+                                    position = GeoPoint(f.lat, f.lon)
+                                    setAnchor(Marker.ANCHOR_CENTER, 0.5f)
+                                    setIcon(sprite("facility_${f.role}", 34, 34) { c, w, h -> drawFacilityOn(c, w, h, f.role) })
+                                    title = f.name ?: f.kind
+                                    setOnMarkerClickListener { _, _ -> pick = MapPick.FacilityPick(f); true }
+                                },
+                            )
+                        }
                         dungeons.forEach { dg ->
                             mv.overlays.add(
                                 Marker(mv).apply {
@@ -534,6 +548,7 @@ fun MapScreen(vm: GameViewModel) {
         is MapPick.TraderPick -> TraderDialog(vm, p.trader) { pick = null }
         is MapPick.NomadPick -> NomadDialog(vm, p.nomad) { pick = null }
         is MapPick.DungeonPick -> DungeonDialog(vm, p.dungeon, vm.distanceTo(p.dungeon.lat, p.dungeon.lon)) { pick = null }
+        is MapPick.FacilityPick -> FacilityDialog(vm, p.venue) { pick = null }
         is MapPick.TrackedPick -> TrackedDialog(
             vm,
             p.spawn,
@@ -1568,4 +1583,39 @@ private fun RisenShrineFx(mapView: MapView, risen: com.monsterquest.core.Roaming
             drawCircle(color.copy(alpha = 1f - r), radius = base * (0.3f + r * 3f), center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 5.dp.toPx()))
         }
     }
+}
+
+/** A pharmacy, gym or hospital: what it does, and a button to use it once you're there. */
+@Composable
+private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, onDismiss: () -> Unit) {
+    val dist = vm.distanceTo(v.lat, v.lon)
+    val inRange = dist != null && dist <= com.monsterquest.core.Facilities.RANGE_M
+    val now = System.currentTimeMillis()
+    val used = com.monsterquest.core.Facilities.usedToday(vm.state, v.role, now)
+    val (what, action) = when (v.role) {
+        com.monsterquest.core.VenueRole.PHARMACY -> "A free full heal for your hero and every monster that's still standing, once a day." to "Get patched up"
+        com.monsterquest.core.VenueRole.HOSPITAL -> "Wakes every fainted monster at full health, once a day." to "Wake my monsters"
+        else -> "Spend ${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch to train: every party monster gains ${(com.monsterquest.core.Facilities.TRAINING_LEVEL_SHARE * 100).toInt()}% of a level (you have ${vm.state.torches})." to "Train (${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch)"
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(com.monsterquest.core.Facilities.label(v.role))
+                Text(listOfNotNull(v.name, v.kind).joinToString(" • "), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        text = {
+            Column {
+                Text(what)
+                if (used) Text("Already used today. Come back tomorrow.", color = HpYellow, modifier = Modifier.padding(top = 6.dp))
+                if (!inRange) {
+                    Text("Walk within ${formatDistance(com.monsterquest.core.Facilities.RANGE_M, vm.state.settings.imperialUnits)} to use it (${distanceText(dist, vm.state.settings.imperialUnits)}).", modifier = Modifier.padding(top = 6.dp))
+                    WalkHereButton(v.lat, v.lon, v.name ?: v.kind ?: "Here")
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.useFacility(v); onDismiss() }, enabled = inRange && !used) { Text(action) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }

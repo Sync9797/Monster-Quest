@@ -1142,7 +1142,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun villainsNear(nowMs: Long): List<VillainCamp> {
         val (lat, lon) = location ?: return emptyList()
         // Thugs and villains stand on real streets where we know them.
-        if (streets.isNotEmpty()) return com.monsterquest.core.Venues.streetCamps(state, streets, nowMs)
+        if (streets.isNotEmpty()) {
+            return com.monsterquest.core.Venues.streetCamps(state, streets, nowMs, nightlife = venues.filter { it.role == com.monsterquest.core.VenueRole.NIGHTLIFE })
+        }
         return Villains.near(state, lat, lon, nowMs)
     }
 
@@ -1250,6 +1252,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun springTrap() = apply(com.monsterquest.core.Dungeons.springTrap(state))
+
+    /** Pharmacies, gyms and hospitals nearby. */
+    fun facilitiesNear(): List<com.monsterquest.core.Venue> = com.monsterquest.core.Venues.facilities(venues)
+
+    /** Uses a pharmacy, gym or hospital (you have to be there). */
+    fun useFacility(v: com.monsterquest.core.Venue) {
+        val d = distanceTo(v.lat, v.lon)
+        if (d == null || d > com.monsterquest.core.Facilities.RANGE_M) {
+            message = "Walk to ${v.name ?: v.kind ?: "it"} first (within ${dist(com.monsterquest.core.Facilities.RANGE_M)})."
+            return
+        }
+        val now = System.currentTimeMillis()
+        apply(
+            when (v.role) {
+                com.monsterquest.core.VenueRole.PHARMACY -> com.monsterquest.core.Facilities.infirmary(state, now)
+                com.monsterquest.core.VenueRole.HOSPITAL -> com.monsterquest.core.Facilities.hospital(state, now)
+                else -> com.monsterquest.core.Facilities.train(state)
+            },
+        )
+    }
 
     /** A new player's first dungeon (after the intro). */
     fun startTutorial() = set(com.monsterquest.core.Dungeons.startTutorial(state))

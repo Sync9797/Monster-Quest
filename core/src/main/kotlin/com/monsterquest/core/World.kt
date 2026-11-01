@@ -32,7 +32,7 @@ data class ShrineTile(
 )
 
 /** Bump to make every cached tile look itself up again (2: venues and streets). */
-const val TILE_VERSION = 2
+const val TILE_VERSION = 3
 
 @kotlinx.serialization.Serializable
 data class Shrine(

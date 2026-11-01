@@ -223,3 +223,27 @@ fun drawDungeonOn(c: Canvas, w: Float, h: Float, stars: Int) {
     val x0 = w / 2 - gap * (stars - 1) / 2
     repeat(stars) { i -> c.drawCircle(x0 + i * gap, h * 0.14f, w * 0.055f, starPaint) }
 }
+
+/** A real-world service: a pharmacy (green cross), a hospital (red cross) or a gym (dumbbell), on a white badge. */
+fun drawFacilityOn(c: Canvas, w: Float, h: Float, role: com.monsterquest.core.VenueRole) {
+    val badge = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Argb.hex("f5f2ea") }
+    val edge = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = w * 0.06f; color = Argb.hex("2a2f33")
+    }
+    c.drawRoundRect(w * 0.12f, h * 0.12f, w * 0.88f, h * 0.88f, w * 0.18f, w * 0.18f, badge)
+    c.drawRoundRect(w * 0.12f, h * 0.12f, w * 0.88f, h * 0.88f, w * 0.18f, w * 0.18f, edge)
+    val mark = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    when (role) {
+        com.monsterquest.core.VenueRole.GYM -> {
+            mark.color = Argb.hex("4a5560")
+            c.drawRect(w * 0.3f, h * 0.46f, w * 0.7f, h * 0.54f, mark)
+            c.drawRoundRect(w * 0.22f, h * 0.32f, w * 0.34f, h * 0.68f, w * 0.04f, w * 0.04f, mark)
+            c.drawRoundRect(w * 0.66f, h * 0.32f, w * 0.78f, h * 0.68f, w * 0.04f, w * 0.04f, mark)
+        }
+        else -> {
+            mark.color = Argb.hex(if (role == com.monsterquest.core.VenueRole.HOSPITAL) "d64545" else "2f9e5b")
+            c.drawRect(w * 0.42f, h * 0.24f, w * 0.58f, h * 0.76f, mark)
+            c.drawRect(w * 0.24f, h * 0.42f, w * 0.76f, h * 0.58f, mark)
+        }
+    }
+}

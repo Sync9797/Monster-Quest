@@ -399,6 +399,9 @@ data class GameState(
     val championStatDay: Long = -1,
     /** The 0-star tutorial dungeon has been finished (it's one of a kind). */
     val tutorialDungeonDone: Boolean = false,
+    /** The day a pharmacy last healed you, and a hospital last woke your monsters (see [Facilities]). */
+    val infirmaryDay: Long = -1,
+    val hospitalDay: Long = -1,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

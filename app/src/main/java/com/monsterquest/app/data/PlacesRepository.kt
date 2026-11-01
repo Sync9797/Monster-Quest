@@ -134,8 +134,9 @@ object PlacesRepository {
         val query = """
             [out:json][timeout:60];
             (
-              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist)$"];
-              nwr($bbox)["healthcare"~"^(doctor|clinic|dentist)$"];
+              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist|pharmacy|hospital)$"];
+              nwr($bbox)["healthcare"~"^(doctor|clinic|dentist|pharmacy|hospital)$"];
+              nwr($bbox)["leisure"="fitness_centre"]["name"];
               nwr($bbox)["leisure"~"^(park|garden|playground|fitness_station|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
               nwr($bbox)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction|artwork|viewpoint|picnic_site)$"];
               nwr($bbox)["historic"~"^(castle|monument|fort|ruins)$"];
@@ -240,18 +241,24 @@ object PlacesRepository {
             val healthcare = tags.str("healthcare")
             // Coffee shops, doctor's offices and most restaurants hold dungeons; grocery stores host traders.
             val role = when {
+                amenity == "pharmacy" || healthcare == "pharmacy" -> VenueRole.PHARMACY
+                amenity == "hospital" || healthcare == "hospital" -> VenueRole.HOSPITAL
+                leisure == "fitness_centre" -> VenueRole.GYM
                 amenity == "cafe" || amenity in doctorAmenity || healthcare in setOf("doctor", "clinic", "dentist") -> VenueRole.DUNGEON
                 (amenity == "restaurant" || amenity == "fast_food") && Math.floorMod(placeId.hashCode(), 100) < RESTAURANT_DUNGEON_PCT -> VenueRole.DUNGEON
                 shop in groceryShops -> VenueRole.MARKET
+                leisure == "park" || leisure == "garden" -> VenueRole.NATURE
+                amenity == "fountain" -> VenueRole.WATERSIDE
+                amenity in setOf("pub", "bar", "nightclub") -> VenueRole.NIGHTLIFE
                 else -> null
             }
             if (role != null) {
                 val list = venues.getOrPut(key) { mutableListOf() }
-                if (list.none { World.distanceMeters(it.lat, it.lon, lat, lon) < 25 }) {
+                if (list.none { it.role == role && World.distanceMeters(it.lat, it.lon, lat, lon) < 25 }) {
                     list += Venue(placeId, tags.str("name"), kindLabel(amenity ?: healthcare?.let { if (it == "doctor") "doctors" else it }, leisure, tourism, historic, shop), lat, lon, role)
                 }
-                // A dungeon takes the place over; a grocery store keeps its Supply Cache too.
-                if (role == VenueRole.DUNGEON) continue
+                // Dungeons and services take the place over; stores, parks, fountains and bars keep their shrine too.
+                if (role == VenueRole.DUNGEON || role in com.monsterquest.core.Venues.FACILITIES) continue
             }
             places.getOrPut(key) { mutableListOf() } += World.shrineFromPlace(
                 "${o.str("type")}${o.str("id")}", tags.str("name"), lat, lon, tier,
@@ -284,6 +291,7 @@ object PlacesRepository {
             "books" to "Bookstore", "supermarket" to "Supermarket", "convenience" to "Convenience store",
             "grocery" to "Grocery store", "greengrocer" to "Greengrocer", "cafe" to "Coffee shop",
             "doctors" to "Doctor's office", "clinic" to "Clinic", "dentist" to "Dentist",
+            "pharmacy" to "Pharmacy", "hospital" to "Hospital", "fitness_centre" to "Gym", "pub" to "Pub",
             "bakery" to "Bakery", "mall" to "Shopping mall", "department_store" to "Department store",
             "gift" to "Gift shop", "music" to "Music store", "video_games" to "Game store", "games" to "Game store",
             "toys" to "Toy store", "sports" to "Sports store", "outdoor" to "Outdoor store", "florist" to "Florist",

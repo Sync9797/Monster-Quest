@@ -17,6 +17,8 @@ class PlacesTilesTest {
           {"type":"node","id":3,"lat":40.7700,"lon":-73.9700,"tags":{"amenity":"cafe","name":"Elsewhere"}},
           {"type":"node","id":4,"lat":40.7570,"lon":-73.9860,"tags":{"shop":"supermarket","name":"Green Grocer"}},
           {"type":"node","id":5,"lat":40.7576,"lon":-73.9830,"tags":{"amenity":"doctors","name":"Dr. Ames"}},
+          {"type":"node","id":6,"lat":40.7572,"lon":-73.9822,"tags":{"amenity":"pharmacy","name":"Corner Pharmacy"}},
+          {"type":"node","id":7,"lat":40.7568,"lon":-73.9815,"tags":{"leisure":"fitness_centre","name":"Iron Gym"}},
           {"type":"way","id":9,"tags":{"waterway":"river"},"geometry":[{"lat":40.7551,"lon":-73.9890},{"lat":40.7552,"lon":-73.9880},{"lat":40.7560,"lon":-73.9860}]},
           {"type":"way","id":10,"tags":{"highway":"residential"},"geometry":[{"lat":40.7555,"lon":-73.9895},{"lat":40.7575,"lon":-73.9895},{"lat":40.7595,"lon":-73.9895}]}
         ]}
@@ -28,7 +30,10 @@ class PlacesTilesTest {
         val tile = tiles.getValue(key)
         // The cafe and the doctor's office hold dungeons; the grocery store keeps a shrine and hosts a trader.
         assertEquals(setOf("osm:node2", "osm:node4"), tile.shrines.map { it.id }.toSet())
-        assertEquals(mapOf("node1" to VenueRole.DUNGEON, "node4" to VenueRole.MARKET, "node5" to VenueRole.DUNGEON), tile.venues.associate { it.id to it.role })
+        assertEquals(
+            mapOf("node1" to VenueRole.DUNGEON, "node4" to VenueRole.MARKET, "node5" to VenueRole.DUNGEON, "node6" to VenueRole.PHARMACY, "node7" to VenueRole.GYM),
+            tile.venues.associate { it.id to it.role },
+        )
         assertEquals("Coffee shop", tile.venues.first { it.id == "node1" }.kind)
         assertTrue(tile.water.isNotEmpty())
         assertTrue(tile.streets.size >= 2)

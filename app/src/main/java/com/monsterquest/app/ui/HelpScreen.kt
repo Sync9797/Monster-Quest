@@ -136,6 +136,15 @@ private val topics = listOf(
                 "Bosses act twice per round. Defeat a Gold guardian once, then come back to tame it.",
             ),
             section(
+                "Services",
+                "Pharmacies (green cross): an infirmary that heals your hero and every standing monster to full, free once a day.",
+                "Hospitals (red cross): a healing hall that wakes every fainted monster, once a day.",
+                "Gyms (dumbbell): a training ground. Spend a torch and every party monster gains 30% of a level.",
+                "Libraries and bookstores: their shrines hold extra spell pages.",
+                "Parks and gardens host dens of Earth, Flight and Gas monsters; fountains host Water dens.",
+                "Bars and nightclubs draw thugs and villains at night (8 PM to 4 AM); by day the streets around them are clear.",
+            ),
+            section(
                 "People you meet",
                 "Thugs and villains (dark banners) stand on the streets, changing daily: cursed monsters you can't tame. Beat the whole team for loot, then try a Restore Potion to free one (75%).",
                 "Traders (green glow) wait at every grocery store, beside its Supply Cache, and sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Hi-Potions and an egg with 3 perfect stats.",

@@ -126,9 +126,9 @@ object Dens {
     }
 
     /** A den at [lat], [lon]: one strong monster a few levels above you, with great stats. */
-    fun make(state: GameState, id: String, lat: Double, lon: Double, r: Random): Den {
+    fun make(state: GameState, id: String, lat: Double, lon: Double, r: Random, favored: Set<Element> = emptySet()): Den {
         val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
-        val species = Bestiary.randomWild(r, level, rareBoost = 1.6, favorFirstForms = false)
+        val species = Bestiary.randomWild(r, level, favored, rareBoost = 1.6, favorFirstForms = false)
         // Great stats: nothing below 10, and two perfect.
         val base = Monster.create(species, level, r, shiny = rollShiny(r)).withWildMoves(r)
         val sturdy = base.copy(
