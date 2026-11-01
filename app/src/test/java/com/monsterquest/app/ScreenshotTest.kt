@@ -349,13 +349,30 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun battle() {
         val v = vm()
         v.hunt()
+        v.chooseLead(null)
         shot("07_battle") { AppRoot(v) }
+    }
+
+    /** One on one: before the fight, pick the hero or a monster to start; the rest wait on the bench. */
+    @Test fun whoStarts() {
+        val v = vm()
+        v.hunt()
+        val pick = checkNotNull(v.leadChoice) { "a one-on-one asks who starts" }
+        shot("07c_who_starts") { AppRoot(v) }
+        rule.onNodeWithText("Who starts?").assertExists()
+        val m = pick.options.first()
+        rule.onAllNodesWithText(m.displayName)[0].performClick()
+        rule.waitForIdle()
+        val b = checkNotNull(v.battle) { "the fight starts" }
+        check(!b.allies.first().isHero && b.allies.first().key == m.uid) { "the monster leads" }
+        check(b.swaps.any { it.isHero }) { "the hero waits to step in" }
     }
 
     /** A foe you've already caught has a small orb next to its name. */
     @Test fun battleCaughtMark() {
         val v = vm(sampleState().copy(caught = Bestiary.all.map { it.id }.toSet()))
         v.hunt()
+        v.chooseLead(null)
         shot("07b_battle_caught") { AppRoot(v) }
         check(rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Already caught")).fetchSemanticsNodes().isNotEmpty())
     }
@@ -363,6 +380,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun battleNotCaughtMark() {
         val v = vm(sampleState().copy(caught = emptySet()))
         v.hunt()
+        v.chooseLead(null)
         rule.setContent { MonsterQuestTheme(com.monsterquest.core.ThemeMode.DARK) { AppRoot(v) } }
         rule.waitForIdle()
         // Monsters you own count as caught, so the foe may still be marked if it's one of your species.
@@ -396,6 +414,7 @@ abstract class ScreenshotBase(private val device: String) {
         // (Not so hurt that the wild monster can knock the hero out before the first turn.)
         val v = vm(base.copy(heroDamage = 40, monsters = base.monsters.map { it.copy(damage = it.stats.hp / 2) }))
         v.hunt()
+        v.chooseLead(null)
         shot("44_battle_potion") { AppRoot(v) }
         val click = { n: androidx.compose.ui.test.SemanticsNodeInteraction ->
             n.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
@@ -682,6 +701,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun battleFx() {
         val v = vm()
         v.hunt()
+        v.chooseLead(null)
         v.battleAction(com.monsterquest.core.BattleAction.Attack)
         // Partway through: the bolt is in flight.
         shot("18_battle_fx", advanceMs = 330) { AppRoot(v) }
@@ -764,6 +784,7 @@ abstract class ScreenshotBase(private val device: String) {
         check(rule.onAllNodesWithText("Rank 2").fetchSemanticsNodes().size == 3) { "Ember Bolt, Mend and Ward can rank up" }
         // Cast Ward in battle (the shield animation).
         v.hunt()
+        v.chooseLead(null)
         v.battleAction(com.monsterquest.core.BattleAction.CastSpell("ward", "hero"))
         capture("27_ward", 400)
     }
@@ -905,6 +926,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun levelUps() {
         val v = vm()
         v.hunt()
+        v.chooseLead(null)
         // A lone wild monster is the hero alone now: put a bench monster on the field for the banner.
         val b0 = v.battle!!.let { it.copy(allies = it.allies + it.swaps.first()) }
         val pal = b0.allies[1]
@@ -1118,6 +1140,7 @@ abstract class ScreenshotBase(private val device: String) {
         val extra = listOf(Monster.create(Bestiary.get("fluffchick"), 14, r), Monster.create(Bestiary.get("shellsnap"), 13, r))
         val v = vm(base.copy(monsters = base.monsters + extra, swaps = extra.map { it.uid }))
         v.hunt()
+        v.chooseLead(null)
         shot("38_swap") { AppRoot(v) }
         // On small screens the button can sit below the panel's fold: click it through its semantics.
         rule.onNodeWithText("Swap").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
@@ -1185,6 +1208,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun lightBattle() {
         val v = vm()
         v.hunt()
+        v.chooseLead(null)
         shot("43_light_battle", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v) }
     }
     @Test fun lightSettings() { val v = vm(); shot("44_light_settings", theme = com.monsterquest.core.ThemeMode.LIGHT) { AppRoot(v, initialSettings = true) } }
@@ -1192,6 +1216,7 @@ abstract class ScreenshotBase(private val device: String) {
     @Test fun battleTabletop() {
         val v = vm()
         v.hunt()
+        v.chooseLead(null)
         shot("08_battle_tabletop", tabletop()) { AppRoot(v) }
         // The commands must be on screen, not pushed below the bottom edge.
         rule.onNodeWithText("Flee").assertIsDisplayed()

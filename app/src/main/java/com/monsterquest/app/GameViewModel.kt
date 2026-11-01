@@ -1357,14 +1357,37 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         var s = state
         for (m in listOf(enemy) + pack + enemyReserve) s = GameEngine.markSeen(s, m.speciesId)
         set(s)
-        val b = GameEngine.newBattle(
-            state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
-            weather = weather?.kind?.takeIf { state.settings.liveWeather },
-            captureBoost = captureBoost,
-            enemyReserve = enemyReserve, swapLimit = swapLimit, trainer = trainer, tutorial = tutorial,
-        )
-        activeBattle = b
-        battle = battleView(b, null)
+        fun begin(lead: String?) {
+            val b = GameEngine.newBattle(
+                state, enemy, type, shrineId, pack = pack, ambush = ambush, thug = thug,
+                weather = weather?.kind?.takeIf { state.settings.liveWeather },
+                captureBoost = captureBoost,
+                enemyReserve = enemyReserve, swapLimit = swapLimit, trainer = trainer, tutorial = tutorial,
+                lead = lead,
+            )
+            activeBattle = b
+            battle = battleView(b, null)
+        }
+        // One on one: you pick who starts, the hero or one of your monsters.
+        val options = GameEngine.leadOptions(state, swapLimit)
+        if (!tutorial && options.isNotEmpty() && GameEngine.isOneOnOne(pack, thug, type in com.monsterquest.core.FULL_TEAM_ENCOUNTERS)) {
+            leadChoice = LeadChoice(enemy, options, ::begin)
+        } else {
+            begin(null)
+        }
+    }
+
+    /** A one-on-one fight waiting for you to pick who starts it. */
+    class LeadChoice(val enemy: Monster, val options: List<Monster>, internal val start: (String?) -> Unit)
+
+    var leadChoice by mutableStateOf<LeadChoice?>(null)
+        private set
+
+    /** Starts the waiting one-on-one fight with this monster (uid) up front, or the hero (null). */
+    fun chooseLead(uid: String?) {
+        val c = leadChoice ?: return
+        leadChoice = null
+        c.start(uid)
     }
 
     fun battleAction(action: BattleAction) {

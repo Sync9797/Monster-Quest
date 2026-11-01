@@ -648,6 +648,11 @@ class Battle(
     private val restFactor: Double = 1.0,
     /** The tutorial dungeon: foes hit softly and every Binding cast tames. */
     val tutorial: Boolean = false,
+    /**
+     * In a one-on-one fight, the monster (uid) who starts instead of the hero;
+     * the hero waits on the bench and can step in later. Null: the hero starts.
+     */
+    lead: String? = null,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -675,6 +680,18 @@ class Battle(
 
     /** Monsters that actually stepped into the fight (they earn full XP). */
     private val fought: MutableSet<String> = fighters.map { it.uid }.toMutableSet()
+
+    /** The monster who opened a one-on-one fight in the hero's place, if one did. */
+    val leader: Combatant? = lead?.takeIf { slots == 1 }?.let { uid -> reserve.find { it.key == uid && it.alive } }
+
+    init {
+        leader?.let { m ->
+            team[0] = m
+            reserve.remove(m)
+            reserve.add(0, heroFighter)
+            fought += m.key
+        }
+    }
     /** Fighters on your side: the hero plus the party monsters able to fight. */
     val teamSize: Int = 1 + fighters.size
     /** The enemy side: one monster, or a pack of up to 4. */
@@ -798,6 +815,7 @@ class Battle(
                 (if (enemyBench.isNotEmpty()) ", with ${enemyBench.size} more waiting!" else "!")
         }
         log += intro
+        leader?.let { log += "${it.name} leads the fight! ${heroFighter.name} waits to step in." }
         // Stormcallers and Sunbringers bring their weather with them.
         (allies + enemies).firstOrNull { it.rankOf(Trait.STORMCALLER) > 0 || it.rankOf(Trait.SUNBRINGER) > 0 }?.let { c ->
             weather = if (c.rankOf(Trait.STORMCALLER) > 0) Weather.RAIN else Weather.DROUGHT
@@ -824,7 +842,7 @@ class Battle(
     private fun openingSkills(hero: Hero) {
         val me = heroFighter
         for ((t, r) in hero.skillRanks) {
-            if (t.teamRange(r, hero = true)) (allies.drop(1) + reserve).forEach { it.shareTrait(t, r) }
+            if (t.teamRange(r, hero = true)) (allies + reserve).filter { !it.isHero }.forEach { it.shareTrait(t, r) }
         }
         if (heroPerks.teamPct > 0 && allies.size > 1) log += "Your monsters are fired up! (+${heroPerks.teamPct}%)"
         if (packLeader(fighters) > 0) log += "A Pack Leader rallies your team! (+${packLeader(fighters)}%)"

@@ -1015,6 +1015,8 @@ object GameEngine {
         trainer: String? = null,
         /** The tutorial dungeon's gentle fights. */
         tutorial: Boolean = false,
+        /** In a one-on-one fight, the monster who starts instead of the hero (see [leadOptions]). */
+        lead: String? = null,
     ) = Battle(
         state.hero,
         // Monsters out on adventures can't fight.
@@ -1035,7 +1037,24 @@ object GameEngine {
         trainer = trainer,
         restFactor = Rest.today(state, System.currentTimeMillis()).statFactor,
         tutorial = tutorial,
+        lead = lead,
     )
+
+    /** Whether a fight is one-on-one: the hero alone against a single monster (monsters wait to swap in). */
+    fun isOneOnOne(pack: List<Monster>, thug: Thug?, fullTeam: Boolean): Boolean = pack.isEmpty() && thug == null && !fullTeam
+
+    /**
+     * The monsters who could start a one-on-one fight in the hero's place:
+     * the same ones the fight would bring to swap in (standing, not away on
+     * an adventure, up to [swapLimit]).
+     */
+    fun leadOptions(state: GameState, swapLimit: Int? = null): List<Monster> {
+        val away = Adventures.awayUids(state)
+        val party = state.partyMonsters.filter { it.uid !in away && !it.fainted }.take(MAX_PARTY_SIZE)
+        val swaps = state.swapMonsters.filter { it.uid !in away && !it.fainted }.take(MAX_SWAPS)
+        val all = party + swaps
+        return swapLimit?.let { all.take(it) } ?: all
+    }
 
     /** Party monsters able to fight right now (a thug brings as many). */
     fun fightingCount(state: GameState): Int {

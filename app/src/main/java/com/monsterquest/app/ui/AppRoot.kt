@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -96,6 +97,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
         FocusOverlay(focus, onGiveUp = vm::giveUpFocus, onDone = vm::onFocusTimerDone, penaltyGold = com.monsterquest.core.GameEngine.focusPenalty(state))
         return
     }
+    // A one-on-one fight is about to start: who goes first? (A dialog, so it shows over any screen.)
+    vm.leadChoice?.let { c -> LeadPicker(vm, c, HeroOutfit.of(state.equippedGear, state.equippedArmor, state.equippedPieces)) }
     val battle = vm.battle
     if (battle != null) {
         BattleScreen(battle, onAction = vm::battleAction, onClose = vm::closeBattle, onNext = vm::nextVillainMonster, outfit = HeroOutfit.of(state.equippedGear, state.equippedArmor, state.equippedPieces), onTarget = vm::selectTarget, onReplace = vm::replaceFainted, onLearn = vm::learnMove, speed = state.settings.battleSpeed.factor, scene = vm.scene)
@@ -466,6 +469,59 @@ private fun HeroMenuBubbles(onPick: (Tab) -> Unit, onDismiss: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** Before a one-on-one fight: the hero or one of your monsters steps up first; the rest wait to swap in. */
+@Composable
+private fun LeadPicker(vm: GameViewModel, choice: GameViewModel.LeadChoice, outfit: HeroOutfit) {
+    val hero = vm.state.hero
+    androidx.compose.material3.AlertDialog(
+        // Backing out still starts the fight, with the hero up front.
+        onDismissRequest = { vm.chooseLead(null) },
+        title = { Text("Who starts?") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "${choice.enemy.displayName} (Lv ${choice.enemy.level}) stands alone. Pick who faces it first; the others wait and can swap in.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                LeadRow(
+                    title = hero.name,
+                    subtitle = "Lv ${hero.level} ${hero.heroClass.label} • spells and items",
+                    onClick = { vm.chooseLead(null) },
+                ) { com.monsterquest.app.ui.art.HeroArt(hero.heroClass, Modifier.size(44.dp), outfit = outfit) }
+                choice.options.forEach { m ->
+                    LeadRow(
+                        title = m.displayName,
+                        subtitle = "Lv ${m.level} ${m.species.typeLabel}" + if (m.damage > 0) " • hurt" else "",
+                        onClick = { vm.chooseLead(m.uid) },
+                    ) { MonsterArt(m.species, Modifier.size(44.dp), shiny = m.shiny) }
+                }
+            }
+        },
+        confirmButton = {},
+    )
+}
+
+@Composable
+private fun LeadRow(title: String, subtitle: String, onClick: () -> Unit, art: @Composable () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        art()
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
