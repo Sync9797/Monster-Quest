@@ -52,6 +52,8 @@ data class Settings(
     val imperialUnits: Boolean = true,
     /** Turn off glows, auras, mist and engraving for smoother scrolling on older phones. */
     val reducedEffects: Boolean = false,
+    /** The map turns with the phone, so what's in front of you is up the screen (else north is up). */
+    val followHeading: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */
     val batterySaverGps: Boolean = false,
     /** On the map, turning the phone upside down blacks out the screen to save battery. */

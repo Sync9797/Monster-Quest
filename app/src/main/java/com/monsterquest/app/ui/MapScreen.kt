@@ -246,12 +246,31 @@ fun MapScreen(vm: GameViewModel) {
     fun sprite(key: String, wDp: Int, hDp: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
         icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw).bitmap.asImageBitmap() }
 
+    // The hero (and the camera) glide to each new GPS fix instead of jumping.
+    val glide = rememberGlide(loc)
     // Keep the map on the hero, within a mile of them.
-    LaunchedEffect(loc, following, gameMap.map, gameMap.tick > 0) {
+    LaunchedEffect(loc, gameMap.map, gameMap.tick > 0) {
         val l = loc ?: return@LaunchedEffect
         gameMap.limitAround(l.first, l.second)
-        if (following) gameMap.centerOn(l.first, l.second)
     }
+    val followingNow = androidx.compose.runtime.rememberUpdatedState(following)
+    LaunchedEffect(gameMap.map) {
+        androidx.compose.runtime.snapshotFlow { glide.value.takeIf { followingNow.value } }.collect { p ->
+            if (p != null) gameMap.centerOn(p.first, p.second)
+        }
+    }
+    // The map can turn with the phone, so what's in front of you is up the screen.
+    val followHeading = vm.state.settings.followHeading
+    HeadingFollower(gameMap, followHeading)
+    val onCompass: () -> Unit = {
+        when {
+            followHeading -> { vm.updateSettings { it.copy(followHeading = false) }; gameMap.resetNorth() }
+            kotlin.math.abs(gameMap.bearing) > 1 -> gameMap.resetNorth()
+            else -> vm.updateSettings { it.copy(followHeading = true) }
+        }
+    }
+    // Turning the map by hand stops it following the phone.
+    val onUserTurn: () -> Unit = { if (vm.state.settings.followHeading) vm.updateSettings { it.copy(followHeading = false) } }
     // Read cafés, doctors, groceries and streets out of the map's own tiles once it settles.
     LaunchedEffect(gameMap.styleReady, loc?.let { (it.first * 500).toInt() to (it.second * 500).toInt() }) {
         if (!gameMap.styleReady) return@LaunchedEffect
@@ -356,15 +375,15 @@ fun MapScreen(vm: GameViewModel) {
                     if (loc != null) {
                         val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor, vm.state.equippedPieces)
                         val stars = com.monsterquest.core.Stars.of(vm.state.hero.level)
-                        add(MapSprite("hero", loc.first, loc.second, sprite("player_${vm.state.hero.heroClass}_${outfit}_$stars", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit, stars) }, 60, 60, anchorY = 0.86f) {})
+                        add(MapSprite("hero", loc.first, loc.second, at = { glide.value }, image = sprite("player_${vm.state.hero.heroClass}_${outfit}_$stars", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit, stars) }, wDp = 60, hDp = 60, anchorY = 0.86f) {})
                     }
                     focus?.takeIf { it.pin }?.let { f ->
                         add(MapSprite("focus", f.lat, f.lon, sprite("focus_pin", 30, 40) { c, w, h -> drawFocusPin(c, w, h) }, 30, 40, anchorY = 1f) { f.details() })
                     }
                 }
-                GameMapView(gameMap, Modifier.fillMaxSize()) {
+                GameMapView(gameMap, Modifier.fillMaxSize(), onUserTurn = onUserTurn) {
                     // Reach circle for shrines.
-                    if (loc != null) MapCircle(gameMap, loc.first, loc.second, World.SHRINE_RANGE_M, Color(0x228B5CF6), Color(0x888B5CF6))
+                    if (loc != null) MapCircle(gameMap, { glide.value }, World.SHRINE_RANGE_M, Color(0x228B5CF6), Color(0x888B5CF6))
                     risen?.let { RisenShrineFx(gameMap, it) }
                     MapSprites(gameMap, sprites)
                 }
@@ -372,7 +391,7 @@ fun MapScreen(vm: GameViewModel) {
                 // on a foldable they move beside it, above Nearby.
                 if (showTracker) {
                     Column(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MapCompass(gameMap)
+                        MapCompass(gameMap, followHeading, onCompass)
                         foodBadge(Modifier)
                     }
                     weatherBadge(Modifier.align(Alignment.BottomStart).padding(10.dp))
@@ -436,7 +455,7 @@ fun MapScreen(vm: GameViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                MapCompass(gameMap)
+                MapCompass(gameMap, followHeading, onCompass)
                 foodBadge(Modifier)
                 Spacer(Modifier.weight(1f))
                 weatherBadge(Modifier)
@@ -668,9 +687,18 @@ private fun MapCount(text: String) {
 internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLocation: (Double, Double, Float?) -> Unit) {
     DisposableEffect(batterySaver) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        var lastGpsMs = 0L
         val listener = object : LocationListener {
-            override fun onLocationChanged(location: Location) =
+            override fun onLocationChanged(location: Location) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (location.provider == LocationManager.GPS_PROVIDER) {
+                    lastGpsMs = now
+                } else if (now - lastGpsMs < 10_000) {
+                    // A fresh GPS fix beats the rougher network one: don't let the hero jump back and forth.
+                    return
+                }
                 onLocation(location.latitude, location.longitude, if (location.hasSpeed()) location.speed else null)
+            }
 
             @Deprecated("Deprecated in Java")
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -683,7 +711,8 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
             providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
                 .maxByOrNull { it.time }
                 ?.let { onLocation(it.latitude, it.longitude, null) }
-            val (interval, distance) = if (batterySaver) 20_000L to 25f else 4_000L to 5f
+            // Every second while you play (like Pokemon GO); slow and cheap with the battery saver.
+            val (interval, distance) = if (batterySaver) 20_000L to 25f else 1_000L to 0f
             providers.forEach { lm.requestLocationUpdates(it, interval, distance, listener, Looper.getMainLooper()) }
         } catch (e: SecurityException) {
             // Permission revoked while running; the screen will ask again.

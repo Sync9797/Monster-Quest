@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -113,6 +114,12 @@ class GameMap internal constructor(val fake: Boolean) {
 
     /** Which way the map is turned, in degrees clockwise from north (0 = north up). */
     val bearing: Double get() = map?.cameraPosition?.bearing ?: 0.0
+
+    /** Turns the map to face [deg] (clockwise from north) at once: following the phone's heading. */
+    fun setBearing(deg: Double) {
+        val m = map ?: return
+        m.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).bearing(deg).build()))
+    }
 
     /** Turns the map back to north up. */
     fun resetNorth() {
@@ -428,7 +435,8 @@ private fun createMapView(context: Context, gm: GameMap): MapView {
  * two fingers twisting) to turn it. No panning: it stays on the hero.
  */
 @Composable
-fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, onUserTurn: () -> Unit = {}, content: @Composable () -> Unit) {
+    val turned = androidx.compose.runtime.rememberUpdatedState(onUserTurn)
     val density = LocalDensity.current
     val slop = with(density) { 8.dp.toPx() }
     val pxPerLevel = with(density) { 110.dp.toPx() }
@@ -469,7 +477,10 @@ fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, content: @Composable
                             mode = 4
                             val z = ev.calculateZoom()
                             if (z > 0f && z != 1f) gm.zoomBy(ln(z.toDouble()) / ln(2.0))
-                            gm.rotateBy(ev.calculateRotation())
+                            val twist = ev.calculateRotation()
+                            // A real twist, not the slight turn every pinch has.
+                            if (abs(twist) > 2f) turned.value()
+                            gm.rotateBy(twist)
                             ev.changes.forEach { it.consume() }
                             prev = ev.calculateCentroid()
                             continue
@@ -495,7 +506,10 @@ fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, content: @Composable
                                 if (d > 180) d -= 360
                                 if (d < -180) d += 360
                                 // Near the middle a small move would be a big turn; ignore it there.
-                                if ((c.position - center).getDistance() > slop * 4) gm.rotateBy(d)
+                                if ((c.position - center).getDistance() > slop * 4) {
+                                    if (abs(d) > 0.5f) turned.value()
+                                    gm.rotateBy(d)
+                                }
                                 prev = c.position
                                 c.consume()
                             }
@@ -546,6 +560,8 @@ class MapSprite(
     val anchorX: Float = 0.5f,
     val anchorY: Float = 1f,
     val alpha: Float = 1f,
+    /** Where it stands right now, when it moves smoothly (the hero gliding between GPS fixes). */
+    val at: (() -> Pair<Double, Double>?)? = null,
     val onClick: (() -> Unit)? = null,
 )
 
@@ -582,7 +598,8 @@ fun MapSprites(gm: GameMap, sprites: List<MapSprite>) {
             @Suppress("UNUSED_VARIABLE") val t = gm.tick
             placeables.forEachIndexed { i, p ->
                 val s = sprites[i]
-                val at = gm.toScreen(s.lat, s.lon) ?: return@forEachIndexed
+                val (lat, lon) = s.at?.invoke() ?: (s.lat to s.lon)
+                val at = gm.toScreen(lat, lon) ?: return@forEachIndexed
                 val x = at.x - p.width * s.anchorX
                 val y = at.y - p.height * s.anchorY
                 // Off screen: skip.
@@ -595,9 +612,10 @@ fun MapSprites(gm: GameMap, sprites: List<MapSprite>) {
 
 /** A circle on the ground ([radiusM] around a spot); it leans with the map's tilt. */
 @Composable
-fun MapCircle(gm: GameMap, lat: Double, lon: Double, radiusM: Double, fill: Color, stroke: Color) {
+fun MapCircle(gm: GameMap, center: () -> Pair<Double, Double>?, radiusM: Double, fill: Color, stroke: Color) {
     Canvas(Modifier.fillMaxSize()) {
         @Suppress("UNUSED_VARIABLE") val t = gm.tick
+        val (lat, lon) = center() ?: return@Canvas
         val path = Path()
         val dLat = radiusM / 111_320.0
         val dLon = radiusM / (111_320.0 * cos(Math.toRadians(lat)))
@@ -612,9 +630,12 @@ fun MapCircle(gm: GameMap, lat: Double, lon: Double, radiusM: Double, fill: Colo
     }
 }
 
-/** The map's compass: the red needle points north; tap it to turn the map north up again. */
+/**
+ * The map's compass: the red needle points north. Tap it to have the map turn
+ * with the phone (a gold ring shows it's following), and again for north up.
+ */
 @Composable
-fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
+fun MapCompass(gm: GameMap, following: Boolean = false, onClick: () -> Unit = { gm.resetNorth() }, modifier: Modifier = Modifier) {
     // Follows the app's light or dark theme.
     val face = androidx.compose.material3.MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
     val tail = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
@@ -622,8 +643,9 @@ fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
         modifier
             .size(40.dp)
             .background(face, androidx.compose.foundation.shape.CircleShape)
-            .clickable(onClickLabel = "Face north") { gm.resetNorth() }
-            .semanticsLabel("Compass"),
+            .then(if (following) Modifier.border(2.dp, Color(0xFFEBC678), androidx.compose.foundation.shape.CircleShape) else Modifier)
+            .clickable(onClickLabel = if (following) "North up" else "Turn with the phone") { onClick() }
+            .semanticsLabel(if (following) "Compass, turning with the phone" else "Compass"),
     ) {
         Canvas(Modifier.fillMaxSize().graphicsLayer { @Suppress("UNUSED_VARIABLE") val t = gm.tick; rotationZ = (-gm.bearing).toFloat() }) {
             val c = Offset(size.width / 2, size.height / 2)
@@ -639,3 +661,91 @@ fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
 
 private fun Modifier.semanticsLabel(label: String) =
     this.then(androidx.compose.ui.Modifier.semantics { contentDescription = label })
+
+/**
+ * Glides from one GPS fix to the next over about a second, so the hero walks
+ * instead of jumping. Big jumps (a fix after a tunnel, or the first one) snap.
+ * Read the returned state in layout or drawing, not in composition, so the
+ * glide only moves things on screen.
+ */
+@Composable
+fun rememberGlide(target: Pair<Double, Double>?): androidx.compose.runtime.State<Pair<Double, Double>?> {
+    val shown = remember { mutableStateOf(target) }
+    androidx.compose.runtime.LaunchedEffect(target) {
+        val to = target
+        val from = shown.value
+        if (to == null || from == null || World.distanceMeters(from.first, from.second, to.first, to.second) > 150) {
+            shown.value = to
+            return@LaunchedEffect
+        }
+        val start = androidx.compose.runtime.withFrameNanos { it }
+        val duration = 900_000_000.0
+        while (true) {
+            val now = androidx.compose.runtime.withFrameNanos { it }
+            val t = ((now - start) / duration).coerceIn(0.0, 1.0)
+            // Ease out: quick to start, settling gently.
+            val e = 1 - (1 - t) * (1 - t)
+            shown.value = (from.first + (to.first - from.first) * e) to (from.second + (to.second - from.second) * e)
+            if (t >= 1.0) break
+        }
+    }
+    return shown
+}
+
+/**
+ * While [enabled], turns the map to face the way the phone points, so what's
+ * in front of you is up the screen. Works with the phone flat or held up: it
+ * uses the screen's top edge and the back camera's direction together.
+ */
+@Composable
+fun HeadingFollower(gm: GameMap, enabled: Boolean) {
+    if (!enabled || gm.fake) return
+    val context = LocalContext.current
+    DisposableEffect(gm, enabled) {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+        val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR)
+        val r = FloatArray(9)
+        // Smoothed heading as a direction vector (averaging angles directly breaks at north).
+        var sx = 0.0
+        var sy = 0.0
+        var lastMs = 0L
+        var lastSet = Double.NaN
+        val listener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(e: android.hardware.SensorEvent) {
+                android.hardware.SensorManager.getRotationMatrixFromVector(r, e.values)
+                @Suppress("DEPRECATION")
+                val rotation = (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).defaultDisplay.rotation
+                // The screen's "up" axis in device terms, for how the screen is turned.
+                val (ux, uy) = when (rotation) {
+                    android.view.Surface.ROTATION_90 -> -1f to 0f
+                    android.view.Surface.ROTATION_180 -> 0f to -1f
+                    android.view.Surface.ROTATION_270 -> 1f to 0f
+                    else -> 0f to 1f
+                }
+                // World (east, north) of screen-up plus the back camera's direction (-Z).
+                val east = r[0] * ux + r[1] * uy - r[2]
+                val north = r[3] * ux + r[4] * uy - r[5]
+                val len = kotlin.math.hypot(east.toDouble(), north.toDouble())
+                if (len < 1e-3) return
+                val a = if (sx == 0.0 && sy == 0.0) 1.0 else 0.15
+                sx = sx * (1 - a) + east / len * a
+                sy = sy * (1 - a) + north / len * a
+                val now = android.os.SystemClock.uptimeMillis()
+                if (now - lastMs < 33) return
+                val deg = (Math.toDegrees(atan2(sx, sy)) + 360) % 360
+                if (!lastSet.isNaN()) {
+                    var diff = abs(deg - lastSet) % 360
+                    if (diff > 180) diff = 360 - diff
+                    if (diff < 0.7) return
+                }
+                lastMs = now
+                lastSet = deg
+                gm.setBearing(deg)
+            }
+
+            override fun onAccuracyChanged(s: android.hardware.Sensor?, accuracy: Int) {}
+        }
+        if (sensor != null) sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+        onDispose { sm.unregisterListener(listener) }
+    }
+}

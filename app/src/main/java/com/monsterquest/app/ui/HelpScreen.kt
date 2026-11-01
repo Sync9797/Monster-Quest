@@ -127,7 +127,7 @@ private val topics = listOf(
         listOf(
             section(
                 "Getting around the map",
-                "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile), and it tilts toward the horizon as you zoom in. Drag around yourself or twist two fingers to turn it; tap the compass to face north again. It never moves more than a mile away. Coffee shops, doctors, restaurants, groceries, pharmacies, gyms, parks and bars come from the map itself, so they show up even where place lookups are slow. Tap Walk here on anything for directions.",
+                "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile), and it tilts toward the horizon as you zoom in. Your position updates every second and your hero walks smoothly between fixes. Drag around yourself or twist two fingers to turn the map. Tap the compass to have the map turn with your phone, so what's in front of you is up the screen (a gold ring shows it's on); tap it again, or turn the map yourself, for north up. It never moves more than a mile away. Coffee shops, doctors, restaurants, groceries, pharmacies, gyms, parks and bars come from the map itself, so they show up even where place lookups are slow. Tap Walk here on anything for directions.",
                 "The weather badge shows the real weather: rain and heat also carry into battles (Rain or Drought).",
             ),
             section(
