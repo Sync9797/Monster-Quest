@@ -264,7 +264,7 @@ class GameMap internal constructor(val fake: Boolean) {
     }
 
     companion object {
-        const val START_ZOOM = 17.0
+        const val START_ZOOM = 16.0
         const val MIN_ZOOM = 14.0
         const val MAX_ZOOM = 19.5
         /** How far (meters) the map can move away from you: about a mile. */
@@ -278,9 +278,9 @@ class GameMap internal constructor(val fake: Boolean) {
 
         /** Looking straight down when zoomed out, tipping toward the horizon as you zoom in. */
         fun tiltFor(zoom: Double): Double = when {
-            zoom <= 15.0 -> 10.0
-            zoom >= 18.5 -> 60.0
-            else -> 10.0 + (zoom - 15.0) / 3.5 * 50.0
+            zoom <= 15.0 -> 20.0
+            zoom >= 17.5 -> 60.0
+            else -> 20.0 + (zoom - 15.0) / 2.5 * 40.0
         }
 
         private fun mercator(lat: Double, lon: Double, world: Double): Pair<Double, Double> {
