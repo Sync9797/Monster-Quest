@@ -236,7 +236,8 @@ class ClassesTest {
 
     @Test
     fun wayfarerAndScholarRaiseRewards() {
-        val foe = Monster.create(Bestiary.get("emberkit"), 5, rng)
+        // A foe at the hero's level (far weaker ones give little XP).
+        val foe = Monster.create(Bestiary.get("emberkit"), 20, rng)
         fun win(h: Hero): BattleResult {
             val b = Battle(h, emptyList(), foe, EncounterType.WILD, emptyMap(), false, rng = Random(9))
             b.enemies.forEach { it.hp = 0 }

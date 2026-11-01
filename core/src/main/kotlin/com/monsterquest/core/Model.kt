@@ -353,6 +353,8 @@ data class Monster(
     val ivs: StatBlock,
     val level: Int = 1,
     val xp: Int = 0,
+    /** XP earned while [XpRules.MONSTER_LEAD] levels above the hero: it pays out as the hero levels up. */
+    val heldXp: Int = 0,
     val nickname: String? = null,
     /** Move ids chosen by the player for the 4 slots; null = automatic best loadout. */
     val moves: List<String>? = null,
@@ -456,15 +458,25 @@ fun rollShiny(rng: Random, lure: Boolean = false): Boolean = rng.nextInt(if (lur
 
 fun monsterXpForNext(level: Int): Int = ((20 + level * level * 5) * XP_CURVE).toInt()
 
-/** Adds XP to a monster, levelling it up (and evolving it) as needed. */
-fun Monster.gainXp(amount: Int): Monster {
+/**
+ * Adds XP to a monster, levelling it up as needed, but no higher than [cap]
+ * (the hero's lead, see [XpRules]): XP past that is held for later.
+ */
+fun Monster.gainXp(amount: Int, cap: Int = MAX_MONSTER_LEVEL): Monster {
+    val top = cap.coerceAtMost(MAX_MONSTER_LEVEL)
+    if (level >= top && top < MAX_MONSTER_LEVEL) return copy(heldXp = heldXp + amount)
     var lvl = level
     var x = xp + amount
-    while (lvl < MAX_MONSTER_LEVEL && x >= monsterXpForNext(lvl)) {
+    while (lvl < top && x >= monsterXpForNext(lvl)) {
         x -= monsterXpForNext(lvl)
         lvl++
     }
-    if (lvl >= MAX_MONSTER_LEVEL) x = 0
+    if (lvl >= MAX_MONSTER_LEVEL) return copy(level = lvl, xp = 0)
+    if (lvl >= top) {
+        // At the limit: the bar fills to just short of the next level; the rest waits.
+        val room = monsterXpForNext(lvl) - 1
+        if (x > room) return copy(level = lvl, xp = room, heldXp = heldXp + (x - room))
+    }
     // Levelling never evolves a monster on its own: the player chooses to, for candy (see GameEngine.evolve).
     return copy(level = lvl, xp = x)
 }

@@ -160,7 +160,7 @@ object Adventures {
         s = s.copy(
             monsters = s.monsters.map { m ->
                 if (m.uid !in active.monsterUids) return@map m
-                val (after, n) = GameEngine.grow(m, xpEach)
+                val (after, n) = GameEngine.grow(m, xpEach, XpRules.monsterCap(s))
                 notes += n
                 after
             },

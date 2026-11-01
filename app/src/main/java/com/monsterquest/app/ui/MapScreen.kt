@@ -1401,7 +1401,12 @@ private fun FacilityDialog(vm: GameViewModel, v: com.monsterquest.core.Venue, on
     val (what, action) = when (v.role) {
         com.monsterquest.core.VenueRole.PHARMACY -> "A free full heal for your hero and every monster that's still standing, once a day." to "Get patched up"
         com.monsterquest.core.VenueRole.HOSPITAL -> "Wakes every fainted monster at full health, once a day." to "Wake my monsters"
-        else -> "Spend ${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch to train: every party monster gains ${(com.monsterquest.core.Facilities.TRAINING_LEVEL_SHARE * 100).toInt()}% of a level (you have ${vm.state.torches})." to "Train (${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch)"
+        else -> com.monsterquest.core.Facilities.nextTrainingShare(vm.state, now).let { share ->
+            if (share == null) "Your team has trained ${com.monsterquest.core.XpRules.TRAINING_SHARES.size} times today. Come back tomorrow." to "Train"
+            else "Spend ${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch to train: every party monster gains ${(share * 100).toInt()}% of a level " +
+                "(session ${com.monsterquest.core.Facilities.trainingsToday(vm.state, now) + 1} of ${com.monsterquest.core.XpRules.TRAINING_SHARES.size} today; you have ${vm.state.torches} torches). " +
+                "Monsters can't get more than ${com.monsterquest.core.XpRules.MONSTER_LEAD} levels above your hero." to "Train (${com.monsterquest.core.Facilities.TRAINING_TORCHES} torch)"
+        }
     }
     AlertDialog(
         onDismissRequest = onDismiss,

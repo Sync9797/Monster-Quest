@@ -10,9 +10,16 @@ import java.time.ZoneId
  */
 object Facilities {
     const val RANGE_M = 60.0
-    /** A training session at a gym: one torch for this share of a level, for each party monster. */
+    /** A training session at a gym: one torch for a share of a level ([XpRules.TRAINING_SHARES]) for each party monster. */
     const val TRAINING_TORCHES = 1
-    const val TRAINING_LEVEL_SHARE = 0.3
+
+    /** Gym sessions already done today. */
+    fun trainingsToday(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Int =
+        if (state.trainingDay == day(nowMs, zone)) state.trainingCount else 0
+
+    /** The share of a level the next session gives today, or null when they're used up. */
+    fun nextTrainingShare(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Double? =
+        XpRules.TRAINING_SHARES.getOrNull(trainingsToday(state, nowMs, zone))
 
     private fun day(nowMs: Long, zone: ZoneId) = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
 
@@ -26,6 +33,7 @@ object Facilities {
     fun usedToday(state: GameState, role: VenueRole, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean = when (role) {
         VenueRole.PHARMACY -> state.infirmaryDay == day(nowMs, zone)
         VenueRole.HOSPITAL -> state.hospitalDay == day(nowMs, zone)
+        VenueRole.GYM -> nextTrainingShare(state, nowMs, zone) == null
         else -> false
     }
 
@@ -53,20 +61,25 @@ object Facilities {
     }
 
     /** A gym: spend a torch and every party monster gains part of a level. */
-    fun train(state: GameState): Update {
+    fun train(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Update {
+        val share = nextTrainingShare(state, nowMs, zone)
+            ?: return Update(state, "Your team has trained ${XpRules.TRAINING_SHARES.size} times today. The gym opens again tomorrow.")
         if (state.torches < TRAINING_TORCHES) return Update(state, "Training costs $TRAINING_TORCHES torch. Walk to light more.")
         val notes = mutableListOf<String>()
+        val cap = XpRules.monsterCap(state)
         val s = state.copy(
             torches = state.torches - TRAINING_TORCHES,
+            trainingDay = day(nowMs, zone),
+            trainingCount = trainingsToday(state, nowMs, zone) + 1,
             monsters = state.monsters.map { m ->
                 if (m.uid !in state.party || m.fainted) return@map m
-                val xp = (monsterXpForNext(m.level) * TRAINING_LEVEL_SHARE).toInt()
-                val (after, n) = GameEngine.grow(m, xp)
+                val xp = (monsterXpForNext(m.level) * share).toInt()
+                val (after, n) = GameEngine.grow(m, xp, cap)
                 notes += n
                 if (after.level > m.level) notes += "${after.displayName} reached Lv ${after.level}!"
                 after
             },
         )
-        return Update(s, "A hard workout! Your party gains ${(TRAINING_LEVEL_SHARE * 100).toInt()}% of a level each. ${notes.joinToString(" ")}".trim())
+        return Update(s, "A hard workout! Your party gains ${(share * 100).toInt()}% of a level each. ${notes.joinToString(" ")}".trim())
     }
 }

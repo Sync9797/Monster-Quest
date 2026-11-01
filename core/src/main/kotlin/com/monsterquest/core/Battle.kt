@@ -2040,7 +2040,10 @@ class Battle(
         val tamedMonsters = capturedKeys.map { monsterFor(it) }
         // Win XP for the fight, plus taming XP for each one tamed (kept even if you flee or fall after).
         val heroXp = ((if (outcome == BattleOutcome.WON) lvl * 3 * bossMult else 0) +
-            tamedMonsters.sumOf { GameEngine.captureXp(it.level) * bossMult }).let { (it * rewardMult * xpMult).roundToInt() }
+            tamedMonsters.sumOf { GameEngine.captureXp(it.level) * bossMult }).let {
+            // Foes far below you are worth little.
+            (it * rewardMult * xpMult * XpRules.gapFactor(heroLevel, lvl)).roundToInt()
+        }
         val gold = if (outcome == BattleOutcome.WON) {
             ((lvl * 3 + rng.nextInt(lvl * 2 + 1)) * (if (isBoss) 4 else 1) * rewardMult * (1 + heroPerks.goldPct / 100.0)).roundToInt()
         } else {
@@ -2048,7 +2051,8 @@ class Battle(
         }
         val monsterXp = if (outcome == BattleOutcome.WON || outcome == BattleOutcome.CAPTURED || tamedMonsters.isNotEmpty()) {
             partyUids.associateWith { uid ->
-                val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult * xpMult).roundToInt()
+                val gap = XpRules.gapFactor(combatant(uid)?.level ?: lvl, lvl)
+                val base = (lvl * 12 * (if (isBoss) 2 else 1) * rewardMult * xpMult * gap).roundToInt()
                 // Swap-slot monsters that never stepped in get half, like those who fell.
                 if (uid in fought && combatant(uid)?.alive == true) base else base / 2
             }

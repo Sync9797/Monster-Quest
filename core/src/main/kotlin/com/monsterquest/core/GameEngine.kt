@@ -160,8 +160,12 @@ object GameEngine {
         // punished for levelling); an over-full bag just can't take anything else until you make room.
         val inv = state.inventory.toMutableMap()
         boxes.forEach { (item, n) -> inv[item] = (inv[item] ?: 0) + n }
+        // The hero levelled: monsters at the limit get the XP they were holding.
+        val monsters = if (levels == 0) state.monsters else state.monsters.map { m ->
+            if (m.heldXp <= 0) m else growDetailed(m.copy(heldXp = 0), m.heldXp, XpRules.monsterCap(hero.level)).first
+        }
         return XpGain(
-            state.copy(hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades, inventory = inv),
+            state.copy(hero = hero, pendingUpgrades = state.pendingUpgrades + upgrades, inventory = inv, monsters = monsters),
             levels,
             upgrades,
             boxes,
@@ -631,6 +635,7 @@ object GameEngine {
     fun candyLevelUp(state: GameState, uid: String): Update {
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (m.level >= MAX_MONSTER_LEVEL) return Update(state, "${m.displayName} is already max level.")
+        if (m.level >= XpRules.monsterCap(state)) return Update(state, "${m.displayName} is ${XpRules.MONSTER_LEAD} levels ahead of you: level up your hero first.")
         val cost = candyCost(m.level)
         val have = candyOf(state, m.species)
         if (have < cost) return Update(state, "Need $cost ${candyName(m.species)} (you have $have). Release ${m.species.family.removeSuffix(" line")}-line monsters to get more.")
@@ -667,9 +672,14 @@ object GameEngine {
         return u.copy(message = "${m.displayName} forgot ${Moves.get(replaceId).name} and learned ${Moves.get(newId).name}!")
     }
 
-    fun grow(m: Monster, xp: Int): Pair<Monster, List<String>> {
-        val (after, up) = growDetailed(m, xp)
+    /** Said when a monster's XP is held because it's at the hero's lead. */
+    fun heldNote(m: Monster): String =
+        "${m.displayName} is ${XpRules.MONSTER_LEAD} levels ahead of you: its XP is saved until your hero levels up."
+
+    fun grow(m: Monster, xp: Int, cap: Int = MAX_MONSTER_LEVEL): Pair<Monster, List<String>> {
+        val (after, up) = growDetailed(m, xp, cap)
         val notes = mutableListOf<String>()
+        if (after.heldXp > m.heldXp) notes += heldNote(after)
         if (up?.evolvedFrom != null) notes += "${up.evolvedFrom} evolved into ${after.species.name}!"
         up?.learned?.forEach { notes += "${after.displayName} learned $it!" }
         up?.canLearn?.forEach { notes += "${after.displayName} can learn $it. Swap it in from its stat page." }
@@ -679,9 +689,9 @@ object GameEngine {
     private fun monsterStats(m: Monster) = m.stats.let { listOf(it.hp, it.attack, it.magic, it.defense, it.speed) }
 
     /** Like [grow], but returns what changed as a [LevelUp] (null if it didn't level). */
-    fun growDetailed(m: Monster, xp: Int): Pair<Monster, LevelUp?> {
+    fun growDetailed(m: Monster, xp: Int, cap: Int = MAX_MONSTER_LEVEL): Pair<Monster, LevelUp?> {
         val before = m.learnedMoves.map { it.id }.toSet()
-        var after = m.gainXp(xp)
+        var after = m.gainXp(xp, cap)
         if (after.level == m.level) return after to null
         val learned = mutableListOf<String>()
         val canLearn = mutableListOf<String>()
@@ -960,8 +970,9 @@ object GameEngine {
         if (state.count(Item.TREAT) <= 0) return Update(state, "No treats. Buy some in the shop.")
         val m = state.monsters.find { it.uid == uid } ?: return Update(state, "Monster not found.")
         if (m.level >= MAX_MONSTER_LEVEL) return Update(state, "${m.displayName} is already max level.")
+        if (m.level >= XpRules.monsterCap(state)) return Update(state, "${m.displayName} is ${XpRules.MONSTER_LEAD} levels ahead of you: level up your hero first.")
         val xp = treatXp(m)
-        val (fed, notes) = grow(m, xp)
+        val (fed, notes) = grow(m, xp, XpRules.monsterCap(state))
         val lvlMsg = (if (fed.level > m.level) " Grew to Lv ${fed.level}!" else "") + notes.joinToString("") { " $it" }
         return Update(
             state.copy(
@@ -1089,7 +1100,7 @@ object GameEngine {
                 s = s.copy(
                     monsters = s.monsters.map { m ->
                         val xp = r.monsterXp[m.uid] ?: return@map m
-                        val (after, up) = growDetailed(m, xp)
+                        val (after, up) = growDetailed(m, xp, XpRules.monsterCap(s))
                         up?.let { levelUps += it }
                         after
                     },
@@ -1948,7 +1959,7 @@ object GameEngine {
                 s = s.copy(
                     monsters = s.monsters.map { m ->
                         if (m.uid !in s.party || m.fainted) return@map m
-                        val (after, up) = growDetailed(m, (monsterXpForNext(m.level) * bonus.levelShare).toInt().coerceAtLeast(1))
+                        val (after, up) = growDetailed(m, (monsterXpForNext(m.level) * bonus.levelShare).toInt().coerceAtLeast(1), XpRules.monsterCap(s))
                         up?.let { levelUps += it }
                         after
                     },

@@ -402,6 +402,9 @@ data class GameState(
     /** The day a pharmacy last healed you, and a hospital last woke your monsters (see [Facilities]). */
     val infirmaryDay: Long = -1,
     val hospitalDay: Long = -1,
+    /** Gym sessions: the day of the last ones and how many that day (see [XpRules.TRAINING_SHARES]). */
+    val trainingDay: Long = -1,
+    val trainingCount: Int = 0,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

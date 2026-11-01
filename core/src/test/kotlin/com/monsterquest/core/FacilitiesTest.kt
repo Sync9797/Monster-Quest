@@ -30,7 +30,7 @@ class FacilitiesTest {
         s = Facilities.hospital(s, at(10), utc).state
         assertTrue(s.monsters.none { it.fainted })
         val before = s.monsters.first { it.uid in s.party }
-        s = Facilities.train(s).state
+        s = Facilities.train(s, at(10), utc).state
         assertEquals(2, s.torches)
         val after = s.monsters.first { it.uid == before.uid }
         assertTrue(after.xp > before.xp || after.level > before.level)

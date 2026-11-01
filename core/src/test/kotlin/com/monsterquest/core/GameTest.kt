@@ -1371,7 +1371,8 @@ class GameTest {
         val broke = leveled.copy(candy = emptyMap())
         assertEquals(broke, GameEngine.candyLevelUp(broke, kit.uid).state)
         // Evolving (with the button, for candy) keeps stat points too.
-        var m = released.copy(candy = mapOf(family to 999))
+        // (A strong enough hero: monsters can't get more than 5 levels ahead.)
+        var m = released.copy(candy = mapOf(family to 999), hero = released.hero.copy(level = 30))
         repeat(15) { m = GameEngine.candyLevelUp(m, kit.uid).state }
         assertEquals("emberkit", m.monsters.single().speciesId)
         m = GameEngine.evolve(m, kit.uid).state
