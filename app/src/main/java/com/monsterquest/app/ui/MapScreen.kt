@@ -430,15 +430,16 @@ fun MapScreen(vm: GameViewModel) {
         first = { mapPane(false) },
         second = {
           Column(Modifier.fillMaxSize()) {
-            // Beside the map on a foldable: the weather, compass, food and what's around, above Nearby.
-            Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MapCompass(gameMap)
-                    foodBadge(Modifier)
-                    Spacer(Modifier.weight(1f))
-                    weatherBadge(Modifier)
-                }
-                placeCounts(Modifier.fillMaxWidth())
+            // Beside the map on a foldable: the weather, compass and food above Nearby, and what's around below it.
+            Row(
+                Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MapCompass(gameMap)
+                foodBadge(Modifier)
+                Spacer(Modifier.weight(1f))
+                weatherBadge(Modifier)
             }
             Box(Modifier.weight(1f)) {
             NearbyList(
@@ -475,6 +476,7 @@ fun MapScreen(vm: GameViewModel) {
                 },
             )
             }
+            placeCounts(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 6.dp, bottom = 8.dp))
           }
         },
     )
