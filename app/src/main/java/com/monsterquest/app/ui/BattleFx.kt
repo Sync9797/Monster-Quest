@@ -120,18 +120,35 @@ fun rememberBattleFx(b: BattleView, speed: Float = 1f): BattleFx {
  * attacking (gold) or whose turn it is (pulsing), and shakes and flashes the
  * one being hit.
  */
-fun Modifier.fighterFx(key: String): Modifier = composed {
+fun Modifier.fighterFx(key: String, alive: Boolean = true): Modifier = composed {
     val fx = LocalBattleFx.current ?: return@composed this
     val e = fx.event
     val p = fx.progress.value
     val pulse by rememberInfiniteTransition(label = "turn").animateFloat(
         0.35f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "pulse",
     )
+    // Everyone standing breathes, each a little out of step with the others.
+    val breath by rememberInfiniteTransition(label = "breath").animateFloat(
+        0f, (2 * PI).toFloat(), infiniteRepeatable(tween(2200, easing = androidx.compose.animation.core.LinearEasing)), label = "breath",
+    )
+    val seed = (key.hashCode() and 0xFFFF) / 65535f * (2 * PI).toFloat()
+    val active = e == null && fx.currentKey == key
+    // Idle: a slow rise and fall; on its turn, a ready little hop.
+    val idleY = if (!alive) 0f else if (active) -kotlin.math.abs(sin(breath * 2 + seed)) * 5f else sin(breath + seed) * 2f
     val support = e != null && (e.style == StrikeStyle.HEAL || e.style == StrikeStyle.WARD)
     val attacking = e != null && e.actorKey == key && !support
     val hit = e != null && e.targetKey == key && e.style != StrikeStyle.MISS && !support && p >= impactAt(e)
     val after = if (e != null) ((p - impactAt(e)) / (1 - impactAt(e))).coerceIn(0f, 1f) else 0f
     val shake = if (hit) (sin(after * 9 * PI) * 7 * (1 - after)).toFloat() else 0f
+    // The attacker lunges toward its target and springs back; the target is knocked back a touch.
+    val from = e?.let { fx.centers[it.actorKey] }
+    val to = e?.let { fx.centers[it.targetKey] }
+    val dir = if (from != null && to != null && from != to) (to - from).let { it / it.getDistance() } else Offset.Zero
+    val lunge = if (attacking && e != null && e.style != StrikeStyle.BOLT) sin((p / impactAt(e)).coerceIn(0f, 1f) * PI).toFloat() * 18f
+    else if (attacking && e != null) sin((p / impactAt(e)).coerceIn(0f, 1f) * PI).toFloat() * 6f else 0f
+    val knock = if (hit) (1 - after) * 8f else 0f
+    val dx = shake + dir.x * lunge + dir.x * knock
+    val dy = idleY + dir.y * lunge + dir.y * knock
     val ring = when {
         attacking -> Gold
         e == null && fx.currentKey == key -> Gold.copy(alpha = pulse)
@@ -139,7 +156,7 @@ fun Modifier.fighterFx(key: String): Modifier = composed {
     }
     this
         .onGloballyPositioned { fx.centers[key] = it.boundsInRoot().center }
-        .offset { IntOffset(shake.dp.roundToPx(), 0) }
+        .offset { IntOffset(dx.dp.roundToPx(), dy.dp.roundToPx()) }
         .border(3.dp, ring, CircleShape)
         .background(if (hit) HpRed.copy(alpha = 0.35f * (1 - after)) else Color.Transparent, CircleShape)
 }

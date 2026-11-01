@@ -699,7 +699,7 @@ private fun AllyCardBody(a: FighterView, active: Boolean, modifier: Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(44.dp)) {
-            FighterArt(a, Modifier.size(44.dp).fighterFx(a.key))
+            FighterArt(a, Modifier.size(44.dp).fighterFx(a.key, a.alive))
             if (a.alive) a.status?.let { StatusOverlay(it, 44, Modifier.align(Alignment.TopEnd)) }
         }
         Text(
@@ -773,7 +773,7 @@ private fun FoeArt(f: FighterView, sizeDp: Int) {
     }
     val fade by androidx.compose.animation.core.animateFloatAsState(target, tween(600), label = "foeFade")
     Box(Modifier.size(sizeDp.dp), contentAlignment = Alignment.Center) {
-        FighterArt(f, Modifier.size(sizeDp.dp).fighterFx(f.key).graphicsLayer { alpha = fade })
+        FighterArt(f, Modifier.size(sizeDp.dp).fighterFx(f.key, f.alive).graphicsLayer { alpha = fade })
         if (f.alive) f.status?.let { StatusOverlay(it, sizeDp, Modifier.align(Alignment.TopEnd)) }
         if (f.tamed) {
             GIcon(GameIcon.CRYSTAL, Modifier.size((sizeDp * 0.45f).dp), XpPurple)
