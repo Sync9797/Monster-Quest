@@ -277,7 +277,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 9,
+    val version: Int = 10,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -586,6 +586,7 @@ data class GameState(
                 spellPages = pages,
             )
         }
+        if (s.version < 10) s = levelReset(s)
         return s.withJournal()
     }
 }
@@ -614,5 +615,46 @@ data class Lifetime(
     fun tamed(m: Monster): Lifetime = copy(
         monstersTamed = monstersTamed + 1,
         tamedByType = m.species.types.fold(tamedByType) { acc, t -> acc + (t to (acc[t] ?: 0) + 1) },
+    )
+}
+
+/** Heroes above this level were set back once (3.7.1), to [LEVEL_RESET_TO]. */
+const val LEVEL_RESET_ABOVE = 50
+const val LEVEL_RESET_TO = 25
+
+/**
+ * The one-time level reset (save version 10): a hero above level
+ * [LEVEL_RESET_ABOVE] goes back to [LEVEL_RESET_TO]. Their stat points are
+ * handed back to spend again (the levels' points, plus any a dungeon champion
+ * gave), and monsters above the new limit (hero + 5) come down to it with the
+ * XP they lose saved, to pay back as the hero levels up again. Gear is kept.
+ */
+internal fun levelReset(state: GameState): GameState {
+    val h = state.hero
+    if (h.level <= LEVEL_RESET_ABOVE) return state.copy(version = 10)
+    // Points spent or waiting beyond what the levels gave came from champions: keep those.
+    val spent = h.attributes.values.sumOf { it - STARTING_ATTRIBUTE }
+    val fromChampions = (spent + h.unspentPoints - (h.level - 1) * STAT_POINTS_PER_LEVEL).coerceAtLeast(0)
+    val hero = h.copy(
+        level = LEVEL_RESET_TO,
+        xp = 0,
+        attributes = HeroAttribute.entries.associateWith { STARTING_ATTRIBUTE },
+        unspentPoints = (LEVEL_RESET_TO - 1) * STAT_POINTS_PER_LEVEL + fromChampions,
+    )
+    val cap = XpRules.monsterCap(LEVEL_RESET_TO)
+    val monsters = state.monsters.map { m ->
+        if (m.level <= cap) return@map m
+        val lost = (cap until m.level).sumOf { monsterXpForNext(it) } + m.xp
+        m.copy(level = cap, xp = 0, heldXp = m.heldXp + lost, damage = 0)
+    }
+    // Hero skill slots open at level 30: without Kleptomaniac working, the second weapon goes back in the bag.
+    val offhand = state.offhandGear?.takeIf { hero.skillRanks.none { it.first == Trait.KLEPTOMANIAC } }
+    return state.copy(
+        version = 10,
+        hero = hero,
+        monsters = monsters,
+        gear = if (offhand != null) state.gear + offhand else state.gear,
+        offhandGear = if (offhand != null) null else state.offhandGear,
+        heroDamage = 0,
     )
 }
