@@ -209,7 +209,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val (bank, hit) = com.monsterquest.core.SecretEncounters.roll(secretBank, steps, rng, saver = batterySaver)
         secretBank = bank
         val now = System.currentTimeMillis()
-        if (!hit || !mapVisible || !state.settings.ambushes || battle != null || secretAmbush != null || tooFast(now)) return
+        // Wild monsters only find you while the battery saver is on (you're out walking, phone away).
+        if (!hit || !batterySaver || !state.settings.ambushes || battle != null || secretAmbush != null || tooFast(now)) return
+        resumeSaverAfterBattle = true
         if (state.focus != null || state.monsters.isEmpty() || now - lastBattleEndMs < com.monsterquest.core.SecretEncounters.COOLDOWN_MS) return
         val fighting = GameEngine.fightingCount(state)
         if (fighting > 0 && com.monsterquest.core.SecretEncounters.isThug(state.hero.level, rng)) {
@@ -391,6 +393,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         applyReminderTaps()
         rescheduleReminders()
         GameEngine.dailyRecovery(state, System.currentTimeMillis())?.let(::apply)
+        // The morning's torches for the dungeons.
+        com.monsterquest.core.Torches.morning(state, System.currentTimeMillis())?.let(::apply)
         // Pull in last night's sleep, then show the morning recap if it's the first open today.
         refreshSleep(thenRecap = true)
         val f = state.focus ?: return
@@ -574,9 +578,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A full night's sleep that ended today refills Energy (once a day). */
     private fun restFromSleep() {
-        val u = com.monsterquest.core.SleepLog.restEnergy(state, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val u = com.monsterquest.core.SleepLog.restEnergy(state, now)
         if (u.state != state) set(u.state)
-        if (u.message.isNotEmpty()) message = u.message
+        // How well you slept sets today's rest: a boost and extra torches, or a penalty.
+        val r = com.monsterquest.core.Rest.update(state, now)
+        if (r.state != state) set(r.state)
+        val text = listOf(u.message, r.message).filter { it.isNotEmpty() }.joinToString(" ")
+        if (text.isNotEmpty()) message = text
     }
 
     /** The morning recap is on screen. */
@@ -1277,7 +1286,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         levelUps: List<com.monsterquest.core.LevelUp> = emptyList(),
     ) = BattleView.of(b, resultText, nextOpponent, levelUps).copy(caught = state.caught, simpleCasting = state.settings.simpleCasting)
 
+    /** The battery saver was on when a wild fight started: it comes back on afterwards. */
+    private var resumeSaverAfterBattle = false
+
     fun closeBattle() {
+        if (resumeSaverAfterBattle) {
+            resumeSaverAfterBattle = false
+            batterySaver = true
+        }
         lastBattleEndMs = System.currentTimeMillis()
         activeBattle = null
         battle = null

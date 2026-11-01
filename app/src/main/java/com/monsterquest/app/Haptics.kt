@@ -45,6 +45,9 @@ object Haptics {
     /** A firm double: a level-up. */
     fun levelUp(context: Context) = play(context, 0, 120, 80, 120)
 
+    /** Three strong buzzes: a monster jumped you while the battery saver was on. */
+    fun tripleBuzz(context: Context) = play(context, 0, 260, 160, 260, 160, 260)
+
     /** One short tap: a new move learned. */
     fun learned(context: Context) = play(context, 0, 70)
 

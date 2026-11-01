@@ -22,9 +22,10 @@ class GameTest {
         s = GameEngine.completeTask(s, id, 1000 + QuestRewards.MIN_AGE_MS).state
         assertEquals(50 + Difficulty.HARD.gold, s.gold)
         assertEquals(2, s.huntTokens)
-        assertEquals(Difficulty.HARD.xp - heroXpForNext(1), s.hero.xp) // 60 xp levels past 50
-        assertEquals(2, s.hero.level)
-        assertEquals(STAT_POINTS_PER_LEVEL, s.hero.unspentPoints)
+        // Levelling is slower now: a Hard quest isn't a whole level at the start.
+        assertTrue(Difficulty.HARD.xp < heroXpForNext(1))
+        assertEquals(Difficulty.HARD.xp, s.hero.xp)
+        assertEquals(1, s.hero.level)
         // Can't double-claim.
         assertEquals(s, GameEngine.completeTask(s, id, 2000).state)
     }
@@ -372,9 +373,9 @@ class GameTest {
     @Test
     fun spellPagesTeachSpells() {
         var s = started()
-        repeat(4) { s = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gust_bolt" to 1))).state }
+        repeat(Spells.PAGES_TO_LEARN - 1) { s = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gust_bolt" to 1))).state }
         assertTrue("gust_bolt" !in s.hero.knownSpells)
-        assertEquals(4, s.spellPages["gust_bolt"])
+        assertEquals(Spells.PAGES_TO_LEARN - 1, s.spellPages["gust_bolt"])
         val u = GameEngine.grantLoot(s, GameEngine.Loot(pages = mapOf("gust_bolt" to 1)))
         assertTrue("gust_bolt" in u.state.hero.knownSpells)
         assertNull(u.state.spellPages["gust_bolt"])
@@ -614,10 +615,12 @@ class GameTest {
         s = GameEngine.onStepCount(s, 1000, at(27)).state // baseline
         assertEquals(0L, s.stats.totalSteps)
         s = GameEngine.onStepCount(s, 1250, at(27)).state // +250 steps = 2 rewards, 50 banked
-        assertEquals(20, s.hero.xp)
+        // Walking heals, and builds toward torches (no XP any more).
+        assertEquals(0, s.hero.xp)
         assertEquals(20, s.heroDamage)
         assertEquals(10, s.monsters.single().damage)
-        assertEquals(20, s.monsters.single().xp)
+        assertEquals(0, s.monsters.single().xp)
+        assertEquals(250, s.torchSteps)
         assertEquals(50, s.stepBank)
         assertEquals(250, s.stepsToday)
         s = GameEngine.onStepCount(s, 1300, at(27)).state // banked 50 + 50 = another reward

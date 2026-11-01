@@ -38,13 +38,12 @@ class RecapTest {
         s = Recap.track(s, s.copy(stats = s.stats.copy(tasksCompleted = s.stats.tasksCompleted + 2)), at(15))
 
         val t = s.tallies.getValue(day.toEpochDay())
-        assertTrue(t.monsterXp > 0)
         assertTrue(t.hpRestored > 0)
         assertEquals(120, t.gold)
         assertTrue((t.items[Item.POTION] ?: 0) >= 2) // plus any from level-up boxes
         assertNull(t.items[Item.ETHER])
         assertEquals(2, t.tasks)
-        assertTrue(walked.hero.level > before.hero.level || walked.hero.xp > before.hero.xp)
+        assertTrue(walked.torches > before.torches)
 
         // Not due the same day, nor before 4 AM; due the next morning, once.
         assertFalse(Recap.due(s, at(20), zone))

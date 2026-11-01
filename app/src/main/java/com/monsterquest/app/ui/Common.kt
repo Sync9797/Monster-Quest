@@ -114,7 +114,16 @@ fun SmallButton(
 
 /** Header strip showing level, gold and hunt tokens. */
 @Composable
-fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null) {
+fun ResourceHeader(
+    level: Int,
+    gold: Int,
+    tokens: Int,
+    modifier: Modifier = Modifier,
+    onSettings: (() -> Unit)? = null,
+    /** The battery saver button: while it's on, wild monsters can find you as you walk. */
+    saverOn: Boolean = false,
+    onSaver: (() -> Unit)? = null,
+) {
     Row(
         modifier.fillMaxWidth().padding(start = if (onSettings != null) 4.dp else 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -129,7 +138,12 @@ fun ResourceHeader(level: Int, gold: Int, tokens: Int, modifier: Modifier = Modi
             Text("LV $level", fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, letterSpacing = 2.sp)
         }
         IconText(GameIcon.COIN, "$gold", tint = Gold, textColor = Gold, bold = true)
-        IconText(GameIcon.TARGET, "$tokens hunts", tint = Mint, textColor = Mint, bold = true)
+        IconText(GameIcon.FLAME, "$tokens", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
+        if (onSaver != null) {
+            androidx.compose.material3.IconButton(onClick = onSaver, modifier = Modifier.semantics { contentDescription = "Battery saver" }) {
+                com.monsterquest.app.ui.art.GIcon(GameIcon.BATTERY, Modifier.size(22.dp), if (saverOn) Mint else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 

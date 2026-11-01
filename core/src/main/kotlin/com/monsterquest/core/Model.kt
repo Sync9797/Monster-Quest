@@ -181,7 +181,7 @@ data class Skill(
  * collecting [PAGES_TO_LEARN] pages from item shrines.
  */
 object Spells {
-    const val PAGES_TO_LEARN = 5
+    const val PAGES_TO_LEARN = 3
     const val MAX_RANK = 5
     const val MASTERY_LEVEL = 25
 
@@ -427,7 +427,7 @@ const val SHINY_ODDS = 200
 
 fun rollShiny(rng: Random, lure: Boolean = false): Boolean = rng.nextInt(if (lure) SHINY_ODDS / 2 else SHINY_ODDS) == 0
 
-fun monsterXpForNext(level: Int): Int = 20 + level * level * 5
+fun monsterXpForNext(level: Int): Int = ((20 + level * level * 5) * XP_CURVE).toInt()
 
 /** Adds XP to a monster, levelling it up (and evolving it) as needed. */
 fun Monster.gainXp(amount: Int): Monster {

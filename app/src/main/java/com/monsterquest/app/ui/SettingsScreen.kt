@@ -337,8 +337,8 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     prefs.liveWeather,
                 ) { on -> vm.updateSettings { it.copy(liveWeather = on) } }
                 ToggleRow(
-                    "Vibrate for new monsters",
-                    "A short buzz when a monster comes within battle range (${formatDistance(com.monsterquest.app.ALERT_RANGE_M, prefs.imperialUnits)}), even on the battery saver screen.",
+                    "Vibrate for wild encounters",
+                    "Three buzzes when a wild monster finds you while you walk with the battery saver on (the battery button at the top).",
                     prefs.vibrateOnSpawn,
                 ) { on -> vm.updateSettings { it.copy(vibrateOnSpawn = on) } }
                 ToggleRow(

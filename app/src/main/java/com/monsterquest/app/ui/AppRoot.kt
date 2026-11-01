@@ -194,7 +194,12 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     ) { padding ->
         Row(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                ResourceHeader(state.hero.level, state.gold, state.huntTokens, onSettings = { settingsOpen = !settingsOpen })
+                ResourceHeader(
+                    state.hero.level, state.gold, state.torches,
+                    onSettings = { settingsOpen = !settingsOpen },
+                    saverOn = vm.batterySaver,
+                    onSaver = { vm.batterySaver = !vm.batterySaver },
+                )
                 if (settingsOpen) {
                     SettingsScreen(vm) { settingsOpen = false }
                 } else when (tab) {
@@ -211,6 +216,8 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     if (heroMenu) HeroMenuBubbles(onPick = { tab = it; settingsOpen = false; heroMenu = false }, onDismiss = { heroMenu = false })
     // Battery saver: black screen on top while the map keeps running underneath.
     if (vm.batterySaver) BatterySaverOverlay(vm)
+    // Wild monsters that found you while walking in battery-saver mode (from any screen).
+    vm.secretAmbush?.let { SecretAmbushPopup(vm, it) }
     vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
     if (vm.drivingWarning) DrivingWarning { vm.drivingWarning = false }
     }

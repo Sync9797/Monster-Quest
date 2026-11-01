@@ -303,6 +303,8 @@ class Combatant(
             offhand: Gear? = null,
             /** Energy already spent before this battle (it doesn't come back between fights). */
             energyUsed: Int = 0,
+            /** Today's rest: scales Attack, Magic, Defense and Speed. */
+            restFactor: Double = 1.0,
         ): Combatant {
             val cls = h.heroClass
             val perks = h.perks
@@ -323,8 +325,8 @@ class Combatant(
                 (1 + 0.1 * fx.count { it == GearEffect.FOCUSED })
             return Combatant(
                 HERO_KEY, h.name, Element.NEUTRAL, h.level, h.maxHp, (h.maxHp - damage).coerceIn(1, h.maxHp),
-                attack.toInt().coerceAtLeast(1), magic.toInt().coerceAtLeast(1),
-                defense, ((h.speed + classStats) * (1 + speedPct / 100.0)).toInt().coerceAtLeast(1), h.maxMp,
+                (attack * restFactor).toInt().coerceAtLeast(1), (magic * restFactor).toInt().coerceAtLeast(1),
+                (defense * restFactor).toInt().coerceAtLeast(1), ((h.speed + classStats) * (1 + speedPct / 100.0) * restFactor).toInt().coerceAtLeast(1), h.maxMp,
                 (h.maxMp - energyUsed).coerceIn(0, h.maxMp), true, emptyList(),
             ).apply {
                 attackElement = gear?.element ?: Element.NEUTRAL
@@ -634,6 +636,8 @@ class Battle(
     swapLimit: Int? = null,
     /** The trainer who commands the enemy side (a nomad), for the battle log. */
     val trainer: String? = null,
+    /** Today's rest (see [Rest]): a good night makes your side 10% better, a short one 10% worse. */
+    private val restFactor: Double = 1.0,
 ) {
     /** How many of your side fight at once, the hero included: theirs, or the whole team. */
     val slots: Int = if (fullTeam) 1 + MAX_PARTY_SIZE else 1 + extraEnemies.take(3).size + (if (thug != null) 1 else 0)
@@ -644,11 +648,12 @@ class Battle(
     private val heroPerks = hero.perks
     /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
     private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
-    private fun ally(m: Monster) =
-        Combatant.fromMonster(m, hpMultiplier = teamBoost, attackMultiplier = teamBoost, defenseMultiplier = teamBoost, speedMultiplier = teamBoost)
+    private fun ally(m: Monster) = (teamBoost * restFactor).let { f ->
+        Combatant.fromMonster(m, hpMultiplier = f, attackMultiplier = f, defenseMultiplier = f, speedMultiplier = f)
+    }
 
     /** The hero, whether fighting or stepped back to let a monster fight. */
-    private val heroFighter = Combatant.fromHero(hero, gear, heroDamage, armor, offhand, heroEnergyUsed)
+    private val heroFighter = Combatant.fromHero(hero, gear, heroDamage, armor, offhand, heroEnergyUsed, restFactor)
     private val team: MutableList<Combatant> = (listOf(heroFighter) + fighters.map { ally(it) }).toMutableList()
 
     /** Your side as it stands: the hero, then the monsters fighting (swaps change who's here). */

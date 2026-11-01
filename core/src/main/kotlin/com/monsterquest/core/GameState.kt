@@ -155,7 +155,11 @@ data class Hero(
     val xpToNext: Int get() = heroXpForNext(level)
 }
 
-fun heroXpForNext(level: Int): Int = 50 + (level - 1) * 40
+/** XP needed for the next level: 2.29 made levelling 60% slower for everyone ([XP_CURVE]). */
+fun heroXpForNext(level: Int): Int = ((50 + (level - 1) * 40) * XP_CURVE).toInt()
+
+/** Levelling takes this much more XP than it used to (hero and monsters). */
+const val XP_CURVE = 1.6
 
 // ---------------------------------------------------------------------------
 // Tasks
@@ -382,6 +386,13 @@ data class GameState(
     val demandDay: Long = -1,
     /** The Silver or Gold shrine that rose near you today (see [RoamingShrines]). */
     val roaming: RoamingShrine? = null,
+    /** Torches for dungeons (see [Torches]), steps toward the next one, and the day the morning's were given. */
+    val torches: Int = 0,
+    val torchSteps: Int = 0,
+    val torchGiftDay: Long = -1,
+    /** How rested the hero is on [restDay] (see [Rest]). */
+    val restDay: Long = -1,
+    val rest: Rest = Rest.NORMAL,
     /** Trader offers bought ("traderId:index" -> day) and nomads beaten (id -> day). */
     val traderBought: Map<String, Long> = emptyMap(),
     val nomadsBeaten: Map<String, Long> = emptyMap(),

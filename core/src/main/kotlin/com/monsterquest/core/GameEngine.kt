@@ -1031,6 +1031,7 @@ object GameEngine {
         enemyReserve = enemyReserve,
         swapLimit = swapLimit,
         trainer = trainer,
+        restFactor = Rest.today(state, System.currentTimeMillis()).statFactor,
     )
 
     /** Party monsters able to fight right now (a thug brings as many). */
@@ -1321,10 +1322,10 @@ object GameEngine {
             when {
                 r < 0.12 -> weapons += Armory.roll(state.hero.level, rng)
                 r < 0.19 -> armor += Armory.rollArmor(state.hero.level, rng)
-                r < 0.23 -> items[Item.LURE] = (items[Item.LURE] ?: 0) + 1
+                // Spell pages turn up often, two at a time now and then.
                 r < 0.46 && unknownSpells.isNotEmpty() -> {
                     val sp = unknownSpells.random(rng)
-                    pages[sp.id] = (pages[sp.id] ?: 0) + 1
+                    pages[sp.id] = (pages[sp.id] ?: 0) + 1 + (if (rng.nextDouble() < 0.4) 1 else 0)
                 }
                 r < 0.60 -> {
                     val orb = if (rng.nextDouble() < 0.75) Item.TAMING_ORB else Item.GREAT_ORB
@@ -1814,42 +1815,30 @@ object GameEngine {
             stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
         )
         s = Health.recordSteps(s, steps, nowMs, zone)
-        val followed = emptyList<Follower>()
-        val followText = listOf(
-            when (followed.size) {
-                0 -> ""
-                1 -> "A wild ${followed[0].species.name} followed your footsteps! Find it on the map."
-                else -> "${followed.size} monsters followed your footsteps! Find them on the map."
-            },
-            buddyText,
-        ).filter { it.isNotEmpty() }.joinToString(" ")
+        // 2.29: walking earns torches for dungeons (no XP), and still heals the team.
+        val (lit, earned) = Torches.addSteps(s, steps)
+        s = lit
+        val walkText = listOfNotNull(
+            buddyText.takeIf { it.isNotEmpty() },
+            if (earned > 0) "Walking: +$earned torch${if (earned == 1) "" else "es"} (${s.torches} in all)." else null,
+        ).joinToString(" ")
         val bank = s.stepBank + steps
         val rewards = bank / STEPS_PER_REWARD
         s = s.copy(stepBank = bank % STEPS_PER_REWARD)
-        if (rewards == 0) return Update(s, followText)
+        if (rewards == 0) return Update(s, walkText)
 
-        val xp = rewards * XP_PER_REWARD
         val hp = rewards * HP_PER_REWARD
         s = s.copy(
             heroDamage = (s.heroDamage - hp).coerceAtLeast(0),
             heroEnergyUsed = (s.heroEnergyUsed - rewards * ENERGY_PER_REWARD).coerceAtLeast(0),
         )
-        val gain = addHeroXp(s, xp)
-        s = gain.state
         val away = Adventures.awayUids(s)
-        val notes = mutableListOf<String>()
         s = s.copy(
             monsters = s.monsters.map { m ->
-                if (m.uid !in s.team || m.fainted || m.uid in away) return@map m
-                val (after, n) = grow(m, xp)
-                notes += n
-                if (after.level > m.level) notes += "${after.displayName} reached Lv ${after.level}!"
-                after.copy(damage = (after.damage - hp).coerceAtLeast(0))
+                if (m.uid !in s.team || m.fainted || m.uid in away) m else m.copy(damage = (m.damage - hp).coerceAtLeast(0))
             },
         )
-        val text = (levelUpText(gain).trim().takeIf { it.isNotEmpty() }?.let { listOf("Walking: $it") } ?: emptyList()) + notes +
-            listOfNotNull(followText.takeIf { it.isNotEmpty() })
-        return Update(s, text.joinToString(" "))
+        return Update(s, walkText)
     }
 
     // ---- phone-free focus sessions ------------------------------------------
@@ -1865,6 +1854,9 @@ object GameEngine {
         val session = FocusSession(newId(rng), nowMs, nowMs + minutes * 60_000L, minutes)
         return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Put your phone down and stay in the game.")
     }
+
+    /** Torches for a two-hour phone-free session. */
+    const val FOCUS_JACKPOT_TORCHES = 5
 
     /** Boxes from sessions this long need half the walk to open. */
     const val HALF_WALK_MINUTES = 90
@@ -1936,11 +1928,10 @@ object GameEngine {
                 )
                 msg.append(" Your party trained while you were away (+${(bonus.levelShare * 100).toInt()}% of a level each).")
             }
-            // Two hours off the phone: a rare visitor waits on the map.
+            // Two hours off the phone: a bundle of torches for the dungeons.
             if (f.minutes >= 120) {
-                val v = rareVisitor(s, f.endMs, rng)
-                s = s.copy(followers = s.followers + v)
-                msg.append(" A rare ${v.species.name} (Lv ${v.level}) is waiting on your map for 15 minutes, and it's easier to tame!")
+                s = Torches.add(s, FOCUS_JACKPOT_TORCHES)
+                msg.append(" +$FOCUS_JACKPOT_TORCHES torches for the dungeons.")
             }
             // Mood Crystals (personality rerolls) only come from hour-plus sessions.
             if (bonus.moodCrystalPct > 0 && rng.nextInt(100) < bonus.moodCrystalPct) {

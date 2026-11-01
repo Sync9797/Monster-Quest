@@ -94,6 +94,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     BOOTS(fill("M7 3h6v10l6 3v4H5v-3l2-2z"), cut("M7 8h6")),
 
     // Exploration
+    BATTERY(line("M3 7h15v10H3z"), line("M18 10h3v4h-3"), fill("M5 9h4v6H5z")),
     LURE(fill("M12 2c3 4 5 6 5 10a5 5 0 0 1-10 0c0-4 2-6 5-10z"), line("M5 20q7-4 14 0"), cut("M12 9v6")),
     BOOK(fill("M4 4h7a2 2 0 0 1 1 1v16a3 3 0 0 0-3-2H4zM20 4h-7a2 2 0 0 0-1 1v16a3 3 0 0 1 3-2h5z")),
     PAW(fill("M12 12.5c3 0 5.5 3 5.5 5.5 0 2-2 2.5-3 2.5-1.2 0-1.5-.6-2.5-.6s-1.3.6-2.5.6c-1 0-3-.5-3-2.5 0-2.5 2.5-5.5 5.5-5.5z"), fill("M5 9a2 2.4 0 1 0 4 0a2 2.4 0 1 0 -4 0"), fill("M8.5 5a2 2.4 0 1 0 4 0a2 2.4 0 1 0 -4 0"), fill("M11.5 5a2 2.4 0 1 0 4 0a2 2.4 0 1 0 -4 0"), fill("M15 9a2 2.4 0 1 0 4 0a2 2.4 0 1 0 -4 0")),

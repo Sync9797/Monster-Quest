@@ -184,7 +184,6 @@ fun MapScreen(vm: GameViewModel) {
         vm.mapVisible = true
         onDispose { vm.mapVisible = false }
     }
-    vm.secretAmbush?.let { SecretAmbushPopup(vm, it) }
 
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -824,10 +823,10 @@ internal fun TrackLocation(context: Context, batterySaver: Boolean = false, onLo
 
 /** A monster leapt out while you walked: a long buzz, "Ambushed!", then the fight starts on its own. */
 @Composable
-private fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.core.Monster>) {
+internal fun SecretAmbushPopup(vm: GameViewModel, group: List<com.monsterquest.core.Monster>) {
     val context = LocalContext.current
     LaunchedEffect(group) {
-        if (vm.state.settings.vibrateOnSpawn) Haptics.secretAmbush(context)
+        if (vm.state.settings.vibrateOnSpawn) Haptics.tripleBuzz(context)
         delay(2_200)
         vm.startSecretAmbush()
     }
