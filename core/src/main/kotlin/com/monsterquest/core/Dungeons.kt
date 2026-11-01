@@ -51,6 +51,8 @@ data class Dungeon(
     val seed: Long,
     /** The 0-star tutorial: one of a kind, every room shown once, and it can't be lost. */
     val tutorial: Boolean = false,
+    /** The real place it's in, e.g. "Blue Bottle Coffee" (null for scattered ones). */
+    val place: String? = null,
 ) {
     /** Rooms (each a choice of two doors) before the champion: more the harder it is. */
     val rooms: Int get() = if (tutorial) Dungeons.TUTORIAL_ROOMS.size else 2 + stars * 2

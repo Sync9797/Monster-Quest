@@ -101,25 +101,30 @@ object Villains {
             if (r.nextDouble() > CAMP_CHANCE) continue
             val id = "v:$day:$x:$y"
             if (id in state.villainsDefeated) continue
-            val tier = if (r.nextDouble() < 0.25) VillainTier.VILLAIN else VillainTier.THUGS
-            val level = (state.hero.level + r.nextInt(tier.levelBonus.first, tier.levelBonus.last + 1)).coerceAtLeast(2)
-            val size = r.nextInt(tier.teamSize.first, tier.teamSize.last + 1)
-            val team = (1..size).map {
-                val lvl = (level + r.nextInt(-1, 2)).coerceAtLeast(1)
-                Monster.create(Bestiary.trained(r, lvl), lvl, r).copy(cursed = true)
-            }
-            out += VillainCamp(
-                id = id,
-                leader = if (tier == VillainTier.VILLAIN) villainLeaders.random(r) else thugLeaders.random(r),
-                crew = if (tier == VillainTier.VILLAIN) villainCrews.random(r) else thugCrews.random(r),
-                tier = tier,
-                lat = (x + r.nextDouble()) * CELL_DEG,
-                lon = (y + r.nextDouble()) * CELL_DEG,
-                level = level,
-                team = team,
-            )
+            out += makeCamp(state, id, (x + r.nextDouble()) * CELL_DEG, (y + r.nextDouble()) * CELL_DEG, r)
         }
         return out
+    }
+
+    /** A thug crew (or, a quarter of the time, a villain) at [lat], [lon], with a team of shadow-cursed monsters. */
+    fun makeCamp(state: GameState, id: String, lat: Double, lon: Double, r: Random): VillainCamp {
+        val tier = if (r.nextDouble() < 0.25) VillainTier.VILLAIN else VillainTier.THUGS
+        val level = (state.hero.level + r.nextInt(tier.levelBonus.first, tier.levelBonus.last + 1)).coerceAtLeast(2)
+        val size = r.nextInt(tier.teamSize.first, tier.teamSize.last + 1)
+        val team = (1..size).map {
+            val lvl = (level + r.nextInt(-1, 2)).coerceAtLeast(1)
+            Monster.create(Bestiary.trained(r, lvl), lvl, r).copy(cursed = true)
+        }
+        return VillainCamp(
+            id = id,
+            leader = if (tier == VillainTier.VILLAIN) villainLeaders.random(r) else thugLeaders.random(r),
+            crew = if (tier == VillainTier.VILLAIN) villainCrews.random(r) else thugCrews.random(r),
+            tier = tier,
+            lat = lat,
+            lon = lon,
+            level = level,
+            team = team,
+        )
     }
 
     /** The whole team is beaten: pay out and offer their monsters for redemption. */

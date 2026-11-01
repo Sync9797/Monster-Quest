@@ -120,25 +120,24 @@ object Dens {
             if (r.nextDouble() > DEN_CHANCE) continue
             val id = "den:$day:$x:$y"
             if (id in state.densCleared) continue
-            val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
-            val species = Bestiary.randomWild(r, level, rareBoost = 1.6, favorFirstForms = false)
-            // Great stats: nothing below 10, and two perfect.
-            val base = Monster.create(species, level, r, shiny = rollShiny(r)).withWildMoves(r)
-            val sturdy = base.copy(
-                ivs = StatBlock(
-                    maxOf(10, base.ivs.hp), maxOf(10, base.ivs.attack), maxOf(10, base.ivs.magic),
-                    maxOf(10, base.ivs.defense), maxOf(10, base.ivs.speed),
-                ),
-            )
-            out += Den(
-                id = id,
-                name = denName(species.element),
-                lat = (x + 0.15 + r.nextDouble() * 0.7) * CELL_DEG,
-                lon = (y + 0.15 + r.nextDouble() * 0.7) * CELL_DEG,
-                monster = GameEngine.withPerfectStats(sturdy, 2, r),
-            )
+            out += make(state, id, (x + 0.15 + r.nextDouble() * 0.7) * CELL_DEG, (y + 0.15 + r.nextDouble() * 0.7) * CELL_DEG, r)
         }
         return out
+    }
+
+    /** A den at [lat], [lon]: one strong monster a few levels above you, with great stats. */
+    fun make(state: GameState, id: String, lat: Double, lon: Double, r: Random): Den {
+        val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
+        val species = Bestiary.randomWild(r, level, rareBoost = 1.6, favorFirstForms = false)
+        // Great stats: nothing below 10, and two perfect.
+        val base = Monster.create(species, level, r, shiny = rollShiny(r)).withWildMoves(r)
+        val sturdy = base.copy(
+            ivs = StatBlock(
+                maxOf(10, base.ivs.hp), maxOf(10, base.ivs.attack), maxOf(10, base.ivs.magic),
+                maxOf(10, base.ivs.defense), maxOf(10, base.ivs.speed),
+            ),
+        )
+        return Den(id, denName(species.element), lat, lon, GameEngine.withPerfectStats(sturdy, 2, r))
     }
 
     /** The den's monster is beaten: the den is cleared and the taming throws begin. */

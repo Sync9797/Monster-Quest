@@ -106,7 +106,14 @@ object Wanderers {
         val day = epochDay(nowMs, zone)
         val level = state.hero.level
         return scan(lat, lon, day, 0x7ade, TRADER_CHANCE) { x, y, r ->
-            val id = "t:$day:$x:$y"
+            makeTrader(state, "t:$day:$x:$y", (x + r.nextDouble()) * CELL_DEG, (y + r.nextDouble()) * CELL_DEG, r)
+        }
+    }
+
+    /** A trader at [lat], [lon]: two weapons and a piece of armor around your level, and three discounted supplies. */
+    fun makeTrader(state: GameState, id: String, lat: Double, lon: Double, r: Random, name: String? = null): Trader {
+        val level = state.hero.level
+        run {
             val offers = mutableListOf<TraderOffer>()
             repeat(2) {
                 val g = Armory.roll(level, r, luck = 10)
@@ -119,11 +126,7 @@ object Wanderers {
                 val qty = 1 + r.nextInt(3)
                 offers += TraderOffer(offers.size, item = item, qty = qty, price = item.price * qty * (100 - off) / 100, discountPct = off)
             }
-            Trader(
-                id, traderNames.random(r),
-                (x + r.nextDouble()) * CELL_DEG, (y + r.nextDouble()) * CELL_DEG,
-                offers.filter { "$id:${it.index}" !in state.traderBought },
-            )
+            return Trader(id, name ?: traderNames.random(r), lat, lon, offers.filter { "$id:${it.index}" !in state.traderBought })
         }
     }
 

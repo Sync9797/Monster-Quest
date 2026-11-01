@@ -2,6 +2,9 @@ package com.monsterquest.app.data
 
 import android.util.Log
 import com.monsterquest.core.Shrine
+import com.monsterquest.core.TILE_VERSION
+import com.monsterquest.core.Venue
+import com.monsterquest.core.VenueRole
 import com.monsterquest.core.ShrineTile
 import com.monsterquest.core.ShrineTier
 import com.monsterquest.core.World
@@ -42,6 +45,14 @@ object PlacesRepository {
     /** Water outlines are thinned to a point every this many meters. */
     private const val WATER_STEP_M = 80.0
     private const val MAX_WATER_POINTS = 600
+    /** Streets are thinned to a point every this many meters (for thugs and villains). */
+    private const val STREET_STEP_M = 70.0
+    private const val MAX_STREET_POINTS = 400
+    /** Share of restaurants that hold a dungeon (the rest stay item shrines). */
+    private const val RESTAURANT_DUNGEON_PCT = 70
+
+    private val groceryShops = setOf("supermarket", "convenience", "grocery", "greengrocer")
+    private val doctorAmenity = setOf("doctors", "clinic", "dentist")
 
     private val silverAmenity = setOf("cinema", "nightclub", "casino")
     private val silverLeisure = setOf("bowling_alley", "amusement_arcade", "sports_centre", "escape_game", "miniature_golf")
@@ -51,8 +62,18 @@ object PlacesRepository {
     private val goldHistoric = setOf("castle", "monument", "fort", "ruins")
 
 
-    /** What's around: shrines, and points along nearby water ([waterKnown]: every tile loaded for real). */
-    class Area(val shrines: List<Shrine>, val water: List<Pair<Double, Double>>, val waterKnown: Boolean)
+    /**
+     * What's around: shrines, points along nearby water ([waterKnown]: every
+     * tile loaded for real), places hosting dungeons and traders, and points
+     * along streets (empty where the map data isn't loaded).
+     */
+    class Area(
+        val shrines: List<Shrine>,
+        val water: List<Pair<Double, Double>>,
+        val waterKnown: Boolean,
+        val venues: List<Venue> = emptyList(),
+        val streets: List<Pair<Double, Double>> = emptyList(),
+    )
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -71,7 +92,8 @@ object PlacesRepository {
     fun areaNear(dir: File, lat: Double, lon: Double, userAgent: String, nowMs: Long = System.currentTimeMillis()): Area {
         val keys = World.tilesAround(lat, lon, RADIUS_M)
         val tiles = keys.associateWith { read(dir, it) }.toMutableMap()
-        val missing = keys.filter { k -> tiles[k].let { it == null || nowMs - it.fetchedAt > REFRESH_MS } }
+        // Older tiles (from before venues and streets) are looked up again.
+        val missing = keys.filter { k -> tiles[k].let { it == null || it.v < TILE_VERSION || nowMs - it.fetchedAt > REFRESH_MS } }
         // Look up a row of tiles at a time, to keep each query small.
         for (row in missing.groupBy { it.substringBefore(':') }.values) {
             try {
@@ -91,8 +113,11 @@ object PlacesRepository {
             }
         }.filter { World.distanceMeters(lat, lon, it.lat, it.lon) <= RADIUS_M }
         val water = keys.flatMap { tiles[it]?.water.orEmpty() }.map { it[0] to it[1] }
+        val venues = keys.flatMap { tiles[it]?.venues.orEmpty() }.filter { World.distanceMeters(lat, lon, it.lat, it.lon) <= RADIUS_M }
+        val streets = keys.flatMap { tiles[it]?.streets.orEmpty() }.map { it[0] to it[1] }
+            .filter { World.distanceMeters(lat, lon, it.first, it.second) <= RADIUS_M }
         // Waystones fill the gaps so there's always a stop within a short walk.
-        return Area(shrines + World.waystones(lat, lon, shrines), water, keys.all { tiles[it] != null })
+        return Area(shrines + World.waystones(lat, lon, shrines), water, keys.all { tiles[it] != null }, venues, streets)
     }
 
     /** The old entry point: shrines only. */
@@ -109,11 +134,12 @@ object PlacesRepository {
         val query = """
             [out:json][timeout:60];
             (
-              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace)$"];
+              nwr($bbox)["amenity"~"^(cafe|restaurant|fast_food|ice_cream|library|pub|bar|food_court|cinema|theatre|arts_centre|nightclub|casino|post_office|townhall|community_centre|fountain|place_of_worship|marketplace|doctors|clinic|dentist)$"];
+              nwr($bbox)["healthcare"~"^(doctor|clinic|dentist)$"];
               nwr($bbox)["leisure"~"^(park|garden|playground|fitness_station|stadium|bowling_alley|amusement_arcade|water_park|sports_centre|escape_game|miniature_golf)$"]["name"];
               nwr($bbox)["tourism"~"^(museum|theme_park|zoo|aquarium|attraction|artwork|viewpoint|picnic_site)$"];
               nwr($bbox)["historic"~"^(castle|monument|fort|ruins)$"];
-              nwr($bbox)["shop"~"^(books|supermarket|convenience|bakery|mall|department_store|gift|music|video_games|games|toys|sports|outdoor|florist|garden_centre|art|comic|hobby)$"]["name"];
+              nwr($bbox)["shop"~"^(books|supermarket|convenience|grocery|greengrocer|bakery|mall|department_store|gift|music|video_games|games|toys|sports|outdoor|florist|garden_centre|art|comic|hobby)$"]["name"];
             )->.places;
             .places out center;
             (
@@ -122,6 +148,8 @@ object PlacesRepository {
               relation($bbox)["natural"="water"];
             )->.water;
             .water out geom($bbox);
+            way($bbox)["highway"~"^(residential|living_street|pedestrian|unclassified|tertiary|secondary)$"]->.streets;
+            .streets out geom($bbox);
         """.trimIndent()
 
         val conn = URL(ENDPOINT).openConnection() as HttpURLConnection
@@ -148,6 +176,15 @@ object PlacesRepository {
         val elements = root["elements"]?.jsonArray ?: return emptyMap()
         val places = mutableMapOf<String, MutableList<Shrine>>()
         val water = mutableMapOf<String, MutableList<List<Double>>>()
+        val venues = mutableMapOf<String, MutableList<Venue>>()
+        val streets = mutableMapOf<String, MutableList<List<Double>>>()
+        fun addStreet(lat: Double, lon: Double) {
+            val k = World.tileKey(lat, lon)
+            if (k !in keys) return
+            val pts = streets.getOrPut(k) { mutableListOf() }
+            if (pts.size >= MAX_STREET_POINTS) return
+            if (pts.none { World.distanceMeters(it[0], it[1], lat, lon) < STREET_STEP_M }) pts += listOf(lat, lon)
+        }
         fun addWater(lat: Double, lon: Double) {
             val k = World.tileKey(lat, lon)
             if (k !in keys) return
@@ -173,6 +210,16 @@ object PlacesRepository {
                 o["members"]?.jsonArray?.forEach { m -> addGeometry(m.jsonObject["geometry"]?.jsonArray) }
                 continue
             }
+            // Streets: points along them, where thugs and villains stand.
+            if (tags.str("highway") != null) {
+                o["geometry"]?.jsonArray?.forEach { p ->
+                    val g = p.jsonObject
+                    val la = g["lat"]?.jsonPrimitive?.doubleOrNull ?: return@forEach
+                    val lo = g["lon"]?.jsonPrimitive?.doubleOrNull ?: return@forEach
+                    addStreet(la, lo)
+                }
+                continue
+            }
             val center = o["center"]?.jsonObject ?: o
             val lat = center["lat"]?.jsonPrimitive?.doubleOrNull ?: continue
             val lon = center["lon"]?.jsonPrimitive?.doubleOrNull ?: continue
@@ -189,6 +236,23 @@ object PlacesRepository {
                 else -> ShrineTier.ITEM
             }
             val shop = tags.str("shop")
+            val placeId = "${o.str("type")}${o.str("id")}"
+            val healthcare = tags.str("healthcare")
+            // Coffee shops, doctor's offices and most restaurants hold dungeons; grocery stores host traders.
+            val role = when {
+                amenity == "cafe" || amenity in doctorAmenity || healthcare in setOf("doctor", "clinic", "dentist") -> VenueRole.DUNGEON
+                (amenity == "restaurant" || amenity == "fast_food") && Math.floorMod(placeId.hashCode(), 100) < RESTAURANT_DUNGEON_PCT -> VenueRole.DUNGEON
+                shop in groceryShops -> VenueRole.MARKET
+                else -> null
+            }
+            if (role != null) {
+                val list = venues.getOrPut(key) { mutableListOf() }
+                if (list.none { World.distanceMeters(it.lat, it.lon, lat, lon) < 25 }) {
+                    list += Venue(placeId, tags.str("name"), kindLabel(amenity ?: healthcare?.let { if (it == "doctor") "doctors" else it }, leisure, tourism, historic, shop), lat, lon, role)
+                }
+                // A dungeon takes the place over; a grocery store keeps its Supply Cache too.
+                if (role == VenueRole.DUNGEON) continue
+            }
             places.getOrPut(key) { mutableListOf() } += World.shrineFromPlace(
                 "${o.str("type")}${o.str("id")}", tags.str("name"), lat, lon, tier,
                 kind = kindLabel(amenity, leisure, tourism, historic, shop),
@@ -197,7 +261,9 @@ object PlacesRepository {
             )
         }
         // Every looked-up tile is kept, even an empty one (so it isn't looked up again).
-        return keys.associateWith { k -> ShrineTile(nowMs, World.selectForTile(places[k].orEmpty()), water[k].orEmpty()) }
+        return keys.associateWith { k ->
+            ShrineTile(nowMs, World.selectForTile(places[k].orEmpty()), water[k].orEmpty(), venues[k].orEmpty(), streets[k].orEmpty(), TILE_VERSION)
+        }
     }
 
     private fun category(amenity: String?, leisure: String?, tourism: String?, historic: String?, shop: String?): World.PlaceCategory = when {
@@ -216,6 +282,8 @@ object PlacesRepository {
     private fun kindLabel(amenity: String?, leisure: String?, tourism: String?, historic: String?, shop: String?): String? {
         val special = mapOf(
             "books" to "Bookstore", "supermarket" to "Supermarket", "convenience" to "Convenience store",
+            "grocery" to "Grocery store", "greengrocer" to "Greengrocer", "cafe" to "Coffee shop",
+            "doctors" to "Doctor's office", "clinic" to "Clinic", "dentist" to "Dentist",
             "bakery" to "Bakery", "mall" to "Shopping mall", "department_store" to "Department store",
             "gift" to "Gift shop", "music" to "Music store", "video_games" to "Game store", "games" to "Game store",
             "toys" to "Toy store", "sports" to "Sports store", "outdoor" to "Outdoor store", "florist" to "Florist",

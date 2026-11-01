@@ -19,7 +19,20 @@ enum class ShrineTier(val label: String) {
 
 /** One map tile as kept on the phone: when it was looked up, its shrines, and points along its water. */
 @kotlinx.serialization.Serializable
-data class ShrineTile(val fetchedAt: Long, val shrines: List<Shrine>, val water: List<List<Double>> = emptyList())
+data class ShrineTile(
+    val fetchedAt: Long,
+    val shrines: List<Shrine>,
+    val water: List<List<Double>> = emptyList(),
+    /** Places that host dungeons and traders (see [Venues]). */
+    val venues: List<Venue> = emptyList(),
+    /** Points along the tile's streets, for thugs and villains. */
+    val streets: List<List<Double>> = emptyList(),
+    /** What the tile's lookup included: older tiles are looked up again ([TILE_VERSION]). */
+    val v: Int = 0,
+)
+
+/** Bump to make every cached tile look itself up again (2: venues and streets). */
+const val TILE_VERSION = 2
 
 @kotlinx.serialization.Serializable
 data class Shrine(

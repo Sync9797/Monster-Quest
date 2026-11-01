@@ -270,6 +270,7 @@ fun DungeonDialog(vm: GameViewModel, d: Dungeon, distance: Double?, onDismiss: (
             Column {
                 Text(d.name)
                 Text("${d.theme.label} • ${starsText(d.stars)}", color = Gold, fontSize = 14.sp)
+                d.place?.let { Text("In $it", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         },
         text = {
