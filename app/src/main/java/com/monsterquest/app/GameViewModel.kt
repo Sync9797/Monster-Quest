@@ -1096,7 +1096,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun densNear(nowMs: Long): List<com.monsterquest.core.Den> {
         val (lat, lon) = location ?: return emptyList()
+        // Dens keep clear of shrines, so the map never feels crowded.
+        val spots = shrines
         return com.monsterquest.core.Dens.near(state, lat, lon, nowMs)
+            .filter { d -> spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
     }
 
     fun challengeDen(den: com.monsterquest.core.Den) {

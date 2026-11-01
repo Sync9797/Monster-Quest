@@ -177,18 +177,21 @@ object World {
     }
 
     /** Most shrines of each tier kept per tile. */
-    val TILE_CAPS = mapOf(ShrineTier.ITEM to 14, ShrineTier.SILVER to 3, ShrineTier.GOLD to 2)
+    val TILE_CAPS = mapOf(ShrineTier.ITEM to 24, ShrineTier.SILVER to 5, ShrineTier.GOLD to 4)
+
+    /** Nothing on the map stands closer than this to a shrine, so more of them never feels crowded. */
+    const val MIN_SPACING_M = 90.0
 
     /**
      * Which of a tile's real places become shrines: the same ones every time
      * (picked by a stable hash of the place, not by where you are), spaced at
-     * least 40 m apart, up to [TILE_CAPS] of each tier.
+     * least [MIN_SPACING_M] apart, up to [TILE_CAPS] of each tier.
      */
     fun selectForTile(candidates: List<Shrine>): List<Shrine> {
         val kept = mutableListOf<Shrine>()
         for (sh in candidates.sortedBy { stableHash(it.id) * 31L + it.id.length }) {
             if (kept.count { it.tier == sh.tier } >= (TILE_CAPS[sh.tier] ?: 0)) continue
-            if (kept.any { distanceMeters(it.lat, it.lon, sh.lat, sh.lon) < 40 }) continue
+            if (kept.any { distanceMeters(it.lat, it.lon, sh.lat, sh.lon) < MIN_SPACING_M }) continue
             kept += sh
         }
         return kept
@@ -217,7 +220,7 @@ object World {
     private const val SPAWN_CELL_RADIUS = 6
 
     private const val SPAWN_CELL_DEG = 0.0015 // ~160 m
-    private const val SHRINE_CELL_DEG = 0.004 // ~440 m
+    private const val SHRINE_CELL_DEG = 0.0028 // ~310 m
     private const val SHRINE_CELL_RADIUS = 3
 
     fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -308,12 +311,12 @@ object World {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, 7))
-            if (r.nextDouble() > 0.45) continue
+            if (r.nextDouble() > 0.6) continue
             val id = "gen:$x:$y"
             val roll = r.nextDouble()
             val tier = when {
-                roll < 0.08 -> ShrineTier.GOLD
-                roll < 0.2 -> ShrineTier.SILVER
+                roll < 0.1 -> ShrineTier.GOLD
+                roll < 0.25 -> ShrineTier.SILVER
                 else -> ShrineTier.ITEM
             }
             val sLat = (x + r.nextDouble()) * SHRINE_CELL_DEG

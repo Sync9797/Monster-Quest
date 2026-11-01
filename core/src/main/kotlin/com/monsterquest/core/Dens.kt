@@ -42,11 +42,14 @@ object Dens {
     const val MIN_THROWS = BASE_THROWS
     const val MAX_THROWS = 10
     /** Den monsters fight with this much more HP than usual. */
-    const val HP_MULTIPLIER = 1.7
+    const val HP_MULTIPLIER = 2.0
+    /** Share of map cells with a den each day: monsters now live in dens, so there are plenty. */
+    const val DEN_CHANCE = 0.5
+
     /** Den fights pay this much more than a wild fight. */
     const val REWARD_MULTIPLIER = 1.8
 
-    private const val CELL_DEG = 0.005 // ~550 m
+    private const val CELL_DEG = 0.0035 // ~390 m
     private const val CELL_RADIUS = 3
 
     private fun epochDay(nowMs: Long, zone: ZoneId) = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
@@ -114,7 +117,7 @@ object Dens {
             val x = cx + dx
             val y = cy + dy
             val r = Random(seed(x, y, day))
-            if (r.nextDouble() > 0.3) continue
+            if (r.nextDouble() > DEN_CHANCE) continue
             val id = "den:$day:$x:$y"
             if (id in state.densCleared) continue
             val level = (state.hero.level + r.nextInt(3, 6)).coerceAtLeast(4)
