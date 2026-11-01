@@ -93,6 +93,10 @@ object Foods {
     fun active(state: GameState, nowMs: Long): Item? = state.food?.takeIf { state.foodUntilMs > nowMs }
 
     /** Spawn weight multipliers by species id for the food set out. */
+    /** Encounter odds while food is out: its eaters' boost, and the rare bonus as a multiplier. */
+    fun encounterBoosts(state: GameState, nowMs: Long): Pair<Map<String, Double>, Double> =
+        boosts(state, nowMs) to 1.0 + rareBonus(state, nowMs)
+
     fun boosts(state: GameState, nowMs: Long): Map<String, Double> =
         active(state, nowMs)?.let { f -> eaters(f).associate { it.id to boostFor(f, it) } }.orEmpty()
 

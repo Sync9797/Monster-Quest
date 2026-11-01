@@ -264,7 +264,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         val hour = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour
         secretThug = null
-        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, rng)
+        // Food set out draws the monsters that eat it.
+        val (boosts, rare) = com.monsterquest.core.Foods.encounterBoosts(state, now)
+        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, rng, boosts, rare)
     }
 
     /** The "Ambushed!" pop-up has shown: the monsters (or a thug and their crew) strike first. */

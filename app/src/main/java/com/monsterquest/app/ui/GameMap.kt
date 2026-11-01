@@ -31,6 +31,8 @@ import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -108,6 +110,15 @@ class GameMap internal constructor(val fake: Boolean) {
     }
 
     val zoom: Double get() = map?.cameraPosition?.zoom ?: fakeZoom
+
+    /** Which way the map is turned, in degrees clockwise from north (0 = north up). */
+    val bearing: Double get() = map?.cameraPosition?.bearing ?: 0.0
+
+    /** Turns the map back to north up. */
+    fun resetNorth() {
+        val m = map ?: return
+        m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).bearing(0.0).build()), 400)
+    }
 
     /** Zooms (and tilts to match) around the hero. */
     fun zoomTo(z: Double) {
@@ -377,8 +388,8 @@ private fun createMapView(context: Context, gm: GameMap): MapView {
             // Locked on the hero: the game handles zoom and turning itself.
             m.uiSettings.apply {
                 setAllGesturesEnabled(false)
-                isCompassEnabled = true
-                setCompassFadeFacingNorth(true)
+                // The game draws its own compass (it can sit beside the map on a foldable).
+                isCompassEnabled = false
                 isLogoEnabled = false
                 isAttributionEnabled = false
             }
@@ -578,3 +589,28 @@ fun MapCircle(gm: GameMap, lat: Double, lon: Double, radiusM: Double, fill: Colo
         drawPath(path, stroke, style = Stroke(width = 3f))
     }
 }
+
+/** The map's compass: the red needle points north; tap it to turn the map north up again. */
+@Composable
+fun MapCompass(gm: GameMap, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(40.dp)
+            .background(Color(0xE61C2427), androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClickLabel = "Face north") { gm.resetNorth() }
+            .semanticsLabel("Compass"),
+    ) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer { @Suppress("UNUSED_VARIABLE") val t = gm.tick; rotationZ = (-gm.bearing).toFloat() }) {
+            val c = Offset(size.width / 2, size.height / 2)
+            val len = size.minDimension * 0.36f
+            val half = size.minDimension * 0.11f
+            val north = Path().apply { moveTo(c.x, c.y - len); lineTo(c.x - half, c.y); lineTo(c.x + half, c.y); close() }
+            val south = Path().apply { moveTo(c.x, c.y + len); lineTo(c.x - half, c.y); lineTo(c.x + half, c.y); close() }
+            drawPath(north, Color(0xFFE0574A))
+            drawPath(south, Color(0xFFF5F2EA))
+        }
+    }
+}
+
+private fun Modifier.semanticsLabel(label: String) =
+    this.then(androidx.compose.ui.Modifier.semantics { contentDescription = label })

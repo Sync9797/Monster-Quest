@@ -293,10 +293,19 @@ fun StoreScreen(vm: GameViewModel) {
         }
     }
 
+    val food: @Composable () -> Unit = {
+        SectionTitle("Food")
+        Text(
+            "Set food out from the Bag, turn on the battery saver and go for a walk: for 30 minutes the monsters that find you are far likelier to be ones that eat it.",
+            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        com.monsterquest.core.Foods.all.forEach { FoodStoreCard(vm, it) }
+    }
     AdaptivePanes(
         compact = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 buy()
+                food()
                 SellSection(vm)
                 Spacer(Modifier.height(24.dp))
             }
@@ -304,6 +313,7 @@ fun StoreScreen(vm: GameViewModel) {
         first = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp)) {
                 buy()
+                food()
                 Spacer(Modifier.height(24.dp))
             }
         },

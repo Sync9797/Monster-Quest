@@ -260,6 +260,47 @@ fun MapScreen(vm: GameViewModel) {
         gameMap.readPlaces()?.let { vm.addMapPlaces(it.venues, it.streets, it.tiles) }
     }
 
+    // What's around, as small pills that wrap cleanly instead of one long line.
+    val placeCounts: @Composable (Modifier) -> Unit = { mod ->
+        if (vm.loadingPlaces) {
+            Text("Scanning for shrines…", fontSize = 13.sp, modifier = mod)
+        } else {
+            androidx.compose.foundation.layout.FlowRow(
+                mod,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
+                MapCount("${dens.size} dens")
+                if (dungeons.isNotEmpty()) MapCount("${dungeons.size} dungeons")
+                if (villains.isNotEmpty()) MapCount("${villains.size} foes")
+                if (traders.isNotEmpty()) MapCount("${traders.size} traders")
+                if (nomads.isNotEmpty()) MapCount("${nomads.size} nomads")
+            }
+        }
+    }
+    val weatherBadge: @Composable (Modifier) -> Unit = { mod ->
+        vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
+            WeatherBadge(w, vm.state.settings.imperialUnits, mod) { showWeather = true }
+        }
+    }
+    // Food set out: its icon and time left (tap for who it draws).
+    val foodBadge: @Composable (Modifier) -> Unit = { mod ->
+        com.monsterquest.core.Foods.active(vm.state, now)?.let { food ->
+            Row(
+                mod
+                    .background(Color(0xE61C2427), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .clickable { vm.toast("${food.label} is out: monsters that eat it are far likelier to find you on battery-saver walks. ${foodEatersText(vm.state, food)}") }
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GIcon(food.icon(), Modifier.size(18.dp), food.color())
+                Spacer(Modifier.width(4.dp))
+                Text(formatDuration(vm.state.foodUntilMs - now), fontSize = 12.sp, color = Color(0xFFF5F2EA))
+            }
+        }
+    }
+
     // Phones show the tracker bar over the map; big screens list those monsters in Nearby instead.
     val mapPane: @Composable (Boolean) -> Unit = { showTracker ->
         Column(Modifier.fillMaxSize()) {
@@ -327,8 +368,14 @@ fun MapScreen(vm: GameViewModel) {
                     risen?.let { RisenShrineFx(gameMap, it) }
                     MapSprites(gameMap, sprites)
                 }
-                vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
-                    WeatherBadge(w, vm.state.settings.imperialUnits, Modifier.align(Alignment.BottomStart).padding(10.dp)) { showWeather = true }
+                // On a phone the compass (with any food below it) and the weather sit on the map;
+                // on a foldable they move beside it, above Nearby.
+                if (showTracker) {
+                    Column(Modifier.align(Alignment.TopEnd).padding(10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MapCompass(gameMap)
+                        foodBadge(Modifier)
+                    }
+                    weatherBadge(Modifier.align(Alignment.BottomStart).padding(10.dp))
                 }
                 focus?.let { f -> FocusCard(vm, f, Modifier.align(Alignment.BottomCenter)) { focus = null } }
                 if (loc == null) {
@@ -343,23 +390,7 @@ fun MapScreen(vm: GameViewModel) {
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (vm.loadingPlaces) {
-                    Text("Scanning for shrines…", fontSize = 13.sp, modifier = Modifier.weight(1f))
-                } else {
-                    // What's around, as small pills that wrap cleanly instead of one long line.
-                    androidx.compose.foundation.layout.FlowRow(
-                        Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        MapCount("${shrines.count { it.tier == ShrineTier.ITEM }} item · ${shrines.count { it.tier == ShrineTier.SILVER }} silver · ${shrines.count { it.tier == ShrineTier.GOLD }} gold")
-                        MapCount("${dens.size} dens")
-                        if (dungeons.isNotEmpty()) MapCount("${dungeons.size} dungeons")
-                        if (villains.isNotEmpty()) MapCount("${villains.size} foes")
-                        if (traders.isNotEmpty()) MapCount("${traders.size} traders")
-                        if (nomads.isNotEmpty()) MapCount("${nomads.size} nomads")
-                    }
-                }
+                if (showTracker) placeCounts(Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
                 if (!following) {
                     Column(horizontalAlignment = Alignment.End) {
                         OutlinedButton(onClick = {
@@ -397,6 +428,18 @@ fun MapScreen(vm: GameViewModel) {
         compact = { mapPane(true) },
         first = { mapPane(false) },
         second = {
+          Column(Modifier.fillMaxSize()) {
+            // Beside the map on a foldable: the weather, compass, food and what's around, above Nearby.
+            Column(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MapCompass(gameMap)
+                    foodBadge(Modifier)
+                    Spacer(Modifier.weight(1f))
+                    weatherBadge(Modifier)
+                }
+                placeCounts(Modifier.fillMaxWidth())
+            }
+            Box(Modifier.weight(1f)) {
             NearbyList(
                 vm = vm,
                 shrines = shrines,
@@ -430,6 +473,8 @@ fun MapScreen(vm: GameViewModel) {
                     focusOn(MapFocus(v.lat, v.lon, v.leader, "${v.tier.label} of the ${v.crew}", pin = false) { pick = MapPick.VillainPick(v) })
                 },
             )
+            }
+          }
         },
     )
 
