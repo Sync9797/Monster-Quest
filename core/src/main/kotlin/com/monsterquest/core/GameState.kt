@@ -273,7 +273,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 7,
+    val version: Int = 8,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -527,6 +527,25 @@ data class GameState(
                 .mapNotNull { (id, n) -> (Spells.legacy[id] ?: id).takeIf { Spells.byId(it) != null }?.let { it to n } }
                 .groupBy({ it.first }, { it.second }).mapValues { it.value.sum() }
             s = s.copy(version = 7, hero = s.hero.copy(knownSpells = known, spellRanks = ranks), spellPages = pages)
+        }
+        if (s.version < 8) {
+            // 2.29: one wolf and one hawk. Removed lines become the kept one, stage for stage.
+            fun id(x: String) = Bestiary.removedIds[x] ?: x
+            fun ids(xs: Set<String>) = xs.map(::id).toSet()
+            val candy = s.candy.entries.groupBy({ Bestiary.removedFamilies[it.key] ?: it.key }, { it.value }).mapValues { it.value.sum() }
+            s = s.copy(
+                version = 8,
+                monsters = s.monsters.map { it.copy(speciesId = id(it.speciesId)) },
+                eggs = s.eggs.map { it.copy(speciesId = id(it.speciesId)) },
+                candy = candy,
+                seen = ids(s.seen),
+                caught = ids(s.caught),
+                shinyCaught = ids(s.shinyCaught),
+                wanted = ids(s.wanted),
+                mysteryId = s.mysteryId?.let(::id),
+                mysteriesSolved = s.mysteriesSolved.map { (sp, w) -> id(sp) to w },
+                villainSpoils = s.villainSpoils.map { it.copy(speciesId = id(it.speciesId)) },
+            )
         }
         return s.withJournal()
     }

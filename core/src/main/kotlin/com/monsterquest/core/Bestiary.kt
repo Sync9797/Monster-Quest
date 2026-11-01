@@ -51,8 +51,8 @@ data class Species(
  * - 4 starter lines (#1, #4, #7, #10): pseudo-legendary three-stage lines, the
  *   strongest monsters short of the legendaries. Very rare in the wild.
  * - 6 four-stage lines (3 evolutions), one per type.
- * - 6 three-stage hound lines (2 evolutions): one breed per type.
- * - 5 more three-stage lines: slime, rock golem, thunderbird, shell turtle and imp.
+ * - 1 three-stage hound line (Shadow Hound).
+ * - 4 more three-stage lines: slime, rock golem, shell turtle and imp.
  * - 1.33: five more per type: a three-stage and a two-stage line each.
  * - 2 rare one-stage mythics.
  * - 6 legendary bosses, one per type, found only at boss shrines.
@@ -177,11 +177,8 @@ object Bestiary {
         "blazecat" to "Cinderfang", "flarepanther" to "Pyremane", "solar_tiger" to "Sun Manticore",
         "storm_kirin" to "Storm Behemoth", "skylark" to "Razorwing", "tidefin" to "Fangfin",
         "basilisk" to "Plague Mantis", "gloombat" to "Gloomshade", "nightstalker" to "Nightwraith",
-        "slime_sovereign" to "Ooze Hydra", "inferno_fenrir" to "Inferno Cerberus",
-        "ember_pup" to "Ember Wolfcub", "spark_pup" to "Spark Wolfcub", "gale_pup" to "Gale Wolfcub", "tide_pup" to "Tide Wolfcub",
-        "venom_pup" to "Venom Wolfcub", "shadow_pup" to "Shadow Wolfcub", "moss_pup" to "Moss Wolfcub",
-        "cinder_hound" to "Cinder Warg", "volt_hound" to "Volt Warg", "sky_hound" to "Sky Warg", "surf_hound" to "Surf Warg",
-        "toxic_hound" to "Toxic Warg", "dusk_hound" to "Dusk Warg", "thorn_hound" to "Thorn Warg",
+        "slime_sovereign" to "Ooze Hydra",
+        "shadow_pup" to "Shadow Wolfcub", "dusk_hound" to "Dusk Warg",
     )
 
     /**
@@ -195,12 +192,10 @@ object Bestiary {
         "maelstrom_serpent" to Element.FLIGHT,    // a sea dragon that rides the storm
         "terraursa" to Element.FIRE,              // a volcanic elder bear
         // Strong final evolutions
-        "thunderbird" to Element.FLIGHT,          // the electric bird
         "magma_colossus" to Element.EARTH,        // molten rock
         "bastion_tortoise" to Element.EARTH,      // a fortress of a shell
         "archfiend" to Element.FIRE,              // a demon
         "leviathan" to Element.CORRUPT,           // a monster of the deep
-        "inferno_fenrir" to Element.CORRUPT,      // the hellhound (Inferno Cerberus)
         "basilisk" to Element.FLIGHT,             // a winged mantis (Plague Mantis)
         "torrentoad" to Element.GAS,              // a poisonous giant toad
         "elder_strix" to Element.CORRUPT,         // an owl of the night
@@ -269,13 +264,7 @@ object Bestiary {
         )))
 
         // ---- Hound breeds: three-stage lines (2 evolutions) ----
-        addAll(hounds("Ember", Element.FIRE, listOf("Ember Pup", "Cinder Hound", "Inferno Fenrir"), listOf("Ember Bite", "Cinder Fang", "Inferno Howl")))
-        addAll(hounds("Spark", Element.ELECTRIC, listOf("Spark Pup", "Volt Hound", "Thunder Fenrir"), listOf("Spark Bite", "Volt Fang", "Thunder Howl")))
-        addAll(hounds("Gale", Element.FLIGHT, listOf("Gale Pup", "Sky Hound", "Tempest Fenrir"), listOf("Gust Bite", "Sky Fang", "Tempest Howl")))
-        addAll(hounds("Tide", Element.WATER, listOf("Tide Pup", "Surf Hound", "Tsunami Fenrir"), listOf("Splash Bite", "Surf Fang", "Tsunami Howl")))
-        addAll(hounds("Venom", Element.GAS, listOf("Venom Pup", "Toxic Hound", "Plague Fenrir"), listOf("Venom Bite", "Toxic Fang", "Plague Howl")))
         addAll(hounds("Shadow", Element.CORRUPT, listOf("Shadow Pup", "Dusk Hound", "Void Fenrir"), listOf("Shadow Bite", "Dusk Fang", "Void Howl")))
-        addAll(hounds("Moss", Element.EARTH, listOf("Moss Pup", "Thorn Hound", "Gaia Fenrir"), listOf("Moss Bite", "Thorn Fang", "Gaia Howl")))
 
         // ---- More three-stage lines ----
         addAll(line("Goopling line", Element.GAS, StatBlock(46, 10, 13, 13, 8), SkillKind.MAGICAL, listOf(
@@ -287,11 +276,6 @@ object Bestiary {
             Member("pebblit", "Pebblit", "Rock Toss"),
             Member("boulderon", "Boulderon", "Boulder Slam"),
             Member("magma_colossus", "Magma Colossus", "Molten Quake"),
-        )))
-        addAll(line("Zipwing line", Element.ELECTRIC, StatBlock(37, 14, 15, 9, 21), SkillKind.PHYSICAL, listOf(
-            Member("zipwing", "Zipwing", "Zap Peck"),
-            Member("stormtalon", "Stormtalon", "Static Dive"),
-            Member("thunderbird", "Thunderbird", "Sky Crack"),
         )))
         addAll(line("Shellsnap line", Element.WATER, StatBlock(48, 13, 10, 17, 6), SkillKind.PHYSICAL, listOf(
             Member("shellsnap", "Shellsnap", "Shell Ram"),
@@ -401,22 +385,38 @@ object Bestiary {
     /** Journal number: the order of [all], so mythics and then legendaries come last. */
     fun number(sp: Species): Int = all.indexOfFirst { it.id == sp.id } + 1
 
+    /**
+     * 2.29: one wolf and one hawk. The other hound breeds became Shadow Hounds
+     * and the Zipwing line became Fluffchicks, stage for stage.
+     */
+    val removedIds: Map<String, String> =
+        listOf("ember", "spark", "gale", "tide", "venom", "moss").associate { "${it}_pup" to "shadow_pup" } +
+            listOf("cinder_hound", "volt_hound", "sky_hound", "surf_hound", "toxic_hound", "thorn_hound").associateWith { "dusk_hound" } +
+            listOf("inferno_fenrir", "thunder_fenrir", "tempest_fenrir", "tsunami_fenrir", "plague_fenrir", "gaia_fenrir").associateWith { "void_fenrir" } +
+            mapOf("zipwing" to "fluffchick", "stormtalon" to "skylark", "thunderbird" to "galehawk")
+
+    /** Evolution lines that were folded into another (old family name to the new one), for candy. */
+    val removedFamilies: Map<String, String> =
+        listOf("Ember", "Spark", "Gale", "Tide", "Venom", "Moss").associate { "$it Hound line" to "Shadow Hound line" } +
+            mapOf("Zipwing line" to "Fluffchick line")
+
     /** Species from older saves, mapped onto the current roster. */
     private val legacyIds = mapOf(
-        "emberpup" to "ember_pup", "sproutling" to "venom_pup", "pebblet" to "zapmouse",
+        "emberpup" to "shadow_pup", "sproutling" to "shadow_pup", "pebblet" to "zapmouse",
         "breezling" to "fluffchick", "greywolf" to "shadow_pup", "squeaker" to "zapmouse",
         "glowmoth" to "prism_fairy", "shadecat" to "gloomwisp", "thornboar" to "toxbug",
         "tidecrab" to "tidefin", "cinderfox" to "emberkit", "dustmole" to "voltrat",
         "stormhawk" to "galehawk", "frostbear" to "reefjaw", "ironshell" to "stingscor",
-        "wraith" to "gloombat", "sunlion" to "flarepanther", "wyrmling" to "inferno_fenrir",
+        "wraith" to "gloombat", "sunlion" to "flarepanther", "wyrmling" to "void_fenrir",
         "elder_treant" to "miasma_hydra", "titan_golem" to "thunder_titan", "seraph" to "prism_fairy",
-    )
+    ) + removedIds
+
 
     fun get(id: String): Species = byId[id] ?: byId.getValue(migrateId(id))
 
     fun migrateId(id: String): String = when {
         id in byId -> id
-        else -> legacyIds[id] ?: "ember_pup"
+        else -> legacyIds[id] ?: "shadow_pup"
     }
 
     val wild: List<Species> = all.filter { !it.bossOnly }

@@ -370,7 +370,6 @@ object MonsterTraits {
         // More three-stage lines
         "Goopling line" to Trait.REGENERATION,    // slimes reform
         "Pebblit line" to Trait.FLAME_BODY,       // molten rock
-        "Zipwing line" to Trait.LEVITATE,         // birds
         "Shellsnap line" to Trait.THICK_HIDE,     // shells
         "Twiglet line" to Trait.REGENERATION,     // trees regrow
         "Impling line" to Trait.INSOMNIA,         // fiends never sleep
@@ -425,17 +424,10 @@ object MonsterTraits {
         "Toxbug line" to listOf(Trait.LEVITATE to 6, Trait.POISON_POINT to 2, Trait.KEEN_SIGHT to 1, Trait.MOMENTUM to 1),     // winged bugs
         "Gloomwisp line" to listOf(Trait.LEVITATE to 6, Trait.OVERBEARING to 2, Trait.INSOMNIA to 2),                      // wisps and wraiths
         // Hounds lead packs, with a touch of their element
-        "Ember Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.KINDLING to 2, Trait.INTIMIDATE to 1),
-        "Spark Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.LIGHTNING_EATER to 2, Trait.MOMENTUM to 1),
-        "Gale Hound line" to listOf(Trait.LEVITATE to 6, Trait.PACK_LEADER to 3, Trait.MOMENTUM to 1),                    // wolves that ride the wind
-        "Tide Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.SPRING_SOAK to 2, Trait.RAIN_RUNNER to 1),
-        "Venom Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.POISON_POINT to 2, Trait.GRIT to 1),
         "Shadow Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.INTIMIDATE to 2, Trait.OVERBEARING to 1),
-        "Moss Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.THICK_HIDE to 2, Trait.STALWART to 1),
         // Three-stage lines
         "Goopling line" to listOf(Trait.REGENERATION to 5, Trait.STALWART to 2, Trait.POISON_POINT to 2),                 // slimes reform
         "Pebblit line" to listOf(Trait.FLAME_BODY to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 2),                      // molten rock
-        "Zipwing line" to listOf(Trait.LEVITATE to 6, Trait.STATIC to 2, Trait.LIGHTNING_EATER to 1, Trait.MOMENTUM to 1),    // thunderbirds
         "Shellsnap line" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 3, Trait.PLATED to 3, Trait.SPRING_SOAK to 2),                   // tortoises
         "Twiglet line" to listOf(Trait.REGENERATION to 4, Trait.SUN_CHASER to 3, Trait.THICK_HIDE to 2, Trait.RAIN_DRINKER to 2),                  // trees love the sun
         "Impling line" to listOf(Trait.INSOMNIA to 3, Trait.KINDLING to 3, Trait.GRIT to 2, Trait.OVERBEARING to 1),          // fiends

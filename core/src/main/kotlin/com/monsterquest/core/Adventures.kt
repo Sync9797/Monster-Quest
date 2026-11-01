@@ -109,7 +109,7 @@ object Adventures {
 
     /** What one ordinary monster at the recommended level brings. */
     private fun benchmark(level: Int): Double {
-        val ref = Monster("ref", "ember_pup", Personality.BALANCED, StatBlock(7, 7, 7, 7, 7), level = level)
+        val ref = Monster("ref", "shadow_pup", Personality.BALANCED, StatBlock(7, 7, 7, 7, 7), level = level)
         return power(ref)
     }
 

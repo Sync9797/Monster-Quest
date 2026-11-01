@@ -70,10 +70,10 @@ class GameTest {
 
     @Test
     fun monstersLevelUp() {
-        val m = Monster.create(Bestiary.get("ember_pup"), 5, rng)
+        val m = Monster.create(Bestiary.get("shadow_pup"), 5, rng)
         val up = m.gainXp(monsterXpForNext(5) + monsterXpForNext(6))
         assertEquals(7, up.level)
-        assertEquals("ember_pup", up.speciesId)
+        assertEquals("shadow_pup", up.speciesId)
         assertTrue(up.stats.hp > m.stats.hp)
     }
 
@@ -280,8 +280,8 @@ class GameTest {
 
     @Test
     fun allMonstersWithEvolutionLines() {
-        assertEquals(119, Bestiary.all.size)
-        assertEquals(119, Bestiary.all.map { it.id }.toSet().size)
+        assertEquals(98, Bestiary.all.size)
+        assertEquals(98, Bestiary.all.map { it.id }.toSet().size)
         // One legendary per type, and they all guard Gold shrines.
         val legendaries = Bestiary.all.filter { it.rarity == Rarity.LEGENDARY }
         assertEquals(Element.typed.toSet(), legendaries.map { it.element }.toSet())
@@ -289,7 +289,7 @@ class GameTest {
         assertTrue(legendaries.all { it in Bestiary.bosses })
         val lines = Bestiary.all.groupBy { it.family }
         assertEquals(6, lines.values.count { it.size == 4 })
-        assertEquals(24, lines.values.count { it.size == 3 })
+        assertEquals(17, lines.values.count { it.size == 3 })
         assertEquals(7, lines.values.count { it.size == 2 })
         // Starters are #1, #4, #7 and #10, each a three-stage line.
         assertEquals(GameEngine.starters, listOf(Bestiary.all[0].id, Bestiary.all[3].id, Bestiary.all[6].id, Bestiary.all[9].id))
@@ -302,7 +302,7 @@ class GameTest {
         Bestiary.all.mapNotNull { it.evolvesTo }.forEach { Bestiary.get(it) }
         // Final forms of four-stage lines out-stat the final hound breeds.
         val tiger = Bestiary.get("solar_tiger").base
-        val fenrir = Bestiary.get("inferno_fenrir").base
+        val fenrir = Bestiary.get("void_fenrir").base
         assertTrue(tiger.hp + tiger.attack + tiger.magic + tiger.defense + tiger.speed >
             fenrir.hp + fenrir.attack + fenrir.magic + fenrir.defense + fenrir.speed)
     }
@@ -319,8 +319,8 @@ class GameTest {
         // Wild monsters still turn up already evolved for their level.
         val all3 = Monster.create(Bestiary.get("emberkit"), 45, rng)
         assertEquals("solar_tiger", all3.speciesId)
-        val hound = Monster.create(Bestiary.get("ember_pup"), 32, rng)
-        assertEquals("inferno_fenrir", hound.speciesId)
+        val hound = Monster.create(Bestiary.get("shadow_pup"), 32, rng)
+        assertEquals("void_fenrir", hound.speciesId)
     }
 
     @Test
@@ -358,7 +358,7 @@ class GameTest {
     fun earthMovesHealAndRecharge() {
         val treant = Monster.create(Bestiary.get("ancient_treant"), 45, Random(1)).copy(moves = listOf("mega_sap", "mulch", "leaf_storm"))
         val s = started().let { it.copy(monsters = listOf(treant), party = listOf(treant.uid)) }
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 10, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("bubblefin"), 10, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
         val me = b.allies.first { it.key == treant.uid }
         me.hp = me.maxHp / 2
         var guard = 0
@@ -409,7 +409,7 @@ class GameTest {
     @Test
     fun wardAbsorbsAndFortifyRaisesDefense() {
         val s = started().let { it.copy(hero = it.hero.copy(knownSpells = it.hero.knownSpells + "fortify")) }
-        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("tide_pup"), 5, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
+        val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("bubblefin"), 5, Random(2)), EncounterType.WILD, rng = Random(3), fullTeam = true)
         var guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.act(BattleAction.Defend)
         val pal = b.allies.first { !it.isHero }
@@ -669,7 +669,7 @@ class GameTest {
         val joins = (1..200).count { Villains.redeem(won, 0, Random(it)).state.monsters.size == won.monsters.size + 1 }
         assertTrue(joins in 120..180, "about 75%: $joins")
         val redeemed = (1..50).map { Villains.redeem(won, 0, Random(it)).state }.first { it.monsters.size > won.monsters.size }
-        assertEquals(0, redeemed.count(Item.RESTORE_POTION))
+        assertEquals(won.count(Item.RESTORE_POTION) - 1, redeemed.count(Item.RESTORE_POTION))
         assertTrue(redeemed.villainSpoils.isEmpty())
         val newcomer = redeemed.monsters.last()
         assertTrue(newcomer.cursed)
@@ -793,7 +793,7 @@ class GameTest {
         val anyOffer = Adventures.offersNear(few, places, at(27), utc).first()
         assertTrue(Adventures.send(few, anyOffer, few.monsters.map { it.uid }, at(27)).state.adventures.isEmpty())
 
-        val team = (1..6).map { Monster.create(Bestiary.get("ember_pup"), 15, Random(it)) }
+        val team = (1..6).map { Monster.create(Bestiary.get("shadow_pup"), 15, Random(it)) }
         val s = started().copy(hero = Hero(level = 12), monsters = team)
         val offers = Adventures.offersNear(s, places, at(27), utc)
         assertTrue(offers.isNotEmpty() && offers.size <= 6)
@@ -834,8 +834,8 @@ class GameTest {
     @Test
     fun strongerTeamsSucceedMoreOften() {
         val adv = Adventure("x", "Park", "Test", 3, 20, 60_000)
-        val weak = (1..3).map { Monster.create(Bestiary.get("ember_pup"), 10, Random(it)) }
-        val strong = (1..3).map { Monster.create(Bestiary.get("ember_pup"), 30, Random(it)) }
+        val weak = (1..3).map { Monster.create(Bestiary.get("shadow_pup"), 10, Random(it)) }
+        val strong = (1..3).map { Monster.create(Bestiary.get("shadow_pup"), 30, Random(it)) }
         assertTrue(Adventures.successChance(strong, adv) > Adventures.successChance(weak, adv))
         assertTrue(Adventures.successChance(weak, adv) < 0.5)
     }
@@ -1238,9 +1238,9 @@ class GameTest {
         val drake = Moves.learnable(Bestiary.get("infernodrake")).map { it.second.id }
         val cat = Moves.learnable(Bestiary.get("solar_tiger")).map { it.second.id }
         assertTrue("razor_gale" in drake && "steel_wing" in drake && "steel_wing" !in cat)
-        assertTrue("fire_fang" in Moves.learnable(Bestiary.get("tide_pup")).map { it.second.id })
+        assertTrue("fire_fang" in Moves.learnable(Bestiary.get("shadow_pup")).map { it.second.id })
         // Multi-hit, sure-hit, self-buff and cure all work in battle.
-        val user = Monster.create(Bestiary.get("cinder_hound"), 30, Random(3)).copy(moves = listOf("fury_swipes", "focus", "kindle", "quick_strike"))
+        val user = Monster.create(Bestiary.get("blazecat"), 30, Random(3)).copy(moves = listOf("fury_swipes", "focus", "kindle", "quick_strike"))
         val s = started().let { it.copy(monsters = listOf(user), party = listOf(user.uid)) }
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }

@@ -58,9 +58,9 @@ class DualTypeTest {
             assertTrue(line.last().secondary != null, line.last().name)
             assertTrue(line.dropLast(1).all { it.secondary == null })
         }
-        val bird = Bestiary.get("thunderbird")
-        assertEquals(listOf(Element.ELECTRIC, Element.FLIGHT), bird.types)
-        assertEquals("Electric / Flight", bird.typeLabel)
+        val golem = Bestiary.get("magma_colossus")
+        assertEquals(listOf(Element.FIRE, Element.EARTH), golem.types)
+        assertEquals("Fire / Earth", golem.typeLabel)
     }
 
     @Test
@@ -71,11 +71,11 @@ class DualTypeTest {
         assertTrue(Element.FIRE in horn.weakTo)
         assertTrue(Element.WATER.multiplierAgainst(horn.types) < 1.5)
         // Same-type bonus and moves from the second type too.
-        val bird = Bestiary.get("thunderbird")
-        assertTrue(Moves.learned(bird, 60).any { it.type == Element.FLIGHT && it.isDamaging })
-        val m = Monster.create(bird, 40, kotlin.random.Random(1))
+        val golem = Bestiary.get("magma_colossus")
+        assertTrue(Moves.learned(golem, 60).any { it.type == Element.EARTH && it.isDamaging })
+        val m = Monster.create(golem, 40, kotlin.random.Random(1))
         val c = Combatant.fromMonster(m, "x")
-        assertEquals(listOf(Element.ELECTRIC, Element.FLIGHT), c.types)
+        assertEquals(listOf(Element.FIRE, Element.EARTH), c.types)
         // A dual-type foe takes its double weakness in a real fight.
         val horned = Monster.create(horn, 40, kotlin.random.Random(2))
         assertEquals(listOf(Element.ELECTRIC, Element.EARTH), Combatant.fromMonster(horned, "y").types)

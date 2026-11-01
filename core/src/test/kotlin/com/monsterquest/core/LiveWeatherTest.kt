@@ -33,7 +33,7 @@ class LiveWeatherTest {
         assertEquals(listOf(Element.FIRE), LiveWeather.RAIN.fewer)
 
         val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state
-        val foe = Monster.create(Bestiary.get("tide_pup"), 5, Random(2))
+        val foe = Monster.create(Bestiary.get("bubblefin"), 5, Random(2))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(3), weather = LiveWeather.RAIN)
         assertEquals(Weather.RAIN, b.weather)
         assertTrue(b.log.any { "raining" in it })

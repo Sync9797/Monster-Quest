@@ -444,7 +444,6 @@ object Moves {
         "Hound" to listOf(14 to "fire_fang", 22 to "volt_fang", 30 to "venom_fang"),
         "Goopling" to listOf(12 to "bubble_barrage", 26 to "soul_drain"),
         "Pebblit" to listOf(8 to "rock_blast", 34 to "stone_edge"),
-        "Zipwing" to listOf(10 to "aerial_ace", 26 to "razor_gale"),
         "Shellsnap" to listOf(10 to "harden", 24 to "ground_pound"),
         "Twiglet" to listOf(12 to "spore_cloud", 26 to "cleansing_wave"),
         "Impling" to listOf(10 to "ember_barrage", 30 to "lava_plume"),

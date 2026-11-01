@@ -448,7 +448,7 @@ class EncountersTest {
     @Test
     fun classicMoveCostsWork() {
         fun duel(move: String, hpFrac: Double = 1.0): Pair<Battle, Combatant> {
-            val m = Monster.create(Bestiary.get("cinder_hound"), 50, Random(3)).copy(moves = listOf(move))
+            val m = Monster.create(Bestiary.get("blazecat"), 50, Random(3)).copy(moves = listOf(move))
             val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
             val foe = Monster.create(Bestiary.get("goopling"), 50, Random(4))
             val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
