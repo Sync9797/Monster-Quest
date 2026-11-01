@@ -32,7 +32,6 @@ import kotlinx.coroutines.launch
 import com.monsterquest.core.StepSource
 import com.monsterquest.core.FrameRate
 import com.monsterquest.app.focus.FocusService
-import org.osmdroid.config.Configuration
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -126,12 +125,6 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         val coldStart = savedInstanceState == null
-        // OpenStreetMap tile servers require an identifying user agent.
-        Configuration.getInstance().apply {
-            userAgentValue = packageName
-            osmdroidBasePath = File(cacheDir, "osmdroid")
-            osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
-        }
 
         // Health Connect has no live updates, so poll it while the game is open.
         lifecycleScope.launch {

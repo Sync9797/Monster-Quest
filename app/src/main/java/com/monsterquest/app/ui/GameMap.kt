@@ -1,0 +1,574 @@
+package com.monsterquest.app.ui
+
+import android.content.Context
+import android.os.Build
+import android.view.ViewGroup
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.calculateCentroid
+import androidx.compose.ui.input.pointer.calculateRotation
+import androidx.compose.ui.input.pointer.calculateZoom
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.monsterquest.core.Venue
+import com.monsterquest.core.Venues
+import com.monsterquest.core.World
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.style.sources.VectorSource
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.sinh
+import kotlin.math.tan
+
+/**
+ * The world map, drawn by MapLibre from OpenFreeMap's vector tiles. Like
+ * Pokemon GO it stays locked on the hero: pinch or double-tap to zoom, drag
+ * round the hero to turn it, and the camera tilts toward the horizon as you
+ * zoom in. Everything on it (shrines, dens, dungeons...) is drawn by Compose
+ * on top, placed through the map's projection.
+ *
+ * Robolectric (screenshot tests) can't run MapLibre's native code, so there
+ * the map is a plain backdrop with a flat projection.
+ */
+class GameMap internal constructor(val fake: Boolean) {
+    var map: MapLibreMap? = null
+        internal set
+    var view: MapView? = null
+        internal set
+    /** Bumps whenever the camera moves, so markers re-place themselves. */
+    var tick by mutableIntStateOf(0)
+        internal set
+    /** The map's style has loaded (its tiles can be read). */
+    var styleReady by mutableStateOf(false)
+        internal set
+
+    // The flat stand-in's camera (Robolectric).
+    private var fakeCenter = LatLng(0.0, 0.0)
+    private var fakeZoom = START_ZOOM
+    internal var widthPx = 0
+    internal var heightPx = 0
+    internal var density = 1f
+
+    /** Where a spot is on screen, in pixels from the map's top-left, or null before the map is ready. */
+    fun toScreen(lat: Double, lon: Double): Offset? {
+        val m = map
+        if (m != null) {
+            val p = m.projection.toScreenLocation(LatLng(lat, lon))
+            return Offset(p.x, p.y)
+        }
+        if (!fake || widthPx == 0) return null
+        val world = 512.0 * 2.0.pow(fakeZoom) * density
+        val (cx, cy) = mercator(fakeCenter.latitude, fakeCenter.longitude, world)
+        val (x, y) = mercator(lat, lon, world)
+        return Offset((x - cx + widthPx / 2.0).toFloat(), (y - cy + heightPx / 2.0).toFloat())
+    }
+
+    val zoom: Double get() = map?.cameraPosition?.zoom ?: fakeZoom
+
+    /** Zooms (and tilts to match) around the hero. */
+    fun zoomTo(z: Double) {
+        val m = map
+        if (m == null) {
+            fakeZoom = z.coerceIn(MIN_ZOOM, MAX_ZOOM); tick++; return
+        }
+        val zz = z.coerceIn(m.minZoomLevel, m.maxZoomLevel)
+        m.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).zoom(zz).tilt(tiltFor(zz)).build()))
+    }
+
+    fun zoomBy(levels: Double) = zoomTo(zoom + levels)
+
+    /** One level in, smoothly (a double-tap). */
+    fun zoomIn() {
+        val m = map ?: return zoomBy(1.0)
+        val z = (m.cameraPosition.zoom + 1).coerceAtMost(m.maxZoomLevel)
+        m.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).zoom(z).tilt(tiltFor(z)).build()), 250)
+    }
+
+    /** Turns the map [deg] degrees clockwise. */
+    fun rotateBy(deg: Float) {
+        val m = map ?: return
+        if (deg == 0f) return
+        m.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(m.cameraPosition).bearing(m.cameraPosition.bearing - deg).build()))
+    }
+
+    /** Puts a spot in the middle at once (following the hero). */
+    fun centerOn(lat: Double, lon: Double) {
+        val m = map
+        if (m == null) {
+            fakeCenter = LatLng(lat, lon); tick++; return
+        }
+        val t = m.cameraPosition.target
+        if (t != null && World.distanceMeters(t.latitude, t.longitude, lat, lon) < 0.5) return
+        m.moveCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)))
+    }
+
+    /** Glides to a spot. */
+    fun animateTo(lat: Double, lon: Double) {
+        val m = map
+        if (m == null) {
+            centerOn(lat, lon); return
+        }
+        m.animateCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)), 600)
+    }
+
+    private var boundsAt: Pair<Double, Double>? = null
+    private var floorFor = 0
+
+    /**
+     * Keeps the map within about a mile of the hero, and no further out than
+     * the closest screen edge being [ZOOM_REACH_M] away.
+     */
+    fun limitAround(lat: Double, lon: Double) {
+        val m = map ?: return
+        val last = boundsAt
+        if (last == null || World.distanceMeters(last.first, last.second, lat, lon) > 25) {
+            boundsAt = lat to lon
+            val dLat = MAP_REACH_M / 111_320.0
+            val dLon = MAP_REACH_M / (111_320.0 * cos(Math.toRadians(lat)))
+            m.setLatLngBoundsForCameraTarget(LatLngBounds.from(lat + dLat, lon + dLon, lat - dLat, lon - dLon))
+        }
+        val v = view ?: return
+        val halfDp = minOf(v.width, v.height) / 2.0 / density
+        if (halfDp <= 0) return
+        val key = (halfDp * 1000).toInt() + (lat * 10).toInt()
+        if (key == floorFor) return
+        floorFor = key
+        // MapLibre's tiles are 512 points wide: meters per point at zoom z is 78,271.5 x cos(latitude) / 2^z.
+        val z = ln(78_271.517 * cos(Math.toRadians(lat)) * halfDp / ZOOM_REACH_M) / ln(2.0)
+        m.setMinZoomPreference(z.coerceIn(12.0, MAX_ZOOM - 1))
+    }
+
+    /**
+     * Reads the places (cafés, doctors, groceries, pharmacies, gyms, parks,
+     * bars...) and streets out of the map tiles that are loaded. [tiles] are
+     * the game's place tiles those map tiles fully cover.
+     */
+    fun readPlaces(): MapPlaces? {
+        val m = map ?: return null
+        val style = m.style ?: return null
+        if (!style.isFullyLoaded) return null
+        val src = style.getSourceAs<VectorSource>(SOURCE_ID) ?: return null
+        val region = m.projection.visibleRegion.latLngBounds
+        // Vector tiles stop at zoom 14 and are overzoomed past it; the z14 tiles under the screen are loaded whole.
+        val n = 1 shl SOURCE_ZOOM
+        val x0 = tileX(region.lonWest, n); val x1 = tileX(region.lonEast, n)
+        val y0 = tileY(region.latNorth, n); val y1 = tileY(region.latSouth, n)
+        val north = tileLat(y0, n); val south = tileLat(y1 + 1, n)
+        val west = x0.toDouble() / n * 360 - 180; val east = (x1 + 1).toDouble() / n * 360 - 180
+        val tiles = HashSet<String>()
+        var y = floor(south / World.TILE_DEG).toLong()
+        while ((y + 1) * World.TILE_DEG <= north) {
+            if (y * World.TILE_DEG >= south) {
+                var x = floor(west / World.TILE_DEG).toLong()
+                while ((x + 1) * World.TILE_DEG <= east) {
+                    if (x * World.TILE_DEG >= west) tiles += "$y:$x"
+                    x++
+                }
+            }
+            y++
+        }
+        val venues = ArrayList<Venue>()
+        val seen = HashSet<String>()
+        for (f in runCatching { src.querySourceFeatures(arrayOf("poi"), null) }.getOrDefault(emptyList())) {
+            val pt = f.geometry() as? org.maplibre.geojson.Point ?: continue
+            val sub = f.prop("subclass")
+            val cls = f.prop("class")
+            val id = "mt" + (f.id() ?: "${sub ?: cls}@${"%.5f".format(java.util.Locale.US, pt.latitude())},${"%.5f".format(java.util.Locale.US, pt.longitude())}")
+            if (!seen.add(id)) continue
+            val role = Venues.roleForPoi(sub, cls, id) ?: continue
+            venues += Venue(id, f.prop("name"), Venues.kindLabel(sub ?: cls), pt.latitude(), pt.longitude(), role)
+        }
+        val streets = ArrayList<Pair<Double, Double>>()
+        val streetKeys = HashSet<Long>()
+        fun addLine(pts: List<org.maplibre.geojson.Point>) {
+            var carry = 0.0
+            for (i in 1 until pts.size) {
+                val a = pts[i - 1]; val b = pts[i]
+                val len = World.distanceMeters(a.latitude(), a.longitude(), b.latitude(), b.longitude())
+                var d = STREET_STEP_M - carry
+                while (d <= len) {
+                    val t = d / len
+                    val la = a.latitude() + (b.latitude() - a.latitude()) * t
+                    val lo = a.longitude() + (b.longitude() - a.longitude()) * t
+                    // Lines are cut at tile edges and repeated; one point per ~30 m cell.
+                    if (streetKeys.add((floor(la / 0.0003).toLong() shl 32) xor floor(lo / 0.0003).toLong())) streets += la to lo
+                    d += STREET_STEP_M
+                }
+                carry = (carry + len) % STREET_STEP_M
+            }
+        }
+        for (f in runCatching { src.querySourceFeatures(arrayOf("transportation"), null) }.getOrDefault(emptyList())) {
+            if (f.prop("class") !in STREET_CLASSES) continue
+            when (val g = f.geometry()) {
+                is org.maplibre.geojson.LineString -> addLine(g.coordinates())
+                is org.maplibre.geojson.MultiLineString -> g.coordinates().forEach { addLine(it) }
+                else -> {}
+            }
+        }
+        return MapPlaces(venues, streets, tiles)
+    }
+
+    companion object {
+        const val START_ZOOM = 17.0
+        const val MIN_ZOOM = 14.0
+        const val MAX_ZOOM = 19.5
+        /** How far (meters) the map can move away from you: about a mile. */
+        const val MAP_REACH_M = 1_609.0
+        /** How far out you can zoom: the nearest screen edge stays within about a quarter mile of you. */
+        const val ZOOM_REACH_M = 402.0
+        const val SOURCE_ID = "openmaptiles"
+        private const val SOURCE_ZOOM = 14
+        private const val STREET_STEP_M = 70.0
+        private val STREET_CLASSES = setOf("primary", "secondary", "tertiary", "minor")
+
+        /** Looking straight down when zoomed out, tipping toward the horizon as you zoom in. */
+        fun tiltFor(zoom: Double): Double = when {
+            zoom <= 15.0 -> 10.0
+            zoom >= 18.5 -> 60.0
+            else -> 10.0 + (zoom - 15.0) / 3.5 * 50.0
+        }
+
+        private fun mercator(lat: Double, lon: Double, world: Double): Pair<Double, Double> {
+            val r = Math.toRadians(lat)
+            return (lon + 180) / 360 * world to (1 - ln(tan(r) + 1 / cos(r)) / PI) / 2 * world
+        }
+        private fun tileX(lon: Double, n: Int) = floor((lon + 180) / 360 * n).toInt()
+        private fun tileY(lat: Double, n: Int): Int {
+            val r = Math.toRadians(lat)
+            return floor((1 - ln(tan(r) + 1 / cos(r)) / PI) / 2 * n).toInt()
+        }
+        private fun tileLat(y: Int, n: Int) = Math.toDegrees(atan(sinh(PI * (1 - 2.0 * y / n))))
+
+        private fun org.maplibre.geojson.Feature.prop(key: String): String? =
+            if (hasProperty(key)) runCatching { getStringProperty(key) }.getOrNull()?.takeIf { it.isNotBlank() } else null
+    }
+}
+
+/** Places and streets read from the map's own tiles. */
+class MapPlaces(val venues: List<Venue>, val streets: List<Pair<Double, Double>>, val tiles: Set<String>)
+
+/** OpenFreeMap's styles (free, no key): a bright one, and a dark one for night. */
+private const val STYLE_LIGHT = "https://tiles.openfreemap.org/styles/liberty"
+private const val STYLE_DARK = "https://tiles.openfreemap.org/styles/dark"
+
+private val isRobolectric = Build.FINGERPRINT == "robolectric"
+
+/** The map, kept for as long as the screen is (it moves between layouts when the phone folds). */
+@Composable
+fun rememberGameMap(dark: Boolean): GameMap {
+    val context = LocalContext.current
+    val density = LocalDensity.current.density
+    val gm = remember { GameMap(fake = isRobolectric).also { it.density = density } }
+    if (gm.fake) return gm
+    val mapView = remember { createMapView(context, gm) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    DisposableEffect(mapView) {
+        mapView.onStart()
+        mapView.onResume()
+        onDispose {
+            mapView.onPause()
+            mapView.onStop()
+            mapView.onDestroy()
+            gm.map = null
+            gm.view = null
+        }
+    }
+    // Light or dark: the dark style falls back to the light one if it can't load.
+    DisposableEffect(dark, gm.map) {
+        val m = gm.map
+        if (m != null) {
+            gm.styleReady = false
+            m.setStyle(if (dark) STYLE_DARK else STYLE_LIGHT) { gm.styleReady = true; gm.tick++ }
+        }
+        onDispose {}
+    }
+    return gm
+}
+
+private fun createMapView(context: Context, gm: GameMap): MapView {
+    MapLibre.getInstance(context)
+    val opts = MapLibreMapOptions.createFromAttributes(context)
+        // A TextureView sits in Compose's layers properly (clipping, folding, overlays).
+        .textureMode(true)
+        .minZoomPreference(GameMap.MIN_ZOOM)
+        .maxZoomPreference(GameMap.MAX_ZOOM)
+        .maxPitchPreference(60.0)
+    return MapView(context, opts).apply {
+        gm.view = this
+        onCreate(null)
+        var failedOnce = false
+        addOnDidFailLoadingMapListener {
+            // The dark style didn't load: use the light one rather than nothing.
+            val m = gm.map ?: return@addOnDidFailLoadingMapListener
+            if (!failedOnce && m.style?.uri == STYLE_DARK) {
+                failedOnce = true
+                m.setStyle(STYLE_LIGHT) { gm.styleReady = true; gm.tick++ }
+            }
+        }
+        getMapAsync { m ->
+            // Locked on the hero: the game handles zoom and turning itself.
+            m.uiSettings.apply {
+                setAllGesturesEnabled(false)
+                isCompassEnabled = true
+                setCompassFadeFacingNorth(true)
+                isLogoEnabled = false
+                isAttributionEnabled = false
+            }
+            m.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder().zoom(GameMap.START_ZOOM).tilt(GameMap.tiltFor(GameMap.START_ZOOM)).build(),
+                ),
+            )
+            m.addOnCameraMoveListener { gm.tick++ }
+            m.addOnCameraIdleListener { gm.tick++ }
+            gm.map = m
+            gm.tick++
+        }
+    }
+}
+
+/**
+ * The map itself with its gestures: pinch to zoom, double-tap to zoom in,
+ * double-tap-hold-and-slide to zoom, drag (one finger round the hero, or
+ * two fingers twisting) to turn it. No panning: it stays on the hero.
+ */
+@Composable
+fun GameMapView(gm: GameMap, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    val slop = with(density) { 8.dp.toPx() }
+    val pxPerLevel = with(density) { 110.dp.toPx() }
+    var lastTapAt by remember { mutableStateOf(0L) }
+    var lastTapPos by remember { mutableStateOf(Offset.Zero) }
+    Box(
+        modifier
+            .background(Color(0xFFE8E4DC))
+            .pointerInput(gm) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val second = down.uptimeMillis - lastTapAt < 320 && (down.position - lastTapPos).getDistance() < slop * 6
+                    // 0 tap, 1 double-tap pending, 2 slide-zoom, 3 turn, 4 pinch
+                    var mode = if (second) 1 else 0
+                    val startZoom = gm.zoom
+                    var prev = down.position
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    if (second) down.consume()
+                    while (true) {
+                        val ev = awaitPointerEvent(PointerEventPass.Initial)
+                        val pressed = ev.changes.filter { it.pressed }
+                        if (pressed.isEmpty()) {
+                            if (mode == 1) {
+                                gm.zoomIn()
+                                ev.changes.forEach { it.consume() }
+                                lastTapAt = 0L
+                            } else if (mode == 0) {
+                                lastTapAt = ev.changes.first().uptimeMillis
+                                lastTapPos = ev.changes.first().position
+                            } else {
+                                ev.changes.forEach { it.consume() }
+                                lastTapAt = 0L
+                            }
+                            break
+                        }
+                        if (pressed.size >= 2) {
+                            mode = 4
+                            val z = ev.calculateZoom()
+                            if (z > 0f && z != 1f) gm.zoomBy(ln(z.toDouble()) / ln(2.0))
+                            gm.rotateBy(ev.calculateRotation())
+                            ev.changes.forEach { it.consume() }
+                            prev = ev.calculateCentroid()
+                            continue
+                        }
+                        val c = pressed.first()
+                        when (mode) {
+                            1, 2 -> {
+                                val dy = c.position.y - down.position.y
+                                if (abs(dy) > slop) mode = 2
+                                // Down zooms in, up zooms out.
+                                if (mode == 2) gm.zoomTo(startZoom + dy / pxPerLevel)
+                                c.consume()
+                            }
+                            0 -> if ((c.position - down.position).getDistance() > slop) {
+                                mode = 3
+                                prev = c.position
+                                c.consume()
+                            }
+                            3 -> {
+                                val a0 = atan2(prev.y - center.y, prev.x - center.x)
+                                val a1 = atan2(c.position.y - center.y, c.position.x - center.x)
+                                var d = Math.toDegrees((a1 - a0).toDouble()).toFloat()
+                                if (d > 180) d -= 360
+                                if (d < -180) d += 360
+                                // Near the middle a small move would be a big turn; ignore it there.
+                                if ((c.position - center).getDistance() > slop * 4) gm.rotateBy(d)
+                                prev = c.position
+                                c.consume()
+                            }
+                        }
+                    }
+                }
+            },
+    ) {
+        if (!gm.fake) {
+            val view = gm.view
+            if (view != null) {
+                AndroidView(
+                    factory = {
+                        // The same MapView moves between layouts when the phone folds or unfolds.
+                        (view.parent as? ViewGroup)?.removeView(view)
+                        view
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Box(
+            Modifier.fillMaxSize().then(
+                Modifier.layoutSize { w, h ->
+                    gm.widthPx = w; gm.heightPx = h
+                },
+            ),
+        ) { content() }
+    }
+}
+
+private fun Modifier.layoutSize(onSize: (Int, Int) -> Unit) = this.then(
+    Modifier.layout { measurable, constraints ->
+        val p = measurable.measure(constraints)
+        onSize(p.width, p.height)
+        layout(p.width, p.height) { p.place(0, 0) }
+    },
+)
+
+/** Something standing on the map: a picture whose [anchorX]/[anchorY] point sits on the spot. */
+class MapSprite(
+    val key: String,
+    val lat: Double,
+    val lon: Double,
+    val image: ImageBitmap,
+    val wDp: Int,
+    val hDp: Int,
+    val anchorX: Float = 0.5f,
+    val anchorY: Float = 1f,
+    val alpha: Float = 1f,
+    val onClick: (() -> Unit)? = null,
+)
+
+/**
+ * Draws [sprites] where they stand. They re-place themselves as the camera
+ * moves without recomposing, and nearer ones (lower on screen) draw on top.
+ */
+@Composable
+fun MapSprites(gm: GameMap, sprites: List<MapSprite>) {
+    Layout(
+        content = {
+            sprites.forEach { s ->
+                val click = s.onClick
+                Image(
+                    s.image,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(s.wDp.dp, s.hDp.dp)
+                        .graphicsLayer { alpha = s.alpha }
+                        .then(
+                            if (click != null) Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = click,
+                            ) else Modifier,
+                        ),
+                )
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(androidx.compose.ui.unit.Constraints()) }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            @Suppress("UNUSED_VARIABLE") val t = gm.tick
+            placeables.forEachIndexed { i, p ->
+                val s = sprites[i]
+                val at = gm.toScreen(s.lat, s.lon) ?: return@forEachIndexed
+                val x = at.x - p.width * s.anchorX
+                val y = at.y - p.height * s.anchorY
+                // Off screen: skip.
+                if (x > constraints.maxWidth || y > constraints.maxHeight || x + p.width < 0 || y + p.height < 0) return@forEachIndexed
+                p.place(x.toInt(), y.toInt(), zIndex = at.y)
+            }
+        }
+    }
+}
+
+/** A circle on the ground ([radiusM] around a spot); it leans with the map's tilt. */
+@Composable
+fun MapCircle(gm: GameMap, lat: Double, lon: Double, radiusM: Double, fill: Color, stroke: Color) {
+    Canvas(Modifier.fillMaxSize()) {
+        @Suppress("UNUSED_VARIABLE") val t = gm.tick
+        val path = Path()
+        val dLat = radiusM / 111_320.0
+        val dLon = radiusM / (111_320.0 * cos(Math.toRadians(lat)))
+        for (i in 0..48) {
+            val a = 2 * PI * i / 48
+            val p = gm.toScreen(lat + dLat * kotlin.math.sin(a), lon + dLon * cos(a)) ?: return@Canvas
+            if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
+        }
+        path.close()
+        drawPath(path, fill)
+        drawPath(path, stroke, style = Stroke(width = 3f))
+    }
+}

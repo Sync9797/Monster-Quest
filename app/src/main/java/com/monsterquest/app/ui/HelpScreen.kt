@@ -110,7 +110,7 @@ private val topics = listOf(
         listOf(
             section(
                 "Getting around the map",
-                "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile); it never moves more than a mile away. Tap Walk here on anything for directions.",
+                "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile), and it tilts toward the horizon as you zoom in. Drag around yourself or twist two fingers to turn it; tap the compass to face north again. It never moves more than a mile away. Coffee shops, doctors, restaurants, groceries, pharmacies, gyms, parks and bars come from the map itself, so they show up even where place lookups are slow. Tap Walk here on anything for directions.",
                 "The weather badge shows the real weather: rain and heat also carry into battles (Rain or Drought).",
             ),
             section(

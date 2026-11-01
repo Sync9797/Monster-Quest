@@ -49,4 +49,33 @@ class VenuesTest {
         assertTrue(camps.all { c -> street.any { it.first == c.lat && it.second == c.lon } })
         for (a in camps) for (b in camps) if (a !== b) assertTrue(World.distanceMeters(a.lat, a.lon, b.lat, b.lon) >= Venues.CAMP_SPACING_M)
     }
+
+    @Test
+    fun mapTilePlacesGetRoles() {
+        assertEquals(VenueRole.DUNGEON, Venues.roleForPoi("cafe", "cafe", "a"))
+        assertEquals(VenueRole.DUNGEON, Venues.roleForPoi("doctors", "hospital", "a"))
+        assertEquals(VenueRole.MARKET, Venues.roleForPoi("supermarket", "grocery", "a"))
+        assertEquals(VenueRole.PHARMACY, Venues.roleForPoi("pharmacy", "pharmacy", "a"))
+        assertEquals(VenueRole.HOSPITAL, Venues.roleForPoi("hospital", "hospital", "a"))
+        assertEquals(VenueRole.GYM, Venues.roleForPoi("fitness_centre", "fitness", "a"))
+        assertEquals(VenueRole.NIGHTLIFE, Venues.roleForPoi("bar", "bar", "a"))
+        assertEquals(VenueRole.NATURE, Venues.roleForPoi(null, "park", "a"))
+        assertEquals(null, Venues.roleForPoi("bank", "bank", "a"))
+        // Most restaurants hold a dungeon, and the same one always does.
+        val picks = (0 until 1000).map { Venues.roleForPoi("restaurant", "restaurant", "r$it") }
+        val share = picks.count { it == VenueRole.DUNGEON }
+        assertTrue(share in 600..800, "$share")
+        assertEquals(picks[5], Venues.roleForPoi("restaurant", "restaurant", "r5"))
+        assertEquals("Doctor's office", Venues.kindLabel("doctors"))
+    }
+
+    @Test
+    fun mergeFillsInWithoutDuplicates() {
+        val a = Venue("n1", "Cafe", "Coffee shop", 40.0, -74.0, VenueRole.DUNGEON)
+        val sameSpot = Venue("m1", "Cafe", "Coffee shop", 40.0001, -74.0, VenueRole.DUNGEON)
+        val other = Venue("m2", "Market", "Supermarket", 40.0001, -74.0, VenueRole.MARKET)
+        val far = Venue("m3", "Cafe 2", "Coffee shop", 40.01, -74.0, VenueRole.DUNGEON)
+        val merged = Venues.merge(listOf(a), listOf(sameSpot, other, far, far))
+        assertEquals(listOf("n1", "m2", "m3"), merged.map { it.id })
+    }
 }

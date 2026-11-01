@@ -1,5 +1,6 @@
 package com.monsterquest.app.ui
 
+import androidx.compose.ui.graphics.asImageBitmap
 import com.monsterquest.app.ui.art.ArtQuality
 import com.monsterquest.app.Haptics
 import com.monsterquest.app.ui.art.BeaconState
@@ -113,12 +114,6 @@ import com.monsterquest.core.VillainTier
 import com.monsterquest.core.Villains
 import com.monsterquest.core.World
 import kotlinx.coroutines.delay
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polygon
 
 /** Nothing farther than this (10 miles) shows in the Nearby list. */
 private const val MAX_NEARBY_M = 16_093.0
@@ -241,204 +236,95 @@ fun MapScreen(vm: GameViewModel) {
     // The map follows the hero; looking at something from the Nearby list leaves it there briefly.
     var following by remember { mutableStateOf(true) }
 
-    val mapView = rememberMapView()
     val darkMap = when (vm.state.settings.mapStyle) {
         com.monsterquest.core.MapStyle.AUTO -> isDarkTheme(vm.state.settings.themeMode)
         com.monsterquest.core.MapStyle.LIGHT -> false
         com.monsterquest.core.MapStyle.DARK -> true
     }
-    LaunchedEffect(darkMap) { applyMapStyle(mapView, darkMap) }
-    val icons = remember { HashMap<String, BitmapDrawable>() }
+    val gameMap = rememberGameMap(darkMap)
+    val icons = remember { HashMap<String, androidx.compose.ui.graphics.ImageBitmap>() }
     fun sprite(key: String, wDp: Int, hDp: Int, draw: (android.graphics.Canvas, Float, Float) -> Unit) =
-        icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw) }
+        icons.getOrPut("$key:${ArtQuality.reduced}") { spriteDrawable(context, wDp, hDp, draw).bitmap.asImageBitmap() }
+
+    // Keep the map on the hero, within a mile of them.
+    LaunchedEffect(loc, following, gameMap.map, gameMap.tick > 0) {
+        val l = loc ?: return@LaunchedEffect
+        gameMap.limitAround(l.first, l.second)
+        if (following) gameMap.centerOn(l.first, l.second)
+    }
+    // Read cafés, doctors, groceries and streets out of the map's own tiles once it settles.
+    LaunchedEffect(gameMap.styleReady, loc?.let { (it.first * 500).toInt() to (it.second * 500).toInt() }) {
+        if (!gameMap.styleReady) return@LaunchedEffect
+        // Give the tiles a moment to arrive.
+        kotlinx.coroutines.delay(2_500)
+        gameMap.readPlaces()?.let { vm.addMapPlaces(it.venues, it.streets, it.tiles) }
+    }
 
     // Phones show the tracker bar over the map; big screens list those monsters in Nearby instead.
     val mapPane: @Composable (Boolean) -> Unit = { showTracker ->
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
-                AndroidView(
-                    factory = {
-                        // The same MapView moves between layouts when the phone folds or unfolds.
-                        (mapView.parent as? ViewGroup)?.removeView(mapView)
-                        mapView
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    update = { mv ->
-                        mv.overlays.clear()
-                        if (loc != null) {
-                            val here = GeoPoint(loc.first, loc.second)
-                            // The map only reaches about a mile around you.
-                            val dLat = MAP_REACH_M / 111_320.0
-                            val dLon = MAP_REACH_M / (111_320.0 * kotlin.math.cos(Math.toRadians(loc.first)))
-                            mv.setScrollableAreaLimitDouble(
-                                org.osmdroid.util.BoundingBox(loc.first + dLat, loc.second + dLon, loc.first - dLat, loc.second - dLon),
-                            )
-                            applyZoomFloor(mv, loc.first)
-                            if (following) mv.controller.setCenter(here)
-                            // Reach circle for shrines.
-                            mv.overlays.add(
-                                Polygon(mv).apply {
-                                    setPoints(Polygon.pointsAsCircle(here, World.SHRINE_RANGE_M))
-                                    fillPaint.color = 0x228B5CF6
-                                    outlinePaint.color = 0x888B5CF6.toInt()
-                                    outlinePaint.strokeWidth = 3f
-                                    // No (empty) info bubble when the circle is tapped; let the tap through.
-                                    infoWindow = null
-                                    setOnClickListener { _, _, _ -> false }
-                                },
-                            )
+                val sprites = buildList {
+                    shrines.forEach { sh ->
+                        val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
+                        val open = Schedule.access(vm.state, sh, now).open
+                        val beacon = when {
+                            sh.isBoss && !open -> BeaconState.LOCKED
+                            cooling -> BeaconState.COOLING
+                            else -> BeaconState.OPEN
                         }
-                        shrines.forEach { sh ->
-                            val rec = vm.state.shrines[sh.id]
-                            val cooling = GameEngine.shrineCooldownLeft(vm.state, sh, now) > 0
-                            val open = Schedule.access(vm.state, sh, now).open
-                            val beacon = when {
-                                sh.isBoss && !open -> BeaconState.LOCKED
-                                cooling -> BeaconState.COOLING
-                                else -> BeaconState.OPEN
-                            }
-                            // Boss shrines stand taller so they're easy to spot from afar.
-                            val (bw, bh) = if (sh.isBoss) 60 to 110 else 48 to 88
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(sh.lat, sh.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.945f)
-                                    setIcon(sprite("shrine_${sh.tier}_$beacon", bw, bh) { c, w, h -> drawShrineOn(c, w, h, sh.tier, beacon) })
-                                    title = sh.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.ShrinePick(sh); true }
-                                },
-                            )
+                        // Boss shrines stand taller so they're easy to spot from afar.
+                        val (bw, bh) = if (sh.isBoss) 60 to 110 else 48 to 88
+                        add(MapSprite("sh:${sh.id}", sh.lat, sh.lon, sprite("shrine_${sh.tier}_$beacon", bw, bh) { c, w, h -> drawShrineOn(c, w, h, sh.tier, beacon) }, bw, bh, anchorY = 0.945f) { pick = MapPick.ShrinePick(sh) })
+                    }
+                    spawns.forEach { sp ->
+                        // A wanted line stands in a gold ring.
+                        if (com.monsterquest.core.Wanted.matches(vm.state, sp.species)) {
+                            add(MapSprite("wr:${sp.id}", sp.lat, sp.lon, sprite("wanted_ring", 70, 34) { c, w, h -> drawWantedRing(c, w, h) }, 70, 34, anchorY = 0.5f) { pick = MapPick.SpawnPick(sp) })
                         }
-                        spawns.forEach { sp ->
-                            // A wanted line stands in a gold ring.
-                            if (com.monsterquest.core.Wanted.matches(vm.state, sp.species)) {
-                                mv.overlays.add(
-                                    Marker(mv).apply {
-                                        position = GeoPoint(sp.lat, sp.lon)
-                                        setAnchor(Marker.ANCHOR_CENTER, 0.5f)
-                                        setIcon(sprite("wanted_ring", 70, 34) { c, w, h -> drawWantedRing(c, w, h) })
-                                        setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
-                                    },
-                                )
-                            }
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(sp.lat, sp.lon)
-                                    // Monsters stand on the map themselves, feet at their spot.
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
-                                    // Alphas stand bigger, in a red glow.
-                                    val size = if (sp.alpha) 80 else 58
-                                    setIcon(sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}_${sp.alpha}", size, size) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny, sp.alpha) })
-                                    title = (if (sp.alpha) "Alpha " else "") + sp.species.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.SpawnPick(sp); true }
-                                },
-                            )
-                        }
-                        // Monsters that scattered from a Snap Bind: still out there, running from you.
-                        vm.fleeingPositions(now).forEach { (sp, pos) ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(pos.first, pos.second)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
-                                    alpha = 0.7f
-                                    setIcon(sprite("spawn_${sp.speciesId}_false_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, false, sp.shiny) })
-                                    title = sp.species.name
-                                    setOnMarkerClickListener { _, _ -> vm.toast("The ${sp.species.name} is running from you after your Snap Bind!"); true }
-                                },
-                            )
-                        }
-                        dens.forEach { den ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(den.lat, den.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.93f)
-                                    setIcon(sprite("den_${den.species.element}", 56, 48) { c, w, h -> drawDenOn(c, w, h, den.species.element) })
-                                    title = den.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.DenPick(den); true }
-                                },
-                            )
-                        }
-                        villains.forEach { v ->
-                            val isVillain = v.tier == VillainTier.VILLAIN
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(v.lat, v.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.955f)
-                                    setIcon(sprite("villain_$isVillain", 46, 69) { c, w, h -> drawVillainOn(c, w, h, isVillain) })
-                                    title = v.leader
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.VillainPick(v); true }
-                                },
-                            )
-                        }
-                        traders.forEach { t ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(t.lat, t.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.9f)
-                                    setIcon(sprite("trader", 52, 52) { c, w, h -> drawTraderOn(c, w, h) })
-                                    title = t.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.TraderPick(t); true }
-                                },
-                            )
-                        }
-                        facilities.forEach { f ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(f.lat, f.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.5f)
-                                    setIcon(sprite("facility_${f.role}", 34, 34) { c, w, h -> drawFacilityOn(c, w, h, f.role) })
-                                    title = f.name ?: f.kind
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.FacilityPick(f); true }
-                                },
-                            )
-                        }
-                        dungeons.forEach { dg ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(dg.lat, dg.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.95f)
-                                    setIcon(sprite("dungeon_${dg.stars}", 60, 60) { c, w, h -> drawDungeonOn(c, w, h, dg.stars) })
-                                    title = dg.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.DungeonPick(dg); true }
-                                },
-                            )
-                        }
-                        nomads.forEach { n ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(n.lat, n.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.9f)
-                                    setIcon(sprite("nomad", 52, 52) { c, w, h -> drawNomadOn(c, w, h) })
-                                    title = n.name
-                                    setOnMarkerClickListener { _, _ -> pick = MapPick.NomadPick(n); true }
-                                },
-                            )
-                        }
-                        if (loc != null) {
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(loc.first, loc.second)
-                                    setAnchor(Marker.ANCHOR_CENTER, 0.86f)
-                                    val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor, vm.state.equippedPieces)
-                                    setIcon(sprite("player_${vm.state.hero.heroClass}_$outfit", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit) })
-                                    setOnMarkerClickListener { _, _ -> true }
-                                },
-                            )
-                        }
-                        focus?.takeIf { it.pin }?.let { f ->
-                            mv.overlays.add(
-                                Marker(mv).apply {
-                                    position = GeoPoint(f.lat, f.lon)
-                                    setAnchor(Marker.ANCHOR_CENTER, 1f)
-                                    setIcon(sprite("focus_pin", 30, 40) { c, w, h -> drawFocusPin(c, w, h) })
-                                    setOnMarkerClickListener { _, _ -> f.details(); true }
-                                },
-                            )
-                        }
-                        mv.invalidate()
-                    },
-                )
-                risen?.let { RisenShrineFx(mapView, it) }
+                        // Alphas stand bigger, in a red glow.
+                        val size = if (sp.alpha) 80 else 58
+                        add(MapSprite("sp:${sp.id}", sp.lat, sp.lon, sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}_${sp.alpha}", size, size) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny, sp.alpha) }, size, size, anchorY = 0.95f) { pick = MapPick.SpawnPick(sp) })
+                    }
+                    // Monsters that scattered from a Snap Bind: still out there, running from you.
+                    vm.fleeingPositions(now).forEach { (sp, pos) ->
+                        add(MapSprite("fl:${sp.id}", pos.first, pos.second, sprite("spawn_${sp.speciesId}_false_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, false, sp.shiny) }, 58, 58, anchorY = 0.95f, alpha = 0.7f) {
+                            vm.toast("The ${sp.species.name} is running from you after your Snap Bind!")
+                        })
+                    }
+                    dens.forEach { den ->
+                        add(MapSprite("dn:${den.id}", den.lat, den.lon, sprite("den_${den.species.element}", 56, 48) { c, w, h -> drawDenOn(c, w, h, den.species.element) }, 56, 48, anchorY = 0.93f) { pick = MapPick.DenPick(den) })
+                    }
+                    villains.forEach { v ->
+                        val isVillain = v.tier == VillainTier.VILLAIN
+                        add(MapSprite("vl:${v.id}", v.lat, v.lon, sprite("villain_$isVillain", 46, 69) { c, w, h -> drawVillainOn(c, w, h, isVillain) }, 46, 69, anchorY = 0.955f) { pick = MapPick.VillainPick(v) })
+                    }
+                    traders.forEach { t ->
+                        add(MapSprite("tr:${t.id}", t.lat, t.lon, sprite("trader", 52, 52) { c, w, h -> drawTraderOn(c, w, h) }, 52, 52, anchorY = 0.9f) { pick = MapPick.TraderPick(t) })
+                    }
+                    facilities.forEach { f ->
+                        add(MapSprite("fc:${f.id}", f.lat, f.lon, sprite("facility_${f.role}", 34, 34) { c, w, h -> drawFacilityOn(c, w, h, f.role) }, 34, 34, anchorY = 0.5f) { pick = MapPick.FacilityPick(f) })
+                    }
+                    dungeons.forEach { dg ->
+                        add(MapSprite("dg:${dg.id}", dg.lat, dg.lon, sprite("dungeon_${dg.stars}", 60, 60) { c, w, h -> drawDungeonOn(c, w, h, dg.stars) }, 60, 60, anchorY = 0.95f) { pick = MapPick.DungeonPick(dg) })
+                    }
+                    nomads.forEach { n ->
+                        add(MapSprite("nm:${n.id}", n.lat, n.lon, sprite("nomad", 52, 52) { c, w, h -> drawNomadOn(c, w, h) }, 52, 52, anchorY = 0.9f) { pick = MapPick.NomadPick(n) })
+                    }
+                    if (loc != null) {
+                        val outfit = HeroOutfit.of(vm.state.equippedGear, vm.state.equippedArmor, vm.state.equippedPieces)
+                        add(MapSprite("hero", loc.first, loc.second, sprite("player_${vm.state.hero.heroClass}_$outfit", 60, 60) { c, w, h -> drawPlayerOn(c, w, h, vm.state.hero.heroClass, outfit) }, 60, 60, anchorY = 0.86f) {})
+                    }
+                    focus?.takeIf { it.pin }?.let { f ->
+                        add(MapSprite("focus", f.lat, f.lon, sprite("focus_pin", 30, 40) { c, w, h -> drawFocusPin(c, w, h) }, 30, 40, anchorY = 1f) { f.details() })
+                    }
+                }
+                GameMapView(gameMap, Modifier.fillMaxSize()) {
+                    // Reach circle for shrines.
+                    if (loc != null) MapCircle(gameMap, loc.first, loc.second, World.SHRINE_RANGE_M, Color(0x228B5CF6), Color(0x888B5CF6))
+                    risen?.let { RisenShrineFx(gameMap, it) }
+                    MapSprites(gameMap, sprites)
+                }
                 vm.weather?.takeIf { vm.state.settings.liveWeather }?.let { w ->
                     WeatherBadge(w, vm.state.settings.imperialUnits, Modifier.align(Alignment.BottomStart).padding(10.dp)) { showWeather = true }
                 }
@@ -476,13 +362,13 @@ fun MapScreen(vm: GameViewModel) {
                     Column(horizontalAlignment = Alignment.End) {
                         OutlinedButton(onClick = {
                             following = true
-                            loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+                            loc?.let { gameMap.animateTo(it.first, it.second) }
                         }) { IconText(GameIcon.PIN, "Back to me") }
                     }
                 }
             }
             Text(
-                "© OpenStreetMap contributors",
+                "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors",
                 fontSize = 9.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 12.dp, bottom = 2.dp),
@@ -493,14 +379,14 @@ fun MapScreen(vm: GameViewModel) {
     fun focusOn(f: MapFocus) {
         focus = f
         following = false
-        mapView.controller.animateTo(GeoPoint(f.lat, f.lon))
+        gameMap.animateTo(f.lat, f.lon)
     }
     // After a look at something in the Nearby list, the map glides back to the hero.
     LaunchedEffect(following, focus) {
         if (!following) {
             kotlinx.coroutines.delay(LOOK_AWAY_MS)
             following = true
-            loc?.let { mapView.controller.animateTo(GeoPoint(it.first, it.second)) }
+            loc?.let { gameMap.animateTo(it.first, it.second) }
         }
     }
     val imperial = vm.state.settings.imperialUnits
@@ -559,7 +445,7 @@ fun MapScreen(vm: GameViewModel) {
             p.spawn,
             onShowArea = {
                 following = false
-                mapView.controller.animateTo(GeoPoint(p.spawn.lat, p.spawn.lon))
+                gameMap.animateTo(p.spawn.lat, p.spawn.lon)
             },
         ) { pick = null }
         null -> {}
@@ -607,26 +493,6 @@ private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
 private const val LOOK_AWAY_MS = 10_000L
 
 /** A small rounded count under the map ("8 near", "3 dens"...). */
-/** How far (meters) the map can move away from you: about a mile. */
-private const val MAP_REACH_M = 1_609.0
-
-/** How far out you can zoom: the nearest screen edge stays within about a quarter mile of you. */
-private const val ZOOM_REACH_M = 402.0
-
-/**
- * Keeps the map from zooming out past [ZOOM_REACH_M]: the zoom level at which
- * half the map's shorter side covers that distance, at this latitude.
- */
-private fun applyZoomFloor(mv: MapView, lat: Double) {
-    val halfPx = minOf(mv.width, mv.height) / 2.0
-    if (halfPx <= 0) return
-    // Meters per pixel at zoom z is 156,543 x cos(latitude) / 2^z (256-pixel tiles).
-    val z = kotlin.math.ln(156_543.03 * kotlin.math.cos(Math.toRadians(lat)) * halfPx / ZOOM_REACH_M) / kotlin.math.ln(2.0)
-    val floor = z.coerceIn(12.0, mv.maxZoomLevel - 1)
-    if (kotlin.math.abs(mv.minZoomLevel - floor) > 0.01) mv.minZoomLevel = floor
-    if (mv.zoomLevelDouble < floor) mv.controller.setZoom(floor)
-}
-
 /** The weather's icon. */
 fun com.monsterquest.core.LiveWeather.icon(): GameIcon = when (this) {
     com.monsterquest.core.LiveWeather.CLEAR, com.monsterquest.core.LiveWeather.HOT -> GameIcon.SUN
@@ -745,86 +611,6 @@ private fun MapCount(text: String) {
             .background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.RoundedCornerShape(50))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )
-}
-
-/**
- * Dark map: the OpenStreetMap tiles inverted and turned back to their own
- * hues (parks stay green, water blue), a little softer, plus a dark
- * loading grid so the map never flashes white.
- */
-private val DarkTiles = android.graphics.ColorMatrixColorFilter(
-    android.graphics.ColorMatrix().apply {
-        // Invert...
-        set(floatArrayOf(-1f, 0f, 0f, 0f, 255f, 0f, -1f, 0f, 0f, 255f, 0f, 0f, -1f, 0f, 255f, 0f, 0f, 0f, 1f, 0f))
-        // ...rotate hue 180 degrees so colors come back...
-        postConcat(android.graphics.ColorMatrix(floatArrayOf(
-            -0.574f, 1.43f, 0.144f, 0f, 0f,
-            0.426f, 0.43f, 0.144f, 0f, 0f,
-            0.426f, 1.43f, -0.856f, 0f, 0f,
-            0f, 0f, 0f, 1f, 0f,
-        )))
-        // ...then soften the contrast and dim slightly, with a hint of the game's teal.
-        postConcat(android.graphics.ColorMatrix(floatArrayOf(
-            0.82f, 0f, 0f, 0f, 10f,
-            0f, 0.86f, 0f, 0f, 14f,
-            0f, 0f, 0.88f, 0f, 16f,
-            0f, 0f, 0f, 1f, 0f,
-        )))
-    },
-)
-
-private fun applyMapStyle(map: MapView, dark: Boolean) {
-    val tiles = map.overlayManager.tilesOverlay
-    tiles.setColorFilter(if (dark) DarkTiles else null)
-    // The filter also covers the loading grid, so light loading colors come out dark on the dark map.
-    tiles.setLoadingBackgroundColor(0xFFE8E4DC.toInt())
-    tiles.setLoadingLineColor(0xFFD8D3CA.toInt())
-    map.invalidate()
-}
-
-@Composable
-private fun rememberMapView(): MapView {
-    val context = LocalContext.current
-    val mapView = remember {
-        MapView(context).apply {
-            // osmdroid draws tiles past its own edges; clip it to its bounds so it
-            // can't paint over the nav rail, headers or the status row.
-            outlineProvider = ViewOutlineProvider.BOUNDS
-            clipToOutline = true
-            // The map moves between layouts when the phone folds or unfolds. By default
-            // osmdroid tears itself down when detached from a window, which broke (and
-            // crashed) the map on every fold; we clean it up ourselves on dispose instead.
-            setDestroyMode(false)
-            setTileSource(TileSourceFactory.MAPNIK)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            controller.setZoom(17.0)
-            // Close enough to see the neighbourhood (about a mile around), never so far the hero gets lost.
-            minZoomLevel = 14.0
-            isHorizontalMapRepetitionEnabled = false
-            isVerticalMapRepetitionEnabled = false
-            maxZoomLevel = 20.0
-            // Locked to the hero like Pokemon GO: pinch, double-tap, or double-tap-and-slide to zoom; no panning.
-            MapGestures(this).attach()
-        }
-    }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                else -> {}
-            }
-        }
-        lifecycle.addObserver(observer)
-        mapView.onResume()
-        onDispose {
-            lifecycle.removeObserver(observer)
-            mapView.onPause()
-            mapView.onDetach()
-        }
-    }
-    return mapView
 }
 
 @SuppressLint("MissingPermission")
@@ -1565,16 +1351,7 @@ private fun NomadTeamRow(vm: GameViewModel, team: List<com.monsterquest.core.Mon
  * and doesn't block touches.
  */
 @Composable
-private fun RisenShrineFx(mapView: MapView, risen: com.monsterquest.core.RoamingShrine) {
-    var tick by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    DisposableEffect(mapView) {
-        val listener = object : org.osmdroid.events.MapListener {
-            override fun onScroll(event: org.osmdroid.events.ScrollEvent?): Boolean { tick++; return false }
-            override fun onZoom(event: org.osmdroid.events.ZoomEvent?): Boolean { tick++; return false }
-        }
-        mapView.addMapListener(listener)
-        onDispose { mapView.removeMapListener(listener) }
-    }
+private fun RisenShrineFx(gameMap: GameMap, risen: com.monsterquest.core.RoamingShrine) {
     val gold = risen.shrine.tier == ShrineTier.GOLD
     val color = if (gold) Color(0xFFFFD34D) else Color(0xFFCFE3F5)
     val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "risen")
@@ -1586,10 +1363,9 @@ private fun RisenShrineFx(mapView: MapView, risen: com.monsterquest.core.Roaming
     // It rose just now: play the arrival once.
     val rise = remember(risen.shrine.id) { androidx.compose.animation.core.Animatable(if (System.currentTimeMillis() - risen.bornMs < 60_000) 0f else 1f) }
     LaunchedEffect(risen.shrine.id) { rise.animateTo(1f, androidx.compose.animation.core.tween(1800)) }
-    @Suppress("UNUSED_VARIABLE") val read = tick
     Canvas(Modifier.fillMaxSize()) {
-        val p = mapView.projection?.toPixels(GeoPoint(risen.shrine.lat, risen.shrine.lon), null) ?: return@Canvas
-        val c = Offset(p.x.toFloat(), p.y.toFloat())
+        @Suppress("UNUSED_VARIABLE") val read = gameMap.tick
+        val c = gameMap.toScreen(risen.shrine.lat, risen.shrine.lon) ?: return@Canvas
         val base = 34.dp.toPx()
         // Pulsing rings.
         for (k in 0..1) {

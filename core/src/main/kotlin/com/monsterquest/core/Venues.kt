@@ -84,6 +84,62 @@ object Venues {
 
     /** Pharmacies, gyms and hospitals near you (they're the same every day). */
     fun facilities(venues: List<Venue>): List<Venue> = venues.filter { it.role in FACILITIES }
+
+    /** Share of restaurants that hold a dungeon. */
+    const val RESTAURANT_DUNGEON_PCT = 70
+    /** Two places of the same role closer than this are the same place. */
+    const val SAME_PLACE_M = 30.0
+
+    /**
+     * What a place from the map's own vector tiles hosts, from its OpenStreetMap
+     * value (the "subclass": cafe, doctors, supermarket...), or null for none.
+     */
+    fun roleForPoi(subclass: String?, cls: String?, id: String): VenueRole? {
+        val v = subclass ?: cls ?: return null
+        return when (v) {
+            "pharmacy", "chemist" -> VenueRole.PHARMACY
+            "hospital" -> VenueRole.HOSPITAL
+            "fitness_centre", "gym" -> VenueRole.GYM
+            "cafe", "coffee", "doctors", "doctor", "clinic", "dentist" -> VenueRole.DUNGEON
+            "restaurant", "fast_food" -> if (Math.floorMod(id.hashCode(), 100) < RESTAURANT_DUNGEON_PCT) VenueRole.DUNGEON else null
+            "supermarket", "convenience", "grocery", "greengrocer" -> VenueRole.MARKET
+            "park", "garden" -> VenueRole.NATURE
+            "fountain" -> VenueRole.WATERSIDE
+            "bar", "pub", "nightclub", "biergarten" -> VenueRole.NIGHTLIFE
+            else -> null
+        }
+    }
+
+    /** A friendly label for a place's OpenStreetMap value ("Coffee shop", "Doctor's office"...). */
+    fun kindLabel(raw: String?): String? {
+        raw ?: return null
+        val special = mapOf(
+            "cafe" to "Coffee shop", "doctors" to "Doctor's office", "doctor" to "Doctor's office", "clinic" to "Clinic",
+            "dentist" to "Dentist", "pharmacy" to "Pharmacy", "chemist" to "Pharmacy", "hospital" to "Hospital",
+            "fitness_centre" to "Gym", "supermarket" to "Supermarket", "convenience" to "Convenience store",
+            "grocery" to "Grocery store", "greengrocer" to "Greengrocer", "fast_food" to "Fast food", "pub" to "Pub",
+            "nightclub" to "Nightclub", "biergarten" to "Beer garden",
+        )
+        return special[raw] ?: raw.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    }
+
+    /**
+     * [primary] plus every place in [extra] that isn't already there (no place
+     * of the same role within [SAME_PLACE_M]). Used to fill in what one map
+     * source missed with the other.
+     */
+    fun merge(primary: List<Venue>, extra: List<Venue>): List<Venue> {
+        if (extra.isEmpty()) return primary
+        val out = primary.toMutableList()
+        val ids = primary.mapTo(HashSet()) { it.id }
+        for (v in extra) {
+            if (v.id in ids) continue
+            if (out.any { it.role == v.role && World.distanceMeters(it.lat, it.lon, v.lat, v.lon) < SAME_PLACE_M }) continue
+            out += v
+            ids += v.id
+        }
+        return out
+    }
     val FACILITIES = setOf(VenueRole.PHARMACY, VenueRole.GYM, VenueRole.HOSPITAL)
 
     /** A dungeon's look, from the kind of place: coffee roasters are forges, doctor's offices crypts, the rest random. */

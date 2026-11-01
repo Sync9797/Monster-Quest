@@ -12,8 +12,8 @@ android {
         applicationId = "com.monsterquest.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 133
-        versionName = "2.33.1"
+        versionCode = 134
+        versionName = "3.0.0"
     }
 
     signingConfigs {
@@ -91,7 +91,7 @@ dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
 
     // OpenStreetMap map view (no API key needed).
-    implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("org.maplibre.gl:android-sdk:12.3.0")
 
     // Screenshot tests: render screens on the JVM at foldable sizes.
     testImplementation("junit:junit:4.13.2")

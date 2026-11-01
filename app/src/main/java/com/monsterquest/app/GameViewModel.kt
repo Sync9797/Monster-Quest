@@ -97,10 +97,42 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var waterPoints: List<Pair<Double, Double>> = emptyList()
     private var waterKnown = false
     /** Real places that host dungeons and traders, and points along streets (empty where map data isn't loaded). */
-    private var venues by mutableStateOf<List<com.monsterquest.core.Venue>>(emptyList())
-    private var streets by mutableStateOf<List<Pair<Double, Double>>>(emptyList())
+    private var osmVenues by mutableStateOf<List<com.monsterquest.core.Venue>>(emptyList())
+    private var osmStreets by mutableStateOf<List<Pair<Double, Double>>>(emptyList())
+    private var osmTiles by mutableStateOf<Set<String>>(emptySet())
+    /** The same, read from the map's own vector tiles around you (fills in what OpenStreetMap lookups missed). */
+    private var mapVenues by mutableStateOf<List<com.monsterquest.core.Venue>>(emptyList())
+    private var mapStreets by mutableStateOf<List<Pair<Double, Double>>>(emptyList())
+    private var mapTiles by mutableStateOf<Set<String>>(emptySet())
+    private val venues by androidx.compose.runtime.derivedStateOf { com.monsterquest.core.Venues.merge(osmVenues, mapVenues) }
+    /** Map-tile streets only count where the OpenStreetMap lookup has none (so streets aren't doubled). */
+    private val streets by androidx.compose.runtime.derivedStateOf { osmStreets + mapStreets.filter { World.tileKey(it.first, it.second) !in osmTiles } }
     /** Map tiles whose places and streets are known; things are scattered elsewhere. */
-    private var venueTiles by mutableStateOf<Set<String>>(emptySet())
+    private val venueTiles by androidx.compose.runtime.derivedStateOf { osmTiles + mapTiles }
+
+    /**
+     * Places and streets the map read from its own vector tiles. [tiles] are
+     * the game tiles those map tiles fully cover. The map keeps what it read
+     * before for tiles it hasn't loaded this time.
+     */
+    fun addMapPlaces(found: List<com.monsterquest.core.Venue>, foundStreets: List<Pair<Double, Double>>, tiles: Set<String>) {
+        if (tiles.isEmpty()) return
+        fun keep(lat: Double, lon: Double) = World.tileKey(lat, lon) !in tiles
+        val nextVenues = mapVenues.filter { keep(it.lat, it.lon) } + found.filter { World.tileKey(it.lat, it.lon) in tiles }
+        val nextStreets = mapStreets.filter { keep(it.first, it.second) } + foundStreets.filter { World.tileKey(it.first, it.second) in tiles }
+        // Keep it to the neighbourhood: tiles far behind you are dropped.
+        val here = location
+        val near = { lat: Double, lon: Double -> here == null || World.distanceMeters(here.first, here.second, lat, lon) < 4_000 }
+        val v = nextVenues.filter { near(it.lat, it.lon) }
+        val st = nextStreets.filter { near(it.first, it.second) }
+        val t = (mapTiles + tiles).filterTo(HashSet()) { k ->
+            val b = World.tileBounds(k)
+            near((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
+        }
+        if (v != mapVenues) mapVenues = v
+        if (st != mapStreets) mapStreets = st
+        if (t != mapTiles) mapTiles = t
+    }
     /** Some map tiles didn't load: try again after this time. */
     private var placesRetryAt = Long.MAX_VALUE
 
@@ -778,9 +810,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 val area = withContext(Dispatchers.IO) { PlacesRepository.areaNear(dir, lat, lon, ua) }
                 shrines = area.shrines
                 waterPoints = area.water
-                venues = area.venues
-                streets = area.streets
-                venueTiles = area.venueTiles
+                osmVenues = area.venues
+                osmStreets = area.streets
+                osmTiles = area.venueTiles
                 // Some tiles didn't load (a busy area can time out): try again in a couple of minutes.
                 if (!area.complete) placesRetryAt = System.currentTimeMillis() + 2 * 60_000L
                 waterKnown = area.waterKnown

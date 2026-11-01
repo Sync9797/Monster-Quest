@@ -843,45 +843,26 @@ abstract class ScreenshotBase(private val device: String) {
             capture("29_fold_c", 1_000)
             if (app.resources.configuration.screenWidthDp < 600) rule.onNodeWithText("Nearby").assertDoesNotExist()
         }
-        rule.onNodeWithText("© OpenStreetMap contributors").assertExists()
+        rule.onNodeWithText("OpenStreetMap contributors", substring = true).assertExists()
     }
 
-    /** The map is locked to the hero: a drag doesn't move it; double-tap, hold and slide zooms. */
-    @Test fun mapLockedAndZooms() {
-        val mv = org.osmdroid.views.MapView(rule.activity).apply {
-            measure(
-                android.view.View.MeasureSpec.makeMeasureSpec(1000, android.view.View.MeasureSpec.EXACTLY),
-                android.view.View.MeasureSpec.makeMeasureSpec(1000, android.view.View.MeasureSpec.EXACTLY),
-            )
-            layout(0, 0, 1000, 1000)
-            controller.setZoom(15.0)
-            controller.setCenter(org.osmdroid.util.GeoPoint(40.0, -74.0))
-        }
-        com.monsterquest.app.ui.MapGestures(mv).attach()
-        fun send(action: Int, x: Float, y: Float, t: Long) {
-            val e = android.view.MotionEvent.obtain(0, t, action, x, y, 0)
-            mv.dispatchTouchEvent(e)
-            e.recycle()
-        }
-        val down = android.view.MotionEvent.ACTION_DOWN
-        val move = android.view.MotionEvent.ACTION_MOVE
-        val up = android.view.MotionEvent.ACTION_UP
-        // A one-finger drag: the map stays put.
-        send(down, 500f, 500f, 0)
-        send(move, 650f, 650f, 40)
-        send(move, 800f, 800f, 80)
-        send(up, 800f, 800f, 120)
-        check(kotlin.math.abs(mv.mapCenter.latitude - 40.0) < 1e-4 && kotlin.math.abs(mv.mapCenter.longitude + 74.0) < 1e-4) { "map moved: ${mv.mapCenter}" }
-        check(mv.zoomLevelDouble == 15.0)
-        // Double-tap, hold and slide down: zooms in, still centered.
-        send(down, 500f, 500f, 1_000)
-        send(up, 500f, 500f, 1_050)
-        send(down, 500f, 500f, 1_150)
-        send(move, 500f, 650f, 1_200)
-        send(move, 500f, 800f, 1_250)
-        send(up, 500f, 800f, 1_300)
-        check(mv.zoomLevelDouble > 15.5) { "zoom ${mv.zoomLevelDouble}" }
-        check(kotlin.math.abs(mv.mapCenter.latitude - 40.0) < 1e-4) { "map moved while zooming" }
+    /** The map tilts toward the horizon as you zoom in; places sit where they belong around the hero. */
+    @Test fun mapTiltsAndProjects() {
+        val t = com.monsterquest.app.ui.GameMap.Companion
+        check(t.tiltFor(14.0) < t.tiltFor(16.5) && t.tiltFor(16.5) < t.tiltFor(19.0)) { "tilt grows with zoom" }
+        check(t.tiltFor(20.0) <= 60.0)
+        val gm = com.monsterquest.app.ui.GameMap(fake = true)
+        gm.widthPx = 1000; gm.heightPx = 1000
+        gm.centerOn(40.0, -74.0)
+        val mid = gm.toScreen(40.0, -74.0)!!
+        check(kotlin.math.abs(mid.x - 500f) < 0.5f && kotlin.math.abs(mid.y - 500f) < 0.5f) { "hero centered: $mid" }
+        val north = gm.toScreen(40.001, -74.0)!!
+        val east = gm.toScreen(40.0, -73.999)!!
+        check(north.y < mid.y && east.x > mid.x) { "north up, east right" }
+        val before = east.x - mid.x
+        gm.zoomBy(1.0)
+        val after = gm.toScreen(40.0, -73.999)!!.x - 500f
+        check(kotlin.math.abs(after / before - 2f) < 0.01f) { "zooming in one level doubles distances" }
     }
 
     /** A den's monster after the fight: the taming throws. */
