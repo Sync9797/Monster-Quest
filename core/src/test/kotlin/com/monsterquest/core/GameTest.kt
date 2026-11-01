@@ -89,7 +89,7 @@ class GameTest {
     @Test
     fun bagCapacityLimitsLoot() {
         val s = started().copy(inventory = mapOf(Item.POTION to STARTING_BAG_CAPACITY - 1))
-        val (after, lost) = GameEngine.addItems(s, mapOf(Item.ETHER to 3))
+        val (after, lost) = GameEngine.addItems(s, mapOf(Item.MANA_DRAUGHT to 3))
         assertEquals(STARTING_BAG_CAPACITY, after.bagCount)
         assertEquals(2, lost)
         assertEquals("Bag is full (20/20).", GameEngine.buy(after.copy(gold = 999), Item.POTION).message)
@@ -97,12 +97,12 @@ class GameTest {
 
     @Test
     fun captureOnlyWhenWeak() {
-        assertEquals(0.0, captureChance(0.8, Rarity.COMMON, 0, Item.TAMING_ORB))
-        val low = captureChance(0.1, Rarity.COMMON, 0, Item.TAMING_ORB)
-        val mid = captureChance(0.45, Rarity.COMMON, 0, Item.TAMING_ORB)
+        assertEquals(0.0, captureChance(0.8, Rarity.COMMON, 0, Item.BINDING_CRYSTAL))
+        val low = captureChance(0.1, Rarity.COMMON, 0, Item.BINDING_CRYSTAL)
+        val mid = captureChance(0.45, Rarity.COMMON, 0, Item.BINDING_CRYSTAL)
         assertTrue(low > mid)
-        assertTrue(captureChance(0.1, Rarity.COMMON, 0, Item.GREAT_ORB) > low)
-        assertTrue(captureChance(0.1, Rarity.LEGENDARY, 0, Item.TAMING_ORB) < low)
+        assertTrue(captureChance(0.1, Rarity.COMMON, 0, Item.RESONANT_CRYSTAL) > low)
+        assertTrue(captureChance(0.1, Rarity.LEGENDARY, 0, Item.BINDING_CRYSTAL) < low)
     }
 
     private val utc = java.time.ZoneId.of("UTC")
@@ -132,7 +132,7 @@ class GameTest {
         assertNotNull(battle.captureBlockedReason())
         battle.enemy.hp = 1
         // Even at 1 HP, capture is refused during the first challenge.
-        battle.current?.let { battle.step(BattleAction.Capture(Item.TAMING_ORB)) }
+        battle.current?.let { battle.step(BattleAction.Capture(Item.BINDING_CRYSTAL)) }
         assertNotEquals(BattleOutcome.CAPTURED, battle.outcome)
     }
 
@@ -169,7 +169,7 @@ class GameTest {
         // Harder to tame than the same monster in the wild.
         val wild = GameEngine.newBattle(ok, guardian, EncounterType.WILD, rng = rng).apply { enemy.hp = enemy.maxHp / 5 }
         val silver = GameEngine.newBattle(ok, guardian, EncounterType.SILVER_BOSS, shrine.id, rng).apply { enemy.hp = enemy.maxHp / 5 }
-        assertTrue(silver.captureOdds(Item.GREAT_ORB) < wild.captureOdds(Item.GREAT_ORB))
+        assertTrue(silver.captureOdds(Item.RESONANT_CRYSTAL) < wild.captureOdds(Item.RESONANT_CRYSTAL))
     }
 
     @Test
@@ -185,7 +185,7 @@ class GameTest {
 
     @Test
     fun tamingDoesNotCountTowardTheItemLimit() {
-        val s = started().copy(hero = Hero(level = 60), inventory = mapOf(Item.POTION to 10, Item.TAMING_ORB to 10, Item.SWEET_BERRY to 2))
+        val s = started().copy(hero = Hero(level = 60), inventory = mapOf(Item.POTION to 10, Item.BINDING_CRYSTAL to 10, Item.SWEET_BERRY to 2))
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("zapmouse"), 5, rng), EncounterType.WILD, rng = rng)
         fun heroTurn() { var g = 0; while (b.current?.isHero != true && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         repeat(MAX_ITEMS_PER_BATTLE) { heroTurn(); b.step(BattleAction.UseItem(Item.POTION, Combatant.HERO_KEY)) }
@@ -197,10 +197,10 @@ class GameTest {
         assertTrue(b.canFeed(Item.SWEET_BERRY))
         b.step(BattleAction.UseItem(Item.SWEET_BERRY, Combatant.HERO_KEY))
         heroTurn()
-        if (b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Capture(Item.TAMING_ORB))
+        if (b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Capture(Item.BINDING_CRYSTAL))
         assertEquals(0, b.itemsRemainingThisBattle)
         // The crystal still leaves the bag.
-        assertEquals(9, b.count(Item.TAMING_ORB))
+        assertEquals(9, b.count(Item.BINDING_CRYSTAL))
     }
 
     @Test
@@ -230,12 +230,12 @@ class GameTest {
 
     @Test
     fun captureAddsMonster() {
-        val s = started().copy(inventory = mapOf(Item.MASTER_ORB to 3))
+        val s = started().copy(inventory = mapOf(Item.SOVEREIGN_CRYSTAL to 3))
         val enemy = Monster.create(Bestiary.get("zapmouse"), 1, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = Random(1))
         b.enemy.hp = 1
         var guard = 0
-        while (b.outcome == BattleOutcome.ONGOING && guard++ < 10) b.step(BattleAction.Capture(Item.MASTER_ORB))
+        while (b.outcome == BattleOutcome.ONGOING && guard++ < 10) b.step(BattleAction.Capture(Item.SOVEREIGN_CRYSTAL))
         if (b.outcome == BattleOutcome.CAPTURED) {
             val u = GameEngine.applyBattleResult(s, b.result(), 0)
             assertEquals(2, u.state.monsters.size)
@@ -743,16 +743,16 @@ class GameTest {
         assertEquals(7, after.level)
         assertTrue(notes.any { it.contains("learned Ember Fang") })
         // A custom loadout with a free slot gets the new move...
-        val (filled, _) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite")), monsterXpForNext(6))
-        assertEquals(listOf("spit_fire", "tackle", "bite", "fire_fang"), filled.moves)
+        val (filled, _) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "shoulder_rush", "fang_snap")), monsterXpForNext(6))
+        assertEquals(listOf("spit_fire", "shoulder_rush", "fang_snap", "ember_fang"), filled.moves)
         // ...but a full one is left alone, with a hint to swap it in.
-        val (full, fullNotes) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "tackle", "bite", "spit_fire").distinct() + "tackle"), monsterXpForNext(6))
+        val (full, fullNotes) = GameEngine.grow(m.copy(moves = listOf("spit_fire", "shoulder_rush", "fang_snap", "spit_fire").distinct() + "shoulder_rush"), monsterXpForNext(6))
         assertTrue(fullNotes.any { it.contains("can learn Ember Fang") })
-        assertTrue("fire_fang" !in full.moves!!)
+        assertTrue("ember_fang" !in full.moves!!)
         // Players can choose any learned moves for their 4 slots.
         val s = started().copy(monsters = listOf(after))
-        val set = GameEngine.setMoves(s, after.uid, listOf("fire_fang", "bite", "not_a_move")).state
-        assertEquals(listOf("fire_fang", "bite"), set.monsters.single().moves)
+        val set = GameEngine.setMoves(s, after.uid, listOf("ember_fang", "fang_snap", "not_a_move")).state
+        assertEquals(listOf("ember_fang", "fang_snap"), set.monsters.single().moves)
     }
 
     @Test
@@ -761,10 +761,10 @@ class GameTest {
         val enemy = Monster.create(Bestiary.get("zapmouse"), 5, rng)
         val b = GameEngine.newBattle(s, enemy, EncounterType.WILD, rng = Random(4))
         b.enemy.hp = b.enemy.maxHp / 4
-        val awake = b.captureOdds(Item.TAMING_ORB)
+        val awake = b.captureOdds(Item.BINDING_CRYSTAL)
         b.enemy.status = Status.SLEEP
         b.enemy.statusTurns = 99
-        assertTrue(b.captureOdds(Item.TAMING_ORB) > awake)
+        assertTrue(b.captureOdds(Item.BINDING_CRYSTAL) > awake)
         val heroHp = b.allies.first().hp
         repeat(5) { b.step(BattleAction.Defend) }
         assertEquals(heroHp, b.allies.first().hp)
@@ -1088,16 +1088,16 @@ class GameTest {
     fun berriesBoostTheNextThrow() {
         val now = 1_700_000_000_000L
         val foe = Monster.create(Bestiary.get("zapmouse"), 5, Random(4))
-        val s = started().copy(inventory = mapOf(Item.TAMING_ORB to 5, Item.SWEET_BERRY to 2, Item.GOLDEN_BERRY to 1))
+        val s = started().copy(inventory = mapOf(Item.BINDING_CRYSTAL to 5, Item.SWEET_BERRY to 2, Item.GOLDEN_BERRY to 1))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5))
         b.enemy.hp = b.enemy.maxHp / 3
-        val before = b.captureOdds(Item.TAMING_ORB)
+        val before = b.captureOdds(Item.BINDING_CRYSTAL)
         // Berries are on the Tame menu, not with the potions.
         assertTrue(Item.SWEET_BERRY in b.berries() && Item.SWEET_BERRY !in b.battleItems())
         val me = b.current!!
         b.step(BattleAction.UseItem(Item.SWEET_BERRY, me.key))
         assertEquals(1.5, b.bait)
-        assertTrue(b.captureOdds(Item.TAMING_ORB) > before)
+        assertTrue(b.captureOdds(Item.BINDING_CRYSTAL) > before)
         assertTrue(b.log.any { "Sweet Berry" in it })
         // Not in the shop; sold for a little.
         assertEquals(0, Item.SWEET_BERRY.price)
@@ -1243,16 +1243,16 @@ class GameTest {
         // Lines of the same type learn different signature moves.
         val drake = Moves.learnable(Bestiary.get("infernodrake")).map { it.second.id }
         val cat = Moves.learnable(Bestiary.get("solar_tiger")).map { it.second.id }
-        assertTrue("razor_gale" in drake && "steel_wing" in drake && "steel_wing" !in cat)
-        assertTrue("fire_fang" in Moves.learnable(Bestiary.get("shadow_pup")).map { it.second.id })
+        assertTrue("razor_gale" in drake && "iron_wing" in drake && "iron_wing" !in cat)
+        assertTrue("ember_fang" in Moves.learnable(Bestiary.get("shadow_pup")).map { it.second.id })
         // Multi-hit, sure-hit, self-buff and cure all work in battle.
-        val user = Monster.create(Bestiary.get("blazecat"), 30, Random(3)).copy(moves = listOf("fury_swipes", "focus", "kindle", "quick_strike"))
+        val user = Monster.create(Bestiary.get("blazecat"), 30, Random(3)).copy(moves = listOf("frenzy_swipes", "focus", "kindle", "quick_strike"))
         val s = started().let { it.copy(monsters = listOf(user), party = listOf(user.uid)) }
         val b = GameEngine.newBattle(s, Monster.create(Bestiary.get("goopling"), 30, Random(4)), EncounterType.BOSS_CHALLENGE, rng = Random(5), fullTeam = true)
         val me = b.allies.first { it.key == user.uid }
         fun myTurn() { var g = 0; while (b.current?.key != user.uid && g++ < 20 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend) }
         // Frenzy Swipes can miss (80% accuracy): swipe until it lands.
-        repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.step(BattleAction.UseMove("fury_swipes")) } }
+        repeat(8) { if (b.log.none { it.matches(Regex("Hit [2-5] times!")) }) { myTurn(); b.step(BattleAction.UseMove("frenzy_swipes")) } }
         assertTrue(b.log.any { it.matches(Regex("Hit [2-5] times!")) })
         myTurn(); b.step(BattleAction.UseMove("focus"))
         assertTrue((me.stages[BattleStat.ATTACK] ?: 0) >= 2)
@@ -1283,7 +1283,7 @@ class GameTest {
         fun fight(starterId: String, move: String, packSize: Int = 3): Pair<Battle, Combatant> {
             val m = Monster.create(Bestiary.get(starterId), 40, Random(3)).copy(moves = listOf(move))
             val s = started().let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
-            val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)).copy(skill = Trait.STATIC) }
+            val foes = (0 until packSize).map { Monster.create(Bestiary.get("zapmouse"), 30, Random(10 + it)).copy(skill = Trait.CRACKLE_SKIN) }
             val b = GameEngine.newBattle(s, foes[0], EncounterType.WILD, rng = Random(5), pack = foes.drop(1), fullTeam = true)
             var g = 0
             while (b.current?.key != m.uid && g++ < 30 && b.outcome == BattleOutcome.ONGOING) b.step(BattleAction.Defend)

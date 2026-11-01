@@ -2,7 +2,7 @@
 
 Monster skills are our own. Each line of monsters rolls its skill from a weighted pool
 (`MonsterTraits.pools` in `core/.../Classes.kt`), picked to suit its type and
-look. Lines with Flight roll Levitate about 60% of the time.
+look. Lines with Flight roll Airborne about 60% of the time.
 
 When adding new monsters, pick 2–4 skills that fit how the creature looks and
 its type, and add more from the backlog below when a new monster suits one.
@@ -11,11 +11,11 @@ its type, and add more from the backlog below when a new monster suits one.
 
 | Skill | Effect (rank 1 → 5) |
 |---|---|
-| Intimidate | Foes' Attack drops to 67% at the start (more stages at higher ranks) |
-| Levitate | Earth moves can't touch it |
-| Static / Flame Body / Poison Point | 11–23% to shock / burn / poison an attacker |
-| Insomnia | Wakes sooner; can't sleep at rank 5 |
-| Oblivious | Stats can't be lowered; can't be scared |
+| Menace | Foes' Attack drops to 67% at the start (more stages at higher ranks) |
+| Airborne | Earth moves can't touch it |
+| Crackle Skin / Ember Hide / Venom Barbs | 11–23% to shock / burn / poison an attacker |
+| Wakeful | Wakes sooner; can't sleep at rank 5 |
+| Unflappable | Stats can't be lowered; can't be scared |
 | Thick Hide | 7–15% less damage |
 | Quick Step | 7–19% dodge |
 | Regeneration | Heals 3–7% HP a turn |
@@ -53,7 +53,7 @@ its type, and add more from the backlog below when a new monster suits one.
 - **Dust Coat**: immune to foes' side effects.
 - **Grounded / Purified / Fireproof / Warm Blood**: can't be shocked / poisoned / burned / frostbitten.
 - **Self-Mend**: status clears when swapped out.
-- **Steadfast**: overlaps Oblivious; only if a line needs it under another name.
+- **Steadfast**: overlaps Unflappable; only if a line needs it under another name.
 
 ### Battle, needs a small new rule
 - **Still Air**: cancels weather while out.

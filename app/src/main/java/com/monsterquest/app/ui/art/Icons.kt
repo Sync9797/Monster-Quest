@@ -65,7 +65,7 @@ enum class GameIcon(internal vararg val parts: IconPart) {
 
     // Items
     POTION(fill("M10 2h4v4.5l4.5 6.5v5a4 4 0 0 1-4 4h-5a4 4 0 0 1-4-4v-5L10 6.5z"), cut("M7 14h10")),
-    HI_POTION(fill("M10 2h4v6l3 3v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9l3-3z"), cut("M8.5 14h7")),
+    GREATER_POTION(fill("M10 2h4v6l3 3v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9l3-3z"), cut("M8.5 14h7")),
     CRYSTAL(fill("M12 2l6 7-6 13-6-13z"), cut("M6 9h12M12 2v20")),
     FEATHER(fill("M20 3C12 4 6 10 5 19l-1 2 2-1c9-1 14-7 14-17z"), cut("M6 18l9-9")),
     RESTORE(fill("M12 21l-8.2-8.2a5 5 0 0 1 8.2-6 5 5 0 0 1 8.2 6z"), cut("M12 9v7M8.5 12.5h7")),

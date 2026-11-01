@@ -91,38 +91,38 @@ class ClassesTest {
         assertTrue("level 45" in GameEngine.learnSkill(atLevel(30), 1, Trait.HOVER).message)
 
         var s = GameEngine.learnSkill(atLevel(45), 0, Trait.MORALE_MASTER).state
-        s = GameEngine.learnSkill(s, 1, Trait.INTIMIDATE).state
+        s = GameEngine.learnSkill(s, 1, Trait.MENACE).state
         assertEquals(5000, s.gold)
-        assertEquals(listOf(Trait.MORALE_MASTER to 2, Trait.INTIMIDATE to 1), s.hero.skillRanks)
+        assertEquals(listOf(Trait.MORALE_MASTER to 2, Trait.MENACE to 1), s.hero.skillRanks)
         // Monster-only skills and duplicates are refused.
-        assertEquals(s, GameEngine.learnSkill(s, 1, Trait.LEVITATE).state)
+        assertEquals(s, GameEngine.learnSkill(s, 1, Trait.AIRBORNE).state)
         assertEquals(s, GameEngine.learnSkill(s, 1, Trait.MORALE_MASTER).state)
         // Swapping costs gold; the slot keeps its rank.
-        s = GameEngine.learnSkill(s, 0, Trait.OBLIVIOUS).state
+        s = GameEngine.learnSkill(s, 0, Trait.UNFLAPPABLE).state
         assertEquals(5000 - SKILL_CHANGE_COST, s.gold)
-        assertEquals(Trait.OBLIVIOUS to 2, s.hero.skillRanks.first())
+        assertEquals(Trait.UNFLAPPABLE to 2, s.hero.skillRanks.first())
         assertEquals(5, skillRank(100, 30))
     }
 
     @Test
-    fun moraleMasterBoostsMonstersAndIntimidateLowersFoes() {
+    fun moraleMasterBoostsMonstersAndMenaceLowersFoes() {
         val s = started()
         val foe = Monster.create(Bestiary.get("emberkit"), 5, rng)
         val plain = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(1), fullTeam = true)
-        val leader = s.copy(hero = s.hero.copy(level = 50, skills = listOf(Trait.MORALE_MASTER, Trait.INTIMIDATE)))
+        val leader = s.copy(hero = s.hero.copy(level = 50, skills = listOf(Trait.MORALE_MASTER, Trait.MENACE)))
         val b = GameEngine.newBattle(leader, foe, EncounterType.WILD, rng = Random(1), fullTeam = true)
         // Rank 3 Morale Master: +6%.
         assertTrue(b.allies[1].attack > plain.allies[1].attack)
-        // Intimidate: every foe's Attack drops to 66.7%, the same cut as the Scare attack.
+        // Menace: every foe's Attack drops to 66.7%, the same cut as the Scare attack.
         assertTrue(b.enemies.all { it.scared })
-        assertTrue(b.log.any { "Intimidate" in it })
+        assertTrue(b.log.any { "Menace" in it })
     }
 
     @Test
     fun scareIsAnAttackThatCutsAttackToTwoThirdsOnce() {
         val scare = Moves.get("scare")
         assertTrue(scare.isDamaging)
-        assertEquals(null, Moves.find("intimidate"))
+        assertEquals(null, Moves.find("menace"))
         val foe = Monster.create(Bestiary.get("emberkit"), 20, rng)
         val me = Monster.create(Bestiary.get("zapmouse"), 20, rng)
         val s = started().copy(monsters = listOf(me), party = listOf(me.uid))
@@ -144,17 +144,17 @@ class ClassesTest {
     fun hoveringFightersIgnoreEarthMoves() {
         val hero = Hero(level = 30, skills = listOf(Trait.HOVER))
         assertTrue(Combatant.fromHero(hero).immuneEarth)
-        val flier = Monster.create(Bestiary.get("tempest_roc"), 30, rng).copy(skill = Trait.LEVITATE)
-        assertEquals(Trait.LEVITATE, flier.trait?.first)
-        // Earth types can't levitate; slimes don't intimidate; older saves' dragons keep Intimidate.
+        val flier = Monster.create(Bestiary.get("tempest_roc"), 30, rng).copy(skill = Trait.AIRBORNE)
+        assertEquals(Trait.AIRBORNE, flier.trait?.first)
+        // Earth types can't be Airborne; slimes don't get Menace; older saves' dragons keep Menace.
         assertTrue(Bestiary.all.filter { it.element == Element.EARTH }.none { sp -> MonsterTraits.pool(sp).any { it.first.hovers } })
-        assertTrue(Bestiary.all.filter { "Goopling" in it.family }.none { sp -> MonsterTraits.pool(sp).any { it.first == Trait.INTIMIDATE } })
-        assertEquals(Trait.INTIMIDATE, MonsterTraits.of(Bestiary.get("cindrake")))
+        assertTrue(Bestiary.all.filter { "Goopling" in it.family }.none { sp -> MonsterTraits.pool(sp).any { it.first == Trait.MENACE } })
+        assertEquals(Trait.MENACE, MonsterTraits.of(Bestiary.get("cindrake")))
         // Every monster has a skill, and only monster skills.
         assertTrue(Bestiary.all.all { MonsterTraits.of(it).forMonster })
         assertTrue(Bestiary.all.all { sp -> MonsterTraits.pool(sp).all { it.first.forMonster } })
 
-        // An Earth move against a levitating monster never lands.
+        // An Earth move against an airborne monster never lands.
         val s = started()
         val earthUser = Monster.create(Bestiary.get("terraursa"), 40, rng)
         val battle = Battle(Hero(level = 40), listOf(earthUser), flier, EncounterType.WILD, emptyMap(), false, rng = Random(3), fullTeam = true)
@@ -181,11 +181,11 @@ class ClassesTest {
     }
 
     @Test
-    fun insomniaRankFiveCantSleepAndObliviousIgnoresDrops() {
-        val c = Combatant.fromHero(Hero(level = 70, skills = listOf(Trait.INSOMNIA)))
+    fun wakefulRankFiveCantSleepAndUnflappableIgnoresDrops() {
+        val c = Combatant.fromHero(Hero(level = 70, skills = listOf(Trait.WAKEFUL)))
         assertEquals(Combatant.NO_SLEEP, c.sleepCut)
-        val o = Combatant.fromHero(Hero(level = 30, skills = listOf(Trait.OBLIVIOUS)))
-        assertTrue(o.oblivious)
+        val o = Combatant.fromHero(Hero(level = 30, skills = listOf(Trait.UNFLAPPABLE)))
+        assertTrue(o.unflappable)
     }
 
     @Test
@@ -209,11 +209,11 @@ class ClassesTest {
 
     @Test
     fun sellingPaysMoreForRarerThingsAndSmeltingGivesParts() {
-        var s = atLevel(10, gold = 100).copy(inventory = mapOf(Item.POTION to 2, Item.MASTER_ORB to 1))
+        var s = atLevel(10, gold = 100).copy(inventory = mapOf(Item.POTION to 2, Item.SOVEREIGN_CRYSTAL to 1))
         s = GameEngine.sellItem(s, Item.POTION).state
         assertEquals(100 + Item.POTION.price / 2, s.gold)
         assertEquals(1, s.count(Item.POTION))
-        assertTrue(Item.MASTER_ORB.sellPrice > Item.GREAT_ORB.sellPrice)
+        assertTrue(Item.SOVEREIGN_CRYSTAL.sellPrice > Item.RESONANT_CRYSTAL.sellPrice)
         // Never sells for more than it costs.
         assertTrue(Item.entries.filter { it.price > 0 }.all { it.sellPrice < it.price })
 
@@ -254,13 +254,13 @@ class ClassesTest {
     @Test
     fun everyTypeHasEightNewAttacksWithItsOwnStrength() {
         val new = mapOf(
-            Element.FIRE to listOf("cinder_jab", "flare_rush", "searing_blade", "magma_fist", "flare_blitz", "meteor_flame", "sunfire", "supernova"),
+            Element.FIRE to listOf("cinder_jab", "flare_rush", "searing_blade", "magma_fist", "wildfire_charge", "meteor_flame", "sunfire", "supernova"),
             Element.ELECTRIC to listOf("static_jolt", "galvanize", "charge_net", "ion_storm", "volt_snare", "plasma_lance", "thunderclap", "judgment_bolt"),
-            Element.WATER to listOf("ripple_dart", "rapid_current", "surf", "riptide", "undertow", "torrent_rush", "tidal_wave", "tsunami"),
-            Element.FLIGHT to listOf("wing_flick", "sky_uppercut", "updraft", "air_slash", "soaring_strike", "ascent", "hurricane", "talon_storm"),
-            Element.GAS to listOf("noxious_spit", "venoshock", "drowsy_mist", "toxic_cloud", "sludge_bomb", "plague_fang", "caustic_burst", "pandemic"),
+            Element.WATER to listOf("ripple_dart", "rapid_current", "tidal_crash", "riptide", "undertow", "torrent_rush", "tidal_wave", "tsunami"),
+            Element.FLIGHT to listOf("wing_flick", "rising_strike", "updraft", "wind_slash", "soaring_strike", "ascent", "cyclone_fury", "talon_storm"),
+            Element.GAS to listOf("noxious_spit", "venom_surge", "drowsy_mist", "toxic_cloud", "sludge_shot", "plague_fang", "caustic_burst", "pandemic"),
             Element.CORRUPT to listOf("low_blow", "spiteful_jab", "eye_gouge", "backstab", "rend", "dread_howl", "hollowing_strike", "doomfall"),
-            Element.EARTH to listOf("stone_knuckle", "bedrock_press", "mud_slap", "shield_bash", "rockslide", "iron_root", "mountain_crush", "titan_slam"),
+            Element.EARTH to listOf("stone_knuckle", "bedrock_press", "mud_fling", "shield_bash", "rockslide", "iron_root", "mountain_crush", "titan_slam"),
         ).mapValues { (t, ids) -> ids.map { Moves.get(it) }.onEach { m -> assertEquals(t, m.type); assertTrue(m.isDamaging) } }
         // Each type learns all eight.
         new.forEach { (t, moves) -> assertTrue(Moves.learnsets.getValue(t).map { it.second }.containsAll(moves.map { it.id })) }

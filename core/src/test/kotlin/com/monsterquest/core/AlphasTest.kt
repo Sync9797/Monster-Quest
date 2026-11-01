@@ -32,14 +32,14 @@ class AlphasTest {
         assertEquals("emberkit", m.speciesId)
         assertTrue(MONSTER_STATS.count { m.ivs[it] == MAX_IV } >= Alphas.PERFECT_STATS)
         // In battle: half again as tough, and a bit harder to tame.
-        val s = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state.copy(inventory = mapOf(Item.TAMING_ORB to 5))
+        val s = GameEngine.chooseStarter(GameState(), "voltfawn", Random(1)).state.copy(inventory = mapOf(Item.BINDING_CRYSTAL to 5))
         val plain = World.spawnMonster(spawns.first { !it.alpha })
         val bA = GameEngine.newBattle(s, m.copy(ivs = plain.ivs), EncounterType.WILD, rng = Random(2))
         val bP = GameEngine.newBattle(s, plain.copy(level = m.level), EncounterType.WILD, rng = Random(2))
         assertTrue(bA.enemy.maxHp > bP.enemy.maxHp * 1.4, "${bA.enemy.maxHp} vs ${bP.enemy.maxHp}")
         bA.enemy.hp = bA.enemy.maxHp / 4
         bP.enemy.hp = bP.enemy.maxHp / 4
-        assertTrue(bA.captureOdds(Item.TAMING_ORB) < bP.captureOdds(Item.TAMING_ORB))
+        assertTrue(bA.captureOdds(Item.BINDING_CRYSTAL) < bP.captureOdds(Item.BINDING_CRYSTAL))
     }
 
     @Test

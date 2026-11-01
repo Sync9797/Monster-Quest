@@ -24,7 +24,7 @@ class PricesTest {
         assertEquals(gold - next, s.gold)
         assertTrue(Prices.unitPrice(s, Item.POTION, now) > next)
         // Other items are unaffected.
-        assertEquals(Item.HI_POTION.price, Prices.unitPrice(s, Item.HI_POTION, now))
+        assertEquals(Item.GREATER_POTION.price, Prices.unitPrice(s, Item.GREATER_POTION, now))
         // Capped.
         repeat(40) { s = GameEngine.buy(s, Item.POTION, nowMs = now).state }
         assertEquals(Math.round(p * Prices.MAX_MULTIPLIER).toInt(), Prices.unitPrice(s, Item.POTION, now))

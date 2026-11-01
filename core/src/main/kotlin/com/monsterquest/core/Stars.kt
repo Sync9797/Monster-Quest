@@ -22,7 +22,7 @@ object Stars {
     fun label(level: Int): String = if (of(level) == 0) "Lv $level" else "★${of(level)} · Lv ${shownLevel(level)}"
 
     /** What a new star's reward box holds: supplies, plus an Epic weapon and Epic armor rolled at your level. */
-    val BOX_ITEMS: Map<Item, Int> = mapOf(Item.ULTRA_ORB to 3, Item.RESTORE_POTION to 2, Item.PHOENIX_DOWN to 2)
+    val BOX_ITEMS: Map<Item, Int> = mapOf(Item.PRISMATIC_CRYSTAL to 3, Item.RESTORE_POTION to 2, Item.PHOENIX_FEATHER to 2)
 
     /** A star's reward box, at the hero's real [level]. */
     data class Box(val items: Map<Item, Int>, val weapon: Gear, val armor: Armor)

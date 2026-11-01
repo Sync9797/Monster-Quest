@@ -48,13 +48,13 @@ class TutorialDungeonTest {
         assertNull(s.dungeonRun)
         assertTrue(s.tutorialDungeonDone)
         assertEquals(before + 1, s.hero.attr(stat))
-        assertTrue(s.count(Item.TAMING_ORB) >= 5 && s.torches >= 3)
+        assertTrue(s.count(Item.BINDING_CRYSTAL) >= 5 && s.torches >= 3)
         // One of a kind.
         assertEquals(s, Dungeons.startTutorial(s))
         // Tutorial fights: every cast tames, foes are gentle.
         val foe = Dungeons.monstersFor(DungeonRun(Dungeons.tutorialDungeon, step = 2), RoomKind.MONSTERS).single()
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(2), tutorial = true)
         b.enemy.hp = b.enemy.maxHp / 3
-        assertEquals(1.0, b.captureOdds(Item.TAMING_ORB, TraceGrade.FIZZLE))
+        assertEquals(1.0, b.captureOdds(Item.BINDING_CRYSTAL, TraceGrade.FIZZLE))
     }
 }

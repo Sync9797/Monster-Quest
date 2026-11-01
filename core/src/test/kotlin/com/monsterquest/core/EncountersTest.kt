@@ -53,7 +53,7 @@ class EncountersTest {
         assertEquals(Combatant.fromMonster(crew[1], "x").maxHp, b.enemies[1].maxHp)
         // Targeting the thug doesn't break the taming odds shown in the menu.
         b.selectTarget(b.enemies.last().key)
-        b.captureOdds(Item.TAMING_ORB)
+        b.captureOdds(Item.BINDING_CRYSTAL)
         assertTrue(b.log.first().contains(thug.name))
     }
 
@@ -197,8 +197,8 @@ class EncountersTest {
         val learners = Bestiary.all.count { Moves.canLearnSmackDown(it) }
         assertTrue(learners > Bestiary.all.size * 3 / 4)
 
-        // Against a levitating bird: it connects, and afterwards Earth moves land.
-        val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng).copy(skill = Trait.LEVITATE)
+        // Against an airborne bird: it connects, and afterwards Earth moves land.
+        val bird = Monster.create(Bestiary.get("tempest_roc"), 40, rng).copy(skill = Trait.AIRBORNE)
         val bear = Monster.create(Bestiary.get("terraursa"), 40, rng).copy(moves = listOf("smack_down"))
         val b = Battle(Hero(level = 40), listOf(bear), bird, EncounterType.WILD, emptyMap(), false, rng = Random(12), fullTeam = true)
         assertTrue(b.enemy.immuneEarth)
@@ -238,7 +238,7 @@ class EncountersTest {
 
     @Test
     fun energyCarriesOverAndRecoversWithTimeAndWalking() {
-        var s = withMonsters(1).copy(inventory = mapOf(Item.ETHER to 1))
+        var s = withMonsters(1).copy(inventory = mapOf(Item.MANA_DRAUGHT to 1))
         val max = s.hero.maxMp
         // Cast a spell, then win: the Energy spent stays spent.
         val foe = Monster.create(Bestiary.get("emberkit"), 3, rng)
@@ -265,10 +265,10 @@ class EncountersTest {
         val walked = GameEngine.walk(s, 100).state
         assertEquals(used - GameEngine.ENERGY_PER_REWARD, walked.heroEnergyUsed)
 
-        // An Ether works outside battle too.
-        val ether = GameEngine.usePotion(s, Item.ETHER, Combatant.HERO_KEY).state
-        assertEquals(0, ether.heroEnergyUsed)
-        assertEquals(0, ether.count(Item.ETHER))
+        // A Mana Draught works outside battle too.
+        val draught = GameEngine.usePotion(s, Item.MANA_DRAUGHT, Combatant.HERO_KEY).state
+        assertEquals(0, draught.heroEnergyUsed)
+        assertEquals(0, draught.count(Item.MANA_DRAUGHT))
     }
 
     @Test
@@ -286,12 +286,12 @@ class EncountersTest {
 
     @Test
     fun mudShotStacksAccuracyDownAndRanksUp() {
-        val mud = Spells.byId(Spells.MUD_SHOT)!!
+        val mud = Spells.byId(Spells.MUD_SLING)!!
         assertEquals(Element.EARTH, mud.element)
         // Weak: well under a bolt, and it ranks up like the others.
         assertTrue(mud.power < Spells.byId("stone_bolt")!!.power)
         assertTrue(Spells.ranked(mud, 5, 25).power > Spells.ranked(mud, 1, 25).power)
-        val hero = Hero(level = 20, knownSpells = Spells.starting + Spells.MUD_SHOT, attributes = HeroAttribute.entries.associateWith { 30 })
+        val hero = Hero(level = 20, knownSpells = Spells.starting + Spells.MUD_SLING, attributes = HeroAttribute.entries.associateWith { 30 })
         val foe = Monster.create(Bestiary.get("goopling"), 30, rng)
         val b = Battle(hero, emptyList(), foe, EncounterType.WILD, emptyMap(), false, rng = Random(4))
         var casts = 0
@@ -300,12 +300,12 @@ class EncountersTest {
             c.mp = c.maxMp
             c.hp = c.maxHp
             b.enemy.hp = b.enemy.maxHp
-            b.step(BattleAction.CastSpell(Spells.MUD_SHOT))
+            b.step(BattleAction.CastSpell(Spells.MUD_SLING))
             casts++
         }
         val muddied = b.enemy.muddiedPct
         assertTrue(muddied >= 20, "stacks: $muddied")
-        assertTrue(muddied <= Spells.MUD_SHOT_ACCURACY * Spells.MUD_SHOT_STACKS)
+        assertTrue(muddied <= Spells.MUD_SLING_ACCURACY * Spells.MUD_SLING_STACKS)
         assertTrue(b.enemy.tags().any { "Acc" in it })
     }
 
@@ -371,20 +371,20 @@ class EncountersTest {
 
     @Test
     fun orbsAreLockedByLevelAndThePerfectOrbAlwaysWorks() {
-        assertEquals(listOf(0, 10, 25, 50, 75), listOf(Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.PERFECT_ORB).map { it.minLevel })
+        assertEquals(listOf(0, 10, 25, 50, 75), listOf(Item.BINDING_CRYSTAL, Item.RESONANT_CRYSTAL, Item.RADIANT_CRYSTAL, Item.PRISMATIC_CRYSTAL, Item.PERFECT_ORB).map { it.minLevel })
         assertEquals(2_000, Item.PERFECT_ORB.price)
         val rich = withMonsters(1).copy(gold = 10_000)
-        assertEquals(0, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 9)), Item.GREAT_ORB).state.count(Item.GREAT_ORB))
-        assertEquals(1, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 10)), Item.GREAT_ORB).state.count(Item.GREAT_ORB))
+        assertEquals(0, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 9)), Item.RESONANT_CRYSTAL).state.count(Item.RESONANT_CRYSTAL))
+        assertEquals(1, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 10)), Item.RESONANT_CRYSTAL).state.count(Item.RESONANT_CRYSTAL))
         assertEquals(0, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 74)), Item.PERFECT_ORB).state.count(Item.PERFECT_ORB))
         assertEquals(1, GameEngine.buy(rich.copy(hero = rich.hero.copy(level = 75)), Item.PERFECT_ORB).state.count(Item.PERFECT_ORB))
         // Better orbs, better odds.
-        val odds = listOf(Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB).map { captureChance(0.3, Rarity.RARE, 0, it) }
+        val odds = listOf(Item.BINDING_CRYSTAL, Item.RESONANT_CRYSTAL, Item.RADIANT_CRYSTAL, Item.PRISMATIC_CRYSTAL).map { captureChance(0.3, Rarity.RARE, 0, it) }
         assertEquals(odds.sorted(), odds)
 
         // A Perfect Orb tames even a monster at full health.
         val foe = Monster.create(Bestiary.get("emberkit"), 10, rng)
-        val b = Battle(Hero(level = 80), emptyList(), foe, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 1, Item.TAMING_ORB to 3), false, rng = Random(2))
+        val b = Battle(Hero(level = 80), emptyList(), foe, EncounterType.WILD, mapOf(Item.PERFECT_ORB to 1, Item.BINDING_CRYSTAL to 3), false, rng = Random(2))
         assertNull(b.captureBlockedReason())
         assertEquals(listOf(Item.PERFECT_ORB), b.orbs())
         assertEquals(1.0, b.captureOdds(Item.PERFECT_ORB))
@@ -418,14 +418,14 @@ class EncountersTest {
         assertEquals(MoveRole.STATUS, Moves.get("spore_cloud").role)
         assertEquals(MoveRole.STATUS, Moves.get("sleep_wave").role)
         assertEquals(MoveRole.HIGH_RISK, Moves.get("blast_burn").role)
-        assertEquals(MoveRole.HIGH_RISK, Moves.get("flare_blitz").role)
+        assertEquals(MoveRole.HIGH_RISK, Moves.get("wildfire_charge").role)
         assertEquals(MoveRole.RELIABLE, Moves.get("flame_torrent").role)
-        assertEquals(MoveRole.BASIC, Moves.get("tackle").role)
+        assertEquals(MoveRole.BASIC, Moves.get("shoulder_rush").role)
         assertEquals(MoveRole.SUPPORT, Moves.get("roost").role)
         // Every move lands in one role, and roles set the uses.
         assertTrue(Moves.all.all { it.maxPp == it.role.pp })
 
-        val m = Monster.create(Bestiary.get("goopling"), 30, Random(3)).copy(moves = listOf("spore_cloud", "tackle"))
+        val m = Monster.create(Bestiary.get("goopling"), 30, Random(3)).copy(moves = listOf("spore_cloud", "shoulder_rush"))
         val s = GameEngine.chooseStarter(GameState(), "emberkit", Random(1)).state.let { it.copy(monsters = listOf(m), party = listOf(m.uid)) }
         val foe = Monster.create(Bestiary.get("emberkit"), 30, Random(4))
         val b = GameEngine.newBattle(s, foe, EncounterType.WILD, rng = Random(5), fullTeam = true)
@@ -438,7 +438,7 @@ class EncountersTest {
         myTurn()
         assertTrue(spore !in me.usableMoves)
         // ...until a turn spent on something else gives one back.
-        b.step(BattleAction.UseMove("tackle"))
+        b.step(BattleAction.UseMove("shoulder_rush"))
         assertEquals(1, me.ppLeft(spore))
         // Out of everything: Struggle.
         me.pp.keys.forEach { me.pp[it] = 0 }
@@ -464,8 +464,8 @@ class EncountersTest {
         melt.act(BattleAction.UseMove("meltdown"))
         assertTrue(hot.stages[BattleStat.ATTACK] == -2 || melt.log.any { "miss" in it }, melt.log.takeLast(5).toString())
         // Wildfire Charge: recoil is a third of the damage dealt.
-        val (blitz, _) = duel("flare_blitz")
-        blitz.act(BattleAction.UseMove("flare_blitz"))
+        val (blitz, _) = duel("wildfire_charge")
+        blitz.act(BattleAction.UseMove("wildfire_charge"))
         val hit = blitz.log.firstNotNullOfOrNull { Regex("It hits .* for (\\d+) damage").find(it)?.groupValues?.get(1)?.toInt() }
         val recoil = blitz.log.firstNotNullOfOrNull { Regex("hurt by recoil \\((\\d+)\\)").find(it)?.groupValues?.get(1)?.toInt() }
         if (hit != null) assertEquals(maxOf(1, hit * 33 / 100), recoil, blitz.log.takeLast(6).toString())
@@ -551,9 +551,9 @@ class EncountersTest {
     fun everyLevelGivesASmallBoxThatGrowsAndLevel100GivesAPerfectOrb() {
         assertTrue((2..99).all { GameEngine.levelBox(it).values.sum() in 2..4 })
         assertEquals(5, GameEngine.levelBox(100).values.sum())
-        assertTrue(Item.TAMING_ORB in GameEngine.levelBox(3))
-        assertTrue(Item.MEGA_ORB in GameEngine.levelBox(30))
-        assertTrue(Item.ULTRA_ORB in GameEngine.levelBox(60))
+        assertTrue(Item.BINDING_CRYSTAL in GameEngine.levelBox(3))
+        assertTrue(Item.RADIANT_CRYSTAL in GameEngine.levelBox(30))
+        assertTrue(Item.PRISMATIC_CRYSTAL in GameEngine.levelBox(60))
         assertTrue(Item.PERFECT_ORB in GameEngine.levelBox(100))
         assertTrue((2..99).none { Item.PERFECT_ORB in GameEngine.levelBox(it) })
         // Loot never hands one out.
@@ -569,7 +569,7 @@ class EncountersTest {
         // ...but nothing more can be bought or picked up until there's room.
         val rich = gain.state.copy(gold = 1_000)
         assertEquals(rich, GameEngine.buy(rich, Item.POTION).state)
-        assertEquals(rich.inventory, GameEngine.addItems(rich, mapOf(Item.ETHER to 1)).first.inventory)
+        assertEquals(rich.inventory, GameEngine.addItems(rich, mapOf(Item.MANA_DRAUGHT to 1)).first.inventory)
     }
 
     @Test

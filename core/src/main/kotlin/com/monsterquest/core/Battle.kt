@@ -146,7 +146,7 @@ class Combatant(
     var grounded: Boolean = false
     /** Less damage from Earth moves, in percent (a hovering hero's team). */
     var earthResistPct: Int = 0
-    var oblivious: Boolean = false
+    var unflappable: Boolean = false
     /** Turns of sleep shaken off; [NO_SLEEP] means it can't fall asleep. */
     var sleepCut: Int = 0
     var regenPct: Int = 0
@@ -178,18 +178,18 @@ class Combatant(
     fun gainTrait(t: Trait, rank: Int, hero: Boolean) {
         traits[t] = rank
         when (t) {
-            Trait.INSOMNIA -> sleepCut = maxOf(sleepCut, if (rank >= MAX_SKILL_RANK) NO_SLEEP else t.sleepCut(rank))
-            Trait.HOVER, Trait.LEVITATE -> immuneEarth = true
-            Trait.OBLIVIOUS -> oblivious = true
+            Trait.WAKEFUL -> sleepCut = maxOf(sleepCut, if (rank >= MAX_SKILL_RANK) NO_SLEEP else t.sleepCut(rank))
+            Trait.HOVER, Trait.AIRBORNE -> immuneEarth = true
+            Trait.UNFLAPPABLE -> unflappable = true
             Trait.QUICK_STEP -> evasion += t.dodgePct(rank) / 100.0
             Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
             Trait.REGENERATION -> regenPct += t.regenPct(rank)
             Trait.THICK_HIDE -> hidePct = t.hidePct(rank)
             Trait.SPORE_COAT -> touchPct = t.touchPct(rank)
-            Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT -> {
+            Trait.CRACKLE_SKIN, Trait.EMBER_HIDE, Trait.VENOM_BARBS -> {
                 touchStatus = when (t) {
-                    Trait.STATIC -> Status.SHOCK
-                    Trait.FLAME_BODY -> Status.BURN
+                    Trait.CRACKLE_SKIN -> Status.SHOCK
+                    Trait.EMBER_HIDE -> Status.BURN
                     else -> Status.POISON
                 }
                 touchPct = t.touchPct(rank)
@@ -201,7 +201,7 @@ class Combatant(
     /** What a hero skill at team range gives a teammate. */
     fun shareTrait(t: Trait, rank: Int) {
         when (t) {
-            Trait.INSOMNIA -> sleepCut = maxOf(sleepCut, t.sleepCut(rank.coerceAtMost(MAX_SKILL_RANK - 1)))
+            Trait.WAKEFUL -> sleepCut = maxOf(sleepCut, t.sleepCut(rank.coerceAtMost(MAX_SKILL_RANK - 1)))
             Trait.HOVER -> {
                 earthResistPct = maxOf(earthResistPct, t.hoverTeamPct(rank))
                 // Maxed: the whole team hovers too, until the hero takes a hit.
@@ -210,7 +210,7 @@ class Combatant(
                     borrowedHover = true
                 }
             }
-            Trait.OBLIVIOUS -> oblivious = true
+            Trait.UNFLAPPABLE -> unflappable = true
             Trait.QUICK_STEP -> evasion += t.dodgePct(rank) / 200.0
             Trait.SECOND_WIND -> secondWindPct = maxOf(secondWindPct, t.secondWindPct(rank))
             Trait.REGENERATION -> regenPct += t.regenPct(rank)
@@ -229,13 +229,13 @@ class Combatant(
     // ---- conditions ----
     var status: Status? = null
     var statusTurns: Int = 0
-    var nightmareDamage: Int = 0
+    var nightTerrorDamage: Int = 0
     var scorchTurns: Int = 0
     var scorchDamage: Int = 0
     var scorchVerb: String = "is scorched"
     /** Next move has a 40% chance to miss. */
     var accuracyDown: Boolean = false
-    /** Mud Shot: accuracy lowered for the rest of the battle, in percent (stacks). */
+    /** Mud Sling: accuracy lowered for the rest of the battle, in percent (stacks). */
     var muddiedPct: Int = 0
     /** Next move misses. */
     var missNext: Boolean = false
@@ -250,7 +250,7 @@ class Combatant(
     val stages: MutableMap<BattleStat, Int> = mutableMapOf()
     /** Iron Wing stacks, in percent. */
     var powerUp: Int = 0
-    /** Scared or Intimidated: Attack drops to [SCARED_ATTACK] (66.7%) for the battle. Doesn't stack. */
+    /** Scared or Menaced: Attack drops to [SCARED_ATTACK] (66.7%) for the battle. Doesn't stack. */
     var scared: Boolean = false
     /** Swift (Water moves): moves first next round. */
     var swift: Boolean = false
@@ -373,9 +373,9 @@ class Combatant(
             val lv = t.level
             data class Build(val hp: Int, val atk: Int, val def: Int, val spd: Int, val element: Element, val moves: List<String>, val dodge: Double)
             val b = when (t.cls) {
-                HeroClass.WARRIOR -> Build(70 + lv * 12, 18 + lv * 2, 15 + lv * 2, 8 + lv * 3 / 4, Element.NEUTRAL, listOf("headbutt", "ground_pound", "slam", "bite"), 0.0)
-                HeroClass.MAGE -> Build(45 + lv * 8, 18 + lv * 5 / 2, 10 + lv, 12 + lv, Element.CORRUPT, listOf("hex_barrage", "dark_wave", "nightmare", "soul_drain"), 0.0)
-                else -> Build(50 + lv * 9, 16 + lv * 2, 12 + lv * 3 / 2, 14 + lv * 5 / 4, Element.NEUTRAL, listOf("sucker_punch", "night_slash", "fury_swipes", "scare"), 0.1)
+                HeroClass.WARRIOR -> Build(70 + lv * 12, 18 + lv * 2, 15 + lv * 2, 8 + lv * 3 / 4, Element.NEUTRAL, listOf("skull_ram", "ground_pound", "crushing_weight", "fang_snap"), 0.0)
+                HeroClass.MAGE -> Build(45 + lv * 8, 18 + lv * 5 / 2, 10 + lv, 12 + lv, Element.CORRUPT, listOf("hex_barrage", "dark_wave", "night_terror", "soul_drain"), 0.0)
+                else -> Build(50 + lv * 9, 16 + lv * 2, 12 + lv * 3 / 2, 14 + lv * 5 / 4, Element.NEUTRAL, listOf("sucker_punch", "dusk_slash", "frenzy_swipes", "scare"), 0.1)
             }
             return Combatant(
                 key, t.title, b.element, lv, b.hp, b.hp, b.atk, 0, b.def, b.spd, 0, 0, false, b.moves.map { Moves.get(it) },
@@ -383,7 +383,7 @@ class Combatant(
                 thug = true
                 heroClass = t.cls
                 // Brutes glare their foes down as the fight starts.
-                if (t.cls == HeroClass.WARRIOR) gainTrait(Trait.INTIMIDATE, 1, hero = false)
+                if (t.cls == HeroClass.WARRIOR) gainTrait(Trait.MENACE, 1, hero = false)
                 evasion = b.dodge
             }
         }
@@ -553,7 +553,7 @@ fun captureChance(hpFraction: Double, rarity: Rarity, levelDiff: Int, orb: Item)
 /** Hero spells aimed at an ally (or the hero) instead of an enemy. */
 val SUPPORT_KINDS = setOf(SkillKind.HEAL, SkillKind.SHIELD, SkillKind.AEGIS, SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER, SkillKind.CLEANSE, SkillKind.MEND_ALL)
 
-private val TOUCH_TRAITS = setOf(Trait.STATIC, Trait.FLAME_BODY, Trait.POISON_POINT, Trait.SPORE_COAT)
+private val TOUCH_TRAITS = setOf(Trait.CRACKLE_SKIN, Trait.EMBER_HIDE, Trait.VENOM_BARBS, Trait.SPORE_COAT)
 
 /** Chance (percent) a cursed Frost or Flame piece afflicts the foe. */
 const val CURSE_STATUS_PCT = 35
@@ -578,7 +578,7 @@ val FULL_TEAM_ENCOUNTERS = setOf(EncounterType.DEN)
 /** Your side in any fight: at least the hero and one monster. */
 const val MIN_SIDE = 2
 
-/** Scare and Intimidate: the foe's Attack drops to 66.7% (two thirds). */
+/** Scare and Menace: the foe's Attack drops to 66.7% (two thirds). */
 const val SCARED_ATTACK = 2.0 / 3.0
 
 /** Pay for a thug fight, per fighter on their side (thug included). */
@@ -835,7 +835,7 @@ class Battle(
     private fun packLeader(group: List<Monster>): Int =
         group.mapNotNull { m -> m.trait?.takeIf { it.first == Trait.PACK_LEADER }?.let { (t, r) -> t.teamPct(r) } }.maxOrNull() ?: 0
 
-    /** Skills that act as the battle starts: team-wide hero skills, wards and Intimidate. */
+    /** Skills that act as the battle starts: team-wide hero skills, wards and Menace. */
     private fun openingSkills(hero: Hero) {
         val me = heroFighter
         for ((t, r) in hero.skillRanks) {
@@ -846,13 +846,13 @@ class Battle(
         if (enemyBoost > 1) log += "A Pack Leader rallies the wild pack! (+${packLeader(enemyMonsters)}%)"
         if (me.shield > 0) log += "${me.name} starts behind a holy ward (absorbs ${me.shield})."
         for (c in allies + enemies) {
-            val r = c.traits[Trait.INTIMIDATE] ?: continue
+            val r = c.traits[Trait.MENACE] ?: continue
             if (!c.alive) continue
             // The same Attack cut as Scare (66.7%), plus extra stages at higher ranks.
-            val extra = Trait.INTIMIDATE.intimidateStages(r)
-            log += "${c.name}'s Intimidate!"
+            val extra = Trait.MENACE.menaceStages(r)
+            log += "${c.name}'s Menace!"
             for (foe in foesOf(c).filter { it.alive }) {
-                if (foe.oblivious) {
+                if (foe.unflappable) {
                     log += "${foe.name} doesn't even notice."
                 } else {
                     foe.scared = true
@@ -1085,10 +1085,10 @@ class Battle(
         heal(c, maxOf(1, c.maxHp * c.secondWindPct / 100), "${c.name} gets a second wind")
     }
 
-    /** Puts [d] to sleep for [turns], less what Insomnia shakes off. Returns false if it stays awake. */
+    /** Puts [d] to sleep for [turns], less what Wakeful shakes off. Returns false if it stays awake. */
     private fun fallAsleep(d: Combatant, turns: Int): Boolean {
         if (d.sleepCut >= Combatant.NO_SLEEP) {
-            log += "${d.name}'s Insomnia keeps it wide awake!"
+            log += "${d.name}'s Wakeful nature keeps it wide awake!"
             return false
         }
         d.status = Status.SLEEP
@@ -1122,7 +1122,7 @@ class Battle(
         if (!c.alive) return false
 
         if (c.status == Status.SLEEP) {
-            if (c.nightmareDamage > 0) hurt(c, c.nightmareDamage, "writhes in a nightmare")
+            if (c.nightTerrorDamage > 0) hurt(c, c.nightTerrorDamage, "writhes in a night terror")
             if (!c.alive) return false
             tickStatus(c)
             if (c.status == Status.SLEEP) {
@@ -1163,7 +1163,7 @@ class Battle(
         if (c.statusTurns <= 0) {
             val s = c.status
             c.status = null
-            c.nightmareDamage = 0
+            c.nightTerrorDamage = 0
             if (s != null && s != Status.SLEEP) log += "${c.name} is no longer ${s.label.lowercase()}."
         }
     }
@@ -1215,7 +1215,7 @@ class Battle(
                         }
                     }
                 } else {
-                    useMove(actor, enemy, actor.moves.firstOrNull() ?: Moves.get("tackle"))
+                    useMove(actor, enemy, actor.moves.firstOrNull() ?: Moves.get("shoulder_rush"))
                 }
             }
             BattleAction.Defend -> {
@@ -1288,13 +1288,13 @@ class Battle(
                     val target = enemy
                     val dmg = strike(actor, target, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
                     afterHeroHit(actor, target, dmg)
-                    // Mud Shot: mud in the eyes, stacking.
-                    if (skill.id == Spells.MUD_SHOT && target.alive) {
-                        val cap = Spells.MUD_SHOT_ACCURACY * Spells.MUD_SHOT_STACKS
+                    // Mud Sling: mud in the eyes, stacking.
+                    if (skill.id == Spells.MUD_SLING && target.alive) {
+                        val cap = Spells.MUD_SLING_ACCURACY * Spells.MUD_SLING_STACKS
                         if (target.muddiedPct >= cap) {
                             log += "${target.name} can't get any muddier."
                         } else {
-                            target.muddiedPct = minOf(cap, target.muddiedPct + Spells.MUD_SHOT_ACCURACY)
+                            target.muddiedPct = minOf(cap, target.muddiedPct + Spells.MUD_SLING_ACCURACY)
                             log += "${target.name}'s accuracy fell! (−${target.muddiedPct}%)"
                         }
                     }
@@ -1538,7 +1538,7 @@ class Battle(
 
     private fun MoveEffect.targetsFoe(): Boolean = when (this) {
         is MoveEffect.Inflict, is MoveEffect.LowerFoe, is MoveEffect.FoeAccuracyDown, is MoveEffect.FoeMissesNext,
-        is MoveEffect.Flinch, is MoveEffect.Scorch, is MoveEffect.Nightmare, MoveEffect.Scare -> true
+        is MoveEffect.Flinch, is MoveEffect.Scorch, is MoveEffect.NightTerror, MoveEffect.Scare -> true
         else -> false
     }
 
@@ -1683,7 +1683,7 @@ class Battle(
         return true
     }
 
-    /** Hover and Levitate: Earth attacks pass beneath. Logs it and returns true if [t] is out of reach. */
+    /** Hover and Airborne: Earth attacks pass beneath. Logs it and returns true if [t] is out of reach. */
     private fun floatsOver(a: Combatant, t: Combatant, type: Element, smackDown: Boolean = false): Boolean {
         if (type != Element.EARTH || !t.immuneEarth || smackDown) return false
         log += "${t.name} floats above it. Earth attacks can't reach!"
@@ -1714,15 +1714,15 @@ class Battle(
                 } else if (move.power == 0 && d.status != null) {
                     log += "${d.name} is already ${d.status!!.label.lowercase()}."
                 }
-                is MoveEffect.Nightmare -> if (d.alive && d.status == null && rng.nextDouble() < luck(a, fx.chance)) {
+                is MoveEffect.NightTerror -> if (d.alive && d.status == null && rng.nextDouble() < luck(a, fx.chance)) {
                     if (!fallAsleep(d, rng.nextInt(3, 6))) continue
-                    d.nightmareDamage = scaled(fx.base, a.level)
-                    log += "${d.name} falls into a nightmare!"
+                    d.nightTerrorDamage = scaled(fx.base, a.level)
+                    log += "${d.name} is gripped by a night terror!"
                 } else {
-                    log += "${d.name} resists the nightmare."
+                    log += "${d.name} shakes off the night terror."
                 }
-                is MoveEffect.LowerFoe -> if (d.alive && d.oblivious) {
-                    log += "${d.name} is oblivious. Its stats don't drop!"
+                is MoveEffect.LowerFoe -> if (d.alive && d.unflappable) {
+                    log += "${d.name} is unflappable: its stats don't drop!"
                 } else if (d.alive && rng.nextDouble() < luck(a, fx.chance)) {
                     fx.stats.forEach { d.stages[it] = ((d.stages[it] ?: 0) - 1).coerceAtLeast(-4) }
                     log += "${d.name}'s ${fx.stats.joinToString(", ") { it.label }} fell!"
@@ -1773,7 +1773,7 @@ class Battle(
                 MoveEffect.CureSelf -> if (a.status != null || a.scorchTurns > 0) {
                     a.status = null
                     a.statusTurns = 0
-                    a.nightmareDamage = 0
+                    a.nightTerrorDamage = 0
                     a.scorchTurns = 0
                     log += "${a.name} shakes off its ailments!"
                 }
@@ -1803,7 +1803,7 @@ class Battle(
                 }
                 MoveEffect.Scare -> when {
                     !d.alive -> {}
-                    d.oblivious -> log += "${d.name} is too oblivious to be scared."
+                    d.unflappable -> log += "${d.name} is too unflappable to be scared."
                     d.scared -> log += "${d.name} is already shaken."
                     else -> {
                         d.scared = true
@@ -1971,7 +1971,7 @@ class Battle(
         if (barbs > 0 && a.alive && a !== d && dmg > 0) {
             hurt(a, maxOf(1, a.maxHp * Trait.BARBED_HIDE.barbedPct(barbs) / 100), "is cut by ${d.name}'s Barbed Hide")
         }
-        // Static, Flame Body and Poison Point punish whoever strikes in close.
+        // Crackle Skin, Ember Hide and Venom Barbs punish whoever strikes in close.
         // Spore Coat: sleep, poison or shock, whichever the spores bring.
         val touch = d.touchStatus ?: if (d.rankOf(Trait.SPORE_COAT) > 0) listOf(Status.SLEEP, Status.POISON, Status.SHOCK).random(rng) else null
         if (touch != null && !useMagic && a.alive && a.status == null && rng.nextInt(100) < d.touchPct) {
@@ -1996,7 +1996,7 @@ class Battle(
             when {
                 MoveEffect.Protect in m.effects -> !enemy.usedProtectLast && enemy.hpFraction < 0.5
                 m.isDamaging -> true
-                m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.Nightmare } -> target.status == null
+                m.effects.any { it is MoveEffect.Inflict || it is MoveEffect.NightTerror } -> target.status == null
                 m.effects.any { it is MoveEffect.SetWeather } -> m.effects.filterIsInstance<MoveEffect.SetWeather>().none { it.weather == weather }
                 m.effects.contains(MoveEffect.ReverseOrder) -> reversedRounds == 0
                 m.effects.contains(MoveEffect.CureSelf) && m.effects.none { it is MoveEffect.RaiseSelf } -> enemy.status != null
@@ -2066,21 +2066,21 @@ class Battle(
         val drops = mutableMapOf<Item, Int>()
         if (outcome == BattleOutcome.WON) {
             if (encounter == EncounterType.SILVER_BOSS) {
-                drops[Item.GREAT_ORB] = 2
-                drops[Item.HI_POTION] = 1
+                drops[Item.RESONANT_CRYSTAL] = 2
+                drops[Item.GREATER_POTION] = 1
             } else if (isBoss) {
-                drops[Item.MASTER_ORB] = 1
-                drops[Item.HI_POTION] = 2
+                drops[Item.SOVEREIGN_CRYSTAL] = 1
+                drops[Item.GREATER_POTION] = 2
             } else {
                 // Stronger (team-scaled) monsters drop more, and better.
                 if (rng.nextDouble() < (0.25 * rewardMult).coerceAtMost(0.9)) {
-                    drops[listOf(Item.POTION, Item.TAMING_ORB, Item.ETHER, Item.SWEET_BERRY).random(rng)] = 1
+                    drops[listOf(Item.POTION, Item.BINDING_CRYSTAL, Item.MANA_DRAUGHT, Item.SWEET_BERRY).random(rng)] = 1
                     // Now and then a wild monster drops a rare Golden Berry.
                     if (rng.nextDouble() < 0.03) drops[Item.GOLDEN_BERRY] = 1
                 }
                 if (teamSize >= 3 && rng.nextDouble() < (0.2 * (teamSize - 2)).coerceAtMost(0.75)) {
                     val bonus = if (rng.nextDouble() < 0.04 * (teamSize - 1)) Item.RESTORE_POTION
-                    else listOf(Item.HI_POTION, Item.GREAT_ORB, Item.PHOENIX_DOWN).random(rng)
+                    else listOf(Item.GREATER_POTION, Item.RESONANT_CRYSTAL, Item.PHOENIX_FEATHER).random(rng)
                     drops[bonus] = (drops[bonus] ?: 0) + 1
                 }
             }
@@ -2090,7 +2090,7 @@ class Battle(
             for (uid in partyUids) {
                 val r = combatant(uid)?.rankOf(Trait.SCAVENGER) ?: 0
                 if (r > 0 && rng.nextInt(100) < Trait.SCAVENGER.scavengePct(r)) {
-                    val found = listOf(Item.POTION, Item.TAMING_ORB, Item.SWEET_BERRY, Item.ETHER).random(rng)
+                    val found = listOf(Item.POTION, Item.BINDING_CRYSTAL, Item.SWEET_BERRY, Item.MANA_DRAUGHT).random(rng)
                     drops[found] = (drops[found] ?: 0) + 1
                     log += "${combatant(uid)?.name} scavenged a ${found.label}!"
                 }

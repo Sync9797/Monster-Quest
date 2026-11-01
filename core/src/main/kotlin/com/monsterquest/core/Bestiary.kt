@@ -257,7 +257,7 @@ object Bestiary {
             Member("basilisk", "Basilisk", "Scythe Rend"),
         )))
         addAll(line("Gloomwisp line", Element.CORRUPT, StatBlock(38, 11, 16, 10, 15), SkillKind.MAGICAL, listOf(
-            Member("gloomwisp", "Gloomwisp", "Hex"),
+            Member("gloomwisp", "Gloomwisp", "Hexing Gaze"),
             Member("gloombat", "Gloombat", "Night Shriek"),
             Member("nightstalker", "Nightstalker", "Shadow Grasp"),
             Member("abyss_lord", "Abyss Lord", "Oblivion"),
@@ -269,7 +269,7 @@ object Bestiary {
         // ---- More three-stage lines ----
         addAll(line("Goopling line", Element.GAS, StatBlock(46, 10, 13, 13, 8), SkillKind.MAGICAL, listOf(
             Member("goopling", "Goopling", "Goo Toss"),
-            Member("sludgeon", "Sludgeon", "Sludge Wave"),
+            Member("sludgeon", "Sludgeon", "Sludge Tide"),
             Member("slime_sovereign", "Slime Sovereign", "Royal Ooze"),
         )))
         addAll(line("Pebblit line", Element.FIRE, StatBlock(50, 16, 6, 17, 5), SkillKind.PHYSICAL, listOf(
@@ -356,7 +356,7 @@ object Bestiary {
         )))
         // Earth
         addAll(line("Rollpip line", Element.EARTH, StatBlock(46, 13, 8, 18, 8), SkillKind.PHYSICAL, listOf(
-            Member("rollpip", "Rollpip", "Roll Out"),
+            Member("rollpip", "Rollpip", "Rolling Bash"),
             Member("pangolurk", "Pangolurk", "Scale Slash"),
             Member("ironscale", "Ironscale", "Iron Rampage"),
         )))
@@ -390,7 +390,7 @@ object Bestiary {
      * and the Zipwing line became Fluffchicks, stage for stage.
      */
     val removedIds: Map<String, String> =
-        listOf("ember", "spark", "gale", "tide", "venom", "moss").associate { "${it}_pup" to "shadow_pup" } +
+        listOf("ember", "crackle_jolt", "gale", "tide", "venom", "moss").associate { "${it}_pup" to "shadow_pup" } +
             listOf("cinder_hound", "volt_hound", "sky_hound", "surf_hound", "toxic_hound", "thorn_hound").associateWith { "dusk_hound" } +
             listOf("inferno_fenrir", "thunder_fenrir", "tempest_fenrir", "tsunami_fenrir", "plague_fenrir", "gaia_fenrir").associateWith { "void_fenrir" } +
             mapOf("zipwing" to "fluffchick", "stormtalon" to "skylark", "thunderbird" to "galehawk")

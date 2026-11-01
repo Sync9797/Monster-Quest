@@ -21,13 +21,13 @@ object Tutorial {
         TutorialStep("finish_quest", "Complete a quest", "Do it in real life, then tick it off: XP, gold and a hunt token.", 100) { it.stats.tasksCompleted > 0 },
         TutorialStep("visit_shrine", "Visit a shrine", "Open the Map and walk to a blue crystal shrine (within 60 m) to collect items.", 100, mapOf(Item.POTION to 2)) { it.stats.shrinesVisited > 0 },
         TutorialStep("win_battle", "Win a battle", "Walk up to a monster on the Map (or spend a hunt token on the Hero tab) and fight it.", 100) { it.stats.battlesWon > 0 },
-        TutorialStep("tame", "Tame a monster", "Get a wild monster below half HP, then Tame: pick a crystal and trace the glyph.", 150, mapOf(Item.TAMING_ORB to 3)) { it.stats.monstersTamed > 0 },
+        TutorialStep("tame", "Tame a monster", "Get a wild monster below half HP, then Tame: pick a crystal and trace the glyph.", 150, mapOf(Item.BINDING_CRYSTAL to 3)) { it.stats.monstersTamed > 0 },
         TutorialStep("phone_free", "Go phone-free", "Start a phone-free session (15 minutes is fine) and put the phone down.", 150) { it.stats.focusWins > 0 },
     )
 
     /** Finishing every step. */
     const val BONUS_GOLD = 300
-    val BONUS_ITEMS = mapOf(Item.TREAT to 1, Item.GREAT_ORB to 3)
+    val BONUS_ITEMS = mapOf(Item.TREAT to 1, Item.RESONANT_CRYSTAL to 3)
 
     /** The checklist shows until every step is claimed (or it's dismissed). */
     fun active(state: GameState): Boolean = state.starterChosen && !state.tutorialDismissed && steps.any { it.id !in state.tutorialClaimed }

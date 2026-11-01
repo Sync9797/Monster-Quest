@@ -277,7 +277,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 10,
+    val version: Int = 11,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -286,7 +286,7 @@ data class GameState(
     val party: List<String> = emptyList(),
     /** Monsters in the swap slots (max [MAX_SWAPS]): they can be sent in mid-battle. */
     val swaps: List<String> = emptyList(),
-    val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.TAMING_ORB to 5, Item.RESTORE_POTION to 1),
+    val inventory: Map<Item, Int> = mapOf(Item.POTION to 3, Item.BINDING_CRYSTAL to 5, Item.RESTORE_POTION to 1),
     /** Epoch day of the last free daily recovery (see GameEngine.dailyRecovery). */
     val lastRecoveryDay: Long? = null,
     /** Unequipped weapons (each takes a bag slot). */
@@ -361,7 +361,7 @@ data class GameState(
     val armorParts: Map<ArmorType, Int> = emptyMap(),
     /** Damage the hero carries between battles (healed by walking and potions). */
     val heroDamage: Int = 0,
-    /** Energy the hero has spent and not yet recovered (back slowly over time, faster by walking, or with an Ether). */
+    /** Energy the hero has spent and not yet recovered (back slowly over time, faster by walking, or with a Mana Draught). */
     val heroEnergyUsed: Int = 0,
     /** Scholar's Tomes waiting to be read: pages each, for a spell the player picks. */
     val tomes: List<Int> = emptyList(),
@@ -587,6 +587,24 @@ data class GameState(
             )
         }
         if (s.version < 10) s = levelReset(s)
+        if (s.version < 11) {
+            // 3.10: moves, a spell and a few achievements got new ids.
+            fun mon(m: Monster) = m.copy(moves = m.moves?.map { Moves.renamedIds[it] ?: it })
+            fun spell(id: String) = Spells.legacy[id]?.takeIf { id == "mud_shot" } ?: id
+            val achievements = mapOf("dex_25" to "journal_25", "dex_60" to "journal_60", "dex_all" to "journal_all")
+            s = s.copy(
+                version = 11,
+                monsters = s.monsters.map(::mon),
+                villainSpoils = s.villainSpoils.map(::mon),
+                pendingDenCatch = s.pendingDenCatch?.let { it.copy(monster = mon(it.monster)) },
+                hero = s.hero.copy(
+                    knownSpells = s.hero.knownSpells.map(::spell).toSet(),
+                    spellRanks = s.hero.spellRanks.mapKeys { spell(it.key) },
+                ),
+                spellPages = s.spellPages.mapKeys { spell(it.key) },
+                achievementsClaimed = s.achievementsClaimed.map { achievements[it] ?: it }.toSet(),
+            )
+        }
         return s.withJournal()
     }
 }

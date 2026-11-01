@@ -1397,7 +1397,7 @@ private fun NomadDialog(vm: GameViewModel, nomad: com.monsterquest.core.Nomad, o
                 Text(
                     "\"A fair fight? Me and two of mine against you and two of yours, two swaps each.\" " +
                         "${nomad.name} fights too: ${nomad.style}. " +
-                        "Win for ${nomad.level * com.monsterquest.core.Wanderers.NOMAD_GOLD_PER_LEVEL} gold, 2 Hi-Potions and an egg from one of their monsters' lines " +
+                        "Win for ${nomad.level * com.monsterquest.core.Wanderers.NOMAD_GOLD_PER_LEVEL} gold, 2 Greater Potions and an egg from one of their monsters' lines " +
                         "(${com.monsterquest.core.Wanderers.NOMAD_EGG_PERFECT} perfect stats). Their monsters can't be tamed.",
                     fontSize = 13.sp,
                 )

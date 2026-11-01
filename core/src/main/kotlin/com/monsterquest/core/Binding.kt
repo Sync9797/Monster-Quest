@@ -117,7 +117,7 @@ object Binding {
     fun length(p: List<GlyphPoint>): Float = p.zipWithNext().sumOf { (a, b) -> hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble()) }.toFloat()
 
     /** Crystal tiers, weakest first: better crystals also give a little more time to trace. */
-    private val crystals = listOf(Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB)
+    private val crystals = listOf(Item.BINDING_CRYSTAL, Item.RESONANT_CRYSTAL, Item.RADIANT_CRYSTAL, Item.PRISMATIC_CRYSTAL, Item.SOVEREIGN_CRYSTAL, Item.PERFECT_ORB)
 
     /** Every cast with a Perfect Crystal tames (no trace needed). */
     fun needsTrace(crystal: Item): Boolean = crystal != Item.PERFECT_ORB
@@ -127,7 +127,7 @@ object Binding {
      * uncommon ones add a flourish, rare and stronger ones double back on
      * themselves. Rarer monsters also give less time.
      */
-    fun glyphFor(species: Species, crystal: Item = Item.TAMING_ORB): Glyph {
+    fun glyphFor(species: Species, crystal: Item = Item.BINDING_CRYSTAL): Glyph {
         val (name, shape) = base(species.element)
         val stroke = when (species.rarity) {
             Rarity.COMMON -> shape

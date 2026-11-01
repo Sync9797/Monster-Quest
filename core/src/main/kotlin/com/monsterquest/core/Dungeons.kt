@@ -353,7 +353,7 @@ object Dungeons {
         val d = run.dungeon
         if (d.tutorial) {
             // Everything you need for the rooms ahead.
-            val r = run.copy(gold = run.gold + 100, torches = run.torches + 3, items = run.items + (Item.TAMING_ORB to 5) + (Item.POTION to 3))
+            val r = run.copy(gold = run.gold + 100, torches = run.torches + 3, items = run.items + (Item.BINDING_CRYSTAL to 5) + (Item.POTION to 3))
             return r to "A treasury! The chest holds 100 gold, 3 torches, 5 Binding Crystals and 3 Potions. Chests in other dungeons are random, and better the harder the dungeon."
         }
         var r = run
@@ -362,8 +362,8 @@ object Dungeons {
         r = r.copy(gold = r.gold + gold)
         found += "$gold gold"
         fun item(i: Item, n: Int) { r = r.copy(items = r.items + (i to (r.items[i] ?: 0) + n)); found += "${i.label}${if (n > 1) " x$n" else ""}" }
-        if (rng.nextDouble() < 0.5) item(listOf(Item.POTION, Item.HI_POTION, Item.ETHER).random(rng), 1 + rng.nextInt(2))
-        if (rng.nextDouble() < 0.35) item(if (d.stars >= 3) Item.GREAT_ORB else Item.TAMING_ORB, 1 + rng.nextInt(3))
+        if (rng.nextDouble() < 0.5) item(listOf(Item.POTION, Item.GREATER_POTION, Item.MANA_DRAUGHT).random(rng), 1 + rng.nextInt(2))
+        if (rng.nextDouble() < 0.35) item(if (d.stars >= 3) Item.RESONANT_CRYSTAL else Item.BINDING_CRYSTAL, 1 + rng.nextInt(3))
         if (rng.nextDouble() < 0.3 + 0.05 * d.stars) {
             val n = 1 + (if (rng.nextDouble() < d.stars / 6.0) 1 else 0)
             r = r.copy(torches = r.torches + n)
@@ -455,7 +455,7 @@ object Dungeons {
         if (hit(2)) Armory.roll(d.level, rng, luck = 30 + 10 * d.stars, minimum = GearRarity.EPIC).let { r = r.copy(gear = r.gear + it); got += "${it.rarity.label} ${it.name}" }
         if (hit(3)) Armory.rollArmor(d.level, rng, luck = 20 + 10 * d.stars, minimum = GearRarity.RARE).let { r = r.copy(armor = r.armor + it); got += "${it.rarity.label} ${it.name}" }
         if (hit(4)) GameEngine.pageCandidates(s).randomOrNull(rng)?.let { r = r.copy(pages = r.pages + (it.id to (r.pages[it.id] ?: 0) + 3)); got += "3 ${it.name} pages" }
-        if (hit(5)) { item(Item.GREAT_ORB, 3); got += "3 Resonant Crystals" }
+        if (hit(5)) { item(Item.RESONANT_CRYSTAL, 3); got += "3 Resonant Crystals" }
         if (hit(6)) { r = r.copy(torches = r.torches + 2); got += "2 torches" }
         if (hit(7)) { item(Item.INCUBATOR, 1); got += "an Incubator" }
         if (hit(8)) { item(Item.GOLDEN_BERRY, 1); got += "a Golden Berry" }

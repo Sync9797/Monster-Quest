@@ -150,12 +150,12 @@ fun Element.color(): Color = Color(palette(this).light)
 
 fun Item.icon(): GameIcon = when (this) {
     Item.POTION -> GameIcon.POTION
-    Item.HI_POTION -> GameIcon.HI_POTION
-    Item.ETHER -> GameIcon.POTION
-    Item.PHOENIX_DOWN -> GameIcon.FEATHER
+    Item.GREATER_POTION -> GameIcon.GREATER_POTION
+    Item.MANA_DRAUGHT -> GameIcon.POTION
+    Item.PHOENIX_FEATHER -> GameIcon.FEATHER
     Item.RESTORE_POTION -> GameIcon.RESTORE
     // Binding Crystals.
-    Item.TAMING_ORB, Item.GREAT_ORB, Item.MEGA_ORB, Item.ULTRA_ORB, Item.MASTER_ORB, Item.PERFECT_ORB -> GameIcon.CRYSTAL
+    Item.BINDING_CRYSTAL, Item.RESONANT_CRYSTAL, Item.RADIANT_CRYSTAL, Item.PRISMATIC_CRYSTAL, Item.SOVEREIGN_CRYSTAL, Item.PERFECT_ORB -> GameIcon.CRYSTAL
     Item.TREAT -> GameIcon.TREAT
     Item.MOOD_CRYSTAL -> GameIcon.SPARK
     Item.LURE -> GameIcon.LURE
@@ -172,15 +172,15 @@ fun Item.icon(): GameIcon = when (this) {
 }
 
 fun Item.color(): Color = when (this) {
-    Item.POTION, Item.HI_POTION -> Color(0xFF9CD2BD)
-    Item.ETHER -> Color(0xFF9CBFE4)
-    Item.PHOENIX_DOWN -> Color(0xFFF2A198)
+    Item.POTION, Item.GREATER_POTION -> Color(0xFF9CD2BD)
+    Item.MANA_DRAUGHT -> Color(0xFF9CBFE4)
+    Item.PHOENIX_FEATHER -> Color(0xFFF2A198)
     Item.RESTORE_POTION -> Color(0xFFF28B9B)
-    Item.TAMING_ORB -> Color(0xFF9CBFE4)
-    Item.GREAT_ORB -> Color(0xFFC3A6F0)
-    Item.MEGA_ORB -> Color(0xFF7FD6C2)
-    Item.ULTRA_ORB -> Color(0xFFF2A65A)
-    Item.MASTER_ORB -> Color(0xFFEBC678)
+    Item.BINDING_CRYSTAL -> Color(0xFF9CBFE4)
+    Item.RESONANT_CRYSTAL -> Color(0xFFC3A6F0)
+    Item.RADIANT_CRYSTAL -> Color(0xFF7FD6C2)
+    Item.PRISMATIC_CRYSTAL -> Color(0xFFF2A65A)
+    Item.SOVEREIGN_CRYSTAL -> Color(0xFFEBC678)
     Item.PERFECT_ORB -> Color(0xFFFF7BD5)
     Item.TREAT -> Color(0xFFD9A07A)
     Item.MOOD_CRYSTAL -> Color(0xFFB59AF0)

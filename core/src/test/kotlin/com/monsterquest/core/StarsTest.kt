@@ -23,7 +23,7 @@ class StarsTest {
         s = s.copy(hero = s.hero.copy(level = 50, xp = 0))
         val gear = s.gear.size
         val armor = s.armor.size
-        val orbs = s.count(Item.ULTRA_ORB)
+        val orbs = s.count(Item.PRISMATIC_CRYSTAL)
         val gain = GameEngine.addHeroXp(s, heroXpForNext(50))
         // The real level keeps counting: 51, shown as star 1, level 1.
         assertEquals(51, gain.state.hero.level)
@@ -33,7 +33,7 @@ class StarsTest {
         assertTrue(box.weapon.rarity >= GearRarity.EPIC && box.armor.rarity >= GearRarity.EPIC)
         assertEquals(gear + 1, gain.state.gear.size)
         assertEquals(armor + 1, gain.state.armor.size)
-        assertTrue(gain.state.count(Item.ULTRA_ORB) >= orbs + 3)
+        assertTrue(gain.state.count(Item.PRISMATIC_CRYSTAL) >= orbs + 3)
         assertTrue("STAR 1" in GameEngine.levelUpText(gain))
         // The monster level limit still follows the real level.
         assertEquals(56, XpRules.monsterCap(gain.state))

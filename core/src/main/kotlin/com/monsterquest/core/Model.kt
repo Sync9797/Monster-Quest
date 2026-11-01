@@ -1,5 +1,6 @@
 package com.monsterquest.core
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -195,10 +196,10 @@ object Spells {
     const val MAX_RANK = 5
     const val MASTERY_LEVEL = 25
 
-    /** Mud Shot: Earth magic that lowers the foe's accuracy by [MUD_SHOT_ACCURACY]% per hit, up to [MUD_SHOT_STACKS] times. */
-    const val MUD_SHOT = "mud_shot"
-    const val MUD_SHOT_ACCURACY = 10
-    const val MUD_SHOT_STACKS = 5
+    /** Mud Sling: Earth magic that lowers the foe's accuracy by [MUD_SLING_ACCURACY]% per hit, up to [MUD_SLING_STACKS] times. */
+    const val MUD_SLING = "mud_sling"
+    const val MUD_SLING_ACCURACY = 10
+    const val MUD_SLING_STACKS = 5
 
     /** Aegis: a shield worth half your max HP, more at higher ranks (not lowered by mastery). */
     const val AEGIS = "aegis"
@@ -217,9 +218,9 @@ object Spells {
         bolt("shadow_bolt", "Shadow Bolt", Element.CORRUPT, "A sliver of the dark that gloomwisps carry."),
         bolt("stone_bolt", "Stone Bolt", Element.EARTH, "A thrown shard, shaped like a Mosscub's rock."),
         Skill(
-            MUD_SHOT, "Mud Shot", Element.EARTH, SkillKind.MAGICAL, 12, mpCost = 3, powerPerRank = 4,
-            description = "A splat of mud in the foe's eyes: little damage, but its accuracy drops $MUD_SHOT_ACCURACY% " +
-                "(stacks up to ${MUD_SHOT_ACCURACY * MUD_SHOT_STACKS}%).",
+            MUD_SLING, "Mud Sling", Element.EARTH, SkillKind.MAGICAL, 12, mpCost = 3, powerPerRank = 4,
+            description = "A splat of mud in the foe's eyes: little damage, but its accuracy drops $MUD_SLING_ACCURACY% " +
+                "(stacks up to ${MUD_SLING_ACCURACY * MUD_SLING_STACKS}%).",
         ),
         Skill(
             "mend", "Mend", Element.NEUTRAL, SkillKind.HEAL, 24, mpCost = 5, powerPerRank = 10,
@@ -289,6 +290,8 @@ object Spells {
         "venom_cloud" to "venom_bolt", "shadow_rend" to "shadow_bolt", "judgement" to "fortify",
         // 3.7: Ward became Aegis.
         "ward" to AEGIS,
+        // 3.10: Mud Shot became Mud Sling.
+        "mud_shot" to MUD_SLING,
     )
 
     /** The old spells that were the strong versions; they carry over as rank 2. */
@@ -536,17 +539,17 @@ enum class Item(
     val minLevel: Int = 0,
 ) {
     POTION("Potion", ItemKind.HEAL_HP, 0.35, 25, "Restores 35% HP to one ally in battle."),
-    HI_POTION("Greater Potion", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
-    ETHER("Mana Draught", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
-    PHOENIX_DOWN("Phoenix Feather", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
+    @SerialName("HI_POTION") GREATER_POTION("Greater Potion", ItemKind.HEAL_HP, 0.8, 70, "Restores 80% HP to one ally in battle."),
+    @SerialName("ETHER") MANA_DRAUGHT("Mana Draught", ItemKind.HEAL_MP, 20.0, 40, "Restores 20 Energy to the hero."),
+    @SerialName("PHOENIX_DOWN") PHOENIX_FEATHER("Phoenix Feather", ItemKind.REVIVE, 0.5, 90, "Revives an ally that fell during this battle, at 50% HP."),
     RESTORE_POTION("Restore Potion", ItemKind.RESTORE, 1.0, 150, "Heals a knocked-out monster after battle. The only cure for fainting."),
     // Binding Crystals power the Binding Tome's capture spell: one per cast.
     // (Ids stay as they were so saves keep their crystals.)
-    TAMING_ORB("Binding Crystal", ItemKind.CAPTURE, 1.0, 30, "Powers one Binding cast to tame a weakened monster."),
-    GREAT_ORB("Resonant Crystal", ItemKind.CAPTURE, 1.5, 80, "Better taming odds, and a little more time to trace.", minLevel = 10),
-    MEGA_ORB("Radiant Crystal", ItemKind.CAPTURE, 2.0, 160, "Strong taming odds, and more time to trace.", minLevel = 25),
-    ULTRA_ORB("Prismatic Crystal", ItemKind.CAPTURE, 2.6, 320, "Very strong taming odds, and even more time to trace.", minLevel = 50),
-    MASTER_ORB("Sovereign Crystal", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
+    @SerialName("TAMING_ORB") BINDING_CRYSTAL("Binding Crystal", ItemKind.CAPTURE, 1.0, 30, "Powers one Binding cast to tame a weakened monster."),
+    @SerialName("GREAT_ORB") RESONANT_CRYSTAL("Resonant Crystal", ItemKind.CAPTURE, 1.5, 80, "Better taming odds, and a little more time to trace.", minLevel = 10),
+    @SerialName("MEGA_ORB") RADIANT_CRYSTAL("Radiant Crystal", ItemKind.CAPTURE, 2.0, 160, "Strong taming odds, and more time to trace.", minLevel = 25),
+    @SerialName("ULTRA_ORB") PRISMATIC_CRYSTAL("Prismatic Crystal", ItemKind.CAPTURE, 2.6, 320, "Very strong taming odds, and even more time to trace.", minLevel = 50),
+    @SerialName("MASTER_ORB") SOVEREIGN_CRYSTAL("Sovereign Crystal", ItemKind.CAPTURE, 3.0, 0, "Excellent taming odds. Found at boss shrines."),
     PERFECT_ORB(
         "Perfect Crystal", ItemKind.CAPTURE, 100.0, 2_000,
         "Always tames, even at full health, with no glyph to trace (not bosses you haven't beaten). Never found in the wild; one is the reward for reaching level 100.",
@@ -598,7 +601,7 @@ enum class Item(
 
     val usableInBattle: Boolean get() = kind in setOf(ItemKind.HEAL_HP, ItemKind.HEAL_MP, ItemKind.REVIVE, ItemKind.CAPTURE, ItemKind.BAIT)
 
-    /** What the shop pays: half the price (Master Orbs, which aren't sold, fetch a fixed sum; berries a little). */
+    /** What the shop pays: half the price (Sovereign Crystals, which aren't sold, fetch a fixed sum; berries a little). */
     val sellPrice: Int get() = when {
         price > 0 -> price / 2
         this == SWEET_BERRY -> 10

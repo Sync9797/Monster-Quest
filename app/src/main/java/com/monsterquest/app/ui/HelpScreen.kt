@@ -158,7 +158,7 @@ private val topics = listOf(
                 "Hospitals (red cross): a healing hall that wakes every fainted monster, once a day.",
                 "Schools, colleges and universities (purple book): an academy. Universities have 3 study spots around campus and colleges 2; for primary and high schools the spot is on a nearby street, off the school grounds, so you never need to go onto a school campus. Spots by a school are locked from 7 AM to 4 PM on weekdays (a lock shows on the map). Study once a day for a Scholar's Tome of 2 pages for any spell you choose, to learn a new one or rank one up.",
                 "Gyms (dumbbell): a training ground. Spend a torch and every party monster gains part of a level: 30%, then 20%, then 10%, for up to 3 sessions a day.",
-                "Star ranks: every 50 levels earns a star. Level 51 shows as ★1 · Lv 1, level 101 as ★2 · Lv 1, and your star shows by your name and on your map marker. Nothing drops: your hero keeps all their strength and the world keeps up. Each new star opens a star reward box: an Epic weapon, Epic armor, 3 Prismatic Crystals, 2 Restore Potions and 2 Phoenix Downs.",
+                "Star ranks: every 50 levels earns a star. Level 51 shows as ★1 · Lv 1, level 101 as ★2 · Lv 1, and your star shows by your name and on your map marker. Nothing drops: your hero keeps all their strength and the world keeps up. Each new star opens a star reward box: an Epic weapon, Epic armor, 3 Prismatic Crystals, 2 Restore Potions and 2 Phoenix Feathers.",
                 "Levels stay fair: monsters can't get more than 5 levels above your hero (extra XP is saved and pays out as your hero levels up), and beating foes far below your level gives much less XP.",
                 "Libraries and bookstores: their shrines hold extra spell pages.",
                 "Parks and gardens host dens of Earth, Flight and Gas monsters; fountains host Water dens.",
@@ -167,7 +167,7 @@ private val topics = listOf(
             section(
                 "People you meet",
                 "Thugs and villains (dark banners) stand on the streets, changing daily: cursed monsters you can't tame. Beat the whole team for loot, then try a Restore Potion to free one (75%).",
-                "Traders (green glow) wait by a grocery store in each neighbourhood (about 400 m), beside its Supply Cache, and sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Hi-Potions and an egg with 3 perfect stats.",
+                "Traders (green glow) wait by a grocery store in each neighbourhood (about 400 m), beside its Supply Cache, and sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Greater Potions and an egg with 3 perfect stats.",
             ),
         ),
     ),
@@ -234,7 +234,7 @@ private val topics = listOf(
             section(
                 "Spells",
                 "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold.",
-                "Bolts of every type, Mud Shot, and support magic: Mend (heal), Aegis (a shield worth half your max HP, more as it ranks up), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
+                "Bolts of every type, Mud Sling, and support magic: Mend (heal), Aegis (a shield worth half your max HP, more as it ranks up), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
                 "Energy comes back slowly, faster by walking, at once with a Mana Draught, or with a full night's sleep.",
             ),
             section(

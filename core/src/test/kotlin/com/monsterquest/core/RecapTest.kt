@@ -32,7 +32,7 @@ class RecapTest {
         val loot = s.copy(gold = s.gold + 120, inventory = s.inventory + (Item.POTION to (s.count(Item.POTION) + 2)))
         s = Recap.track(s, loot, at(12))
         // A purchase isn't loot.
-        val bought = s.copy(gold = s.gold - 50, inventory = s.inventory + (Item.ETHER to (s.count(Item.ETHER) + 1)))
+        val bought = s.copy(gold = s.gold - 50, inventory = s.inventory + (Item.MANA_DRAUGHT to (s.count(Item.MANA_DRAUGHT) + 1)))
         s = Recap.track(s, bought, at(13))
         // A task.
         s = Recap.track(s, s.copy(stats = s.stats.copy(tasksCompleted = s.stats.tasksCompleted + 2)), at(15))
@@ -41,7 +41,7 @@ class RecapTest {
         assertTrue(t.hpRestored > 0)
         assertEquals(120, t.gold)
         assertTrue((t.items[Item.POTION] ?: 0) >= 2) // plus any from level-up boxes
-        assertNull(t.items[Item.ETHER])
+        assertNull(t.items[Item.MANA_DRAUGHT])
         assertEquals(2, t.tasks)
         assertTrue(walked.torches > before.torches)
 

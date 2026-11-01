@@ -55,8 +55,8 @@ object Goals {
         Template({ g, _ -> "Beat $g shrine bosses" }, { 2 }, { b, n, _ -> n.bossesDefeated - b.bossesDefeated }),
     )
 
-    private val dailyItems = listOf(Item.POTION, Item.TAMING_ORB, Item.SWEET_BERRY, Item.ETHER)
-    private val weeklyItems = listOf(Item.HI_POTION, Item.GREAT_ORB, Item.TREAT, Item.LURE)
+    private val dailyItems = listOf(Item.POTION, Item.BINDING_CRYSTAL, Item.SWEET_BERRY, Item.MANA_DRAUGHT)
+    private val weeklyItems = listOf(Item.GREATER_POTION, Item.RESONANT_CRYSTAL, Item.TREAT, Item.LURE)
 
     private fun pick(pool: List<Template>, prefix: String, period: Long, gold: Int, items: List<Item>): List<Goal> {
         val rng = Random(period * 7919 + prefix.hashCode())

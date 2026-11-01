@@ -1,5 +1,6 @@
 package com.monsterquest.core
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // ---------------------------------------------------------------------------
@@ -150,11 +151,11 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     MORALE_MASTER("Morale Master", true, false),
     PACK_LEADER("Pack Leader", false, true),
     KLEPTOMANIAC("Kleptomaniac", true, false),
-    INSOMNIA("Insomnia", true, true),
-    INTIMIDATE("Intimidate", true, true),
+    @SerialName("INSOMNIA") WAKEFUL("Wakeful", true, true),
+    @SerialName("INTIMIDATE") MENACE("Menace", true, true),
     HOVER("Hover", true, false),
-    LEVITATE("Levitate", false, true),
-    OBLIVIOUS("Oblivious", true, true),
+    @SerialName("LEVITATE") AIRBORNE("Airborne", false, true),
+    @SerialName("OBLIVIOUS") UNFLAPPABLE("Unflappable", true, true),
     QUICK_STEP("Quick Step", true, true),
     TREASURE_HUNTER("Treasure Hunter", true, false),
     SCHOLAR("Scholar", true, false),
@@ -165,9 +166,9 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     EAGLE_EYE("Eagle Eye", true, false),
     MANA_WELL("Mana Well", true, false),
     THICK_HIDE("Thick Hide", false, true),
-    STATIC("Static", false, true),
-    FLAME_BODY("Flame Body", false, true),
-    POISON_POINT("Poison Point", false, true),
+    @SerialName("STATIC") CRACKLE_SKIN("Crackle Skin", false, true),
+    @SerialName("FLAME_BODY") EMBER_HIDE("Ember Hide", false, true),
+    @SerialName("POISON_POINT") VENOM_BARBS("Venom Barbs", false, true),
 
     // Monster traits inspired by early-generation abilities (see docs/trait-ideas.md for more to come).
     LAST_STAND("Last Stand", false, true),
@@ -197,7 +198,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     SUNBRINGER("Sunbringer", false, true);
 
     /** Floats above the ground: Earth moves can't touch it. */
-    val hovers: Boolean get() = this == HOVER || this == LEVITATE
+    val hovers: Boolean get() = this == HOVER || this == AIRBORNE
 
     // ---- numbers per rank (1..5) ----
 
@@ -205,10 +206,10 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     fun teamPct(rank: Int) = 2 * rank
     /** Kleptomaniac: share of the off-hand weapon that counts, in percent. */
     fun offhandPct(rank: Int) = 40 + 15 * (rank - 1)
-    /** Insomnia: turns of sleep shaken off (rank 5: can't be put to sleep). */
+    /** Wakeful: turns of sleep shaken off (rank 5: can't be put to sleep). */
     fun sleepCut(rank: Int) = (rank + 1) / 2
-    /** Intimidate: Attack stages taken from every foe on top of the 66.7% cut (one more at ranks 3 and 5). */
-    fun intimidateStages(rank: Int) = (rank - 1) / 2
+    /** Menace: Attack stages taken from every foe on top of the 66.7% cut (one more at ranks 3 and 5). */
+    fun menaceStages(rank: Int) = (rank - 1) / 2
     /** Quick Step: dodge chance, in percent. */
     fun dodgePct(rank: Int) = 4 + 3 * rank
     fun goldPct(rank: Int) = 10 * rank
@@ -222,7 +223,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
     fun maxEnergy(rank: Int) = 2 * rank
     /** Thick Hide: less damage taken, in percent. */
     fun hidePct(rank: Int) = 5 + 2 * rank
-    /** Static, Flame Body, Poison Point: chance to afflict an attacker, in percent. */
+    /** Crackle Skin, Ember Hide, Venom Barbs: chance to afflict an attacker, in percent. */
     fun touchPct(rank: Int) = 8 + 3 * rank
     /**
      * Hover at team range: less Earth damage for the rest of the team, in
@@ -292,17 +293,17 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
             PACK_LEADER -> "Its team gets +${teamPct(r)}% HP, Attack, Defense and Speed"
             KLEPTOMANIAC -> "Carry a second weapon: ${offhandPct(r)}% of its power counts" +
                 if (r >= 3) ", and its effects work too" else ""
-            INSOMNIA -> if (r >= MAX_SKILL_RANK) "Can't be put to sleep" + (if (team) ", and your team wakes ${sleepCut(r - 1)} turns sooner" else "")
+            WAKEFUL -> if (r >= MAX_SKILL_RANK) "Can't be put to sleep" + (if (team) ", and your team wakes ${sleepCut(r - 1)} turns sooner" else "")
             else "Wakes ${sleepCut(r)} turn${if (sleepCut(r) > 1) "s" else ""} sooner from sleep" + if (team) " (whole team)" else ""
-            INTIMIDATE -> "Every foe's Attack drops to 67% as the battle starts" +
-                (if (intimidateStages(r) > 0) ", then ${intimidateStages(r)} stage${if (intimidateStages(r) > 1) "s" else ""} more" else "")
+            MENACE -> "Every foe's Attack drops to 67% as the battle starts" +
+                (if (menaceStages(r) > 0) ", then ${menaceStages(r)} stage${if (menaceStages(r) > 1) "s" else ""} more" else "")
             HOVER -> "Earth moves can't touch you" + when {
                 r >= MAX_SKILL_RANK -> "; your whole team hovers too, until you take a hit (then ${hoverTeamPct(r)}% less Earth damage)"
                 team -> "; your team takes ${hoverTeamPct(r)}% less Earth damage"
                 else -> ""
             }
-            LEVITATE -> "Floats: Earth moves can't touch it"
-            OBLIVIOUS -> "$whoCap can't have stats lowered or be scared" + if (team) " (whole team)" else ""
+            AIRBORNE -> "Floats: Earth moves can't touch it"
+            UNFLAPPABLE -> "$whoCap can't have stats lowered or be scared" + if (team) " (whole team)" else ""
             QUICK_STEP -> "${dodgePct(r)}% chance to dodge attacks" + if (team) " (your monsters: ${dodgePct(r) / 2}%)" else ""
             TREASURE_HUNTER -> "+${goldPct(r)}% gold from battles"
             SCHOLAR -> "+${xpPct(r)}% XP from battles, for you and your monsters"
@@ -313,9 +314,9 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
             EAGLE_EYE -> "+${critPct(r)}% critical-hit chance"
             MANA_WELL -> "+${energyPerTurn(r)} Energy every turn and +${maxEnergy(r)} max Energy"
             THICK_HIDE -> "Takes ${hidePct(r)}% less damage"
-            STATIC -> "${touchPct(r)}% chance to shock anything that hits it"
-            FLAME_BODY -> "${touchPct(r)}% chance to burn anything that hits it"
-            POISON_POINT -> "${touchPct(r)}% chance to poison anything that hits it"
+            CRACKLE_SKIN -> "${touchPct(r)}% chance to shock anything that hits it"
+            EMBER_HIDE -> "${touchPct(r)}% chance to burn anything that hits it"
+            VENOM_BARBS -> "${touchPct(r)}% chance to poison anything that hits it"
             LAST_STAND -> "Its own-type moves hit ${lastStandPct(r)}% harder at a third of its HP or less"
             RAIN_RUNNER -> "Speed x${"%.1f".format(weatherSpeed(r))} in Rain"
             SUN_CHASER -> "Speed x${"%.1f".format(weatherSpeed(r))} in a Drought"
@@ -347,7 +348,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
 
     companion object {
         /** Hero skills that spread to the team at [TEAM_RANGE_RANK]. */
-        val RANGED = setOf(INSOMNIA, HOVER, OBLIVIOUS, QUICK_STEP, SECOND_WIND, FIRST_STRIKE, REGENERATION)
+        val RANGED = setOf(WAKEFUL, HOVER, UNFLAPPABLE, QUICK_STEP, SECOND_WIND, FIRST_STRIKE, REGENERATION)
         val heroSkills: List<Trait> = entries.filter { it.forHero }
     }
 }
@@ -356,48 +357,48 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
 object MonsterTraits {
     private val byFamily: Map<String, Trait> = mapOf(
         // Starters
-        "Voltfawn line" to Trait.STATIC,          // a charged stag
-        "Cindrake line" to Trait.INTIMIDATE,      // dragons
+        "Voltfawn line" to Trait.CRACKLE_SKIN,          // a charged stag
+        "Cindrake line" to Trait.MENACE,      // dragons
         "Drizzlet line" to Trait.REGENERATION,    // sea serpents shed and heal
         "Mosscub line" to Trait.THICK_HIDE,       // bears
         // Four-stage lines
         "Emberkit line" to Trait.QUICK_STEP,      // cats
-        "Zapmouse line" to Trait.STATIC,          // static fur
-        "Fluffchick line" to Trait.LEVITATE,      // birds
-        "Bubblefin line" to Trait.OBLIVIOUS,      // fish don't care
-        "Toxbug line" to Trait.POISON_POINT,      // stingers
-        "Gloomwisp line" to Trait.LEVITATE,       // wisps and bats float
+        "Zapmouse line" to Trait.CRACKLE_SKIN,          // static fur
+        "Fluffchick line" to Trait.AIRBORNE,      // birds
+        "Bubblefin line" to Trait.UNFLAPPABLE,      // fish don't care
+        "Toxbug line" to Trait.VENOM_BARBS,      // stingers
+        "Gloomwisp line" to Trait.AIRBORNE,       // wisps and bats float
         // More three-stage lines
         "Goopling line" to Trait.REGENERATION,    // slimes reform
-        "Pebblit line" to Trait.FLAME_BODY,       // molten rock
+        "Pebblit line" to Trait.EMBER_HIDE,       // molten rock
         "Shellsnap line" to Trait.THICK_HIDE,     // shells
         "Twiglet line" to Trait.REGENERATION,     // trees regrow
-        "Impling line" to Trait.INSOMNIA,         // fiends never sleep
+        "Impling line" to Trait.WAKEFUL,         // fiends never sleep
         // 1.33 lines
-        "Cinderskink line" to Trait.FLAME_BODY,   // a burning tail
+        "Cinderskink line" to Trait.EMBER_HIDE,   // a burning tail
         "Cinderlamb line" to Trait.THICK_HIDE,    // thick wool
         "Joltlet line" to Trait.QUICK_STEP,       // monkeys dodge
-        "Zaplume line" to Trait.STATIC,           // stinging jelly
+        "Zaplume line" to Trait.CRACKLE_SKIN,           // stinging jelly
         "Puddlet line" to Trait.REGENERATION,     // frogs regrow
         "Pincerling line" to Trait.THICK_HIDE,    // shells
-        "Hootling line" to Trait.INSOMNIA,        // owls stay up all night
-        "Pterix line" to Trait.LEVITATE,          // fliers
-        "Sporelet line" to Trait.POISON_POINT,    // poisonous spores
-        "Stinkit line" to Trait.INTIMIDATE,       // nobody wants to get close
-        "Hexling line" to Trait.POISON_POINT,     // venom fangs
-        "Nightling line" to Trait.LEVITATE,       // bats fly
+        "Hootling line" to Trait.WAKEFUL,        // owls stay up all night
+        "Pterix line" to Trait.AIRBORNE,          // fliers
+        "Sporelet line" to Trait.VENOM_BARBS,    // poisonous spores
+        "Stinkit line" to Trait.MENACE,       // nobody wants to get close
+        "Hexling line" to Trait.VENOM_BARBS,     // venom fangs
+        "Nightling line" to Trait.AIRBORNE,       // bats fly
         "Rollpip line" to Trait.THICK_HIDE,       // armored scales
-        "Stubhorn line" to Trait.INTIMIDATE,      // a charging rhino
+        "Stubhorn line" to Trait.MENACE,      // a charging rhino
         // Mythics
         "Mimic" to Trait.THICK_HIDE,              // it's a chest
-        "Prism Fairy" to Trait.LEVITATE,
+        "Prism Fairy" to Trait.AIRBORNE,
         // Legendaries
-        "Magma Behemoth" to Trait.FLAME_BODY,
-        "Thunder Titan" to Trait.STATIC,
-        "Sky Serpent" to Trait.LEVITATE,
-        "Abyss Kraken" to Trait.INTIMIDATE,
+        "Magma Behemoth" to Trait.EMBER_HIDE,
+        "Thunder Titan" to Trait.CRACKLE_SKIN,
+        "Sky Serpent" to Trait.AIRBORNE,
+        "Abyss Kraken" to Trait.MENACE,
         "Miasma Hydra" to Trait.REGENERATION,
-        "Dread Lich" to Trait.INSOMNIA,           // the undead don't sleep
+        "Dread Lich" to Trait.WAKEFUL,           // the undead don't sleep
         "Worldroot Colossus" to Trait.THICK_HIDE,
     )
 
@@ -408,53 +409,53 @@ object MonsterTraits {
     /**
      * The skills each line can roll, with weights, picked to suit how it
      * looks and what type it is. Lines with Flight float about 60% of the
-     * time (Levitate) but can roll something else.
+     * time (Airborne) but can roll something else.
      */
     private val pools: Map<String, List<Pair<Trait, Int>>> = mapOf(
         // Starters
-        "Voltfawn line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 2, Trait.LAST_STAND to 1),   // a charged stag
-        "Cindrake line" to listOf(Trait.LEVITATE to 6, Trait.INTIMIDATE to 2, Trait.KINDLING to 1, Trait.LAST_STAND to 1),     // winged dragons
-        "Drizzlet line" to listOf(Trait.LEVITATE to 6, Trait.REGENERATION to 1, Trait.SPRING_SOAK to 1, Trait.RAIN_RUNNER to 1, Trait.RAIN_DRINKER to 1, Trait.HARD_SCALES to 1), // sky serpents
+        "Voltfawn line" to listOf(Trait.CRACKLE_SKIN to 4, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 2, Trait.LAST_STAND to 1),   // a charged stag
+        "Cindrake line" to listOf(Trait.AIRBORNE to 6, Trait.MENACE to 2, Trait.KINDLING to 1, Trait.LAST_STAND to 1),     // winged dragons
+        "Drizzlet line" to listOf(Trait.AIRBORNE to 6, Trait.REGENERATION to 1, Trait.SPRING_SOAK to 1, Trait.RAIN_RUNNER to 1, Trait.RAIN_DRINKER to 1, Trait.HARD_SCALES to 1), // sky serpents
         "Mosscub line" to listOf(Trait.THICK_HIDE to 4, Trait.GRIT to 2, Trait.STALWART to 2, Trait.LAST_STAND to 2, Trait.INSULATED to 2),          // bears
         // Four-stage lines
         "Emberkit line" to listOf(Trait.QUICK_STEP to 4, Trait.SUN_CHASER to 3, Trait.KINDLING to 2, Trait.LAST_STAND to 1),  // fire cats
-        "Zapmouse line" to listOf(Trait.STATIC to 5, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 1, Trait.SCAVENGER to 1),  // rodents
-        "Fluffchick line" to listOf(Trait.LEVITATE to 6, Trait.KEEN_SIGHT to 2, Trait.MOMENTUM to 2),                      // birds of prey
-        "Bubblefin line" to listOf(Trait.BARBED_HIDE to 3, Trait.RAIN_RUNNER to 3, Trait.OBLIVIOUS to 2, Trait.SPRING_SOAK to 2), // sharks: rough skin
-        "Toxbug line" to listOf(Trait.LEVITATE to 6, Trait.POISON_POINT to 2, Trait.KEEN_SIGHT to 1, Trait.MOMENTUM to 1),     // winged bugs
-        "Gloomwisp line" to listOf(Trait.LEVITATE to 6, Trait.OVERBEARING to 2, Trait.INSOMNIA to 2),                      // wisps and wraiths
+        "Zapmouse line" to listOf(Trait.CRACKLE_SKIN to 5, Trait.LIGHTNING_EATER to 3, Trait.MOMENTUM to 1, Trait.SCAVENGER to 1),  // rodents
+        "Fluffchick line" to listOf(Trait.AIRBORNE to 6, Trait.KEEN_SIGHT to 2, Trait.MOMENTUM to 2),                      // birds of prey
+        "Bubblefin line" to listOf(Trait.BARBED_HIDE to 3, Trait.RAIN_RUNNER to 3, Trait.UNFLAPPABLE to 2, Trait.SPRING_SOAK to 2), // sharks: rough skin
+        "Toxbug line" to listOf(Trait.AIRBORNE to 6, Trait.VENOM_BARBS to 2, Trait.KEEN_SIGHT to 1, Trait.MOMENTUM to 1),     // winged bugs
+        "Gloomwisp line" to listOf(Trait.AIRBORNE to 6, Trait.OVERBEARING to 2, Trait.WAKEFUL to 2),                      // wisps and wraiths
         // Hounds lead packs, with a touch of their element
-        "Shadow Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.INTIMIDATE to 2, Trait.OVERBEARING to 1),
+        "Shadow Hound line" to listOf(Trait.PACK_LEADER to 5, Trait.MENACE to 2, Trait.OVERBEARING to 1),
         // Three-stage lines
-        "Goopling line" to listOf(Trait.REGENERATION to 5, Trait.STALWART to 2, Trait.POISON_POINT to 2),                 // slimes reform
-        "Pebblit line" to listOf(Trait.FLAME_BODY to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 2),                      // molten rock
+        "Goopling line" to listOf(Trait.REGENERATION to 5, Trait.STALWART to 2, Trait.VENOM_BARBS to 2),                 // slimes reform
+        "Pebblit line" to listOf(Trait.EMBER_HIDE to 4, Trait.STALWART to 3, Trait.IRON_SKULL to 2),                      // molten rock
         "Shellsnap line" to listOf(Trait.THICK_HIDE to 3, Trait.STALWART to 3, Trait.PLATED to 3, Trait.SPRING_SOAK to 2),                   // tortoises
         "Twiglet line" to listOf(Trait.REGENERATION to 4, Trait.SUN_CHASER to 3, Trait.THICK_HIDE to 2, Trait.RAIN_DRINKER to 2),                  // trees love the sun
-        "Impling line" to listOf(Trait.INSOMNIA to 3, Trait.KINDLING to 3, Trait.GRIT to 2, Trait.OVERBEARING to 1),          // fiends
-        "Cinderskink line" to listOf(Trait.FLAME_BODY to 4, Trait.KINDLING to 3, Trait.LAST_STAND to 2, Trait.SUN_CHASER to 1, Trait.HARD_SCALES to 2), // salamanders
+        "Impling line" to listOf(Trait.WAKEFUL to 3, Trait.KINDLING to 3, Trait.GRIT to 2, Trait.OVERBEARING to 1),          // fiends
+        "Cinderskink line" to listOf(Trait.EMBER_HIDE to 4, Trait.KINDLING to 3, Trait.LAST_STAND to 2, Trait.SUN_CHASER to 1, Trait.HARD_SCALES to 2), // salamanders
         "Cinderlamb line" to listOf(Trait.THICK_HIDE to 3, Trait.IRON_SKULL to 3, Trait.INSULATED to 3, Trait.GRIT to 1),                       // rams: wool and horns
         "Joltlet line" to listOf(Trait.QUICK_STEP to 4, Trait.MOMENTUM to 3, Trait.LIGHTNING_EATER to 1),                 // monkeys
-        "Zaplume line" to listOf(Trait.STATIC to 4, Trait.LIGHTNING_EATER to 3, Trait.SPRING_SOAK to 2, Trait.LEVITATE to 1), // drifting jellies
-        "Puddlet line" to listOf(Trait.RAIN_RUNNER to 3, Trait.REGENERATION to 2, Trait.SPRING_SOAK to 2, Trait.RAIN_DRINKER to 2, Trait.POISON_POINT to 1), // frogs
-        "Pincerling line" to listOf(Trait.PLATED to 3, Trait.THICK_HIDE to 2, Trait.STALWART to 2, Trait.OBLIVIOUS to 2, Trait.SCAVENGER to 1, Trait.RAIN_RUNNER to 1), // crabs
-        "Hootling line" to listOf(Trait.LEVITATE to 6, Trait.INSOMNIA to 3, Trait.KEEN_SIGHT to 2),                      // owls
-        "Pterix line" to listOf(Trait.LEVITATE to 6, Trait.IRON_SKULL to 2, Trait.INTIMIDATE to 1, Trait.KEEN_SIGHT to 1),   // pterosaurs
-        "Sporelet line" to listOf(Trait.SPORE_COAT to 4, Trait.POISON_POINT to 2, Trait.REGENERATION to 2, Trait.STALWART to 1),               // mushrooms
-        "Stinkit line" to listOf(Trait.INTIMIDATE to 4, Trait.POISON_POINT to 2, Trait.GRIT to 1),                      // skunks
-        "Hexling line" to listOf(Trait.POISON_POINT to 4, Trait.SNARE_AURA to 3, Trait.INSOMNIA to 1),                  // spiders spin webs
-        "Nightling line" to listOf(Trait.LEVITATE to 5, Trait.INSOMNIA to 2, Trait.OVERBEARING to 1),                   // bats
+        "Zaplume line" to listOf(Trait.CRACKLE_SKIN to 4, Trait.LIGHTNING_EATER to 3, Trait.SPRING_SOAK to 2, Trait.AIRBORNE to 1), // drifting jellies
+        "Puddlet line" to listOf(Trait.RAIN_RUNNER to 3, Trait.REGENERATION to 2, Trait.SPRING_SOAK to 2, Trait.RAIN_DRINKER to 2, Trait.VENOM_BARBS to 1), // frogs
+        "Pincerling line" to listOf(Trait.PLATED to 3, Trait.THICK_HIDE to 2, Trait.STALWART to 2, Trait.UNFLAPPABLE to 2, Trait.SCAVENGER to 1, Trait.RAIN_RUNNER to 1), // crabs
+        "Hootling line" to listOf(Trait.AIRBORNE to 6, Trait.WAKEFUL to 3, Trait.KEEN_SIGHT to 2),                      // owls
+        "Pterix line" to listOf(Trait.AIRBORNE to 6, Trait.IRON_SKULL to 2, Trait.MENACE to 1, Trait.KEEN_SIGHT to 1),   // pterosaurs
+        "Sporelet line" to listOf(Trait.SPORE_COAT to 4, Trait.VENOM_BARBS to 2, Trait.REGENERATION to 2, Trait.STALWART to 1),               // mushrooms
+        "Stinkit line" to listOf(Trait.MENACE to 4, Trait.VENOM_BARBS to 2, Trait.GRIT to 1),                      // skunks
+        "Hexling line" to listOf(Trait.VENOM_BARBS to 4, Trait.SNARE_AURA to 3, Trait.WAKEFUL to 1),                  // spiders spin webs
+        "Nightling line" to listOf(Trait.AIRBORNE to 5, Trait.WAKEFUL to 2, Trait.OVERBEARING to 1),                   // bats
         "Rollpip line" to listOf(Trait.PLATED to 4, Trait.THICK_HIDE to 3, Trait.STALWART to 2, Trait.IRON_SKULL to 1),                    // armored pangolins
-        "Stubhorn line" to listOf(Trait.IRON_SKULL to 4, Trait.INTIMIDATE to 3, Trait.GRIT to 2, Trait.STALWART to 1),      // charging rhinos
+        "Stubhorn line" to listOf(Trait.IRON_SKULL to 4, Trait.MENACE to 3, Trait.GRIT to 2, Trait.STALWART to 1),      // charging rhinos
         // Mythics
         "Mimic" to listOf(Trait.SNARE_AURA to 3, Trait.PLATED to 2, Trait.THICK_HIDE to 2, Trait.SCAVENGER to 2),                          // a treasure chest that bites
-        "Prism Fairy" to listOf(Trait.LEVITATE to 6, Trait.FORTUNE to 2, Trait.KEEN_SIGHT to 1, Trait.SCAVENGER to 1),
+        "Prism Fairy" to listOf(Trait.AIRBORNE to 6, Trait.FORTUNE to 2, Trait.KEEN_SIGHT to 1, Trait.SCAVENGER to 1),
         // Legendaries
-        "Magma Behemoth" to listOf(Trait.SUNBRINGER to 3, Trait.FLAME_BODY to 1, Trait.KINDLING to 1),
-        "Thunder Titan" to listOf(Trait.STORMCALLER to 3, Trait.STATIC to 1, Trait.LIGHTNING_EATER to 1),
-        "Sky Serpent" to listOf(Trait.LEVITATE to 8, Trait.OVERBEARING to 2),
-        "Abyss Kraken" to listOf(Trait.STORMCALLER to 3, Trait.SNARE_AURA to 1, Trait.INTIMIDATE to 1),                 // tentacles hold on
+        "Magma Behemoth" to listOf(Trait.SUNBRINGER to 3, Trait.EMBER_HIDE to 1, Trait.KINDLING to 1),
+        "Thunder Titan" to listOf(Trait.STORMCALLER to 3, Trait.CRACKLE_SKIN to 1, Trait.LIGHTNING_EATER to 1),
+        "Sky Serpent" to listOf(Trait.AIRBORNE to 8, Trait.OVERBEARING to 2),
+        "Abyss Kraken" to listOf(Trait.STORMCALLER to 3, Trait.SNARE_AURA to 1, Trait.MENACE to 1),                 // tentacles hold on
         "Miasma Hydra" to listOf(Trait.SPORE_COAT to 3, Trait.REGENERATION to 2, Trait.OVERBEARING to 1),
-        "Dread Lich" to listOf(Trait.OVERBEARING to 3, Trait.INSOMNIA to 3),
+        "Dread Lich" to listOf(Trait.OVERBEARING to 3, Trait.WAKEFUL to 3),
         "Worldroot Colossus" to listOf(Trait.SUNBRINGER to 3, Trait.STALWART to 1, Trait.THICK_HIDE to 1),
     )
 

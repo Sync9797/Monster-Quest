@@ -111,7 +111,7 @@ object LootBoxes {
     /** A new reading from the phone's step counter (total steps since boot). See [GameEngine.onStepCount]. */
     fun onStepCount(state: GameState, totalSteps: Long): GameState = GameEngine.onStepCount(state, totalSteps).state
 
-    private val potions = listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN)
+    private val potions = listOf(Item.POTION, Item.POTION, Item.POTION, Item.GREATER_POTION, Item.MANA_DRAUGHT, Item.PHOENIX_FEATHER)
 
     /** Chance that a Level 4 box's boss is a legendary. */
     const val LEGENDARY_BOSS_CHANCE = 0.2

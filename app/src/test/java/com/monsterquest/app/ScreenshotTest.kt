@@ -121,7 +121,7 @@ abstract class ScreenshotBase(private val device: String) {
             equippedGear = Armory.roll(12, Random(5), WeaponType.DAGGER, luck = 80),
             spellPages = mapOf("gust_bolt" to 3, "venom_bolt" to 1, "ember_bolt" to 4),
             parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
-            inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.HI_POTION to 2, Item.ETHER to 3, Item.TAMING_ORB to 6, Item.GREAT_ORB to 2, Item.TREAT to 1),
+            inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.GREATER_POTION to 2, Item.MANA_DRAUGHT to 3, Item.BINDING_CRYSTAL to 6, Item.RESONANT_CRYSTAL to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY, dueMs = now + 20 * 60_000),
                 QuestTask("b", "Finish quarterly report", Difficulty.HARD, dueMs = now + 26 * 3_600_000L, priority = com.monsterquest.core.Priority.HIGH),
@@ -717,7 +717,7 @@ abstract class ScreenshotBase(private val device: String) {
             "Corner Cafe",
             listOf(
                 com.monsterquest.core.Reward.Gold(12),
-                com.monsterquest.core.Reward.Items(Item.TAMING_ORB, 2),
+                com.monsterquest.core.Reward.Items(Item.BINDING_CRYSTAL, 2),
                 com.monsterquest.core.Reward.Items(Item.POTION, 1),
                 com.monsterquest.core.Reward.WeaponDrop(Armory.roll(12, Random(9), WeaponType.STAFF, luck = 60)),
                 com.monsterquest.core.Reward.Pages("gust_bolt", 1, learned = false),
@@ -800,7 +800,7 @@ abstract class ScreenshotBase(private val device: String) {
                 heroClass = com.monsterquest.core.HeroClass.WARRIOR,
                 classChosen = true,
                 subclass = com.monsterquest.core.Subclass.BERSERKER,
-                skills = listOf(com.monsterquest.core.Trait.INTIMIDATE, com.monsterquest.core.Trait.KLEPTOMANIAC),
+                skills = listOf(com.monsterquest.core.Trait.MENACE, com.monsterquest.core.Trait.KLEPTOMANIAC),
             ),
             gold = 2000,
             gear = base.gear + staff,
@@ -811,7 +811,7 @@ abstract class ScreenshotBase(private val device: String) {
         val v = vm(skilledHero())
         shot("28_hero_skills") { AppRoot(v, Tab.HERO) }
         check(rule.onAllNodesWithText("Berserker", substring = true).fetchSemanticsNodes().isNotEmpty()) { "subclass shown" }
-        rule.onNodeWithText("Intimidate  ★★☆☆☆").assertExists()
+        rule.onNodeWithText("Menace  ★★☆☆☆").assertExists()
         rule.onNodeWithText("Slot 3: opens at level 60").assertExists()
         rule.onNodeWithText("Off hand", substring = true).assertExists()
         // The class is a dropdown: the other classes only show once it's opened.
@@ -944,7 +944,7 @@ abstract class ScreenshotBase(private val device: String) {
                 learned = listOf("Ember Fang"),
                 canLearn = listOf("Flame Torrent"),
                 canLearnIds = listOf("flame_torrent"),
-                loadout = listOf("spit_fire", "cinder_jab", "heat_claws", "bite"),
+                loadout = listOf("spit_fire", "cinder_jab", "heat_claws", "fang_snap"),
             ),
         )
         val b = b0.copy(outcome = com.monsterquest.core.BattleOutcome.WON, resultText = "Victory! +40 XP, +30 gold.", levelUps = ups, current = null)
@@ -1096,7 +1096,7 @@ abstract class ScreenshotBase(private val device: String) {
             tallies = mapOf(
                 today.toEpochDay() - 1 to com.monsterquest.core.DayTally(
                     heroLevels = 1, monsterLevels = 3, monsterXp = 1_240, gold = 380,
-                    items = mapOf(com.monsterquest.core.Item.POTION to 2, com.monsterquest.core.Item.TAMING_ORB to 3), gear = 1,
+                    items = mapOf(com.monsterquest.core.Item.POTION to 2, com.monsterquest.core.Item.BINDING_CRYSTAL to 3), gear = 1,
                     hpRestored = 415, tasks = 6,
                 ),
             ),

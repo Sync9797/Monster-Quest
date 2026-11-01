@@ -10,19 +10,19 @@ class TraitPoolsTest {
     private fun flies(sp: Species) = Element.FLIGHT in sp.types
 
     @Test
-    fun fliersUsuallyLevitateButNotAlways() {
+    fun fliersAreUsuallyAirborneButNotAlways() {
         val fliers = Bestiary.all.filter { flies(it) }
         assertTrue(fliers.isNotEmpty())
         for (sp in fliers) {
             val pool = MonsterTraits.pool(sp)
-            val share = pool.filter { it.first == Trait.LEVITATE }.sumOf { it.second }.toDouble() / pool.sumOf { it.second }
-            assertTrue(share >= 0.5, "${sp.family} levitates ${share}")
+            val share = pool.filter { it.first == Trait.AIRBORNE }.sumOf { it.second }.toDouble() / pool.sumOf { it.second }
+            assertTrue(share >= 0.5, "${sp.family} is airborne ${share}")
             assertTrue(pool.size > 1, "${sp.family} can roll something else")
         }
-        // Rolled across many monsters: mostly Levitate, sometimes not.
+        // Rolled across many monsters: mostly Airborne, sometimes not.
         val rolls = (1..400).map { MonsterTraits.roll(Bestiary.get("fluffchick"), Random(it)) }
-        val lev = rolls.count { it == Trait.LEVITATE }
-        assertTrue(lev in 180..300, "levitate $lev of 400")
+        val lev = rolls.count { it == Trait.AIRBORNE }
+        assertTrue(lev in 180..300, "airborne $lev of 400")
     }
 
     @Test
@@ -72,27 +72,27 @@ class TraitPoolsTest {
         }
         // Lightning Eater: an Electric attack heals it instead.
         val eater = Monster.create(Bestiary.get("tempest_roc"), 40, Random(2)).copy(skill = Trait.LIGHTNING_EATER)
-        val zapper = Monster.create(Bestiary.get("thunderhog"), 40, Random(3)).copy(moves = listOf("thunder_shock"), skill = Trait.STATIC)
+        val zapper = Monster.create(Bestiary.get("thunderhog"), 40, Random(3)).copy(moves = listOf("jolt_strike"), skill = Trait.CRACKLE_SKIN)
         val (b1, me1) = duel(zapper, eater)
         b1.enemy.hp = b1.enemy.maxHp / 2
         val hp = b1.enemy.hp
-        b1.act(BattleAction.UseMove("thunder_shock"))
+        b1.act(BattleAction.UseMove("jolt_strike"))
         assertTrue(b1.log.any { "Lightning Eater absorbs" in it } || b1.log.any { "miss" in it }, b1.log.takeLast(5).toString())
         assertTrue(b1.enemy.hp >= hp)
         assertTrue(me1.alive)
         // Iron Skull at rank 5 (level 70): no recoil.
-        val ram = Monster.create(Bestiary.get("cinderlamb"), 70, Random(4)).copy(moves = listOf("flare_blitz"), skill = Trait.IRON_SKULL)
+        val ram = Monster.create(Bestiary.get("cinderlamb"), 70, Random(4)).copy(moves = listOf("wildfire_charge"), skill = Trait.IRON_SKULL)
         val (b2, me2) = duel(ram, Monster.create(Bestiary.get("goopling"), 70, Random(5)))
         val mine = me2.hp
-        b2.act(BattleAction.UseMove("flare_blitz"))
+        b2.act(BattleAction.UseMove("wildfire_charge"))
         assertEquals(mine, me2.hp, b2.log.takeLast(5).toString())
         // Stalwart at full HP: survives a knockout blow once.
         val wall = Monster.create(Bestiary.get("rollpip"), 30, Random(6)).copy(skill = Trait.STALWART)
-        val brute = Monster.create(Bestiary.get("emberkit"), 90, Random(7)).copy(moves = listOf("flare_blitz"))
+        val brute = Monster.create(Bestiary.get("emberkit"), 90, Random(7)).copy(moves = listOf("wildfire_charge"))
         val (b3, hitter) = duel(brute, wall)
         hitter.powerUp = 2_000
         b3.enemy.hp = b3.enemy.maxHp
-        b3.act(BattleAction.UseMove("flare_blitz"))
+        b3.act(BattleAction.UseMove("wildfire_charge"))
         assertTrue(b3.log.any { "Stalwart" in it } || b3.log.any { "miss" in it }, b3.log.takeLast(6).toString())
         if (b3.log.any { "Stalwart" in it }) assertTrue(b3.enemies.first().hp >= 1, "held on")
     }

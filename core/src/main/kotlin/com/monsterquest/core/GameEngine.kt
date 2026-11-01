@@ -120,19 +120,19 @@ object GameEngine {
         fun add(item: Item, n: Int = 1) { box[item] = (box[item] ?: 0) + n }
         add(
             when {
-                level < 10 -> Item.TAMING_ORB
-                level < 25 -> Item.GREAT_ORB
-                level < 50 -> Item.MEGA_ORB
-                else -> Item.ULTRA_ORB
+                level < 10 -> Item.BINDING_CRYSTAL
+                level < 25 -> Item.RESONANT_CRYSTAL
+                level < 50 -> Item.RADIANT_CRYSTAL
+                else -> Item.PRISMATIC_CRYSTAL
             },
         )
-        add(if (level < 15) Item.POTION else Item.HI_POTION)
+        add(if (level < 15) Item.POTION else Item.GREATER_POTION)
         if (level % 5 == 0) {
             add(
                 when {
-                    level < 25 -> Item.ETHER
+                    level < 25 -> Item.MANA_DRAUGHT
                     level % 10 == 0 -> Item.RESTORE_POTION
-                    else -> Item.PHOENIX_DOWN
+                    else -> Item.PHOENIX_FEATHER
                 },
             )
         }
@@ -941,7 +941,7 @@ object GameEngine {
     fun usePotion(state: GameState, item: Item, target: String): Update {
         if (state.count(item) <= 0) return Update(state, "No ${item.label} left.")
         val spent = state.copy(inventory = removeItems(state.inventory, mapOf(item to 1)))
-        // An Ether outside battle restores the hero's Energy.
+        // A Mana Draught outside battle restores the hero's Energy.
         if (item.kind == ItemKind.HEAL_MP) {
             if (state.heroEnergyUsed <= 0) return Update(state, "Your Energy is already full.")
             val back = minOf(state.heroEnergyUsed, item.power.toInt())
@@ -1375,7 +1375,7 @@ object GameEngine {
                     pages[sp.id] = (pages[sp.id] ?: 0) + 1 + (if (rng.nextDouble() < 0.4) 1 else 0)
                 }
                 r < 0.60 -> {
-                    val orb = if (rng.nextDouble() < 0.75) Item.TAMING_ORB else Item.GREAT_ORB
+                    val orb = if (rng.nextDouble() < 0.75) Item.BINDING_CRYSTAL else Item.RESONANT_CRYSTAL
                     items[orb] = (items[orb] ?: 0) + 1
                 }
                 // Berries: only found out in the world (shrines and wild monsters), never in the shop.
@@ -1386,7 +1386,7 @@ object GameEngine {
                 else -> {
                     // Restore Potions are deliberately rare.
                     val potion = if (rng.nextDouble() < 0.06) Item.RESTORE_POTION
-                    else listOf(Item.POTION, Item.POTION, Item.POTION, Item.HI_POTION, Item.ETHER, Item.PHOENIX_DOWN).random(rng)
+                    else listOf(Item.POTION, Item.POTION, Item.POTION, Item.GREATER_POTION, Item.MANA_DRAUGHT, Item.PHOENIX_FEATHER).random(rng)
                     items[potion] = (items[potion] ?: 0) + 1
                 }
             }

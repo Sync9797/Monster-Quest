@@ -645,7 +645,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
                 if (m.damage > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         Text("Heals 10 HP every 100 steps in your party.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                        SmallButton("Use potion", { usingPotion = true }, outlined = true, enabled = s.count(Item.POTION) + s.count(Item.HI_POTION) > 0)
+                        SmallButton("Use potion", { usingPotion = true }, outlined = true, enabled = s.count(Item.POTION) + s.count(Item.GREATER_POTION) > 0)
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -1002,7 +1002,7 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
         )
     }
     if (usingPotion) {
-        val item = if (s.count(Item.HI_POTION) > 0 && m.damage > m.stats.hp / 2) Item.HI_POTION else if (s.count(Item.POTION) > 0) Item.POTION else Item.HI_POTION
+        val item = if (s.count(Item.GREATER_POTION) > 0 && m.damage > m.stats.hp / 2) Item.GREATER_POTION else if (s.count(Item.POTION) > 0) Item.POTION else Item.GREATER_POTION
         PotionTargetDialog(vm, item) { usingPotion = false }
     }
     if (releasing) {
