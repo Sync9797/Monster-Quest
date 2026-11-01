@@ -277,7 +277,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 8,
+    val version: Int = 9,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -570,6 +570,20 @@ data class GameState(
                 mysteryId = s.mysteryId?.let(::id),
                 mysteriesSolved = s.mysteriesSolved.map { (sp, w) -> id(sp) to w },
                 villainSpoils = s.villainSpoils.map { it.copy(speciesId = id(it.speciesId)) },
+            )
+        }
+        if (s.version < 9) {
+            // 3.7: Ward is replaced by Aegis for everyone; Ward's rank and pages carry over.
+            val wardRank = s.hero.spellRanks["ward"]
+            val ranks = (s.hero.spellRanks - "ward").let { r ->
+                if (wardRank != null) r + (Spells.AEGIS to maxOf(wardRank, r[Spells.AEGIS] ?: 1)) else r
+            }
+            val wardPages = s.spellPages["ward"] ?: 0
+            val pages = (s.spellPages - "ward").let { p -> if (wardPages > 0) p + (Spells.AEGIS to (p[Spells.AEGIS] ?: 0) + wardPages) else p }
+            s = s.copy(
+                version = 9,
+                hero = s.hero.copy(knownSpells = s.hero.knownSpells - "ward" + Spells.AEGIS, spellRanks = ranks),
+                spellPages = pages,
             )
         }
         return s.withJournal()

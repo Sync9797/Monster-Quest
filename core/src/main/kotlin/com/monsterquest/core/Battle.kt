@@ -283,7 +283,7 @@ class Combatant(
         if (diving != null) add("In the air")
         if (protecting) add("Guarding")
         if (defending) add("Shield up")
-        if (shield > 0) add("Ward $shield")
+        if (shield > 0) add("Shield $shield")
         if (mustRecharge) add("Recharging")
         if (accuracyDown || missNext) add("Blinded")
         if (muddiedPct > 0) add("Acc ↓$muddiedPct%")

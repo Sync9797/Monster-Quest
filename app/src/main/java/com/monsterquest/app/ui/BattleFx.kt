@@ -194,7 +194,7 @@ fun BattleFxOverlay(modifier: Modifier = Modifier) {
             val (text, tint, size) = when (e.style) {
                 StrikeStyle.MISS -> Triple("Miss", Color(0xFFB8C1BE), 18f)
                 StrikeStyle.HEAL -> Triple("+${e.amount}", HpGreen, 22f)
-                StrikeStyle.WARD -> Triple(if (e.amount > 0) "Ward ${e.amount}" else "Def up", MpBlue, 20f)
+                StrikeStyle.WARD -> Triple(if (e.amount > 0) "Shield ${e.amount}" else "Def up", MpBlue, 20f)
                 else -> Triple((if (e.crit) "CRIT " else "") + "-${e.amount}", if (e.crit || e.superEffective) Gold else Color.White, if (e.crit) 28f else 24f)
             }
             numberPaint.textSize = size.sp.toPx()

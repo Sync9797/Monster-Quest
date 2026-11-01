@@ -386,7 +386,8 @@ class GameTest {
     fun heroMagicIsItsOwnAndRanksUp() {
         // One bolt per type, plus heal, shield and defense buff, none of them monster moves.
         assertEquals(Element.typed.toSet(), Spells.all.filter { it.kind == SkillKind.MAGICAL }.map { it.element }.toSet())
-        assertEquals(SUPPORT_KINDS, Spells.all.map { it.kind }.toSet() - SkillKind.MAGICAL)
+        // (Ward's plain shield is gone: Aegis replaced it in 3.7.)
+        assertEquals(SUPPORT_KINDS - SkillKind.SHIELD, Spells.all.map { it.kind }.toSet() - SkillKind.MAGICAL)
         assertTrue(Spells.all.none { sp -> Moves.all.any { it.id == sp.id } })
         // Weaker than monster moves at first; mastery grows with level.
         val ember = Spells.byId("ember_bolt")!!
@@ -414,14 +415,31 @@ class GameTest {
         var guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.step(BattleAction.Defend)
         val pal = b.allies.first { !it.isHero }
-        b.step(BattleAction.CastSpell("ward", pal.key))
+        b.step(BattleAction.CastSpell(Spells.AEGIS, pal.key))
         // The ward goes up (and may already have soaked a hit before we look).
-        assertTrue(b.log.any { it.contains("is shielded") })
+        assertTrue(b.log.any { it.contains("great shield") })
         assertTrue(b.events.any { it.style == StrikeStyle.WARD && it.targetKey == pal.key })
         guard = 0
         while (b.current?.isHero != true && guard++ < 20) b.step(BattleAction.Defend)
         b.step(BattleAction.CastSpell("fortify", pal.key))
         assertEquals(1, pal.stages[BattleStat.DEFENSE])
+    }
+
+    @Test
+    fun wardBecomesAegisForEveryone() {
+        val old = started().let {
+            it.copy(
+                version = 8,
+                hero = it.hero.copy(knownSpells = setOf("ember_bolt", "mend", "ward"), spellRanks = mapOf("ward" to 3)),
+                spellPages = mapOf("ward" to 4, "fortify" to 1),
+            )
+        }
+        val m = old.migrated()
+        assertEquals(setOf("ember_bolt", "mend", Spells.AEGIS), m.hero.knownSpells)
+        assertEquals(3, m.hero.spellRank(Spells.AEGIS))
+        assertEquals(mapOf(Spells.AEGIS to 4, "fortify" to 1), m.spellPages)
+        assertTrue(Spells.byId("ward") == null)
+        assertTrue(Spells.AEGIS in GameState().hero.knownSpells)
     }
 
     @Test
@@ -434,7 +452,7 @@ class GameTest {
             )
         }
         val m = old.migrated()
-        assertEquals(setOf("ember_bolt", "mend", "ward", "gust_bolt"), m.hero.knownSpells)
+        assertEquals(setOf("ember_bolt", "mend", Spells.AEGIS, "gust_bolt"), m.hero.knownSpells)
         assertEquals(2, m.hero.spellRank("ember_bolt"))
         assertEquals(mapOf("tide_bolt" to 3, "fortify" to 2), m.spellPages)
     }

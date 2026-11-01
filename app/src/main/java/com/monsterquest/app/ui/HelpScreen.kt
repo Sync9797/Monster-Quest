@@ -208,7 +208,7 @@ private val topics = listOf(
             section(
                 "Spells",
                 "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold.",
-                "Bolts of every type, Mud Shot, and support magic: Mend (heal), Ward (shield), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
+                "Bolts of every type, Mud Shot, and support magic: Mend (heal), Aegis (a shield worth half your max HP, more as it ranks up), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
                 "Energy comes back slowly, faster by walking, at once with a Mana Draught, or with a full night's sleep.",
             ),
             section(

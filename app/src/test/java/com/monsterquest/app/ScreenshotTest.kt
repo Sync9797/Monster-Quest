@@ -786,7 +786,7 @@ abstract class ScreenshotBase(private val device: String) {
         // Cast Ward in battle (the shield animation).
         v.hunt()
         v.chooseLead(null)
-        v.battleAction(com.monsterquest.core.BattleAction.CastSpell("ward", "hero"))
+        v.battleAction(com.monsterquest.core.BattleAction.CastSpell(com.monsterquest.core.Spells.AEGIS, "hero"))
         capture("27_ward", 400)
     }
 

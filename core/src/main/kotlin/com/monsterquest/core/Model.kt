@@ -187,7 +187,7 @@ data class Skill(
  * mastery grows with level (full strength at [MASTERY_LEVEL]), and each spell
  * can be ranked up to [MAX_RANK] with spell-book pages and gold.
  *
- * Ember Bolt, Mend and Ward are known from the start; the rest are learned by
+ * Ember Bolt, Mend and Aegis are known from the start; the rest are learned by
  * collecting [PAGES_TO_LEARN] pages from item shrines.
  */
 object Spells {
@@ -226,10 +226,6 @@ object Spells {
             description = "Heals one ally or yourself.",
         ),
         Skill(
-            "ward", "Ward", Element.NEUTRAL, SkillKind.SHIELD, 20, mpCost = 5, powerPerRank = 10,
-            description = "A barrier on one ally or yourself that soaks up damage until it breaks.",
-        ),
-        Skill(
             "fortify", "Fortify", Element.NEUTRAL, SkillKind.FORTIFY, 1, mpCost = 4,
             description = "Raises one ally's Defense for the rest of the battle (more at higher ranks).",
         ),
@@ -256,7 +252,7 @@ object Spells {
         ),
     )
 
-    val starting: Set<String> = setOf("ember_bolt", "mend", "ward")
+    val starting: Set<String> = setOf("ember_bolt", "mend", AEGIS)
 
     fun byId(id: String): Skill? = all.find { it.id == id }
 
@@ -291,6 +287,8 @@ object Spells {
         "heal" to "mend", "mega_heal" to "mend",
         "thunderclap" to "spark_bolt", "tidal_lance" to "tide_bolt", "gale" to "gust_bolt",
         "venom_cloud" to "venom_bolt", "shadow_rend" to "shadow_bolt", "judgement" to "fortify",
+        // 3.7: Ward became Aegis.
+        "ward" to AEGIS,
     )
 
     /** The old spells that were the strong versions; they carry over as rank 2. */
