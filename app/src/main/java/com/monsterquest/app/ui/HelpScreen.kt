@@ -124,7 +124,7 @@ private val topics = listOf(
             ),
             section(
                 "Dungeons",
-                "Stone archways with torches, in every coffee shop, doctor's office and most restaurants (scattered in between where there's no map data), rated 1 to 5 stars (stars above the arch). Tap one to see its level, rooms, the monsters inside, the champion and the reward pool with odds. Entering costs 1 to 3 torches.",
+                "Stone archways with torches. Each block (about 300 m) has one, in a coffee shop, doctor's office or restaurant picked fresh each day, so busy downtowns aren't packed and a different café opens tomorrow. Where there are no such places, scattered ones fill in. Rated 1 to 5 stars (stars above the arch); every neighbourhood has a couple of easy ones and at most one 5-star. Tap one to see its level, rooms, the monsters inside, the champion and the reward pool with odds. Entering costs 1 to 3 torches.",
                 "Each room offers two doors: monster lairs (tameable, 1 to 4 monsters; easy dungeons send at most 3), Alpha dens, cursed guardians (can't be tamed), traps (you see your odds; fail and everyone takes damage, but you go on), treasuries, fairy fountains (full heal) and quiet rooms. Some doors are hidden. Harder dungeons have more rooms, fights and traps.",
                 "At the end waits a champion: a Warrior, Mage or Rogue with their monsters. Beat them for +1 Attack, Magic or Speed for good (once a day) and a roll on the reward pool.",
                 "Leave whenever you like and keep what you found. If your team falls, you lose half of it.",
@@ -147,7 +147,7 @@ private val topics = listOf(
             section(
                 "People you meet",
                 "Thugs and villains (dark banners) stand on the streets, changing daily: cursed monsters you can't tame. Beat the whole team for loot, then try a Restore Potion to free one (75%).",
-                "Traders (green glow) wait at every grocery store, beside its Supply Cache, and sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Hi-Potions and an egg with 3 perfect stats.",
+                "Traders (green glow) wait by a grocery store in each neighbourhood (about 400 m), beside its Supply Cache, and sell gear and supplies 20-35% off. Nomads (blue glow) fight alongside two monsters with two swaps each; beat one for gold, Hi-Potions and an egg with 3 perfect stats.",
             ),
         ),
     ),

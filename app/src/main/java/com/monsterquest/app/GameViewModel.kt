@@ -1142,14 +1142,32 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private data class VillainRun(val camp: VillainCamp, val index: Int)
     private var villainRun: VillainRun? = null
 
-    fun densNear(nowMs: Long): List<com.monsterquest.core.Den> {
-        val (lat, lon) = location ?: return emptyList()
-        // Where real places are known, dens take over some of them for the day; elsewhere
-        // they're scattered, clear of shrines so the map never feels crowded.
-        val spots = shrines
-        return com.monsterquest.core.Venues.dens(state, venues, nowMs) + com.monsterquest.core.Dens.near(state, lat, lon, nowMs)
-            .filter { d -> scattered(d.lat, d.lon) && spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
+    private var planFor: List<Any?>? = null
+    private var planCache = com.monsterquest.core.VenuePlan.EMPTY
+
+    /**
+     * Today's dungeons, dens and traders: at real places, at most one dungeon
+     * per block (busy downtowns aren't wall-to-wall), with scattered ones
+     * filling in the gaps, everything spaced apart and clear of shrines.
+     */
+    private fun mapPlan(nowMs: Long): com.monsterquest.core.VenuePlan {
+        val (lat, lon) = location ?: return com.monsterquest.core.VenuePlan.EMPTY
+        val day = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+        val key = listOf(System.identityHashCode(state), System.identityHashCode(venues), System.identityHashCode(shrines), day, (lat * 2000).toInt(), (lon * 2000).toInt())
+        if (key == planFor) return planCache
+        val plan = com.monsterquest.core.Venues.topUp(
+            com.monsterquest.core.Venues.plan(state, venues, nowMs),
+            com.monsterquest.core.Dungeons.near(state, lat, lon, nowMs),
+            com.monsterquest.core.Dens.near(state, lat, lon, nowMs),
+            com.monsterquest.core.Wanderers.tradersNear(state, lat, lon, nowMs),
+            avoid = shrines.map { it.lat to it.lon },
+        )
+        planFor = key
+        planCache = plan
+        return plan
     }
+
+    fun densNear(nowMs: Long): List<com.monsterquest.core.Den> = mapPlan(nowMs).dens
 
     fun challengeDen(den: com.monsterquest.core.Den) {
         val d = distanceTo(den.lat, den.lon)
@@ -1212,10 +1230,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     // ---- wanderers: traders and nomads -------------------------------------
 
     fun tradersNear(nowMs: Long): List<com.monsterquest.core.Trader> {
-        val (lat, lon) = location ?: return emptyList()
-        // A trader at every grocery store where we know them.
-        return com.monsterquest.core.Venues.traders(state, venues, nowMs) +
-            com.monsterquest.core.Wanderers.tradersNear(state, lat, lon, nowMs).filter { scattered(it.lat, it.lon) }
+        // A trader by a grocery store in each neighbourhood, or a wandering one where there's none.
+        return mapPlan(nowMs).traders
     }
 
     fun nomadsNear(nowMs: Long): List<com.monsterquest.core.Nomad> {
@@ -1251,11 +1267,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Today's dungeons nearby (kept clear of shrines). */
     fun dungeonsNear(nowMs: Long): List<com.monsterquest.core.Dungeon> {
-        val (lat, lon) = location ?: return emptyList()
-        // A dungeon in every coffee shop, doctor's office and most restaurants where we know them.
-        val spots = shrines
-        return com.monsterquest.core.Venues.dungeons(state, venues, nowMs) + com.monsterquest.core.Dungeons.near(state, lat, lon, nowMs)
-            .filter { d -> scattered(d.lat, d.lon) && spots.none { World.distanceMeters(it.lat, it.lon, d.lat, d.lon) < World.MIN_SPACING_M } }
+        // A dungeon in a coffee shop, doctor's office or restaurant on each block, or a scattered one where there's none.
+        return mapPlan(nowMs).dungeons
     }
 
     fun enterDungeon(d: com.monsterquest.core.Dungeon) {

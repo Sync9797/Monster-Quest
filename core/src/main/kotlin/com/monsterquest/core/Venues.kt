@@ -3,6 +3,8 @@ package com.monsterquest.core
 import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.random.Random
 
 /** What a real place hosts on the map. */
@@ -37,6 +39,23 @@ data class Venue(
     val lon: Double,
     val role: VenueRole,
 )
+
+/**
+ * Today's dungeons, traders and dens at real places ([Venues.plan]); the
+ * spots lists include ones already cleared today, so nothing fills in there.
+ */
+data class VenuePlan(
+    val dungeons: List<Dungeon>,
+    val traders: List<Trader>,
+    val dens: List<Den>,
+    val dungeonSpots: List<Pair<Double, Double>> = emptyList(),
+    val traderSpots: List<Pair<Double, Double>> = emptyList(),
+    val denSpots: List<Pair<Double, Double>> = emptyList(),
+) {
+    companion object {
+        val EMPTY = VenuePlan(emptyList(), emptyList(), emptyList())
+    }
+}
 
 /**
  * Puts the day's dungeons, traders, dens and thugs at real places: a dungeon
@@ -150,36 +169,146 @@ object Venues {
         else -> DungeonTheme.entries.random(r)
     }
 
-    fun dungeons(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Dungeon> {
+    /** Each block of about this size (meters) holds at most one venue dungeon a day; the other spots there rest. */
+    const val DUNGEON_CELL_M = 300.0
+    /** And at most one trader per this size. */
+    const val TRADER_CELL_M = 400.0
+    /** Chance a cell's runner-up spot holds a den today instead of resting. */
+    const val LEFTOVER_DEN_CHANCE = 0.35
+    /** Scattered ones fill in wherever no real-place dungeon, den or trader is this close. */
+    const val FLOOR_DUNGEON_M = 450.0
+    const val FLOOR_DEN_M = 300.0
+    const val FLOOR_TRADER_M = 500.0
+    /**
+     * Every 3x3 block of dungeon cells (about 900 m across) shares this deck of
+     * difficulties, so each neighbourhood has easy ones and few of the hardest.
+     */
+    val STAR_DECK = listOf(1, 1, 2, 2, 3, 3, 4, 4, 5)
+
+    /** The cell of about [sizeM] meters a spot falls in. */
+    fun cellOf(lat: Double, lon: Double, sizeM: Double): Pair<Long, Long> {
+        val dLat = sizeM / 111_320.0
+        val row = floor(lat / dLat).toLong()
+        val rowLat = (row + 0.5) * dLat
+        val dLon = sizeM / (111_320.0 * cos(Math.toRadians(rowLat)))
+        return row to floor(lon / dLon).toLong()
+    }
+
+    /** A venue dungeon's difficulty: its cell's card from its block's deck. */
+    fun starsFor(cell: Pair<Long, Long>, day: Long): Int {
+        val br = Math.floorDiv(cell.first, 3L)
+        val bc = Math.floorDiv(cell.second, 3L)
+        val deck = STAR_DECK.shuffled(rng("stars:$br:$bc", day, 5))
+        return deck[(Math.floorMod(cell.first, 3L) * 3 + Math.floorMod(cell.second, 3L)).toInt()]
+    }
+
+    /**
+     * Today's dungeons, traders and dens at real places, balanced so a busy
+     * downtown isn't wall-to-wall dungeons:
+     * - one dungeon per ~300 m block, at a spot picked fresh each day (the
+     *   other cafés and restaurants there rest until another day);
+     * - the block's runner-up spot sometimes holds a den instead;
+     * - one trader per ~400 m block of grocery stores;
+     * - parks and fountains sometimes hold a den;
+     * - nothing stands within [World.MIN_SPACING_M] of anything else;
+     * - difficulty comes from a shared deck, so every neighbourhood has easy ones.
+     * Some spots are taken over by a den for the day ([DEN_TAKEOVER]).
+     */
+    fun plan(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): VenuePlan {
         val day = epochDay(nowMs, zone)
-        return venues.filter { it.role == VenueRole.DUNGEON && !denToday(it, day) }.mapNotNull { v ->
+        val kept = ArrayList<Pair<Double, Double>>()
+        fun clear(lat: Double, lon: Double) = kept.none { World.distanceMeters(it.first, it.second, lat, lon) < World.MIN_SPACING_M }
+        val dungeonAt = ArrayList<Pair<Venue, Int>>()
+        val denAt = ArrayList<Venue>()
+        val traderAt = ArrayList<Venue>()
+        fun denSpot(v: Venue): Pair<Double, Double> =
+            // On a park or fountain, a step off its shrine so both can be tapped.
+            if (v.role == VenueRole.NATURE || v.role == VenueRole.WATERSIDE) v.lat - 0.00018 to v.lon + 0.00018 else v.lat to v.lon
+        // A step off the store's Supply Cache, so both can be tapped.
+        fun traderSpot(v: Venue): Pair<Double, Double> = v.lat + 0.00018 to v.lon + 0.00018
+        fun cells(role: Set<VenueRole>, sizeM: Double) = venues.filter { it.role in role }
+            .groupBy { cellOf(it.lat, it.lon, sizeM) }
+            .toSortedMap(compareBy<Pair<Long, Long>> { it.first }.thenBy { it.second })
+            .map { (k, list) -> k to list.sortedBy { it.id }.shuffled(rng("cell:${k.first}:${k.second}:${role.first()}", day, 6)) }
+
+        for ((cell, cands) in cells(setOf(VenueRole.DUNGEON), DUNGEON_CELL_M)) {
+            val open = cands.filter { clear(it.lat, it.lon) }.toMutableList()
+            val first = open.removeFirstOrNull() ?: continue
+            if (rng(first.id, day, 1).nextDouble() < DEN_TAKEOVER) denAt += first else dungeonAt += first to starsFor(cell, day)
+            kept += first.lat to first.lon
+            val second = open.firstOrNull { clear(it.lat, it.lon) } ?: continue
+            if (rng(second.id, day, 7).nextDouble() < LEFTOVER_DEN_CHANCE) {
+                denAt += second
+                kept += second.lat to second.lon
+            }
+        }
+        for ((_, cands) in cells(setOf(VenueRole.MARKET), TRADER_CELL_M)) {
+            val first = cands.firstOrNull { v -> clear(v.lat, v.lon) && traderSpot(v).let { clear(it.first, it.second) } } ?: continue
+            if (rng(first.id, day, 1).nextDouble() < DEN_TAKEOVER) {
+                denAt += first
+                kept += first.lat to first.lon
+            } else {
+                traderAt += first
+                kept += traderSpot(first)
+            }
+        }
+        for ((_, cands) in cells(setOf(VenueRole.NATURE, VenueRole.WATERSIDE), DUNGEON_CELL_M)) {
+            val first = cands.firstOrNull { v -> denSpot(v).let { clear(it.first, it.second) } } ?: continue
+            if (rng(first.id, day, 1).nextDouble() >= takeover(first.role)) continue
+            denAt += first
+            kept += denSpot(first)
+        }
+
+        val dungeons = dungeonAt.mapNotNull { (v, stars) ->
             val id = "dgv:${v.id}:$day"
             if (id in state.dungeonsCleared) return@mapNotNull null
             val r = rng(v.id, day, 2)
             val theme = themeFor(v, r)
-            val stars = 1 + r.nextInt(5)
             val level = (state.hero.level + (stars - 2) * 3 + r.nextInt(-1, 2)).coerceAtLeast(2)
             Dungeon(id, theme.names.random(r), theme, stars, level, v.lat, v.lon, r.nextLong(), place = v.name ?: v.kind)
         }
-    }
-
-    fun traders(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Trader> {
-        val day = epochDay(nowMs, zone)
-        return venues.filter { it.role == VenueRole.MARKET && !denToday(it, day) }.map { v ->
-            // A step off the store's Supply Cache, so both can be tapped.
-            Wanderers.makeTrader(state, "tv:${v.id}:$day", v.lat + 0.00018, v.lon + 0.00018, rng(v.id, day, 3))
+        val traders = traderAt.map { v ->
+            val (lat, lon) = traderSpot(v)
+            Wanderers.makeTrader(state, "tv:${v.id}:$day", lat, lon, rng(v.id, day, 3))
         }
-    }
-
-    fun dens(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Den> {
-        val day = epochDay(nowMs, zone)
-        return venues.filter { denToday(it, day) }.mapNotNull { v ->
+        val dens = denAt.mapNotNull { v ->
             val id = "denv:${v.id}:$day"
-            // On a park or fountain, a step off its shrine so both can be tapped.
-            val (lat, lon) = if (v.role == VenueRole.NATURE || v.role == VenueRole.WATERSIDE) v.lat - 0.00018 to v.lon + 0.00018 else v.lat to v.lon
+            val (lat, lon) = denSpot(v)
             if (id in state.densCleared) null else Dens.make(state, id, lat, lon, rng(v.id, day, 4), favored(v))
         }
+        return VenuePlan(
+            dungeons, traders, dens,
+            dungeonSpots = dungeonAt.map { it.first.lat to it.first.lon },
+            traderSpots = traderAt.map { traderSpot(it) },
+            denSpots = denAt.map { denSpot(it) },
+        )
     }
+
+    /**
+     * Adds the scattered dungeons, dens and traders wherever real places left
+     * a gap (quiet streets, the countryside, or places that didn't load), kept
+     * clear of everything else and of [avoid] (shrines).
+     */
+    fun topUp(
+        plan: VenuePlan,
+        dungeons: List<Dungeon>,
+        dens: List<Den>,
+        traders: List<Trader>,
+        avoid: List<Pair<Double, Double>> = emptyList(),
+    ): VenuePlan {
+        val kept = ArrayList<Pair<Double, Double>>().apply { addAll(plan.dungeonSpots); addAll(plan.denSpots); addAll(plan.traderSpots); addAll(avoid) }
+        fun fits(lat: Double, lon: Double, same: List<Pair<Double, Double>>, floorM: Double) =
+            same.none { World.distanceMeters(it.first, it.second, lat, lon) < floorM } &&
+                kept.none { World.distanceMeters(it.first, it.second, lat, lon) < World.MIN_SPACING_M }
+        val dg = dungeons.filter { d -> fits(d.lat, d.lon, plan.dungeonSpots, FLOOR_DUNGEON_M).also { if (it) kept += d.lat to d.lon } }
+        val dn = dens.filter { d -> fits(d.lat, d.lon, plan.denSpots, FLOOR_DEN_M).also { if (it) kept += d.lat to d.lon } }
+        val tr = traders.filter { t -> fits(t.lat, t.lon, plan.traderSpots, FLOOR_TRADER_M).also { if (it) kept += t.lat to t.lon } }
+        return plan.copy(dungeons = plan.dungeons + dg, dens = plan.dens + dn, traders = plan.traders + tr)
+    }
+
+    fun dungeons(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Dungeon> = plan(state, venues, nowMs, zone).dungeons
+    fun traders(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Trader> = plan(state, venues, nowMs, zone).traders
+    fun dens(state: GameState, venues: List<Venue>, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<Den> = plan(state, venues, nowMs, zone).dens
 
     /**
      * Thug crews and villains standing on real streets today, spread apart. At

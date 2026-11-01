@@ -16,29 +16,91 @@ class VenuesTest {
     private val groceries = (0 until 40).map { Venue("way$it", "Market $it", "Supermarket", 40.0 + it * 0.001, -74.01, VenueRole.MARKET) }
 
     @Test
-    fun everyVenueHostsSomethingAndDensTakeSomeOver() {
+    fun venuesHostDungeonsTradersAndDens() {
         val s = start()
         val all = cafes + groceries
-        val dungeons = Venues.dungeons(s, all, now, utc)
-        val traders = Venues.traders(s, all, now, utc)
-        val dens = Venues.dens(s, all, now, utc)
-        // Every venue is exactly one thing today.
-        assertEquals(all.size, dungeons.size + traders.size + dens.size)
-        assertTrue(dens.size in 1..20, "${dens.size} dens")
-        // Dungeons sit in the coffee shops (forges), at the very spot; dens take the venue's exact spot.
-        val d = dungeons.first()
+        val plan = Venues.plan(s, all, now, utc)
+        assertTrue(plan.dungeons.isNotEmpty() && plan.traders.isNotEmpty())
+        // Nothing doubles up: each venue is at most one thing today.
+        val used = plan.dungeons.map { it.lat to it.lon } + plan.dens.map { it.lat to it.lon }
+        assertEquals(used.size, used.toSet().size)
+        // Dungeons sit in the coffee shops (forges), at the very spot.
+        val d = plan.dungeons.first()
         val cafe = cafes.first { "dgv:${it.id}:" in d.id }
         assertEquals(cafe.lat to cafe.lon, d.lat to d.lon)
         assertEquals(DungeonTheme.FORGE, d.theme)
         assertEquals(cafe.name, d.place)
-        val den = dens.first()
-        assertTrue(all.any { it.lat == den.lat && it.lon == den.lon })
-        // The same tomorrow? No: a different set of dens.
-        val tomorrow = Venues.dens(s, all, now + 86_400_000L, utc).map { it.lat to it.lon }.toSet()
-        assertTrue(tomorrow != dens.map { it.lat to it.lon }.toSet())
-        // A cleared dungeon stays cleared for the day.
+        // Tomorrow a different set of cafés is open.
+        val tomorrow = Venues.plan(s, all, now + 86_400_000L, utc)
+        assertTrue(tomorrow.dungeons.map { it.lat to it.lon }.toSet() != plan.dungeons.map { it.lat to it.lon }.toSet())
+        // A cleared dungeon stays cleared for the day, and its spot isn't refilled.
         val cleared = s.copy(dungeonsCleared = mapOf(d.id to day))
-        assertTrue(Venues.dungeons(cleared, all, now, utc).none { it.id == d.id })
+        val after = Venues.plan(cleared, all, now, utc)
+        assertTrue(after.dungeons.none { it.id == d.id })
+        assertTrue((d.lat to d.lon) in after.dungeonSpots)
+    }
+
+    /** A dense downtown and a quiet suburb end up with a similar number of dungeons within a quarter mile. */
+    @Test
+    fun citiesAreBalancedAgainstSuburbs() {
+        val s = start()
+        val center = 40.75 to -73.99
+        val rnd = Random(9)
+        fun around(n: Int, radiusM: Double, role: VenueRole, tag: String) = (0 until n).map {
+            val a = rnd.nextDouble() * 2 * Math.PI
+            val r = radiusM * kotlin.math.sqrt(rnd.nextDouble())
+            Venue("$tag$it", "$tag $it", if (role == VenueRole.DUNGEON) "Coffee shop" else "Supermarket",
+                center.first + r * kotlin.math.sin(a) / 111_320.0,
+                center.second + r * kotlin.math.cos(a) / (111_320.0 * kotlin.math.cos(Math.toRadians(center.first))), role)
+        }
+        val quarterMile = 402.0
+        fun within(lat: Double, lon: Double) = World.distanceMeters(center.first, center.second, lat, lon) <= quarterMile
+        val scattered = Dungeons.near(s, center.first, center.second, now, utc)
+        val scatteredDens = Dens.near(s, center.first, center.second, now, utc)
+        val scatteredTraders = Wanderers.tradersNear(s, center.first, center.second, now, utc)
+        val days = 0 until 20
+        fun avg(venues: List<Venue>): Triple<Double, Double, Double> {
+            var dg = 0; var dn = 0; var tr = 0
+            for (k in days) {
+                val t = now + k * 86_400_000L
+                val p = Venues.topUp(
+                    Venues.plan(s, venues, t, utc),
+                    Dungeons.near(s, center.first, center.second, t, utc),
+                    Dens.near(s, center.first, center.second, t, utc),
+                    Wanderers.tradersNear(s, center.first, center.second, t, utc),
+                )
+                dg += p.dungeons.count { within(it.lat, it.lon) }
+                dn += p.dens.count { within(it.lat, it.lon) }
+                tr += p.traders.count { within(it.lat, it.lon) }
+                // Nothing stands on top of anything else.
+                val spots = p.dungeons.map { it.lat to it.lon } + p.traders.map { it.lat to it.lon } + p.dens.map { it.lat to it.lon }
+                for (i in spots.indices) for (j in i + 1 until spots.size) {
+                    assertTrue(World.distanceMeters(spots[i].first, spots[i].second, spots[j].first, spots[j].second) >= World.MIN_SPACING_M - 1)
+                }
+            }
+            return Triple(dg / days.count().toDouble(), dn / days.count().toDouble(), tr / days.count().toDouble())
+        }
+        val downtown = avg(around(200, 900.0, VenueRole.DUNGEON, "cafe") + around(40, 900.0, VenueRole.MARKET, "mart"))
+        val suburb = avg(around(10, 900.0, VenueRole.DUNGEON, "cafe") + around(2, 900.0, VenueRole.MARKET, "mart"))
+        val none = avg(emptyList())
+        println("within a quarter mile (dungeons, dens, traders): downtown $downtown, suburb $suburb, no places $none")
+        // Downtown: a handful of dungeons, not dozens (the old rule put ~50 here).
+        assertTrue(downtown.first in 3.0..9.0, "downtown dungeons ${downtown.first}")
+        assertTrue(downtown.third <= 4.0, "downtown traders ${downtown.third}")
+        // The suburb and the countryside still get some.
+        assertTrue(suburb.first >= 1.0, "suburb dungeons ${suburb.first}")
+        assertTrue(none.first + none.second >= 0.5, "countryside ${none}")
+        assertTrue(downtown.first <= suburb.first * 6, "downtown ${downtown.first} vs suburb ${suburb.first}")
+        assertTrue(scattered.isNotEmpty() || scatteredDens.isNotEmpty() || scatteredTraders.isNotEmpty())
+    }
+
+    @Test
+    fun everyNeighbourhoodHasEasyDungeonsAndFewHardOnes() {
+        // A full 3x3 block deals each difficulty from the deck: two easy ones, one 5-star.
+        for (d in 0L until 10L) for (br in -2L..2L) for (bc in -2L..2L) {
+            val stars = (0 until 3).flatMap { r -> (0 until 3).map { c -> Venues.starsFor(br * 3 + r to bc * 3 + c, d) } }
+            assertEquals(Venues.STAR_DECK.sorted(), stars.sorted())
+        }
     }
 
     @Test
