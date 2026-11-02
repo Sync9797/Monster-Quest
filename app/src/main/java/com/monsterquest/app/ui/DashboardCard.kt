@@ -56,7 +56,8 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
     val questDays: Set<Long> = s.questDays.filterValues { it > 0 }.keys +
         s.tasks.mapNotNull { it.completedAtMs }.map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().toEpochDay() }
     val stepsToday = if (s.stepsDay == todayDay) s.stepsToday else 0
-    val weekStart = today.with(DayOfWeek.MONDAY).toEpochDay()
+    // Weeks start on Sunday.
+    val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).toEpochDay()
     val stepsWeek = s.stepHistory.filterKeys { it in weekStart..todayDay }.values.sum()
     // Consecutive days with a completed quest, counting back from today (or yesterday if today has none yet).
     var streak = 0
@@ -92,7 +93,7 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
             ) { Text(">") }
         }
         Row(Modifier.fillMaxWidth()) {
-            DayOfWeek.entries.forEach { dow ->
+            SUNDAY_FIRST.forEach { dow ->
                 Text(
                     dow.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
                     modifier = Modifier.weight(1f),
@@ -103,7 +104,7 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
             }
         }
         val first = month.atDay(1)
-        val lead = first.dayOfWeek.value - 1 // Monday first
+        val lead = first.dayOfWeek.value % 7 // Sunday first
         val cells = (List(lead) { null } + (1..month.lengthOfMonth()).map { month.atDay(it) })
         cells.chunked(7).forEach { week ->
             Row(Modifier.fillMaxWidth()) {
@@ -181,3 +182,6 @@ private fun DayCell(
         if (due) Box(Modifier.align(Alignment.BottomStart).size(6.dp).background(Gold, CircleShape))
     }
 }
+
+/** The days of the week, Sunday first. */
+private val SUNDAY_FIRST: List<DayOfWeek> = listOf(DayOfWeek.SUNDAY) + DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }

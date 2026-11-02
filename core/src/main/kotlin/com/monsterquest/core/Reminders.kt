@@ -43,7 +43,8 @@ data class Reminder(
                 days == (1..5).toSet() -> "Weekdays"
                 days == setOf(6, 7) -> "Weekends"
                 days.size == 6 -> "Every day but ${names[(1..7).first { it !in days } - 1]}"
-                else -> days.sorted().joinToString { names[it - 1] }
+                // Sunday first, like the rest of the app.
+                else -> days.sortedBy { it % 7 }.joinToString { names[it - 1] }
             }
         }
 }

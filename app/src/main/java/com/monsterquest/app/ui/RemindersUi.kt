@@ -130,10 +130,9 @@ private fun ReminderEditor(
                     android.app.TimePickerDialog(context, { _, h, m -> hour = h; minute = m }, hour, minute, android.text.format.DateFormat.is24HourFormat(context)).show()
                 }, modifier = Modifier.fillMaxWidth()) { Text("Time: ${preview.timeLabel}") }
                 Spacer(Modifier.padding(4.dp))
-                // Days of the week, Monday first.
+                // Days of the week, Sunday first (days are numbered Monday 1 to Sunday 7).
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { i, label ->
-                        val d = i + 1
+                    listOf(7 to "S", 1 to "M", 2 to "T", 3 to "W", 4 to "T", 5 to "F", 6 to "S").forEach { (d, label) ->
                         val on = d in days
                         SmallButton(label, { days = if (on) days - d else days + d }, Modifier.weight(1f), outlined = !on)
                     }

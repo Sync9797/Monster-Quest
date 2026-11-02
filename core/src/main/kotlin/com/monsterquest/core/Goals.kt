@@ -22,8 +22,8 @@ data class Goal(
 object Goals {
     const val PER_PERIOD = 3
 
-    /** Weeks run Monday to Sunday (epoch day 0 was a Thursday). */
-    fun weekOf(epochDay: Long): Long = Math.floorDiv(epochDay + 3, 7L)
+    /** Weeks run Sunday to Saturday (epoch day 0 was a Thursday). */
+    fun weekOf(epochDay: Long): Long = Math.floorDiv(epochDay + 4, 7L)
 
     private data class Template(
         val text: (Int, Element) -> String,
