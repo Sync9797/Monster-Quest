@@ -294,7 +294,9 @@ class GameMap internal constructor(val fake: Boolean) {
     companion object {
         const val START_ZOOM = 16.0
         const val MIN_ZOOM = 14.0
-        const val MAX_ZOOM = 19.5
+        // Closest zoom: just past where the tilt tops out (17.5). Any closer and the near ground fills the
+        // screen, so the view reads as flat again; this keeps the 3D look at every zoom.
+        const val MAX_ZOOM = 18.0
         /** How far (meters) the map can move away from you: about a mile. */
         const val MAP_REACH_M = 1_609.0
         /** How far out you can zoom: the nearest screen edge stays within about a quarter mile of you. */
