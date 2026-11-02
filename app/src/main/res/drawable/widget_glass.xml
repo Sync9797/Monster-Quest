@@ -1,21 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Smoked glass for the widgets: a mid-tone tint taken from the wallpaper's
-  colors (Android 12+), see-through, with no white sheen, and a faint rim.
+  Glossy smoked glass for the widgets: a see-through tint taken from the
+  wallpaper's colors (Android 12+), then light on the glass. A thin highlight
+  along the top edge, a faint diagonal reflection, and a bright rim, all kept
+  light so the glass stays clear rather than milky.
   (Only the launcher's own widgets can blur the wallpaper; this matches their tone.)
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The tinted glass. -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="28dp" />
             <solid android:color="@color/widget_glass_tint" />
         </shape>
     </item>
+    <!-- Light catching the top edge, gone within the first fifth. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="28dp" />
+            <gradient
+                android:angle="270"
+                android:centerY="0.18"
+                android:startColor="#33FFFFFF"
+                android:centerColor="#08FFFFFF"
+                android:endColor="#00FFFFFF"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- A soft diagonal reflection across the upper left. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="28dp" />
+            <gradient
+                android:angle="315"
+                android:centerX="0.35"
+                android:centerY="0.35"
+                android:startColor="#1AFFFFFF"
+                android:centerColor="#05FFFFFF"
+                android:endColor="#00FFFFFF"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- A faint shadow settling at the bottom, for depth. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="28dp" />
+            <gradient
+                android:angle="90"
+                android:centerY="0.15"
+                android:startColor="#14000000"
+                android:centerColor="#00000000"
+                android:endColor="#00000000"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- The rim: brighter than before, catching the light. -->
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="28dp" />
             <solid android:color="#00000000" />
-            <stroke android:width="1dp" android:color="#1FFFFFFF" />
+            <stroke android:width="1dp" android:color="#47FFFFFF" />
         </shape>
     </item>
 </layer-list>
