@@ -15,12 +15,12 @@ class TorchesTest {
 
     @Test
     fun walkingAndMorningsBringTorches() {
-        // 500 steps light a torch.
+        // 1,000 steps light a torch.
         var s = GameEngine.walk(start(), 2_700, at(9), utc).state
-        assertEquals(5, s.torches)
-        assertEquals(200, s.torchSteps)
+        assertEquals(2, s.torches)
+        assertEquals(700, s.torchSteps)
         s = Torches.morning(s, at(7), utc)!!.state
-        assertEquals(5 + Torches.MORNING, s.torches)
+        assertEquals(2 + Torches.MORNING, s.torches)
         assertEquals(null, Torches.morning(s, at(12), utc))
         assertEquals(Torches.MAX, Torches.add(s, 99).torches)
     }

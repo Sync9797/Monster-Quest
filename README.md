@@ -23,7 +23,7 @@ Updates install over the previous version and keep your save.
   added, and only so many quests pay in full each day.
 - **Phone-free sessions:** put the phone down for 15 to 120 minutes to win a
   loot box; long sessions give the best rewards.
-- **Walking:** every 500 steps lights a **torch**, and you get 3 each morning.
+- **Walking:** every 1,000 steps lights a **torch**, and you get 3 each morning.
   Torches open dungeons and pay for gym training. Walking also heals your team.
 - **Sleep:** 8+ hours makes the next day's fights easier (and brings torches);
   under 7 makes them harder.

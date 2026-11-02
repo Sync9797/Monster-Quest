@@ -98,7 +98,7 @@ private val topics = listOf(
         listOf(
             section(
                 "Walking and torches",
-                "Every 500 steps lights a torch (up to 30). You also get 3 every morning. Torches let you into dungeons.",
+                "Every 1,000 steps lights a torch (up to 30). You also get 3 every morning. Torches let you into dungeons.",
                 "Walking heals: every 100 steps restores 10 HP for your hero and battle party and 2 Energy. It also opens loot boxes, warms eggs and earns buddy candy.",
                 "Choose where steps come from in Settings: the phone's step counter, Samsung Health, Health Connect or GPS.",
             ),

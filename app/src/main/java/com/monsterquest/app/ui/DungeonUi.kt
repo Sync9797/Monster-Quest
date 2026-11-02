@@ -349,7 +349,7 @@ fun TutorialIntro(onStart: () -> Unit) {
     var page by remember { mutableStateOf(0) }
     val pages = listOf(
         Triple(GameIcon.QUESTS, "Your life is the quest", "Your tasks and calendar are your quests. Finishing them earns XP and gold for your hero."),
-        Triple(GameIcon.WALK, "Walk to light torches", "Every 500 steps lights a torch, and a few wait for you each morning. Torches open dungeons. Walking also heals your team."),
+        Triple(GameIcon.WALK, "Walk to light torches", "Every 1,000 steps lights a torch, and a few wait for you each morning. Torches open dungeons. Walking also heals your team."),
         Triple(GameIcon.MOON, "Rest well", "8 hours of sleep makes your team stronger for the day; under 7 makes it weaker. Time off your phone earns loot boxes."),
         Triple(GameIcon.MAP, "Explore and tame", "Monsters live in dens and dungeons on the map. Fight, tame and raise them, and beat dungeon champions to grow stronger for good."),
     )
