@@ -99,10 +99,12 @@ object Goals {
         if (!done(state, goal)) return Update(state, "Not done yet: ${progress(state, goal)}/${goal.goal}.")
         var s = state.copy(gold = state.gold + goal.gold, goalsClaimed = state.goalsClaimed + goal.id)
         var text = "Goal done: ${goal.text}! +${goal.gold} gold"
+        val loot = mutableListOf<Reward>(Reward.Gold(goal.gold))
         goal.item?.let { item ->
             val (withItem, lost) = GameEngine.addItems(s, mapOf(item to 1))
             s = withItem
             text += if (lost > 0) " (bag full: no ${item.label})" else ", ${item.label}"
+            if (lost == 0) loot += Reward.Items(item, 1)
         }
         // The whole set done: a bonus.
         val weekly = goal.id.startsWith("w:")
@@ -112,10 +114,12 @@ object Goals {
             val bonusItem = if (weekly) Item.GOLDEN_BERRY else Item.TREAT
             s = GameEngine.addItems(s.copy(gold = s.gold + bonusGold), mapOf(bonusItem to 1)).first
             text += ". All ${if (weekly) "weekly" else "daily"} goals done: +$bonusGold gold and a ${bonusItem.label}"
+            loot += Reward.Gold(bonusGold)
+            loot += Reward.Items(bonusItem, 1)
         }
         // Old claims can go: only this day's and week's matter.
         val keep = setOf("d:${s.goalDay}:", "w:${weekOf(s.goalDay)}:")
         s = s.copy(goalsClaimed = s.goalsClaimed.filter { id -> keep.any { id.startsWith(it) } }.toSet())
-        return Update(s, "$text.")
+        return Update(s, "$text.", rewards = loot, rewardTitle = "Goal done")
     }
 }

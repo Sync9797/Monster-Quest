@@ -299,7 +299,10 @@ fun DungeonDialog(vm: GameViewModel, d: Dungeon, distance: Double?, onDismiss: (
                 Text("Champion: ${champ.title} (Lv ${champ.level} ${d.bossClass.label})", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                 Text("Reward pool", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                 Dungeons.bossRewards(d).forEach { r ->
-                    Row(Modifier.fillMaxWidth()) {
+                    val (icon, tint) = r.look()
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.monsterquest.app.ui.art.GIcon(icon, Modifier.size(18.dp), tint)
+                        Spacer(Modifier.width(8.dp))
                         Text(r.label, fontSize = 12.sp, modifier = Modifier.weight(1f))
                         Text("${r.pct}%", fontSize = 12.sp, color = Gold, fontWeight = FontWeight.SemiBold)
                     }

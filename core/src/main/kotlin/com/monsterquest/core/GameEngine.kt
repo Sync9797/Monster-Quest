@@ -8,6 +8,8 @@ data class Update(
     val state: GameState,
     val message: String,
     val rewards: List<Reward> = emptyList(),
+    /** The heading over [rewards] when they're shown (e.g. "Treasury", a dungeon's name). */
+    val rewardTitle: String? = null,
     /** Who levelled up (shown as banners and a pop-up after battle, not in [message]). */
     val levelUps: List<LevelUp> = emptyList(),
 )
@@ -51,6 +53,14 @@ sealed interface Reward {
     data class ArmorParts(val type: ArmorType, val count: Int) : Reward
     /** A spell learned (or ranked up) at once from a spell book. */
     data class SpellBook(val spellId: String, val rank: Int) : Reward
+    data class Torches(val count: Int) : Reward
+    data class Xp(val amount: Int) : Reward
+    /** A hero attribute raised for good (a dungeon champion). */
+    data class Stat(val attribute: HeroAttribute, val amount: Int) : Reward
+    /** An egg of a line, to hatch by walking. */
+    data class Egg(val line: String) : Reward
+    /** A Scholar's Tome: pages for any spell you choose. */
+    data class Tome(val pages: Int) : Reward
 }
 
 /** An event read from the phone's calendar. */
@@ -1189,6 +1199,12 @@ object GameEngine {
         s = wearCurses(s, r.weaponUses, r.armorHits, msg)
         // Thugs drop weapon parts and armor scrap.
         val rewards = mutableListOf<Reward>()
+        // What the fight paid, shown with icons.
+        if (r.outcome == BattleOutcome.WON || r.outcome == BattleOutcome.CAPTURED) {
+            if (r.outcome == BattleOutcome.WON && r.goldWon > 0) rewards += Reward.Gold(r.goldWon)
+            if (r.heroXp > 0) rewards += Reward.Xp(r.heroXp)
+            r.drops.forEach { (item, n) -> rewards += Reward.Items(item, n) }
+        }
         if (r.encounter == EncounterType.THUG && r.outcome == BattleOutcome.WON) {
             val rng = Random(nowMs)
             val loot = Loot(parts = rollParts(1 + rng.nextInt(2), rng), armorParts = rollArmorParts(1 + rng.nextInt(2), rng))
@@ -1237,7 +1253,12 @@ object GameEngine {
             )
             lifted.forEach { msg.append(" $it's shadow curse is lifted! Choose a stat to perfect on its stat page.") }
         }
-        return Update(s, msg.toString(), rewards = rewards, levelUps = levelUps)
+        val title = when (r.outcome) {
+            BattleOutcome.WON -> "Victory!"
+            BattleOutcome.CAPTURED -> "Tamed!"
+            else -> null
+        }
+        return Update(s, msg.toString(), rewards = rewards, rewardTitle = title, levelUps = levelUps)
     }
 
     /**

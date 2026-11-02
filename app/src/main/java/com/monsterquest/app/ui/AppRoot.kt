@@ -84,6 +84,15 @@ private val rightTabs = listOf(Tab.BAG, Tab.STORE)
 
 @Composable
 fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Boolean = false) {
+    // What you just won, with icons, on top of whatever screen you're on (a dungeon, a battle, the map...).
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+        AppScreens(vm, initialTab, initialSettings)
+        vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
+    }
+}
+
+@Composable
+private fun AppScreens(vm: GameViewModel, initialTab: Tab, initialSettings: Boolean) {
     val state = vm.state
     ArtQuality.reduced = state.settings.reducedEffects
     if (!state.starterChosen) {
@@ -229,7 +238,6 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     if (vm.batterySaver) BatterySaverOverlay(vm)
     // Wild monsters that found you while walking in battery-saver mode (from any screen).
     vm.secretAmbush?.let { SecretAmbushPopup(vm, it) }
-    vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
     if (vm.drivingWarning) DrivingWarning { vm.drivingWarning = false }
     }
 }

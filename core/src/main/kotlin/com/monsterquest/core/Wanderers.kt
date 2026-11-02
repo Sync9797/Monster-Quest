@@ -180,14 +180,17 @@ object Wanderers {
         )
         s = GameEngine.addItems(s, mapOf(Item.GREATER_POTION to 2)).first
         val parent = nomad.team.filter { Eggs.breedable(it.species) }.randomOrNull(rng)
+        val loot = mutableListOf<Reward>(Reward.Gold(gold), Reward.Items(Item.GREATER_POTION, 2))
         val gift = if (parent != null && s.eggs.size < Eggs.MAX_EGGS) {
             val egg = Eggs.gift(parent.species, rng, NOMAD_EGG_PERFECT)
             s = s.copy(eggs = s.eggs + egg)
+            loot += Reward.Egg(parent.species.family.removeSuffix(" line"))
             "an egg of ${parent.displayName}'s line (${NOMAD_EGG_PERFECT} perfect stats; walk ${"%.1f".format(egg.meters / 1000)} km to hatch)"
         } else {
             s = GameEngine.addItems(s, mapOf(Item.RESONANT_CRYSTAL to 2)).first
-            "2 Great Orbs" + if (parent != null) " (your egg slots are full)" else ""
+            loot += Reward.Items(Item.RESONANT_CRYSTAL, 2)
+            "2 Resonant Crystals" + if (parent != null) " (your egg slots are full)" else ""
         }
-        return Update(s, "${nomad.name} tips their hat: \"Well fought!\" +$gold gold, 2 Greater Potions and $gift.")
+        return Update(s, "${nomad.name} tips their hat: \"Well fought!\" +$gold gold, 2 Greater Potions and $gift.", rewards = loot, rewardTitle = "${nomad.name} defeated")
     }
 }

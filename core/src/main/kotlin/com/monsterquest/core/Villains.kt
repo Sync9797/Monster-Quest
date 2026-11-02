@@ -148,7 +148,11 @@ object Villains {
         )
         val granted = GameEngine.grantLoot(s, loot)
         s = granted.state
-        return Update(s, "${camp.leader}'s ${camp.crew} is defeated! +$gold gold, ${granted.message}.")
+        return Update(
+            s, "${camp.leader}'s ${camp.crew} is defeated! +$gold gold, ${granted.message}.",
+            rewards = listOf(Reward.Gold(gold)) + granted.rewards,
+            rewardTitle = "${camp.crew} defeated",
+        )
     }
 
     /**

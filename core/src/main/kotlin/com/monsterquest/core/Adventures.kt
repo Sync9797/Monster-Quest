@@ -170,6 +170,7 @@ object Adventures {
         val egg = Eggs.fromAdventure(s, team, rng)
         if (egg != null) s = egg.first
         val eggNote = egg?.let { " ${it.second}" } ?: ""
+        val eggReward = egg?.first?.eggs?.lastOrNull()?.let { e -> Reward.Egg(Bestiary.get(e.speciesId).family.removeSuffix(" line")) }
         return if (success) {
             val gold = 20 * d + adv.recommendedLevel * 2 * d + rng.nextInt(10 * d + 1)
             s = s.copy(gold = s.gold + gold)
@@ -179,6 +180,8 @@ object Adventures {
                 granted.state,
                 "${adv.title}: success! $teamNames brought back +$gold gold, ${granted.message}. Each monster +$xpEach XP." +
                     eggNote + notes.joinToString("") { " $it" },
+                rewards = listOf(Reward.Gold(gold)) + granted.rewards + Reward.Xp(xpEach) + listOfNotNull(eggReward),
+                rewardTitle = adv.title,
             )
         } else {
             val gold = 10 * d
@@ -191,6 +194,8 @@ object Adventures {
                 s,
                 "${adv.title}: the team was driven back. +$gold gold, +$xpEach XP each." +
                     (weakest?.let { " ${it.displayName} fainted and needs a Restore Potion." } ?: "") + eggNote,
+                rewards = listOf(Reward.Gold(gold), Reward.Xp(xpEach)) + listOfNotNull(eggReward),
+                rewardTitle = adv.title,
             )
         }
     }

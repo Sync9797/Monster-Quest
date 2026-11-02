@@ -76,7 +76,12 @@ class DungeonsTest {
         s = Dungeons.open(s, true).state
         assertEquals(RoomKind.BOSS, s.dungeonRun!!.fighting)
         val goldBefore = s.gold
-        s = Dungeons.afterFight(s, BattleOutcome.WON, now, Random(1), utc).state
+        val cleared = Dungeons.afterFight(s, BattleOutcome.WON, now, Random(1), utc)
+        // The champion's prize comes with its icons: the stat, the gold and whatever the pool rolled.
+        assertTrue(cleared.rewards.any { it is Reward.Stat && it.attribute == d.bossStat })
+        assertTrue(cleared.rewards.any { it is Reward.Gold })
+        assertEquals("${d.name} cleared", cleared.rewardTitle)
+        s = cleared.state
         assertNull(s.dungeonRun)
         assertEquals(before + 1, s.hero.attr(d.bossStat))
         assertTrue(s.gold > goldBefore)
@@ -127,5 +132,32 @@ class DungeonsTest {
         s = s.copy(dungeonRun = s.dungeonRun!!.copy(step = step))
         s = Dungeons.open(s, left = true).state
         assertEquals(0, s.heroDamage)
+    }
+
+    @Test
+    fun rewardScreensListWhatTheyGive() {
+        // A treasury chest lists its gold (and whatever else it held).
+        var s = start()
+        val d = some(s, 3)
+        s = Dungeons.enter(s, d).state
+        val run = s.dungeonRun!!
+        val chest = Dungeons.open(s.copy(dungeonRun = run.copy(step = 0)).let { st ->
+            // Force a treasury behind the left door.
+            var t = st
+            var seed = 0
+            while (Dungeons.doors(t.dungeonRun!!).first != RoomKind.TREASURY && seed < 500) {
+                seed++
+                t = t.copy(dungeonRun = t.dungeonRun!!.copy(dungeon = t.dungeonRun!!.dungeon.copy(seed = seed.toLong())))
+            }
+            t
+        }, left = true, Random(3))
+        if (chest.rewardTitle == "Treasury") assertTrue(chest.rewards.first() is Reward.Gold)
+        // Every entry in a champion's pool has something to show as its icon.
+        Dungeons.bossRewards(d).forEach { r ->
+            assertTrue(r.kind != BossReward.Kind.ITEM || r.item != null, r.label)
+            assertTrue(r.kind != BossReward.Kind.STAT || r.stat != null, r.label)
+        }
+        // The academy hands out a tome.
+        assertEquals(listOf<Reward>(Reward.Tome(Facilities.STUDY_PAGES)), Facilities.study(start(), now, utc).rewards)
     }
 }

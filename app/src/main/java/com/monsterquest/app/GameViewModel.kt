@@ -306,6 +306,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun apply(u: Update) {
         set(u.state)
         message = u.message
+        showRewards(u.rewardTitle, u.rewards)
+    }
+
+    /** Shows what was won with icons (the same pop-up as a shrine's loot). */
+    private fun showRewards(title: String?, rewards: List<com.monsterquest.core.Reward>) {
+        if (rewards.isNotEmpty()) lootPopup = LootPopup(title ?: "Rewards", rewards)
     }
 
     /** Test hook: replace the save without touching disk. */
@@ -699,6 +705,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun claimAdventure(id: String) {
         val u = Adventures.claim(state, id, System.currentTimeMillis())
         set(u.state)
+        showRewards(u.rewardTitle, u.rewards)
         adventureSucceeded = u.message.contains("success!")
         adventureResult = u.message
     }
@@ -1291,6 +1298,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun openDoor(left: Boolean) {
         val u = com.monsterquest.core.Dungeons.open(state, left)
         set(u.state)
+        showRewards(u.rewardTitle, u.rewards)
         if (state.dungeonRun?.fighting != null) startDungeonFight()
     }
 
@@ -1415,6 +1423,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             val u = GameEngine.applyBattleResult(state, b.result(), System.currentTimeMillis())
             set(u.state)
             resultText = u.message
+            // What the fight paid (and a cleared dungeon's, a nomad's or a crew's prize), shown with icons.
+            var won = u.rewards
+            var wonTitle = u.rewardTitle
             levelUps = u.levelUps
             if (state.settings.bigMomentHaptics && u.levelUps.isNotEmpty()) Haptics.levelUp(getApplication())
             // A dungeon room's fight: on to the next room, the champion's reward, or out.
@@ -1422,6 +1433,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 val d = com.monsterquest.core.Dungeons.afterFight(state, b.outcome, System.currentTimeMillis())
                 set(d.state)
                 if (d.message.isNotEmpty()) resultText += " " + d.message
+                if (d.rewards.isNotEmpty()) { won = won + d.rewards; wonTitle = d.rewardTitle ?: wonTitle }
             }
             // A Snap Bind landed: the rest of the pack is back on the map, running from you.
             if (b.scattered) {
@@ -1433,6 +1445,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                     val reward = com.monsterquest.core.Wanderers.nomadReward(state, nomad, System.currentTimeMillis())
                     set(reward.state)
                     resultText += " " + reward.message
+                    won = won + reward.rewards
+                    wonTitle = reward.rewardTitle ?: wonTitle
                 } else {
                     resultText += " ${nomad.name} nods: \"Come find me again today if you want a rematch.\""
                 }
@@ -1447,12 +1461,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                     val reward = Villains.reward(state, run.camp, System.currentTimeMillis())
                     set(reward.state)
                     resultText += " " + reward.message
+                    won = won + reward.rewards
+                    wonTitle = reward.rewardTitle ?: wonTitle
                     villainRun = null
                 } else {
                     resultText += " ${run.camp.leader}'s crew drives you off."
                     villainRun = null
                 }
             }
+            showRewards(wonTitle, won)
         }
         battle = battleView(
             b, resultText ?: battle?.resultText, nextOpponent ?: battle?.nextOpponent,

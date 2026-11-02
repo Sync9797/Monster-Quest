@@ -60,6 +60,33 @@ private fun look(r: Reward): RewardLook = when (r) {
         val spell = Spells.byId(r.spellId)
         RewardLook(GameIcon.PAGE, "Spell book: ${spell?.name ?: "Spell"}" + if (r.rank > 1) " rank ${r.rank}" else " learned!", Gold)
     }
+    is Reward.Torches -> RewardLook(GameIcon.FLAME, "${r.count} torch${if (r.count == 1) "" else "es"}", TorchOrange)
+    is Reward.Xp -> RewardLook(GameIcon.STAR, "+${r.amount} XP", XpPurple)
+    is Reward.Stat -> RewardLook(r.attribute.icon(), "+${r.amount} ${r.attribute.label} for good", Gold)
+    is Reward.Egg -> RewardLook(GameIcon.EGG, "${r.line} egg", Color(0xFFE8D8B0))
+    is Reward.Tome -> RewardLook(GameIcon.BOOK, "Scholar's Tome (${r.pages} pages)", XpPurple)
+}
+
+private val TorchOrange = Color(0xFFF2A65A)
+
+/** An icon for each hero attribute. */
+fun com.monsterquest.core.HeroAttribute.icon(): GameIcon = when (this) {
+    com.monsterquest.core.HeroAttribute.ATTACK -> GameIcon.FIST
+    com.monsterquest.core.HeroAttribute.ENERGY -> GameIcon.BOLT
+    com.monsterquest.core.HeroAttribute.MAGIC -> GameIcon.SPARK
+    com.monsterquest.core.HeroAttribute.DEFENSE -> GameIcon.SHIELD
+    com.monsterquest.core.HeroAttribute.SPEED -> GameIcon.WING
+}
+
+/** The icon and color for one entry in a dungeon champion's reward pool. */
+fun com.monsterquest.core.BossReward.look(): Pair<GameIcon, Color> = when (kind) {
+    com.monsterquest.core.BossReward.Kind.STAT -> (stat?.icon() ?: GameIcon.STAR) to Gold
+    com.monsterquest.core.BossReward.Kind.GOLD -> GameIcon.COIN to Gold
+    com.monsterquest.core.BossReward.Kind.WEAPON -> GameIcon.SWORD to Color(0xFFB98AF0)
+    com.monsterquest.core.BossReward.Kind.ARMOR -> GameIcon.PLATE to Color(0xFF7FB2E8)
+    com.monsterquest.core.BossReward.Kind.PAGES -> GameIcon.PAGE to XpPurple
+    com.monsterquest.core.BossReward.Kind.TORCHES -> GameIcon.FLAME to TorchOrange
+    com.monsterquest.core.BossReward.Kind.ITEM -> (item?.icon() ?: GameIcon.CHEST) to (item?.color() ?: Gold)
 }
 
 /**

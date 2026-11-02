@@ -86,7 +86,16 @@ data class DungeonRun(
 }
 
 /** One reward in a champion's pool, with its chance (percent). */
-data class BossReward(val label: String, val pct: Int)
+data class BossReward(
+    val label: String,
+    val pct: Int,
+    /** What it is, for its icon. */
+    val kind: Kind = Kind.ITEM,
+    val item: Item? = null,
+    val stat: HeroAttribute? = null,
+) {
+    enum class Kind { STAT, GOLD, WEAPON, ARMOR, PAGES, TORCHES, ITEM }
+}
 
 /**
  * Dungeons: entered with torches, a few rooms deep (more the harder it is),
@@ -342,32 +351,41 @@ object Dungeons {
             "A fairy fountain! Its water restores you and your monsters to full strength.",
         )
         RoomKind.TREASURY -> {
-            val (r2, text) = treasure(state, run, rng)
-            advance(state, r2, text)
+            val (r2, text, loot) = treasure(state, run, rng)
+            advance(state, r2, text).copy(rewards = loot, rewardTitle = "Treasury")
         }
         else -> advance(state, run, "An empty room. Dust, cobwebs and silence.")
     }
 
     /** A chest: gold, and often potions, crystals, spell pages, torches, now and then gear. Better in harder dungeons. */
-    private fun treasure(state: GameState, run: DungeonRun, rng: Random): Pair<DungeonRun, String> {
+    private fun treasure(state: GameState, run: DungeonRun, rng: Random): Triple<DungeonRun, String, List<Reward>> {
         val d = run.dungeon
         if (d.tutorial) {
             // Everything you need for the rooms ahead.
             val r = run.copy(gold = run.gold + 100, torches = run.torches + 3, items = run.items + (Item.BINDING_CRYSTAL to 5) + (Item.POTION to 3))
-            return r to "A treasury! The chest holds 100 gold, 3 torches, 5 Binding Crystals and 3 Potions. Chests in other dungeons are random, and better the harder the dungeon."
+            return Triple(
+                r,
+                "A treasury! The chest holds 100 gold, 3 torches, 5 Binding Crystals and 3 Potions. Chests in other dungeons are random, and better the harder the dungeon.",
+                listOf(Reward.Gold(100), Reward.Torches(3), Reward.Items(Item.BINDING_CRYSTAL, 5), Reward.Items(Item.POTION, 3)),
+            )
         }
         var r = run
         val found = mutableListOf<String>()
+        val loot = mutableListOf<Reward>()
         val gold = d.level * (4 + d.stars * 2) + rng.nextInt(20)
         r = r.copy(gold = r.gold + gold)
         found += "$gold gold"
-        fun item(i: Item, n: Int) { r = r.copy(items = r.items + (i to (r.items[i] ?: 0) + n)); found += "${i.label}${if (n > 1) " x$n" else ""}" }
+        loot += Reward.Gold(gold)
+        fun item(i: Item, n: Int) {
+            r = r.copy(items = r.items + (i to (r.items[i] ?: 0) + n)); found += "${i.label}${if (n > 1) " x$n" else ""}"; loot += Reward.Items(i, n)
+        }
         if (rng.nextDouble() < 0.5) item(listOf(Item.POTION, Item.GREATER_POTION, Item.MANA_DRAUGHT).random(rng), 1 + rng.nextInt(2))
         if (rng.nextDouble() < 0.35) item(if (d.stars >= 3) Item.RESONANT_CRYSTAL else Item.BINDING_CRYSTAL, 1 + rng.nextInt(3))
         if (rng.nextDouble() < 0.3 + 0.05 * d.stars) {
             val n = 1 + (if (rng.nextDouble() < d.stars / 6.0) 1 else 0)
             r = r.copy(torches = r.torches + n)
             found += "$n torch${if (n == 1) "" else "es"}"
+            loot += Reward.Torches(n)
         }
         val spells = GameEngine.pageCandidates(state)
         if (spells.isNotEmpty() && rng.nextDouble() < 0.35) {
@@ -375,13 +393,15 @@ object Dungeons {
             val n = 1 + rng.nextInt(2)
             r = r.copy(pages = r.pages + (sp.id to (r.pages[sp.id] ?: 0) + n))
             found += "$n ${sp.name} page${if (n == 1) "" else "s"}"
+            loot += Reward.Pages(sp.id, n, learned = false)
         }
         if (rng.nextDouble() < 0.06 * d.stars) {
             val g = Armory.roll(d.level, rng, luck = 10 * d.stars)
             r = r.copy(gear = r.gear + g)
             found += "${g.rarity.label} ${g.name}"
+            loot += Reward.WeaponDrop(g)
         }
-        return r to "A treasury! The chest holds ${found.joinToString()}."
+        return Triple(r, "A treasury! The chest holds ${found.joinToString()}.", loot)
     }
 
     private fun advance(state: GameState, run: DungeonRun, text: String): Update {
@@ -413,16 +433,16 @@ object Dungeons {
 
     /** The champion's reward pool, as shown before you enter (chances in percent). */
     fun bossRewards(d: Dungeon): List<BossReward> = listOf(
-        BossReward("+1 ${statFor(d.bossClass).label} for good (once a day)", 100),
-        BossReward("${d.level * 30} gold", 100),
-        BossReward("Epic or better weapon", 10 + 6 * d.stars),
-        BossReward("Rare or better armor", 15 + 5 * d.stars),
-        BossReward("3 spell pages", 50),
-        BossReward("3 Resonant Crystals", 40),
-        BossReward("2 torches", 30),
-        BossReward("Incubator", 6 + 2 * d.stars),
-        BossReward("Golden Berry", 20),
-        BossReward("Mood Crystal", 3 + d.stars),
+        BossReward("+1 ${statFor(d.bossClass).label} for good (once a day)", 100, BossReward.Kind.STAT, stat = statFor(d.bossClass)),
+        BossReward("${d.level * 30} gold", 100, BossReward.Kind.GOLD),
+        BossReward("Epic or better weapon", 10 + 6 * d.stars, BossReward.Kind.WEAPON),
+        BossReward("Rare or better armor", 15 + 5 * d.stars, BossReward.Kind.ARMOR),
+        BossReward("3 spell pages", 50, BossReward.Kind.PAGES),
+        BossReward("3 Resonant Crystals", 40, item = Item.RESONANT_CRYSTAL),
+        BossReward("2 torches", 30, BossReward.Kind.TORCHES),
+        BossReward("Incubator", 6 + 2 * d.stars, item = Item.INCUBATOR),
+        BossReward("Golden Berry", 20, item = Item.GOLDEN_BERRY),
+        BossReward("Mood Crystal", 3 + d.stars, item = Item.MOOD_CRYSTAL),
     )
 
     private fun clear(state: GameState, run: DungeonRun, nowMs: Long, rng: Random, zone: ZoneId): Update {
@@ -436,10 +456,13 @@ object Dungeons {
             return Update(
                 banked.state.copy(dungeonRun = null),
                 "Brannoc the Gatekeeper is defeated! +1 ${d.bossStat.label} for good. Real dungeons wait on your map: walk to light torches and explore them. ${banked.message}".trim(),
+                rewards = listOf(Reward.Stat(d.bossStat, 1), Reward.Gold(150)),
+                rewardTitle = "${d.name} cleared",
             )
         }
         var r = run.copy(gold = run.gold + d.level * 30)
         val got = mutableListOf<String>()
+        val loot = mutableListOf<Reward>()
         var s = state
         // The champion's stat, once a day.
         val stat = d.bossStat
@@ -447,16 +470,18 @@ object Dungeons {
             val h = s.hero
             s = s.copy(hero = h.copy(attributes = h.attributes + (stat to h.attr(stat) + 1)), championStatDay = day)
             got += "+1 ${stat.label} for good"
+            loot += Reward.Stat(stat, 1)
         }
         got += "${d.level * 30} gold"
+        loot += Reward.Gold(d.level * 30)
         val pool = bossRewards(d)
         fun hit(i: Int) = rng.nextInt(100) < pool[i].pct
-        fun item(i: Item, n: Int) { r = r.copy(items = r.items + (i to (r.items[i] ?: 0) + n)) }
-        if (hit(2)) Armory.roll(d.level, rng, luck = 30 + 10 * d.stars, minimum = GearRarity.EPIC).let { r = r.copy(gear = r.gear + it); got += "${it.rarity.label} ${it.name}" }
-        if (hit(3)) Armory.rollArmor(d.level, rng, luck = 20 + 10 * d.stars, minimum = GearRarity.RARE).let { r = r.copy(armor = r.armor + it); got += "${it.rarity.label} ${it.name}" }
-        if (hit(4)) GameEngine.pageCandidates(s).randomOrNull(rng)?.let { r = r.copy(pages = r.pages + (it.id to (r.pages[it.id] ?: 0) + 3)); got += "3 ${it.name} pages" }
+        fun item(i: Item, n: Int) { r = r.copy(items = r.items + (i to (r.items[i] ?: 0) + n)); loot += Reward.Items(i, n) }
+        if (hit(2)) Armory.roll(d.level, rng, luck = 30 + 10 * d.stars, minimum = GearRarity.EPIC).let { r = r.copy(gear = r.gear + it); got += "${it.rarity.label} ${it.name}"; loot += Reward.WeaponDrop(it) }
+        if (hit(3)) Armory.rollArmor(d.level, rng, luck = 20 + 10 * d.stars, minimum = GearRarity.RARE).let { r = r.copy(armor = r.armor + it); got += "${it.rarity.label} ${it.name}"; loot += Reward.ArmorDrop(it) }
+        if (hit(4)) GameEngine.pageCandidates(s).randomOrNull(rng)?.let { r = r.copy(pages = r.pages + (it.id to (r.pages[it.id] ?: 0) + 3)); got += "3 ${it.name} pages"; loot += Reward.Pages(it.id, 3, learned = false) }
         if (hit(5)) { item(Item.RESONANT_CRYSTAL, 3); got += "3 Resonant Crystals" }
-        if (hit(6)) { r = r.copy(torches = r.torches + 2); got += "2 torches" }
+        if (hit(6)) { r = r.copy(torches = r.torches + 2); got += "2 torches"; loot += Reward.Torches(2) }
         if (hit(7)) { item(Item.INCUBATOR, 1); got += "an Incubator" }
         if (hit(8)) { item(Item.GOLDEN_BERRY, 1); got += "a Golden Berry" }
         if (hit(9)) { item(Item.MOOD_CRYSTAL, 1); got += "a Mood Crystal" }
@@ -465,6 +490,8 @@ object Dungeons {
         return Update(
             banked.state.copy(dungeonRun = null, stats = banked.state.stats.copy(dungeonsCleared = banked.state.stats.dungeonsCleared + 1)),
             "${champion(d).title} is defeated! The ${d.name} is cleared: ${got.joinToString()}. ${banked.message}".trim(),
+            rewards = loot,
+            rewardTitle = "${d.name} cleared",
         )
     }
 

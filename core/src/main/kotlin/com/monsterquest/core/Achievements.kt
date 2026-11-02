@@ -86,6 +86,7 @@ object Achievements {
             s = withItems
             extra = " and " + ach.items.entries.joinToString { "${it.key.label} x${it.value}" } + if (lost > 0) " (bag full: $lost left behind)" else ""
         }
-        return Update(s, "Achievement: ${ach.name}! +${ach.gold} gold$extra.")
+        val loot = listOf(Reward.Gold(ach.gold)) + ach.items.map { (item, n) -> Reward.Items(item, n) }
+        return Update(s, "Achievement: ${ach.name}! +${ach.gold} gold$extra.", rewards = loot, rewardTitle = ach.name)
     }
 }

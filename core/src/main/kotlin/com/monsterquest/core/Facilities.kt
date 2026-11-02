@@ -67,7 +67,7 @@ object Facilities {
         if (venue != null && !academyOpen(venue, nowMs, zone)) return Update(state, "This study spot is by a school: it opens at $SCHOOL_DAY_END_HOUR PM on school days.")
         if (usedToday(state, VenueRole.SCHOOL, nowMs, zone)) return Update(state, "You've studied here today. The academy opens again tomorrow.")
         val s = state.copy(tomes = state.tomes + STUDY_PAGES, academyDay = day(nowMs, zone))
-        return Update(s, "A day of study! You copy out a Scholar's Tome: $STUDY_PAGES pages for any spell you choose (on the Hero tab).")
+        return Update(s, "A day of study! You copy out a Scholar's Tome: $STUDY_PAGES pages for any spell you choose (on the Hero tab).", rewards = listOf(Reward.Tome(STUDY_PAGES)), rewardTitle = "Academy")
     }
 
     /** A pharmacy: your hero and every monster back to full health (not fainted ones), once a day. */
