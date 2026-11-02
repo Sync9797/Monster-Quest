@@ -199,10 +199,14 @@ fun HeroScreen(vm: GameViewModel) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 StatPill("Max HP", h.maxHp.toString(), Modifier.weight(1f))
                 StatPill("Energy", h.maxMp.toString(), Modifier.weight(1f))
-                StatPill("Atk", h.attack.toString(), Modifier.weight(1f))
-                StatPill("Mag", h.magic.toString(), Modifier.weight(1f))
-                StatPill("Def", h.defense.toString(), Modifier.weight(1f))
-                StatPill("Spd", h.speed.toString(), Modifier.weight(1f))
+                // Battle numbers: attributes and class plus weapon, armor and their effects (as a fight works them out).
+                val fight = GameEngine.heroInBattle(s)
+                fun gear(total: Int, base: Int): String? = (total - base).takeIf { it != 0 }?.let { if (it > 0) "+$it gear" else "$it gear" }
+                fun tint(total: Int, base: Int) = if (total < base) HpRed else Mint
+                StatPill("Atk", fight.attack.toString(), Modifier.weight(1f), gear(fight.attack, h.attack), tint(fight.attack, h.attack))
+                StatPill("Mag", fight.magic.toString(), Modifier.weight(1f), gear(fight.magic, h.magic), tint(fight.magic, h.magic))
+                StatPill("Def", fight.defense.toString(), Modifier.weight(1f), gear(fight.defense, h.defense), tint(fight.defense, h.defense))
+                StatPill("Spd", fight.speed.toString(), Modifier.weight(1f), gear(fight.speed, h.speed), tint(fight.speed, h.speed))
             }
         }
 

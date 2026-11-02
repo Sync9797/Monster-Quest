@@ -90,10 +90,12 @@ fun GameCard(modifier: Modifier = Modifier, border: Color? = null, content: @Com
 
 /** A value over a label. Give it Modifier.weight(1f) in a Row so a row of pills always fits. */
 @Composable
-fun StatPill(label: String, value: String, modifier: Modifier = Modifier) {
+fun StatPill(label: String, value: String, modifier: Modifier = Modifier, note: String? = null, noteColor: Color = Mint) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
         Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // E.g. "+18 gear": how much of the number comes from weapon and armor.
+        if (note != null) Text(note, fontSize = 10.sp, color = noteColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

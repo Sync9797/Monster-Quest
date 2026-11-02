@@ -151,6 +151,14 @@ object GameEngine {
         return box
     }
 
+    /**
+     * The hero as they fight: attributes and class plus the weapon, off-hand,
+     * armor and their effects, worked out exactly as a battle does (without
+     * today's rest, which changes day to day).
+     */
+    fun heroInBattle(state: GameState): Combatant =
+        Combatant.fromHero(state.hero, state.equippedGear, 0, state.wornArmor, state.offhandGear)
+
     /** Reaching this level gives a Perfect Orb. */
     const val MAX_HERO_REWARD_LEVEL = 100
 
