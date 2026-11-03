@@ -432,8 +432,14 @@ object Dungeons {
     }
 
     /** The champion's reward pool, as shown before you enter (chances in percent). */
+    /** Stat points champions can give per attribute, for each star rank (10 before the first star, 20 at the first...). */
+    const val CHAMPION_STAT_CAP = 10
+
+    /** The most of one stat champions can have given at real hero level [level]. */
+    fun championCap(level: Int): Int = CHAMPION_STAT_CAP * (Stars.of(level) + 1)
+
     fun bossRewards(d: Dungeon): List<BossReward> = listOf(
-        BossReward("+1 ${statFor(d.bossClass).label} for good (once a day)", 100, BossReward.Kind.STAT, stat = statFor(d.bossClass)),
+        BossReward("+1 ${statFor(d.bossClass).label} for good (once a day, up to $CHAMPION_STAT_CAP per star rank)", 100, BossReward.Kind.STAT, stat = statFor(d.bossClass)),
         BossReward("${d.level * 30} gold", 100, BossReward.Kind.GOLD),
         BossReward("Epic or better weapon", 10 + 6 * d.stars, BossReward.Kind.WEAPON),
         BossReward("Rare or better armor", 15 + 5 * d.stars, BossReward.Kind.ARMOR),
@@ -468,9 +474,18 @@ object Dungeons {
         val stat = d.bossStat
         if (s.championStatDay != day) {
             val h = s.hero
-            s = s.copy(hero = h.copy(attributes = h.attributes + (stat to h.attr(stat) + 1)), championStatDay = day)
-            got += "+1 ${stat.label} for good"
-            loot += Reward.Stat(stat, 1)
+            val gained = s.championGains[stat] ?: 0
+            if (gained < championCap(h.level)) {
+                s = s.copy(
+                    hero = h.copy(attributes = h.attributes + (stat to h.attr(stat) + 1)),
+                    championStatDay = day,
+                    championGains = s.championGains + (stat to gained + 1),
+                )
+                got += "+1 ${stat.label} for good"
+                loot += Reward.Stat(stat, 1)
+            } else {
+                got += "no more ${stat.label} from champions until your next star (${championCap(h.level)} reached)"
+            }
         }
         got += "${d.level * 30} gold"
         loot += Reward.Gold(d.level * 30)

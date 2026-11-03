@@ -11,6 +11,7 @@ import com.monsterquest.app.ui.art.GameIcon
 import com.monsterquest.app.ui.art.GIcon
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -328,7 +329,8 @@ fun HeroScreen(vm: GameViewModel) {
             "People can't breathe fire like monsters can, so heroes study monster magic and copy it. " +
                 "Your spells start a little weaker than monster moves and grow to full strength by level ${Spells.MASTERY_LEVEL} " +
                 "(now ${(Spells.mastery(h.level) * 100).toInt()}%). Learn a spell with ${Spells.PAGES_TO_LEARN} pages from item shrines, " +
-                "then rank it up to ${Spells.MAX_RANK} with more pages and gold.",
+                "then rank it up to ${Spells.MAX_RANK} with more pages and gold (rank 2 at level 10, 3 at 20, 4 at 30, 5 at 40). " +
+                "At rank ${Spells.MAX_RANK} each spell can follow one of two paths, with 5 mastery ranks from level 45 to 65.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -361,18 +363,23 @@ fun HeroScreen(vm: GameViewModel) {
                         else -> {
                             val needPages = Spells.pagesToUpgrade(rank)
                             val needGold = Spells.goldToUpgrade(rank)
+                            val needLevel = com.monsterquest.core.SpellMastery.levelForRank(rank + 1)
                             Column(horizontalAlignment = Alignment.End) {
                                 SmallButton(
                                     "Rank ${rank + 1}",
                                     { vm.upgradeSpell(base.id) },
-                                    enabled = pages >= needPages && s.gold >= needGold,
+                                    enabled = h.level >= needLevel && pages >= needPages && s.gold >= needGold,
                                     outlined = true,
                                 )
-                                Text("$pages/$needPages pages • $needGold gold", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    if (h.level < needLevel) "Opens at level $needLevel" else "$pages/$needPages pages • $needGold gold",
+                                    fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
                 }
+                if (rank >= Spells.MAX_RANK) SpellPaths(vm, base, pages)
             }
         }
 
@@ -747,5 +754,70 @@ private fun SkillsSection(vm: GameViewModel) {
             },
             confirmButton = { TextButton(onClick = { picking = null }) { Text("Cancel") } },
         )
+    }
+}
+
+/**
+ * A rank-5 spell's two paths: pick one (free the first time), then raise its
+ * mastery 1 to 5 with pages and gold as your level allows.
+ */
+@Composable
+private fun SpellPaths(vm: GameViewModel, spell: com.monsterquest.core.Skill, pages: Int) {
+    val s = vm.state
+    val h = s.hero
+    val chosen = h.spellPaths[spell.id]
+    val m = h.spellMastery[spell.id] ?: 0
+    Column(Modifier.fillMaxWidth().padding(start = 24.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        com.monsterquest.core.SpellMastery.paths(spell).forEach { p ->
+            val on = p.id == chosen
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (on) Gold.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        p.name + if (on) "  " + "◆".repeat(m) + "◇".repeat(com.monsterquest.core.SpellMastery.MAX - m) else "",
+                        fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = if (on) Gold else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(p.text(if (on) m else 0), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (on) {
+                    if (m < com.monsterquest.core.SpellMastery.MAX) {
+                        val next = m + 1
+                        val needLevel = com.monsterquest.core.SpellMastery.levelForMastery(next)
+                        val needPages = com.monsterquest.core.SpellMastery.pagesFor(next)
+                        val needGold = com.monsterquest.core.SpellMastery.goldFor(next)
+                        Column(horizontalAlignment = Alignment.End) {
+                            SmallButton(
+                                "Mastery $next",
+                                { vm.masterSpell(spell.id) },
+                                enabled = h.level >= needLevel && pages >= needPages && s.gold >= needGold,
+                                outlined = true,
+                            )
+                            Text(
+                                if (h.level < needLevel) "Opens at level $needLevel" else "$pages/$needPages pages • $needGold gold",
+                                fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        Text("Mastered", fontSize = 12.sp, color = Gold)
+                    }
+                } else {
+                    val switching = chosen != null
+                    SmallButton(
+                        if (switching) "Switch (${com.monsterquest.core.SpellMastery.SWITCH_COST} gold)" else "Choose",
+                        { vm.chooseSpellPath(spell.id, p.id) },
+                        enabled = !switching || s.gold >= com.monsterquest.core.SpellMastery.SWITCH_COST,
+                        outlined = switching,
+                    )
+                }
+            }
+        }
     }
 }

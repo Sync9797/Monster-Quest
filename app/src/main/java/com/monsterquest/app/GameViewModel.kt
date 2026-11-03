@@ -521,6 +521,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun forgeArmor(type: com.monsterquest.core.ArmorType) = apply(GameEngine.forgeArmor(state, type))
     fun smeltArmor(id: String) = apply(GameEngine.smeltArmor(state, id))
     fun upgradeSpell(id: String) = apply(GameEngine.upgradeSpell(state, id))
+    fun chooseSpellPath(id: String, path: Int) = apply(com.monsterquest.core.SpellMastery.choose(state, id, path))
+    fun masterSpell(id: String) = apply(com.monsterquest.core.SpellMastery.master(state, id))
     fun usePotion(item: Item, target: String) = apply(GameEngine.usePotion(state, item, target))
     fun perfectStat(uid: String, stat: Stat) = apply(GameEngine.perfectStat(state, uid, stat))
 

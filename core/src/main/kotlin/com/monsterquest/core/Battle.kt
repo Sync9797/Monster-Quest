@@ -758,6 +758,9 @@ class Battle(
     val tamedCount: Int get() = capturedKeys.size
     private val heroLevel = hero.level
     private val heroSkills = hero.spells()
+    /** Rank-5 spells' paths and mastery (see [SpellMastery]). */
+    private val spellPaths = hero.spellPaths
+    private val spellMastery = hero.spellMastery
     private val partyUids = fighters.map { it.uid } + swapMonsters.map { it.uid }
 
     private val bag: MutableMap<Item, Int> = inventory.toMutableMap()
@@ -1239,10 +1242,14 @@ class Battle(
             is BattleAction.CastSpell -> {
                 val skill = spellsFor(actor).find { it.id == action.skillId } ?: return false
                 if (actor.mp < skill.mpCost) return false
+                // A rank-5 spell's path (0: none yet) and its mastery.
+                val path = if (actor.isHero) spellPaths[skill.id] ?: 0 else 0
+                val m = if (actor.isHero) spellMastery[skill.id] ?: 0 else 0
                 if (skill.kind in SUPPORT_KINDS) {
                     val target = combatant(action.targetKey ?: actor.key)?.takeIf { it.alive && !Combatant.isEnemy(it.key) }
                         ?: return false
                     actor.mp -= skill.mpCost
+                    if (path != 0 && castPath(actor, target, skill, path, m)) return true
                     when (skill.kind) {
                         SkillKind.SHIELD -> {
                             val amount = ((skill.power + actor.magic * 1.2) * (1 + actor.healPct / 100.0)).roundToInt()
@@ -1284,20 +1291,33 @@ class Battle(
                     }
                 } else {
                     actor.mp -= skill.mpCost
+                    // Storm and Mudslide: the spell splits to hit every foe.
+                    val splits = path == 1
+                    if (splits) {
+                        val share = if (skill.id == Spells.MUD_SLING) SpellMastery.mudslideShare(m) else SpellMastery.stormShare(m)
+                        log += "${actor.name}'s ${SpellMastery.path(skill.id, 1)?.name ?: skill.name} strikes every foe!"
+                        for (foe in enemies.filter { it.alive }) {
+                            if (floatsOver(actor, foe, skill.element) || !rollHit(actor, foe, 100)) continue
+                            val d = strike(actor, foe, (skill.power * share).roundToInt().coerceAtLeast(1), skill.element, useMagic = true, verb = "hits", style = StrikeStyle.BOLT)
+                            afterHeroHit(actor, foe, d)
+                            if (skill.id == Spells.MUD_SLING && foe.alive) muddy(foe)
+                        }
+                        return true
+                    }
                     if (floatsOver(actor, enemy, skill.element) || !rollHit(actor, enemy, 100)) return true
                     val target = enemy
-                    val dmg = strike(actor, target, skill.power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
+                    // Lance: more power, and its type's effect.
+                    val lance = path == 2 && skill.id != Spells.MUD_SLING
+                    val power = if (lance) (skill.power * SpellMastery.lanceBoost(m)).roundToInt() else skill.power
+                    val dmg = strike(actor, target, power, skill.element, useMagic = true, verb = "casts ${skill.name} on", style = StrikeStyle.BOLT)
                     afterHeroHit(actor, target, dmg)
-                    // Mud Sling: mud in the eyes, stacking.
-                    if (skill.id == Spells.MUD_SLING && target.alive) {
-                        val cap = Spells.MUD_SLING_ACCURACY * Spells.MUD_SLING_STACKS
-                        if (target.muddiedPct >= cap) {
-                            log += "${target.name} can't get any muddier."
-                        } else {
-                            target.muddiedPct = minOf(cap, target.muddiedPct + Spells.MUD_SLING_ACCURACY)
-                            log += "${target.name}'s accuracy fell! (−${target.muddiedPct}%)"
-                        }
+                    if (lance && target.alive) lanceEffect(actor, target, skill.element, m)
+                    // Quagmire: the mud also slows the foe.
+                    if (path == 2 && skill.id == Spells.MUD_SLING && target.alive && rng.nextDouble() < luck(actor, SpellMastery.quagmireChance(m))) {
+                        lowerStage(target, BattleStat.SPEED)
                     }
+                    // Mud Sling: mud in the eyes, stacking.
+                    if (skill.id == Spells.MUD_SLING && target.alive) muddy(target)
                     if (actor.spellDrainPct > 0 && dmg > 0 && actor.alive && actor.hp < actor.maxHp) {
                         heal(actor, maxOf(1, dmg * actor.spellDrainPct / 100), "${actor.name}'s dark magic drains life")
                     }
@@ -1499,6 +1519,139 @@ class Battle(
         val used = (itemsUsed[item] ?: 1) - 1
         if (used <= 0) itemsUsed.remove(item) else itemsUsed[item] = used
         return false
+    }
+
+    /** Mud Sling's mud in the eyes: accuracy down, stacking to a cap. */
+    private fun muddy(target: Combatant) {
+        val cap = Spells.MUD_SLING_ACCURACY * Spells.MUD_SLING_STACKS
+        if (target.muddiedPct >= cap) {
+            log += "${target.name} can't get any muddier."
+        } else {
+            target.muddiedPct = minOf(cap, target.muddiedPct + Spells.MUD_SLING_ACCURACY)
+            log += "${target.name}'s accuracy fell! (−${target.muddiedPct}%)"
+        }
+    }
+
+    /** One stage off a foe's stat (unless it's unflappable). */
+    private fun lowerStage(d: Combatant, stat: BattleStat) {
+        if (d.unflappable) {
+            log += "${d.name} is unflappable: its stats don't drop!"
+            return
+        }
+        d.stages[stat] = ((d.stages[stat] ?: 0) - 1).coerceAtLeast(-4)
+        log += "${d.name}'s ${stat.label} fell!"
+    }
+
+    /** A Lance bolt's effect: its type's status, or a lowered stat. */
+    private fun lanceEffect(a: Combatant, d: Combatant, element: Element, m: Int) {
+        val effect = SpellMastery.lanceEffect(element)
+        val chance = SpellMastery.lanceChance(m) * (if (effect == SpellMastery.LanceEffect.SLEEP) 0.5 else 1.0)
+        if (rng.nextDouble() >= luck(a, chance)) return
+        when (effect) {
+            SpellMastery.LanceEffect.SLOW -> lowerStage(d, BattleStat.SPEED)
+            SpellMastery.LanceEffect.CRACK -> lowerStage(d, BattleStat.DEFENSE)
+            SpellMastery.LanceEffect.SAP -> lowerStage(d, BattleStat.ATTACK)
+            else -> {
+                if (d.status != null) return
+                val status = when (effect) {
+                    SpellMastery.LanceEffect.BURN -> Status.BURN
+                    SpellMastery.LanceEffect.SHOCK -> Status.SHOCK
+                    SpellMastery.LanceEffect.POISON -> Status.POISON
+                    else -> Status.SLEEP
+                }
+                if (status == Status.SLEEP) {
+                    if (fallAsleep(d, 2)) log += "${d.name} fell asleep!"
+                } else {
+                    d.status = status
+                    d.statusTurns = 3
+                    log += "${d.name} is ${status.label.lowercase()}!"
+                }
+            }
+        }
+    }
+
+    /**
+     * A support spell cast along its path. Returns true if the path handled
+     * the whole cast (false: the spell works as usual).
+     */
+    private fun castPath(actor: Combatant, target: Combatant, skill: Skill, path: Int, m: Int): Boolean {
+        val pathName = SpellMastery.path(skill.id, path)?.name ?: skill.name
+        val team = allies.filter { it.alive }
+        fun cure(t: Combatant): Status? = t.status?.also { t.status = null; t.statusTurns = 0 }
+        when (skill.kind) {
+            SkillKind.HEAL -> if (path == 1) {
+                val cured = cure(target)
+                heal(target, (spellHeal(actor, skill) * SpellMastery.purifyBoost(m)).roundToInt(), "${actor.name} casts $pathName" + (cured?.let { " (${target.name} is no longer ${it.label.lowercase()})" } ?: ""))
+            } else {
+                val amount = spellHeal(actor, skill)
+                val room = target.maxHp - target.hp
+                heal(target, amount, "${actor.name} casts $pathName")
+                val spill = ((amount - room).coerceAtLeast(0) * SpellMastery.overflowShare(m)).roundToInt()
+                if (spill > 0) {
+                    target.shield = max(target.shield, spill)
+                    log += "The overflow shields ${target.name} (absorbs ${target.shield})."
+                    record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
+                }
+            }
+            SkillKind.AEGIS -> {
+                val single = actor.maxHp * skill.power / 100.0
+                if (path == 1) {
+                    val amount = (single + actor.maxHp * SpellMastery.bulwarkExtraPct(m) / 100.0).roundToInt().coerceAtLeast(1)
+                    target.shield = max(target.shield, amount)
+                    log += "${actor.name} casts $pathName: ${target.name} is behind a great shield (absorbs ${target.shield})."
+                    record(actor, target, StrikeStyle.WARD, Element.NEUTRAL, target.shield)
+                } else {
+                    val amount = (single * SpellMastery.sharedShare(m)).roundToInt().coerceAtLeast(1)
+                    log += "${actor.name} casts $pathName: the whole team is shielded (absorbs $amount each)."
+                    for (a in team) {
+                        a.shield = max(a.shield, amount)
+                        record(actor, a, StrikeStyle.WARD, Element.NEUTRAL, a.shield)
+                    }
+                }
+            }
+            SkillKind.FORTIFY, SkillKind.HASTE, SkillKind.EMPOWER -> {
+                val (stat, label) = when (skill.kind) {
+                    SkillKind.HASTE -> BattleStat.SPEED to "Speed"
+                    SkillKind.EMPOWER -> BattleStat.ATTACK to "Attack"
+                    else -> BattleStat.DEFENSE to "Defense"
+                }
+                if (path == 1) {
+                    val stages = SpellMastery.rallyStages(skill.power, m)
+                    log += "${actor.name} casts $pathName: the whole team's $label rises!"
+                    for (a in team) {
+                        a.stages[stat] = minOf(MAX_STAGES, (a.stages[stat] ?: 0) + stages)
+                        record(actor, a, StrikeStyle.WARD, Element.NEUTRAL)
+                    }
+                } else {
+                    target.stages[stat] = minOf(MAX_STAGES, (target.stages[stat] ?: 0) + skill.power + SpellMastery.overchargeExtra(m))
+                    log += "${actor.name} casts $pathName: ${target.name}'s $label surges!"
+                    record(actor, target, StrikeStyle.WARD, Element.NEUTRAL)
+                }
+            }
+            SkillKind.CLEANSE -> if (path == 1) {
+                log += "${actor.name} casts $pathName!"
+                val amount = (spellHeal(actor, skill) * SpellMastery.sanctuaryShare(m)).roundToInt()
+                for (a in team) {
+                    cure(a)
+                    BattleStat.entries.forEach { st -> if ((a.stages[st] ?: 0) < 0) a.stages[st] = 0 }
+                    heal(a, amount, "  $pathName")
+                }
+            } else {
+                val cured = cure(target)
+                BattleStat.entries.forEach { st -> if ((target.stages[st] ?: 0) < 0) target.stages[st] = 0 }
+                heal(target, (spellHeal(actor, skill) * SpellMastery.restorationBoost(m)).roundToInt(), "${actor.name} casts $pathName" + (cured?.let { " (${target.name} is no longer ${it.label.lowercase()})" } ?: ""))
+            }
+            SkillKind.MEND_ALL -> {
+                val amount = (spellHeal(actor, skill) * if (path == 1) SpellMastery.purifyBoost(m) else SpellMastery.radiantBoost(m)).roundToInt()
+                log += "${actor.name} casts $pathName!"
+                for (a in team) {
+                    if (path == 1) cure(a)
+                    heal(a, amount, "  $pathName")
+                }
+            }
+            else -> return false
+        }
+        return true
     }
 
     private fun heal(target: Combatant, amount: Int, prefix: String) {

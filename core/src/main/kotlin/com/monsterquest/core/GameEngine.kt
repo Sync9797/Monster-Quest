@@ -1334,7 +1334,8 @@ object GameEngine {
                 rewards += Reward.SpellBook(book.id, 1)
                 parts += "a spell book: you learned ${book.name}!"
             } else {
-                Spells.all.filter { h.spellRank(it.id) < Spells.MAX_RANK }.randomOrNull(rng)?.let { sp ->
+                // Only a rank the hero's level allows (rank 2 at 10, 3 at 20...).
+                Spells.all.filter { h.spellRank(it.id) < Spells.MAX_RANK && h.level >= SpellMastery.levelForRank(h.spellRank(it.id) + 1) }.randomOrNull(rng)?.let { sp ->
                     val rank = h.spellRank(sp.id) + 1
                     s = s.copy(hero = h.copy(spellRanks = h.spellRanks + (sp.id to rank)))
                     rewards += Reward.SpellBook(sp.id, rank)
@@ -1430,7 +1431,8 @@ object GameEngine {
     fun pageCandidates(state: GameState): List<Skill> = Spells.all.flatMap { sp ->
         when (state.hero.spellRank(sp.id)) {
             0 -> listOf(sp, sp)
-            Spells.MAX_RANK -> emptyList()
+            // At rank 5, pages still help while its path has mastery to gain.
+            Spells.MAX_RANK -> if (sp.id in state.hero.spellPaths && (state.hero.spellMastery[sp.id] ?: 0) < SpellMastery.MAX) listOf(sp) else emptyList()
             else -> listOf(sp)
         }
     }
@@ -1441,6 +1443,8 @@ object GameEngine {
         val rank = state.hero.spellRank(spellId)
         if (rank == 0) return Update(state, "Learn ${spell.name} first.")
         if (rank >= Spells.MAX_RANK) return Update(state, "${spell.name} is already at max rank.")
+        val needLevel = SpellMastery.levelForRank(rank + 1)
+        if (state.hero.level < needLevel) return Update(state, "Rank ${rank + 1} opens at hero level $needLevel.")
         val pages = state.spellPages[spellId] ?: 0
         val needPages = Spells.pagesToUpgrade(rank)
         val needGold = Spells.goldToUpgrade(rank)

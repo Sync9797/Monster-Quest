@@ -143,7 +143,7 @@ private val topics = listOf(
                 "Dungeons",
                 "Stone archways with torches. Each block (about 300 m) has one, in a coffee shop, doctor's office or restaurant picked fresh each day, so busy downtowns aren't packed and a different café opens tomorrow. Where there are no such places, scattered ones fill in. Rated 1 to 5 stars (stars above the arch); every neighbourhood has a couple of easy ones and at most one 5-star. Tap one to see its level, rooms, the monsters inside, the champion and the reward pool with odds. Entering costs 1 to 3 torches.",
                 "Each room offers two doors: monster lairs (tameable, 1 to 4 monsters; easy dungeons send at most 3), Alpha dens, cursed guardians (can't be tamed), traps (you see your odds; fail and everyone takes damage, but you go on), treasuries, fairy fountains (full heal) and quiet rooms. Some doors are hidden. Harder dungeons have more rooms, fights and traps.",
-                "At the end waits a champion: a Warrior, Mage or Rogue with their monsters. Beat them for +1 Attack, Magic or Speed for good (once a day) and a roll on the reward pool.",
+                "At the end waits a champion: a Warrior, Mage or Rogue with their monsters. Beat them for +1 Attack, Magic or Speed for good (once a day, up to 10 per stat for each star rank) and a roll on the reward pool.",
                 "Leave whenever you like and keep what you found. If your team falls, you lose half of it.",
             ),
             section(
@@ -233,7 +233,8 @@ private val topics = listOf(
             *classPaths().toTypedArray(),
             section(
                 "Spells",
-                "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold.",
+                "Learn a spell with 3 spell pages (from shrines, chests, champions and Scholar's Tomes), then rank it up on the Hero tab with more pages and gold. Rank 2 opens at hero level 10, rank 3 at 20, rank 4 at 30 and rank 5 at 40.",
+                "Spell paths: at rank 5 every spell can follow one of two paths, for example a bolt that splits to hit every foe or one that hits harder and burns, shocks or poisons; Mend can cure status or turn extra healing into a shield; Aegis can be bigger or cover the whole team. Each path has 5 mastery ranks (pages and gold) that open from level 45 to 65. Switching paths costs 1,000 gold and keeps your mastery.",
                 "Bolts of every type, Mud Sling, and support magic: Mend (heal), Aegis (a shield worth half your max HP, more as it ranks up), Fortify (Defense), Haste (Speed), Empower (Attack), Cleanse (cures status and lowered stats) and Healing Circle (heals the whole team).",
                 "Energy comes back slowly, faster by walking, at once with a Mana Draught, or with a full night's sleep.",
             ),

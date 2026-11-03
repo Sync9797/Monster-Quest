@@ -397,6 +397,9 @@ class GameTest {
 
         var s = started()
         assertEquals(1, s.hero.spellRank("ember_bolt"))
+        // Rank 2 opens at hero level 10; then it takes pages and gold.
+        assertTrue(GameEngine.upgradeSpell(s, "ember_bolt").message.contains("level 10"))
+        s = s.copy(hero = s.hero.copy(level = 10))
         assertTrue(GameEngine.upgradeSpell(s, "ember_bolt").message.contains("Need"))
         s = s.copy(gold = 1_000, spellPages = mapOf("ember_bolt" to 4))
         val u = GameEngine.upgradeSpell(s, "ember_bolt")

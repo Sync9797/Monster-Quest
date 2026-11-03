@@ -55,6 +55,10 @@ data class Hero(
     val knownSpells: Set<String> = Spells.starting,
     /** Rank of each known spell above 1 (missing means rank 1). */
     val spellRanks: Map<String, Int> = emptyMap(),
+    /** Rank-5 spells' chosen paths (1 or 2), see [SpellMastery]. */
+    val spellPaths: Map<String, Int> = emptyMap(),
+    /** Mastery (1..5) of each spell's path. */
+    val spellMastery: Map<String, Int> = emptyMap(),
     val heroClass: HeroClass = HeroClass.NONE,
     /** Set once a class (or staying an Adventurer) is picked at level 5. */
     val classChosen: Boolean = false,
@@ -397,6 +401,8 @@ data class GameState(
     val dungeonRun: DungeonRun? = null,
     val dungeonsCleared: Map<String, Long> = emptyMap(),
     val championStatDay: Long = -1,
+    /** Stat points dungeon champions have given, per attribute (capped per star rank, see [Dungeons.CHAMPION_STAT_CAP]). */
+    val championGains: Map<HeroAttribute, Int> = emptyMap(),
     /** The 0-star tutorial dungeon has been finished (it's one of a kind). */
     val tutorialDungeonDone: Boolean = false,
     /** The day a pharmacy last healed you, and a hospital last woke your monsters (see [Facilities]). */
