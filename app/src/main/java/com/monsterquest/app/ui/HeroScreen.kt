@@ -189,7 +189,8 @@ fun HeroScreen(vm: GameViewModel) {
                 Spacer(Modifier.weight(1f))
                 Text(
                     // Walking lights torches (it no longer gives XP).
-                    "Next torch in %,d steps".format((com.monsterquest.core.Torches.STEPS_PER_TORCH - s.torchSteps).coerceAtLeast(0)),
+                    if (com.monsterquest.core.Torches.full(s)) "Torches full: spend some to keep earning"
+                    else "Next torch in %,d steps".format((com.monsterquest.core.Torches.STEPS_PER_TORCH - s.torchSteps).coerceAtLeast(0)),
                     maxLines = 1,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

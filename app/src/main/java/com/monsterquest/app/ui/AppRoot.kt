@@ -219,6 +219,7 @@ private fun AppScreens(vm: GameViewModel, initialTab: Tab, initialSettings: Bool
                     saverOn = vm.batterySaver,
                     onSaver = { vm.batterySaver = !vm.batterySaver },
                     xpFraction = state.hero.xp.toFloat() / com.monsterquest.core.heroXpForNext(state.hero.level).coerceAtLeast(1),
+                    torchCap = com.monsterquest.core.Torches.cap(state),
                 )
                 if (settingsOpen) {
                     SettingsScreen(vm) { settingsOpen = false }

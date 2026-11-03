@@ -69,7 +69,7 @@ class XpRulesTest {
         val uid = s.partyMonsters.first().uid
         var maxLead = 0
         for (d in 0 until 30) {
-            s = s.copy(torches = Torches.MAX)
+            s = s.copy(torches = Torches.cap(s))
             repeat(10) { s = Facilities.train(s, at(d, 10), utc).state }
             // A little hero XP from quests each day.
             s = GameEngine.addHeroXp(s, 40).state

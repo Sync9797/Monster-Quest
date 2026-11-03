@@ -22,7 +22,7 @@ class TorchesTest {
         s = Torches.morning(s, at(7), utc)!!.state
         assertEquals(2 + Torches.MORNING, s.torches)
         assertEquals(null, Torches.morning(s, at(12), utc))
-        assertEquals(Torches.MAX, Torches.add(s, 99).torches)
+        assertEquals(Torches.cap(s), Torches.add(s, 99).torches)
     }
 
     @Test
@@ -41,5 +41,30 @@ class TorchesTest {
         val bT = Battle(tired.hero, tired.partyMonsters, foe, EncounterType.WILD, emptyMap(), false, restFactor = Rest.TIRED.statFactor)
         val bN = Battle(tired.hero, tired.partyMonsters, foe, EncounterType.WILD, emptyMap(), false)
         assertTrue(bT.allies.first().attack < bN.allies.first().attack)
+    }
+
+    @Test
+    fun theCapGrowsWithLevelAndRewardsCanGoALittleOver() {
+        assertEquals(10, Torches.cap(1))
+        assertEquals(10, Torches.cap(9))
+        assertEquals(15, Torches.cap(10))
+        assertEquals(20, Torches.cap(25))
+        assertEquals(25, Torches.cap(39))
+        assertEquals(30, Torches.cap(40))
+        assertEquals(30, Torches.cap(120))
+        val s = start().copy(torches = 0)
+        val cap = Torches.cap(s)
+        // Walking stops at the cap.
+        val walked = GameEngine.walk(s, 50_000, at(9), utc).state
+        assertEquals(cap, walked.torches)
+        assertEquals(0, walked.torchSteps)
+        assertTrue(Torches.full(walked))
+        // A reward goes a little over, never more.
+        assertEquals(cap + 3, Torches.add(walked, 3, reward = true).torches)
+        assertEquals(cap + Torches.REWARD_OVERFLOW, Torches.add(walked, 99, reward = true).torches)
+        // Torches held above the cap are never taken away.
+        val over = walked.copy(torches = cap + 4)
+        assertEquals(cap + 4, Torches.add(over, 2).torches)
+        assertEquals(cap + 4, Torches.morning(over, at(7) + 86_400_000L, utc)!!.state.torches)
     }
 }

@@ -11,9 +11,29 @@ import java.time.ZoneId
 object Torches {
     const val STEPS_PER_TORCH = 1_000
     const val MORNING = 3
+    /** The most torches anyone can hold (level 40 and up). */
     const val MAX = 30
+    /** Earned rewards (chests, long focus sessions, a good night) can go this far over the cap. */
+    const val REWARD_OVERFLOW = 5
 
-    fun add(state: GameState, n: Int): GameState = state.copy(torches = (state.torches + n).coerceIn(0, MAX))
+    /** How many torches a hero of [level] can hold: 10, then 5 more every 10 levels, up to [MAX] at 40. */
+    fun cap(level: Int): Int = (10 + 5 * ((level.coerceAtLeast(1)) / 10)).coerceAtMost(MAX)
+    fun cap(state: GameState): Int = cap(state.hero.level)
+
+    /** Whether walking and the morning gift have stopped adding torches. */
+    fun full(state: GameState): Boolean = state.torches >= cap(state)
+
+    /**
+     * Adds torches up to the hero's cap (walking, the morning gift). An earned
+     * [reward] can go [REWARD_OVERFLOW] over it so a prize is never wasted.
+     * Never takes away torches already held above the cap.
+     */
+    fun add(state: GameState, n: Int, reward: Boolean = false): GameState {
+        if (n <= 0) return state
+        val limit = cap(state) + if (reward) REWARD_OVERFLOW else 0
+        if (state.torches >= limit) return state
+        return state.copy(torches = minOf(state.torches + n, limit))
+    }
 
     /** Walking: steps build toward the next torch. Returns the state and how many torches were earned. */
     fun addSteps(state: GameState, steps: Int): Pair<GameState, Int> {
@@ -21,6 +41,8 @@ object Torches {
         val bank = state.torchSteps + steps
         val earned = bank / STEPS_PER_TORCH
         val before = state.torches
+        // At the cap, steps stop banking too, so walking doesn't save up a pile for later.
+        if (full(state)) return state.copy(torchSteps = 0) to 0
         val s = add(state.copy(torchSteps = bank % STEPS_PER_TORCH), earned)
         return s to (s.torches - before)
     }
@@ -30,7 +52,12 @@ object Torches {
         val day = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
         if (state.torchGiftDay == day) return null
         val s = add(state.copy(torchGiftDay = day), MORNING)
-        return Update(s, "Good morning! $MORNING torches are waiting for you (${s.torches} in all).")
+        val got = s.torches - state.torches
+        return Update(
+            s,
+            if (got == 0) "Good morning! Your torches are full (${s.torches}/${cap(s)}): spend some to keep earning."
+            else "Good morning! $got torch${if (got == 1) " is" else "es are"} waiting for you (${s.torches}/${cap(s)}).",
+        )
     }
 }
 
@@ -72,7 +99,7 @@ enum class Rest(val label: String, val statFactor: Double) {
             var s = state.copy(restDay = today.toEpochDay(), rest = rest)
             val text = when (rest) {
                 WELL_RESTED -> {
-                    s = Torches.add(s, WELL_RESTED_TORCHES)
+                    s = Torches.add(s, WELL_RESTED_TORCHES, reward = true)
                     "Well rested (${SleepLog.label(night.asleepMin)})! Your hero and monsters fight 10% better today, and +$WELL_RESTED_TORCHES torches."
                 }
                 TIRED -> "Short night (${SleepLog.label(night.asleepMin)}): your team is tired, 10% weaker today. Aim for 7+ hours."

@@ -2011,7 +2011,7 @@ object GameEngine {
             }
             // Two hours off the phone: a bundle of torches for the dungeons.
             if (f.minutes >= 120) {
-                s = Torches.add(s, FOCUS_JACKPOT_TORCHES)
+                s = Torches.add(s, FOCUS_JACKPOT_TORCHES, reward = true)
                 msg.append(" +$FOCUS_JACKPOT_TORCHES torches for the dungeons.")
             }
             // Mood Crystals (personality rerolls) only come from hour-plus sessions.

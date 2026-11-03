@@ -505,7 +505,7 @@ object Dungeons {
     private fun bank(state: GameState, run: DungeonRun, half: Boolean): Update {
         fun cut(n: Int) = if (half) n / 2 else n
         var s = state.copy(gold = state.gold + cut(run.gold))
-        s = Torches.add(s, cut(run.torches))
+        s = Torches.add(s, cut(run.torches), reward = true)
         val loot = GameEngine.Loot(
             items = run.items.mapValues { cut(it.value) }.filterValues { it > 0 },
             weapons = if (half) run.gear.take(run.gear.size / 2) else run.gear,

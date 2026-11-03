@@ -137,6 +137,8 @@ fun ResourceHeader(
     onSaver: (() -> Unit)? = null,
     /** How far through the current level the hero is (0..1). */
     xpFraction: Float = 0f,
+    /** The most torches the hero can hold now (shown as "12/15"); null hides it. */
+    torchCap: Int? = null,
 ) {
     val pill = MaterialTheme.colorScheme.surfaceVariant
     Row(
@@ -174,10 +176,12 @@ fun ResourceHeader(
             Modifier
                 .background(pill, androidx.compose.foundation.shape.RoundedCornerShape(50))
                 .padding(horizontal = 12.dp, vertical = 7.dp)
-                .semantics(mergeDescendants = true) { contentDescription = "$tokens torch${if (tokens == 1) "" else "es"}" },
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "$tokens torch${if (tokens == 1) "" else "es"}" + (torchCap?.let { " of $it" } ?: "")
+                },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconText(GameIcon.FLAME, "$tokens", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
+            IconText(GameIcon.FLAME, torchCap?.let { "$tokens/$it" } ?: "$tokens", tint = Color(0xFFF2A65A), textColor = Color(0xFFF2A65A), bold = true)
         }
         Spacer(Modifier.weight(1f))
         if (onSaver != null) {
