@@ -81,6 +81,11 @@ data class DungeonRun(
     val last: String = "",
     /** The champion is beaten. */
     val cleared: Boolean = false,
+    /**
+     * The bag was already full when you went in: what you find only fits if
+     * there's room. Otherwise everything comes home, even past the bag's size.
+     */
+    val bagFullAtStart: Boolean = false,
 ) {
     val atBoss: Boolean get() = step >= dungeon.rooms
 }
@@ -281,7 +286,12 @@ object Dungeons {
         if (d.tutorial) return Update(startTutorial(state), "")
         if (state.torches < d.torchCost) return Update(state, "You need ${d.torchCost} torch${if (d.torchCost == 1) "" else "es"} to enter (you have ${state.torches}). Walk to light more.")
         if (state.monsters.none { it.uid in state.party && !it.fainted }) return Update(state, "Bring at least one monster that can fight.")
-        val run = DungeonRun(d, last = "You light a torch and step into the ${d.name}.")
+        val full = state.bagFull
+        val run = DungeonRun(
+            d,
+            last = "You light a torch and step into the ${d.name}." + if (full) " Your bag is full: you can't carry out anything you find." else "",
+            bagFullAtStart = full,
+        )
         return Update(state.copy(torches = state.torches - d.torchCost, dungeonRun = run), run.last)
     }
 
@@ -527,7 +537,7 @@ object Dungeons {
             armor = if (half) run.armor.take(run.armor.size / 2) else run.armor,
             pages = run.pages.mapValues { cut(it.value) }.filterValues { it > 0 },
         )
-        val granted = GameEngine.grantLoot(s, loot)
+        val granted = GameEngine.grantLoot(s, loot, overfill = !run.bagFullAtStart)
         val total = listOfNotNull(
             cut(run.gold).takeIf { it > 0 }?.let { "$it gold" },
             cut(run.torches).takeIf { it > 0 }?.let { "$it torch${if (it == 1) "" else "es"}" },

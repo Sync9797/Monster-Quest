@@ -307,6 +307,7 @@ fun DungeonDialog(vm: GameViewModel, d: Dungeon, distance: Double?, onDismiss: (
                         Text("${r.pct}%", fontSize = 12.sp, color = Gold, fontWeight = FontWeight.SemiBold)
                     }
                 }
+                BagNote(s)
                 if (!inRange) {
                     Text(
                         "Walk within ${formatDistance(Dungeons.RANGE_M, s.settings.imperialUnits)} to enter (${distance?.let { formatDistance(it, s.settings.imperialUnits) } ?: "?"} away).",
@@ -451,5 +452,26 @@ private fun PartyWalk(vm: GameViewModel, step: Int, modifier: Modifier) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Before a dungeon or an adventure: everything found comes home if the bag
+ * has room now (even past its size); with a full bag, nothing found can be kept.
+ */
+@Composable
+internal fun BagNote(s: com.monsterquest.core.GameState) {
+    if (s.bagFull) {
+        Text(
+            "Your bag is full (${s.bagCount}/${s.bagCapacity}). Make room first, or you won't be able to keep any items you find.",
+            fontSize = 12.sp, color = HpRed, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    } else {
+        Text(
+            "Bag ${s.bagCount}/${s.bagCapacity}: everything you find comes home, even past your bag's size.",
+            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }

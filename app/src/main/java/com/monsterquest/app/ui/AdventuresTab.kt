@@ -199,6 +199,7 @@ private fun TeamPicker(vm: GameViewModel, adv: Adventure, onDismiss: () -> Unit,
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(adv.title, fontSize = 13.sp)
                 Text("Recommended level ${adv.recommendedLevel}", fontSize = 12.sp, color = Gold)
+                BagNote(vm.state)
                 if (adv.teamSize >= com.monsterquest.core.Eggs.ADVENTURE_EGG_TEAM) {
                     Text(
                         "${(com.monsterquest.core.Eggs.ADVENTURE_EGG_CHANCE * 100).toInt()}% chance to bring home an egg. Send a male and a female of the same line and it's their egg, with their best genes.",

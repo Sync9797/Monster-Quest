@@ -27,6 +27,8 @@ data class ActiveAdventure(
     val monsterUids: List<String>,
     val startMs: Long,
     val successChance: Double,
+    /** The bag was full when the team set out: loot only fits if there's room (otherwise it all comes home). */
+    val bagFullAtStart: Boolean = false,
 ) {
     val endMs: Long get() = startMs + adventure.durationMs
     fun done(nowMs: Long) = nowMs >= endMs
@@ -135,10 +137,11 @@ object Adventures {
         if (ids.any { it in state.team }) return Update(state, "Your battle party and swaps stay with you. Pick monsters from your collection.")
         val team = ids.map { free[it] ?: return Update(state, "A chosen monster is fainted or already away.") }
         val chance = successChance(team, adventure)
-        val active = ActiveAdventure(adventure, ids, nowMs, chance)
+        val active = ActiveAdventure(adventure, ids, nowMs, chance, bagFullAtStart = state.bagFull)
         return Update(
             state.copy(adventures = state.adventures + active),
-            "${team.joinToString { it.displayName }} set out: ${adventure.title}. Back in ${adventure.durationMs / 60_000} min.",
+            "${team.joinToString { it.displayName }} set out: ${adventure.title}. Back in ${adventure.durationMs / 60_000} min." +
+                if (state.bagFull) " Your bag is full: they can't bring back any items." else "",
         )
     }
 
@@ -175,7 +178,7 @@ object Adventures {
             val gold = 20 * d + adv.recommendedLevel * 2 * d + rng.nextInt(10 * d + 1)
             s = s.copy(gold = s.gold + gold)
             val loot = GameEngine.rollLoot(s, d + 1, rng).let { if (d >= 3) it.copy(parts = GameEngine.rollParts(d - 1, rng)) else it }
-            val granted = GameEngine.grantLoot(s, loot)
+            val granted = GameEngine.grantLoot(s, loot, overfill = !active.bagFullAtStart)
             Update(
                 granted.state,
                 "${adv.title}: success! $teamNames brought back +$gold gold, ${granted.message}. Each monster +$xpEach XP." +

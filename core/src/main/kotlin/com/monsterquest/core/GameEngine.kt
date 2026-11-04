@@ -425,12 +425,17 @@ object GameEngine {
     // ---- items -------------------------------------------------------------
 
     /** Adds items while respecting bag capacity. Returns the new state and what didn't fit. */
-    fun addItems(state: GameState, items: Map<Item, Int>): Pair<GameState, Int> {
+    /**
+     * Adds items while respecting bag capacity, unless [overfill]: then they
+     * all go in even past the bag's size (what a dungeon run or an adventure
+     * that set out with room brought back). Once over, nothing else fits.
+     */
+    fun addItems(state: GameState, items: Map<Item, Int>, overfill: Boolean = false): Pair<GameState, Int> {
         var inv = state.inventory
         var space = state.bagCapacity - state.bagCount
         var lost = 0
         for ((item, qty) in items) {
-            val fit = minOf(qty, space.coerceAtLeast(0))
+            val fit = if (overfill) qty else minOf(qty, space.coerceAtLeast(0))
             if (fit > 0) inv = inv + (item to (inv[item] ?: 0) + fit)
             space -= fit
             lost += qty - fit
@@ -1139,7 +1144,8 @@ object GameEngine {
                 )
                 // Drops
                 if (r.drops.isNotEmpty()) {
-                    val (withDrops, lost) = addItems(s, r.drops)
+                    // In a dungeon you entered with room in your bag, everything you find comes home.
+                    val (withDrops, lost) = addItems(s, r.drops, overfill = s.dungeonRun?.let { !it.bagFullAtStart } == true)
                     s = withDrops
                     msg.append(" Found: ").append(r.drops.entries.joinToString { "${it.key.label} x${it.value}" }).append(".")
                     if (lost > 0) msg.append(" (Bag full: $lost item(s) left behind.)")
@@ -1468,17 +1474,17 @@ object GameEngine {
         if (count <= 0) emptyMap() else mapOf(Armory.randomArmorPartType(rng) to count)
 
     /** Adds loot to the save (respecting bag space) and describes it. */
-    fun grantLoot(state: GameState, loot: Loot): Update {
+    fun grantLoot(state: GameState, loot: Loot, overfill: Boolean = false): Update {
         var s = state
         val parts = mutableListOf<String>()
         val rewards = mutableListOf<Reward>()
         loot.items.forEach { (item, n) -> rewards += Reward.Items(item, n) }
-        val (withItems, lostItems) = addItems(s, loot.items)
+        val (withItems, lostItems) = addItems(s, loot.items, overfill)
         s = withItems
         loot.items.forEach { (item, n) -> parts += "${item.label} x$n" }
         var lostWeapons = 0
         for (w in loot.weapons) {
-            if (s.bagCount < s.bagCapacity) {
+            if (overfill || s.bagCount < s.bagCapacity) {
                 s = s.copy(gear = s.gear + w)
                 parts += "${w.rarity.label} ${w.name}"
                 rewards += Reward.WeaponDrop(w)
@@ -1487,7 +1493,7 @@ object GameEngine {
             }
         }
         for (a in loot.armor) {
-            if (s.bagCount < s.bagCapacity) {
+            if (overfill || s.bagCount < s.bagCapacity) {
                 s = s.copy(armor = s.armor + a)
                 parts += "${a.rarity.label} ${a.name}"
                 rewards += Reward.ArmorDrop(a)

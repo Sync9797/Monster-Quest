@@ -160,4 +160,28 @@ class DungeonsTest {
         // The academy hands out a tome.
         assertEquals(listOf<Reward>(Reward.Tome(Facilities.STUDY_PAGES)), Facilities.study(start(), now, utc).rewards)
     }
+
+    @Test
+    fun dungeonLootComesHomeEvenPastTheBagUnlessYouWentInFull() {
+        val base = start()
+        val d = some(base, 2)
+        val room = base.bagCapacity - base.bagCount
+        // Went in with room: everything comes home, even past the bag's size.
+        var s = Dungeons.enter(base, d).state
+        assertTrue(!s.dungeonRun!!.bagFullAtStart)
+        s = s.copy(dungeonRun = s.dungeonRun!!.copy(items = mapOf(Item.POTION to room + 10)))
+        val out = Dungeons.leave(s).state
+        assertEquals(base.bagCount + room + 10, out.bagCount)
+        assertTrue(out.bagCount > out.bagCapacity)
+        // Over the bag's size, nothing else fits afterwards.
+        assertEquals(out.inventory, GameEngine.addItems(out, mapOf(Item.POTION to 1)).first.inventory)
+        // Went in full: you're told, and loot only fits if there's room.
+        val full = base.copy(inventory = base.inventory + (Item.POTION to (base.inventory[Item.POTION] ?: 0) + room))
+        assertTrue(full.bagFull)
+        val entered = Dungeons.enter(full, d)
+        assertTrue("bag is full" in entered.message)
+        var f = entered.state.copy(dungeonRun = entered.state.dungeonRun!!.copy(items = mapOf(Item.GREATER_POTION to 5)))
+        f = Dungeons.leave(f).state
+        assertEquals(full.bagCount, f.bagCount)
+    }
 }
