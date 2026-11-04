@@ -104,7 +104,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
     /** The shrines on the map now. */
     val shrines: List<Shrine> get() = shownShrines
-        private set
 
     /** Points along nearby lakes, rivers and coast (from the map tiles). */
     private var waterPoints: List<Pair<Double, Double>> = emptyList()
