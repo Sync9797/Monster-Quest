@@ -633,7 +633,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis()
         val u = com.monsterquest.core.SleepLog.restEnergy(state, now)
         if (u.state != state) set(u.state)
-        // How well you slept sets today's rest: a boost and extra torches, or a penalty.
+        // How well you slept sets today's rest: a boost or a penalty.
         val r = com.monsterquest.core.Rest.update(state, now)
         if (r.state != state) set(r.state)
         val text = listOf(u.message, r.message).filter { it.isNotEmpty() }.joinToString(" ")

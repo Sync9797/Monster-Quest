@@ -28,9 +28,11 @@ class TorchesTest {
     @Test
     fun sleepSetsTheDaysRest() {
         fun night(hours: Double) = start().copy(sleep = mapOf(day.toEpochDay() to SleepNight(at(0) - (hours * 3_600_000).toLong(), at(0))))
-        val well = Rest.update(night(8.5), at(8), utc).state
+        val rested = night(8.5)
+        val well = Rest.update(rested, at(8), utc).state
         assertEquals(Rest.WELL_RESTED, Rest.today(well, at(9), utc))
-        assertEquals(Rest.WELL_RESTED_TORCHES, well.torches)
+        // A good night brings a boost, not torches.
+        assertEquals(rested.torches, well.torches)
         assertEquals(Rest.TIRED, Rest.today(Rest.update(night(6.0), at(8), utc).state, at(9), utc))
         assertEquals(Rest.NORMAL, Rest.today(Rest.update(night(7.5), at(8), utc).state, at(9), utc))
         // Only for that day.

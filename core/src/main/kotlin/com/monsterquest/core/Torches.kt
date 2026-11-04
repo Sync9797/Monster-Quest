@@ -5,15 +5,15 @@ import java.time.ZoneId
 
 /**
  * Torches light your way into dungeons. Walking earns them
- * ([STEPS_PER_TORCH] steps each), a few wait for you every morning, and a
- * good night's sleep adds more.
+ * ([STEPS_PER_TORCH] steps each), a few wait for you every morning, and
+ * dungeon chests and long phone-free sessions hold a few more.
  */
 object Torches {
     const val STEPS_PER_TORCH = 1_000
     const val MORNING = 3
     /** The most torches anyone can hold (level 40 and up). */
     const val MAX = 30
-    /** Earned rewards (chests, long focus sessions, a good night) can go this far over the cap. */
+    /** Earned rewards (chests, long focus sessions) can go this far over the cap. */
     const val REWARD_OVERFLOW = 5
 
     /** How many torches a hero of [level] can hold: 10, then 5 more every 10 levels, up to [MAX] at 40. */
@@ -64,7 +64,7 @@ object Torches {
 /** How rested the hero is today, from last night's sleep. */
 @kotlinx.serialization.Serializable
 enum class Rest(val label: String, val statFactor: Double) {
-    /** 8 hours or more: everyone fights a little better today, and a couple of extra torches. */
+    /** 8 hours or more: everyone fights a little better today. */
     WELL_RESTED("Well rested", 1.1),
     NORMAL("Rested", 1.0),
     /** Under 7 hours: a little worse today. */
@@ -73,7 +73,6 @@ enum class Rest(val label: String, val statFactor: Double) {
     companion object {
         const val WELL_RESTED_MIN = 8 * 60
         const val TIRED_BELOW_MIN = 7 * 60
-        const val WELL_RESTED_TORCHES = 2
 
         fun of(asleepMin: Int): Rest = when {
             asleepMin >= WELL_RESTED_MIN -> WELL_RESTED
@@ -89,7 +88,7 @@ enum class Rest(val label: String, val statFactor: Double) {
 
         /**
          * Sets today's rest from last night's sleep, once a day: well rested
-         * brings extra torches, tired a stat penalty for the day.
+         * brings a stat boost for the day, tired a stat penalty.
          */
         fun update(state: GameState, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Update {
             val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
@@ -99,8 +98,7 @@ enum class Rest(val label: String, val statFactor: Double) {
             var s = state.copy(restDay = today.toEpochDay(), rest = rest)
             val text = when (rest) {
                 WELL_RESTED -> {
-                    s = Torches.add(s, WELL_RESTED_TORCHES, reward = true)
-                    "Well rested (${SleepLog.label(night.asleepMin)})! Your hero and monsters fight 10% better today, and +$WELL_RESTED_TORCHES torches."
+                    "Well rested (${SleepLog.label(night.asleepMin)})! Your hero and monsters fight 10% better today."
                 }
                 TIRED -> "Short night (${SleepLog.label(night.asleepMin)}): your team is tired, 10% weaker today. Aim for 7+ hours."
                 NORMAL -> ""

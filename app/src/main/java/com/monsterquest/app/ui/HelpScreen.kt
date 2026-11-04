@@ -111,7 +111,7 @@ private val topics = listOf(
             section(
                 "Sleep and rest",
                 "Sleep syncs from Health Connect (or log it by hand on the Health card). A full night (7+ hours) refills your Energy, once a day.",
-                "8 hours or more: you're Well rested, so your hero and monsters fight 10% better all day, plus 2 torches. Under 7 hours: Tired, 10% weaker for the day.",
+                "8 hours or more: you're Well rested, so your hero and monsters fight 10% better all day. Under 7 hours: Tired, 10% weaker for the day.",
             ),
             section(
                 "Buddy, eggs and water",

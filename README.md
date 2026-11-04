@@ -25,7 +25,7 @@ Updates install over the previous version and keep your save.
   loot box; long sessions give the best rewards.
 - **Walking:** every 1,000 steps lights a **torch**, and you get 3 each morning.
   Torches open dungeons and pay for gym training. Walking also heals your team.
-- **Sleep:** 8+ hours makes the next day's fights easier (and brings torches);
+- **Sleep:** 8+ hours makes the next day's fights easier;
   under 7 makes them harder.
 
 ### The map
