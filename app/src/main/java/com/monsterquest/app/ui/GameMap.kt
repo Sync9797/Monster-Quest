@@ -45,6 +45,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.monsterquest.core.Venue
+import com.monsterquest.core.VenueRole
 import com.monsterquest.core.Venues
 import com.monsterquest.core.World
 import org.maplibre.android.MapLibre
@@ -251,6 +252,7 @@ class GameMap internal constructor(val fake: Boolean) {
             y++
         }
         val venues = ArrayList<Venue>()
+        val shrines = ArrayList<com.monsterquest.core.Shrine>()
         val seen = HashSet<String>()
         for (f in runCatching { src.querySourceFeatures(arrayOf("poi"), null) }.getOrDefault(emptyList())) {
             val pt = f.geometry() as? org.maplibre.geojson.Point ?: continue
@@ -258,8 +260,15 @@ class GameMap internal constructor(val fake: Boolean) {
             val cls = f.prop("class")
             val id = "mt" + (f.id() ?: "${sub ?: cls}@${"%.5f".format(java.util.Locale.US, pt.latitude())},${"%.5f".format(java.util.Locale.US, pt.longitude())}")
             if (!seen.add(id)) continue
-            val role = Venues.roleForPoi(sub, cls, id) ?: continue
-            venues += Venue(id, f.prop("name"), Venues.kindLabel(sub ?: cls), pt.latitude(), pt.longitude(), role)
+            val role = Venues.roleForPoi(sub, cls, id)
+            if (role != null) venues += Venue(id, f.prop("name"), Venues.kindLabel(sub ?: cls), pt.latitude(), pt.longitude(), role)
+            // Landmarks are shrines too (dungeons and services take their place over, as with the place lookup).
+            if (role == VenueRole.DUNGEON || role in Venues.FACILITIES) continue
+            Venues.shrineForPoi(sub, cls)?.let { (tier, category) ->
+                shrines += com.monsterquest.core.World.shrineFromPlace(
+                    id, f.prop("name"), pt.latitude(), pt.longitude(), tier, kind = Venues.kindLabel(sub ?: cls), category = category,
+                )
+            }
         }
         val streets = ArrayList<Pair<Double, Double>>()
         val streetKeys = HashSet<Long>()
@@ -288,7 +297,7 @@ class GameMap internal constructor(val fake: Boolean) {
                 else -> {}
             }
         }
-        return MapPlaces(venues, streets, tiles)
+        return MapPlaces(venues, streets, tiles, shrines)
     }
 
     companion object {
@@ -341,7 +350,7 @@ class GameMap internal constructor(val fake: Boolean) {
 }
 
 /** Places and streets read from the map's own tiles. */
-class MapPlaces(val venues: List<Venue>, val streets: List<Pair<Double, Double>>, val tiles: Set<String>)
+class MapPlaces(val venues: List<Venue>, val streets: List<Pair<Double, Double>>, val tiles: Set<String>, val shrines: List<com.monsterquest.core.Shrine> = emptyList())
 
 /** OpenFreeMap's styles (free, no key): a bright one, and a dark one for night. */
 private const val STYLE_LIGHT = "https://tiles.openfreemap.org/styles/liberty"

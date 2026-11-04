@@ -177,6 +177,35 @@ object Venues {
         }
     }
 
+    /**
+     * Whether a landmark from the map's own tiles is a shrine, and which tier
+     * and kind: libraries, churches, parks, museums, monuments, art... (the
+     * same places the OpenStreetMap lookup turns into shrines). Null: not one.
+     */
+    fun shrineForPoi(subclass: String?, cls: String?): Pair<ShrineTier, World.PlaceCategory>? {
+        val v = subclass ?: cls ?: return null
+        val tier = when (v) {
+            "theatre", "arts_centre", "museum", "theme_park", "zoo", "aquarium", "attraction",
+            "castle", "monument", "fort", "ruins", "stadium", "water_park" -> ShrineTier.GOLD
+            "cinema", "casino", "bowling_alley", "amusement_arcade", "sports_centre", "escape_game", "miniature_golf" -> ShrineTier.SILVER
+            "library", "place_of_worship", "post_office", "townhall", "community_centre", "marketplace", "fountain",
+            "park", "garden", "playground", "artwork", "viewpoint", "picnic_site", "ice_cream", "food_court",
+            "books", "gift", "toys", "music", "art", "florist", "bakery" -> ShrineTier.ITEM
+            else -> return null
+        }
+        val category = when (v) {
+            "library", "museum", "books" -> World.PlaceCategory.KNOWLEDGE
+            "park", "garden", "playground", "viewpoint", "picnic_site" -> World.PlaceCategory.NATURE
+            "fountain" -> World.PlaceCategory.WATER
+            "artwork", "theatre", "arts_centre", "art" -> World.PlaceCategory.ART
+            "place_of_worship", "post_office", "townhall", "community_centre", "castle", "monument", "fort", "ruins" -> World.PlaceCategory.CIVIC
+            "ice_cream", "food_court", "marketplace", "bakery" -> World.PlaceCategory.FOOD
+            "gift", "toys", "music", "florist" -> World.PlaceCategory.SHOP
+            else -> World.PlaceCategory.OTHER
+        }
+        return tier to category
+    }
+
     /** A friendly label for a place's OpenStreetMap value ("Coffee shop", "Doctor's office"...). */
     fun kindLabel(raw: String?): String? {
         raw ?: return null

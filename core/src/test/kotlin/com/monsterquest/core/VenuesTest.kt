@@ -140,4 +140,15 @@ class VenuesTest {
         val merged = Venues.merge(listOf(a), listOf(sameSpot, other, far, far))
         assertEquals(listOf("n1", "m2", "m3"), merged.map { it.id })
     }
+
+    @Test
+    fun mapLandmarksBecomeShrines() {
+        assertEquals(ShrineTier.ITEM to World.PlaceCategory.KNOWLEDGE, Venues.shrineForPoi("library", "library"))
+        assertEquals(ShrineTier.GOLD, Venues.shrineForPoi("museum", "museum")?.first)
+        assertEquals(ShrineTier.SILVER, Venues.shrineForPoi("cinema", "cinema")?.first)
+        assertEquals(World.PlaceCategory.NATURE, Venues.shrineForPoi(null, "park")?.second)
+        // Cafés host dungeons, not shrines; ordinary shops and banks are neither.
+        assertEquals(null, Venues.shrineForPoi("cafe", "cafe"))
+        assertEquals(null, Venues.shrineForPoi("bank", "bank"))
+    }
 }

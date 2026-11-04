@@ -276,7 +276,7 @@ fun MapScreen(vm: GameViewModel) {
         if (!gameMap.styleReady) return@LaunchedEffect
         // Give the tiles a moment to arrive.
         kotlinx.coroutines.delay(2_500)
-        gameMap.readPlaces()?.let { vm.addMapPlaces(it.venues, it.streets, it.tiles) }
+        gameMap.readPlaces()?.let { vm.addMapPlaces(it.venues, it.streets, it.tiles, it.shrines) }
     }
 
     // What's around, as small pills that wrap cleanly instead of one long line.

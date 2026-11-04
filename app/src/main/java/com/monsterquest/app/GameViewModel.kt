@@ -90,7 +90,20 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     var location by mutableStateOf<Pair<Double, Double>?>(null)
         private set
-    var shrines by mutableStateOf<List<Shrine>>(emptyList())
+    /** Shrines from the place lookup (real where it loaded, generated stand-ins where not, plus waystones). */
+    private var areaShrines by mutableStateOf<List<Shrine>>(emptyList())
+    /** Landmarks read from the map's own tiles, which become shrines where the place lookup hasn't loaded. */
+    private var mapShrines by mutableStateOf<List<Shrine>>(emptyList())
+    private val shownShrines by androidx.compose.runtime.derivedStateOf {
+        // Where the lookup has real places, use them; where it doesn't but the map does, the map's landmarks
+        // replace the generated stand-ins (waystones stay to fill the gaps).
+        val fromMap = mapShrines.filter { val k = World.tileKey(it.lat, it.lon); k !in osmTiles && k in mapTiles }
+            .groupBy { World.tileKey(it.lat, it.lon) }.values.flatMap { World.selectForTile(it) }
+        val mapCovered = fromMap.mapTo(HashSet()) { World.tileKey(it.lat, it.lon) }
+        areaShrines.filter { !(it.id.startsWith("gen:") && World.tileKey(it.lat, it.lon) in mapCovered) } + fromMap
+    }
+    /** The shrines on the map now. */
+    val shrines: List<Shrine> get() = shownShrines
         private set
 
     /** Points along nearby lakes, rivers and coast (from the map tiles). */
@@ -115,9 +128,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      * the game tiles those map tiles fully cover. The map keeps what it read
      * before for tiles it hasn't loaded this time.
      */
-    fun addMapPlaces(found: List<com.monsterquest.core.Venue>, foundStreets: List<Pair<Double, Double>>, tiles: Set<String>) {
+    fun addMapPlaces(
+        found: List<com.monsterquest.core.Venue>,
+        foundStreets: List<Pair<Double, Double>>,
+        tiles: Set<String>,
+        foundShrines: List<Shrine> = emptyList(),
+    ) {
         if (tiles.isEmpty()) return
         fun keep(lat: Double, lon: Double) = World.tileKey(lat, lon) !in tiles
+        val nextShrines = mapShrines.filter { keep(it.lat, it.lon) } + foundShrines.filter { World.tileKey(it.lat, it.lon) in tiles }
         val nextVenues = mapVenues.filter { keep(it.lat, it.lon) } + found.filter { World.tileKey(it.lat, it.lon) in tiles }
         val nextStreets = mapStreets.filter { keep(it.first, it.second) } + foundStreets.filter { World.tileKey(it.first, it.second) in tiles }
         // Keep it to the neighbourhood: tiles far behind you are dropped.
@@ -129,10 +148,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             val b = World.tileBounds(k)
             near((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
         }
+        val sh = nextShrines.filter { near(it.lat, it.lon) }
+        if (sh != mapShrines) mapShrines = sh
         if (v != mapVenues) mapVenues = v
         if (st != mapStreets) mapStreets = st
         if (t != mapTiles) mapTiles = t
     }
+    /** Where the quick, saved-only shrines were last shown. */
+    private var quickAt: Pair<Double, Double>? = null
     /** Some map tiles didn't load: try again after this time. */
     private var placesRetryAt = Long.MAX_VALUE
 
@@ -328,7 +351,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun debugSetLocation(lat: Double, lon: Double, nearby: List<Shrine>) {
         placesFetchedAt = lat to lon
         location = lat to lon
-        shrines = nearby
+        areaShrines = nearby
     }
 
     fun clearMessage() {
@@ -818,8 +841,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 val ua = "MonsterQuest/0.1 (${getApplication<Application>().packageName})"
                 val dir = java.io.File(getApplication<Application>().filesDir, "tiles")
+                // Shrines at once from what the phone has saved (or stand-ins), while the lookup runs.
+                val quick = withContext(Dispatchers.IO) { PlacesRepository.areaNear(dir, lat, lon, ua, offline = true) }
+                if (areaShrines.isEmpty() || World.distanceMeters(lat, lon, quickAt?.first ?: lat, quickAt?.second ?: lon) > 500) {
+                    areaShrines = quick.shrines
+                    osmVenues = quick.venues
+                    osmStreets = quick.streets
+                    osmTiles = quick.venueTiles
+                }
+                quickAt = lat to lon
                 val area = withContext(Dispatchers.IO) { PlacesRepository.areaNear(dir, lat, lon, ua) }
-                shrines = area.shrines
+                areaShrines = area.shrines
                 waterPoints = area.water
                 osmVenues = area.venues
                 osmStreets = area.streets

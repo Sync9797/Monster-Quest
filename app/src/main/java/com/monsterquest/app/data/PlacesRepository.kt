@@ -93,11 +93,11 @@ object PlacesRepository {
     }
 
     /** Shrines and water around a point: from the phone's tile cache, looking up tiles it doesn't have yet. */
-    fun areaNear(dir: File, lat: Double, lon: Double, userAgent: String, nowMs: Long = System.currentTimeMillis()): Area {
+    fun areaNear(dir: File, lat: Double, lon: Double, userAgent: String, nowMs: Long = System.currentTimeMillis(), offline: Boolean = false): Area {
         val keys = World.tilesAround(lat, lon, RADIUS_M)
         val tiles = keys.associateWith { read(dir, it) }.toMutableMap()
-        // Older tiles (from before venues and streets) are looked up again.
-        val missing = keys.filter { k -> tiles[k].let { it == null || it.v < TILE_VERSION || nowMs - it.fetchedAt > REFRESH_MS } }
+        // Older tiles (from before venues and streets) are looked up again. Offline: only what's saved.
+        val missing = if (offline) emptyList() else keys.filter { k -> tiles[k].let { it == null || it.v < TILE_VERSION || nowMs - it.fetchedAt > REFRESH_MS } }
         // Look up a row of tiles at a time, to keep each query small; if a busy row times
         // out, try its tiles one by one.
         for (row in missing.groupBy { it.substringBefore(':') }.values) {
