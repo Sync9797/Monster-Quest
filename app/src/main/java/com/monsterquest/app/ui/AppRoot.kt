@@ -88,7 +88,41 @@ fun AppRoot(vm: GameViewModel, initialTab: Tab = Tab.QUESTS, initialSettings: Bo
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         AppScreens(vm, initialTab, initialSettings)
         vm.lootPopup?.let { LootPopupCard(it) { vm.lootPopup = null } }
+        vm.availableUpdate?.let { UpdateDialog(vm, it) }
     }
+}
+
+/** A newer version is out: what changed, and a button to download it. */
+@Composable
+private fun UpdateDialog(vm: GameViewModel, u: com.monsterquest.app.data.AvailableUpdate) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { vm.dismissUpdate(skip = false) },
+        title = { Text("Update available: ${u.version}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("You have ${vm.installedVersion}. Download the new version and open it to install; your save is kept.", fontSize = 13.sp)
+                if (u.notes.isNotBlank()) {
+                    Text("What's new", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+                    Text(u.notes.lines().take(14).joinToString("\n"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u.downloadUrl)))
+                }
+                vm.dismissUpdate(skip = false)
+            }) { Text("Download") }
+        },
+        dismissButton = {
+            Row {
+                androidx.compose.material3.TextButton(onClick = { vm.dismissUpdate(skip = true) }) { Text("Skip this version") }
+                androidx.compose.material3.TextButton(onClick = { vm.dismissUpdate(skip = false) }) { Text("Later") }
+            }
+        },
+    )
 }
 
 @Composable

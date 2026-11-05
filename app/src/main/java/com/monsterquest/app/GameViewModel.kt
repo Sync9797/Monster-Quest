@@ -184,7 +184,45 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     // Saves happen in order on a background thread; rapid changes are conflated.
     private val pendingSave = MutableStateFlow(state)
 
+    /** A newer version waiting on GitHub (checked when the game starts). */
+    var availableUpdate by mutableStateOf<com.monsterquest.app.data.AvailableUpdate?>(null)
+        private set
+    /** The result of the last update check started from Settings, to show there. */
+    var updateCheckNote by mutableStateOf<String?>(null)
+        private set
+
+    /** The version installed, e.g. "3.15.1". */
+    val installedVersion: String
+        get() = runCatching { getApplication<Application>().let { it.packageManager.getPackageInfo(it.packageName, 0).versionName } }.getOrNull() ?: "0"
+
+    /** Looks for a newer version. On start it stays quiet unless there is one; from Settings it says what it found. */
+    fun checkForUpdate(manual: Boolean = false) {
+        if (!manual && !state.settings.checkUpdates) return
+        // Not in tests (screenshots run the app offline-ish, with no real version installed).
+        if (android.os.Build.FINGERPRINT == "robolectric") return
+        if (manual) updateCheckNote = "Checking..."
+        viewModelScope.launch {
+            val ua = "MonsterQuest/$installedVersion (${getApplication<Application>().packageName})"
+            val found = withContext(Dispatchers.IO) { com.monsterquest.app.data.UpdateChecker.check(installedVersion, ua) }
+            when {
+                found == null -> if (manual) updateCheckNote = "You have the latest version ($installedVersion)."
+                !manual && found.version == state.settings.skippedVersion -> {}
+                else -> {
+                    availableUpdate = found
+                    if (manual) updateCheckNote = null
+                }
+            }
+        }
+    }
+
+    fun dismissUpdate(skip: Boolean) {
+        val u = availableUpdate ?: return
+        if (skip) updateSettings { it.copy(skippedVersion = u.version) }
+        availableUpdate = null
+    }
+
     init {
+        checkForUpdate()
         viewModelScope.launch(Dispatchers.IO) {
             var widgetKey: Any? = null
             pendingSave.drop(1).collect {

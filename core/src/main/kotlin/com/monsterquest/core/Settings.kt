@@ -52,6 +52,10 @@ data class Settings(
     val imperialUnits: Boolean = true,
     /** Turn off glows, auras, mist and engraving for smoother scrolling on older phones. */
     val reducedEffects: Boolean = false,
+    /** Look for a newer version of the game each time it starts. */
+    val checkUpdates: Boolean = true,
+    /** A version the player chose to skip (not offered again; a later one still is). */
+    val skippedVersion: String? = null,
     /** The map turns with the phone, so what's in front of you is up the screen (else north is up). */
     val followHeading: Boolean = false,
     /** Ask for location less often to save battery (the map updates more slowly). */

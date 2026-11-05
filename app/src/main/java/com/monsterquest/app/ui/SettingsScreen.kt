@@ -346,6 +346,15 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     "Checks your location less often. The map and GPS step counting update more slowly.",
                     prefs.batterySaverGps,
                 ) { on -> vm.updateSettings { it.copy(batterySaverGps = on) } }
+                ToggleRow(
+                    "Check for updates on start",
+                    "Looks for a newer version of the game on GitHub each time it opens, and offers to download it.",
+                    prefs.checkUpdates,
+                ) { on -> vm.updateSettings { it.copy(checkUpdates = on) } }
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(vm.updateCheckNote ?: "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.OutlinedButton(onClick = { vm.checkForUpdate(manual = true) }) { Text("Check now") }
+                }
             }
             // ---- About ----
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
