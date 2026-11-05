@@ -589,7 +589,9 @@ abstract class ScreenshotBase(private val device: String) {
     }
 
     @Test fun dashboard() {
-        val v = vm()
+        val today = java.time.LocalDate.now().toEpochDay()
+        // Water goals met most of the last two weeks: blue dots on the calendar and a streak.
+        val v = vm(sampleState().copy(water = (1L..14L).filter { it != 6L }.associate { (today - it) to 9 }))
         shot("12_dashboard", content = onBackground {
             androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.padding(16.dp)) {
                 com.monsterquest.app.ui.WeeklyCard(v)
@@ -1060,6 +1062,8 @@ abstract class ScreenshotBase(private val device: String) {
             stepsByHour = hours.mapKeys { com.monsterquest.core.Health.hourKey(today, it.key) },
         )
         base = com.monsterquest.core.Health.addWater(base, 5, now)
+        // The water history: a week of goal days, a missed day, and more before it.
+        base = base.copy(water = base.water + (1L..12L).filter { it != 8L }.associate { (today.toEpochDay() - it) to (if (it % 5 == 0L) 10 else 8) })
         // Last night from a watch, with stages, and a few nights before it.
         val wake = today.atTime(6, 45).atZone(zone)
         base = com.monsterquest.core.SleepLog.record(
@@ -1090,6 +1094,12 @@ abstract class ScreenshotBase(private val device: String) {
         rule.waitForIdle()
         check(com.monsterquest.core.Health.glasses(v.state, today.toEpochDay()) == 6) { "+ adds a glass" }
         check(v.state.gold == gold) { "water pays nothing" }
+        rule.onNodeWithText("History").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.mainClock.advanceTimeBy(300)
+        rule.waitForIdle()
+        rule.onNodeWithText("best streak").assertExists()
+        rule.onNodeWithText("Yesterday").assertExists()
+        capture("42_water_history", 1_000)
     }
 
     /** The morning recap: yesterday's gains and last night's sleep. */

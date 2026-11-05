@@ -49,4 +49,27 @@ class HealthTest {
         assertEquals("48 oz", Health.waterAmount(6, imperial = true))
         assertEquals("750 ml", Health.waterAmount(3, imperial = false))
     }
+
+    @Test
+    fun waterHistoryKeepsEachDaysGoalAndCountsStreaks() {
+        var s = GameState()
+        // Four days at the default goal of 8: met, met, missed, met.
+        listOf(8, 9, 5, 8).forEachIndexed { i, n -> s = Health.addWater(s, n, at(10, d = day.plusDays(i.toLong())), zone) }
+        val d0 = day.toEpochDay()
+        assertEquals(listOf(true, true, false, true), (0..3).map { Health.waterGoalMet(s, d0 + it) })
+        assertEquals(1, Health.waterStreak(s, d0 + 3))
+        assertEquals(2, Health.bestWaterStreak(s))
+        // Today has nothing yet: the streak still counts from yesterday.
+        assertEquals(1, Health.waterStreak(s, d0 + 4))
+        assertEquals(0, Health.waterStreak(s, d0 + 5))
+        // Raising the goal doesn't rewrite past days.
+        s = Health.setWaterGoal(s, 12, at(20, d = day.plusDays(4)), zone)
+        assertEquals(8, Health.waterGoalOn(s, d0 + 3))
+        assertEquals(12, Health.waterGoalOn(s, d0 + 4))
+        assertEquals(2, Health.bestWaterStreak(s))
+        val history = Health.waterHistory(s, d0 + 4, 5)
+        assertEquals(listOf(d0 + 4, d0 + 3, d0 + 2, d0 + 1, d0), history.map { it.day })
+        assertEquals(listOf(false, true, false, true, true), history.map { it.met })
+        assertEquals(9, history[3].glasses)
+    }
 }

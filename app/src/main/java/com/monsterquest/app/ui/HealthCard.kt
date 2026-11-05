@@ -55,7 +55,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-private val WaterBlue = Color(0xFF4FA8E8)
+internal val WaterBlue = Color(0xFF4FA8E8)
 private val SleepIndigo = Color(0xFF7B7FE0)
 
 /**
@@ -194,6 +194,30 @@ private fun WaterSection(vm: GameViewModel, glasses: Int) {
     val goal = vm.state.waterGoal
     val imperial = vm.state.settings.imperialUnits
     SectionHeader(GameIcon.DROP, "Water", WaterBlue, "1 glass = ${if (imperial) "${Health.GLASS_OZ} oz" else "${Health.GLASS_ML} ml"}")
+    // Today's glasses, or the history of past days.
+    var tab by remember { mutableIntStateOf(0) }
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf("Today", "History").forEachIndexed { i, label ->
+            val on = tab == i
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (on) WaterBlue.copy(alpha = 0.18f) else Color.Transparent)
+                    .border(1.dp, if (on) WaterBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .clickable { tab = i }
+                    .padding(vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, fontSize = 13.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) WaterBlue else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (tab == 1) {
+        Spacer(Modifier.height(8.dp))
+        WaterHistory(vm)
+        return
+    }
     Spacer(Modifier.height(8.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         OutlinedButton(onClick = { vm.addWater(-1) }, enabled = glasses > 0, modifier = Modifier.size(44.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
@@ -227,6 +251,72 @@ private fun WaterSection(vm: GameViewModel, glasses: Int) {
         TextButton(onClick = { vm.setWaterGoal(goal - 1) }, enabled = goal > Health.WATER_GOALS.first) { Text("−") }
         Text("$goal glasses", fontSize = 13.sp)
         TextButton(onClick = { vm.setWaterGoal(goal + 1) }, enabled = goal < Health.WATER_GOALS.last) { Text("+") }
+    }
+}
+
+/**
+ * Water history: the streak of days that reached their goal, the best
+ * streak, and every day with its glasses against the goal it had then.
+ */
+@Composable
+fun WaterHistory(vm: GameViewModel) {
+    val s = vm.state
+    val imperial = s.settings.imperialUnits
+    val today = LocalDate.now(ZoneId.systemDefault())
+    val todayDay = today.toEpochDay()
+    var shown by remember { mutableIntStateOf(14) }
+    val month = Health.waterHistory(s, todayDay, 30)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+        WaterStat("${Health.waterStreak(s, todayDay)}", "day streak")
+        WaterStat("${Health.bestWaterStreak(s)}", "best streak")
+        WaterStat("${month.count { it.met }}/30", "last 30 days")
+    }
+    Spacer(Modifier.height(8.dp))
+    Health.waterHistory(s, todayDay, shown).forEach { d ->
+        val date = LocalDate.ofEpochDay(d.day)
+        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                when (d.day) {
+                    todayDay -> "Today"
+                    todayDay - 1 -> "Yesterday"
+                    else -> date.format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d"))
+                },
+                fontSize = 13.sp,
+                modifier = Modifier.width(96.dp),
+            )
+            // How close to the goal, as a bar.
+            Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                Box(
+                    Modifier.fillMaxWidth((d.glasses.toFloat() / d.goal).coerceIn(0f, 1f)).height(8.dp).clip(CircleShape)
+                        .background(if (d.met) WaterBlue else WaterBlue.copy(alpha = 0.45f)),
+                )
+            }
+            Text(
+                "${d.glasses}/${d.goal}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(44.dp).padding(start = 6.dp),
+            )
+            if (d.met) GIcon(GameIcon.CHECK, Modifier.size(16.dp), WaterBlue) else Spacer(Modifier.width(16.dp))
+        }
+    }
+    val total = month.sumOf { it.glasses }
+    Text(
+        "Last 30 days: ${Health.waterAmount(total, imperial)} in all. Each day counts against the goal it had then.",
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    if (shown < 90) {
+        TextButton(onClick = { shown = if (shown < 30) 30 else 90 }) { Text("Show more days") }
+    }
+}
+
+@Composable
+private fun WaterStat(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = WaterBlue)
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

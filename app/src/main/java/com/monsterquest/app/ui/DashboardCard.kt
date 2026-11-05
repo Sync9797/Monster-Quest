@@ -3,6 +3,10 @@ package com.monsterquest.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +71,8 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
         d--
     }
 
+    val waterStreak = com.monsterquest.core.Health.waterStreak(s, todayDay)
+    var waterOpen by remember { mutableStateOf(false) }
     var month by remember { mutableStateOf(YearMonth.from(today)) }
     val dueDays = com.monsterquest.core.Planner.dueDays(s.tasks, zone)
 
@@ -75,6 +81,18 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
             DashStat(GameIcon.WALK, "%,d".format(stepsToday), "steps today", HpGreen)
             DashStat(GameIcon.WALK, "%,d".format(stepsWeek), "this week", MpBlue)
             DashStat(GameIcon.STAR, "$streak", "day streak", Gold)
+            // Tap for the water history.
+            Box(Modifier.clip(RoundedCornerShape(8.dp)).clickable { waterOpen = true }.padding(horizontal = 4.dp)) {
+                DashStat(GameIcon.DROP, "$waterStreak", "water streak", WaterBlue)
+            }
+        }
+        if (waterOpen) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { waterOpen = false },
+                title = { Text("Water history") },
+                text = { Column(Modifier.verticalScroll(rememberScrollState())) { WaterHistory(vm) } },
+                confirmButton = { TextButton(onClick = { waterOpen = false }) { Text("Close") } },
+            )
         }
         Spacer(Modifier.height(10.dp))
         // Keep the calendar compact on wide (unfolded) screens.
@@ -117,6 +135,7 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
                             DayCell(
                                 date, day in questDays, (s.stepHistory[day] ?: 0) >= STEP_GOAL, date == today, date > today,
                                 due = day in dueDays, selected = day == selectedDay,
+                                water = com.monsterquest.core.Health.waterGoalMet(s, day),
                             )
                         }
                     }
@@ -128,6 +147,10 @@ fun DashboardCard(vm: GameViewModel, selectedDay: Long? = null, onSelectDay: ((L
             Text(" Quest done   ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Box(Modifier.size(6.dp).background(HpGreen, CircleShape))
             Text(" ${"%,d".format(STEP_GOAL)}+ steps   ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(Modifier.size(6.dp).background(WaterBlue, CircleShape))
+            Text(" Water goal", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).background(Gold, CircleShape))
             Text(" Due   ", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Box(Modifier.size(10.dp).border(1.5.dp, Gold, CircleShape))
@@ -158,7 +181,7 @@ private fun DashStat(icon: GameIcon, value: String, label: String, tint: Color) 
 @Composable
 private fun DayCell(
     date: LocalDate, quest: Boolean, walked: Boolean, today: Boolean, future: Boolean,
-    due: Boolean = false, selected: Boolean = false,
+    due: Boolean = false, selected: Boolean = false, water: Boolean = false,
 ) {
     Box(contentAlignment = Alignment.Center) {
         var m = Modifier.size(30.dp)
@@ -180,6 +203,7 @@ private fun DayCell(
         }
         if (walked) Box(Modifier.align(Alignment.BottomEnd).size(6.dp).background(HpGreen, CircleShape))
         if (due) Box(Modifier.align(Alignment.BottomStart).size(6.dp).background(Gold, CircleShape))
+        if (water) Box(Modifier.align(Alignment.TopEnd).size(6.dp).background(WaterBlue, CircleShape))
     }
 }
 

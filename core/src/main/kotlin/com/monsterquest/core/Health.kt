@@ -20,7 +20,8 @@ object Health {
     const val MAX_GLASSES = 30
     /** Hourly steps kept for the last week or so. */
     private const val HOURS_KEPT = 8 * 24L
-    private const val WATER_DAYS_KEPT = 90
+    /** Water history is kept for about a year (one number a day). */
+    const val WATER_DAYS_KEPT = 400
 
     /** Key for one hour of one local day: epoch day × 24 + hour (works in half-hour time zones too). */
     fun hourKey(day: LocalDate, hour: Int): Long = day.toEpochDay() * 24 + hour
@@ -49,10 +50,66 @@ object Health {
         val day = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
         val n = (glasses(state, day) + delta).coerceIn(0, MAX_GLASSES)
         val kept = state.water.filterKeys { it > day - WATER_DAYS_KEPT }
-        return state.copy(water = if (n == 0) kept - day else kept + (day to n))
+        return state.copy(
+            water = if (n == 0) kept - day else kept + (day to n),
+            waterGoalByDay = state.waterGoalByDay.filterKeys { it > day - WATER_DAYS_KEPT } + (day to state.waterGoal),
+        )
     }
 
-    fun setWaterGoal(state: GameState, goal: Int): GameState = state.copy(waterGoal = goal.coerceIn(WATER_GOALS.first, WATER_GOALS.last))
+    /** Changes the goal; today's history follows it (past days keep the goal they had). */
+    fun setWaterGoal(state: GameState, goal: Int, nowMs: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): GameState {
+        val g = goal.coerceIn(WATER_GOALS.first, WATER_GOALS.last)
+        val day = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate().toEpochDay()
+        return state.copy(waterGoal = g, waterGoalByDay = state.waterGoalByDay + (day to g))
+    }
+
+    /** The goal [day] was held to: the one it was logged with, or today's goal. */
+    fun waterGoalOn(state: GameState, day: Long): Int = state.waterGoalByDay[day] ?: state.waterGoal
+
+    /** Whether [day] reached its water goal. */
+    fun waterGoalMet(state: GameState, day: Long): Boolean = glasses(state, day).let { it > 0 && it >= waterGoalOn(state, day) }
+
+    /**
+     * Days in a row that reached the water goal, counting back from [today]
+     * (or from yesterday while today isn't there yet, so the streak doesn't
+     * vanish every morning).
+     */
+    fun waterStreak(state: GameState, today: Long): Int {
+        var d = if (waterGoalMet(state, today)) today else today - 1
+        var n = 0
+        while (waterGoalMet(state, d)) {
+            n++
+            d--
+        }
+        return n
+    }
+
+    /** The longest run of goal days in the history. */
+    fun bestWaterStreak(state: GameState): Int {
+        var best = 0
+        var run = 0
+        var prev: Long? = null
+        for (d in state.water.keys.sorted()) {
+            if (!waterGoalMet(state, d)) {
+                run = 0
+                prev = d
+                continue
+            }
+            run = if (prev == d - 1 && run > 0) run + 1 else 1
+            best = maxOf(best, run)
+            prev = d
+        }
+        return best
+    }
+
+    /** One day of water history. */
+    data class WaterDay(val day: Long, val glasses: Int, val goal: Int) {
+        val met: Boolean get() = glasses > 0 && glasses >= goal
+    }
+
+    /** The last [days] days, newest first. */
+    fun waterHistory(state: GameState, today: Long, days: Int): List<WaterDay> =
+        (0 until days).map { i -> (today - i).let { d -> WaterDay(d, glasses(state, d), waterGoalOn(state, d)) } }
 
     /** "1.5 L" / "40 oz" for [glasses]. */
     fun waterAmount(glasses: Int, imperial: Boolean): String =
