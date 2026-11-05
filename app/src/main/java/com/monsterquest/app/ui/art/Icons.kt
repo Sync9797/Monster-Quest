@@ -93,6 +93,8 @@ enum class GameIcon(internal vararg val parts: IconPart) {
     CLOAK(fill("M8 3h8l5 18H3z"), cut("M12 6v14M9 3l3 3 3-3")),
     PANTS(fill("M6 3h12l1 18h-5l-2-11-2 11H5z"), cut("M6 6h12")),
     BOOTS(fill("M7 3h6v10l6 3v4H5v-3l2-2z"), cut("M7 8h6")),
+    HELM(fill("M4 15a8 8 0 0 1 16 0v3H4z"), fill("M11 3h2v5h-2z"), cut("M7 13.5h10v1.5H7z")),
+    SANDALS(fill("M4 17h16v3H4z"), line("M8 17l2-6 2 6M12 11l3 6")),
 
     // Exploration
     BATTERY(line("M3 7h15v10H3z"), line("M18 10h3v4h-3"), fill("M5 9h4v6H5z")),

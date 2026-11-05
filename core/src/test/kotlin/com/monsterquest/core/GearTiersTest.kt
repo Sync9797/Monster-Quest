@@ -166,4 +166,19 @@ class GearTiersTest {
         val after = GameEngine.applyBattleResult(s, b.result(), 1_000).state
         assertEquals(2 * GameEngine.DEFEAT_CANDY, after.candy[foe.species.family])
     }
+
+    @Test
+    fun everyArmorSlotHasAtLeastTwoKinds() {
+        ArmorSlot.entries.forEach { slot ->
+            assertTrue(ArmorType.entries.count { it.slot == slot } >= 2, slot.label)
+        }
+        // The new kinds drop and can be forged like the rest.
+        val r = Random(9)
+        val seen = (0 until 400).map { Armory.rollArmor(10, r).type }.toSet()
+        assertTrue(ArmorType.entries.all { it in seen }, "${ArmorType.entries - seen}")
+        var s = hero(10).copy(armorParts = mapOf(ArmorType.SANDALS to PARTS_TO_FORGE))
+        s = GameEngine.forgeArmor(s, ArmorType.SANDALS, Random(2)).state
+        assertEquals(ArmorType.SANDALS, s.armor.single().type)
+        assertEquals(ArmorSlot.FEET, s.armor.single().type.slot)
+    }
 }

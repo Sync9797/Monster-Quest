@@ -241,6 +241,7 @@ private val topics = listOf(
             ),
             section(
                 "Gear",
+                "Armor comes in five slots, with at least two kinds each: body (Plate for Warriors, Leather for Rogues, Robe for Mages), head (Hood or Helm), back (Cloak or Mantle), legs (Greaves or Leggings) and feet (Boots or Sandals). Hover a piece in the Bag to see which classes it suits.",
                 "Weapons and armor of your class get +20% and extra stats by rarity. Better materials turn up as you level; diamond is always rare. Smelt a weapon for its parts and forge new gear from parts.",
                 "Adventures (Monsters tab) send a team to real places for gold, items and sometimes eggs while you're away.",
             ),

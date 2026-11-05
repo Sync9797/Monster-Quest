@@ -216,6 +216,23 @@ enum class ArmorType(
         "Boots", HeroClass.entries.toSet(), 0.3, 0.0, 12, 0, "Quick feet: more Speed",
         ArmorSlot.FEET, signature = GearEffect.SWIFT,
     ),
+    // A second kind for each of the other slots.
+    HELM(
+        "Helm", setOf(HeroClass.WARRIOR, HeroClass.NONE), 0.6, 0.0, -3, 0, "A steel cap: solid Defense and a little Attack, a touch slower",
+        ArmorSlot.HEAD, attackShare = 0.1, signature = GearEffect.GUARDED,
+    ),
+    MANTLE(
+        "Mantle", setOf(HeroClass.WARRIOR, HeroClass.MAGE), 0.5, 0.3, 0, 0, "A heavy shoulder cape: Defense and some Magic",
+        ArmorSlot.BACK, signature = GearEffect.GUARDED,
+    ),
+    LEGGINGS(
+        "Leggings", setOf(HeroClass.ROGUE, HeroClass.MAGE), 0.4, 0.0, 4, 2, "Light and close-fitting: a little Speed and dodge",
+        ArmorSlot.LEGS, signature = GearEffect.SWIFT,
+    ),
+    SANDALS(
+        "Sandals", setOf(HeroClass.MAGE, HeroClass.NONE), 0.15, 0.4, 6, 0, "Light soles for long study walks: Magic and a little Speed",
+        ArmorSlot.FEET, signature = GearEffect.FOCUSED,
+    ),
 }
 
 /** Effects armor can roll (the on-hit ones only make sense on weapons). */
@@ -258,6 +275,10 @@ data class Armor(
                 ArmorType.CLOAK -> "Cloak"
                 ArmorType.PANTS -> "Greaves"
                 ArmorType.BOOTS -> "Boots"
+                ArmorType.HELM -> "Helm"
+                ArmorType.MANTLE -> "Mantle"
+                ArmorType.LEGGINGS -> "Leggings"
+                ArmorType.SANDALS -> "Sandals"
             }
             val cursedName = curse?.let { "${if (cursed) "Cursed " else ""}${it.label} " } ?: ""
             return "$cursedName${material.armorLabel} $noun"

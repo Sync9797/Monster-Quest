@@ -180,7 +180,8 @@ private fun drawArmor(c: Canvas, o: HeroOutfit, look: HeroLook) {
     val t = trim(o.armorRarity)
     // Hoods, cloaks, pants and boots never go in the body slot; draw plain clothes if one does.
     when (o.armor) {
-        null, ArmorType.HOOD, ArmorType.CLOAK, ArmorType.PANTS, ArmorType.BOOTS -> {
+        null, ArmorType.HOOD, ArmorType.CLOAK, ArmorType.PANTS, ArmorType.BOOTS,
+        ArmorType.HELM, ArmorType.MANTLE, ArmorType.LEGGINGS, ArmorType.SANDALS -> {
             // Plain traveler's clothes.
             ArtPainter.fill(c, ARMS, look.arms)
             ArtPainter.fill(c, TORSO, look.torso)
