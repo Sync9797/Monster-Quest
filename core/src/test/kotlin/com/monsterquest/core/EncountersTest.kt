@@ -406,10 +406,8 @@ class EncountersTest {
         }
         // Not always the same four.
         assertTrue(loadouts.map { l -> l.map { it.id }.toSet() }.toSet().size > 5)
-        // A map spawn gets them, and keeps them once tamed.
-        val spawn = WildSpawn("s:1:2:3", "emberkit", 40, 0.0, 0.0, 0L)
-        val m = World.spawnMonster(spawn)
-        assertEquals(m.moves, World.spawnMonster(spawn).moves)
+        // A wild monster keeps the moves it was given.
+        val m = Monster.create(sp, 40, Random(3)).withWildMoves(Random(3))
         assertTrue(m.activeMoves.map { it.id }.toSet() == m.moves!!.toSet())
     }
 

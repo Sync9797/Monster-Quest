@@ -784,8 +784,6 @@ class Battle(
 
     /** Pack members tamed so far, in order. */
     private val capturedKeys = mutableListOf<String>()
-    /** How many have been tamed in this fight. */
-    val tamedCount: Int get() = capturedKeys.size
     private val heroLevel = hero.level
     private val heroSkills = hero.spells()
     /** Rank-5 spells' paths and mastery (see [SpellMastery]). */

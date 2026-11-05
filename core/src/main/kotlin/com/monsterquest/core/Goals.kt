@@ -56,7 +56,7 @@ object Goals {
     )
 
     private val dailyItems = listOf(Item.POTION, Item.BINDING_CRYSTAL, Item.SWEET_BERRY, Item.MANA_DRAUGHT)
-    private val weeklyItems = listOf(Item.GREATER_POTION, Item.RESONANT_CRYSTAL, Item.TREAT, Item.LURE)
+    private val weeklyItems = listOf(Item.GREATER_POTION, Item.RESONANT_CRYSTAL, Item.TREAT, Item.TREAT)
 
     private fun pick(pool: List<Template>, prefix: String, period: Long, gold: Int, items: List<Item>): List<Goal> {
         val rng = Random(period * 7919 + prefix.hashCode())

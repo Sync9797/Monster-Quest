@@ -255,20 +255,9 @@ class GameTest {
     }
 
     @Test
-    fun spawnsAreDeterministic() {
-        val a = World.spawnsNear(40.0, -74.0, 1_000_000, 5)
-        // The same monsters exist all window long (they just drift closer over time).
-        val b = World.spawnsNear(40.0, -74.0, 1_000_500, 5)
-        assertEquals(a.map { it.id to it.speciesId }, b.map { it.id to it.speciesId })
-        assertEquals(a, World.spawnsNear(40.0, -74.0, 1_000_000, 5))
-        assertTrue(a.isNotEmpty())
-        assertTrue(World.proceduralShrines(40.0, -74.0).isNotEmpty())
-    }
-
-    @Test
     fun saveRoundTrips() {
         val s = GameEngine.addTask(started(), "x", Difficulty.EASY, rng).state
-            .copy(shrines = mapOf("osm:1" to ShrineRecord(5, true)), usedSpawns = setOf("s:1:2:3"))
+            .copy(shrines = mapOf("osm:1" to ShrineRecord(5, true)))
         assertEquals(s, GameState.fromJson(s.toJson()))
     }
 
@@ -977,58 +966,6 @@ class GameTest {
     }
 
     @Test
-    fun lureIsFreeDailyAndBoostsSpawns() {
-        val now = 1_700_000_000_000L
-        val s = started()
-        val claimed = GameEngine.claimDailyLure(s, now)!!.state
-        assertEquals(1, claimed.count(Item.LURE))
-        assertNull(GameEngine.claimDailyLure(claimed, now + 1000))
-        val lured = GameEngine.useLure(claimed, now).state
-        assertTrue(lured.lureActive(now + 29 * 60_000L))
-        assertTrue(!lured.lureActive(now + 31 * 60_000L))
-
-        fun count(c: SpawnConditions) = (0 until 40).sumOf { i ->
-            World.spawnsNear(40.0 + i * 0.05, -75.0, now + i * World.SPAWN_WINDOW_MS, 10, c).size
-        }
-        val still = count(SpawnConditions(12))
-        val moving = count(SpawnConditions(12, activity = 1.0))
-        val withLure = count(SpawnConditions(12, lure = true))
-        assertTrue(moving > still, "moving $moving vs still $still")
-        assertTrue(withLure > still, "lure $withLure vs still $still")
-    }
-
-    @Test
-    fun monstersSpawnInARingAndCloseIn() {
-        val now = 1_700_000_000_000L
-        val window = World.spawnWindow(now) * World.SPAWN_WINDOW_MS
-        val lat = 40.0
-        val lon = -75.0
-        // At the start of a window, nothing is right on top of you: most monsters appear out
-        // in the ring, and some are already wandering nearby (but not within 70 m).
-        val fresh = World.spawnsNear(lat, lon, window, 10)
-        assertTrue(fresh.isNotEmpty())
-        val startDist = fresh.map { World.distanceMeters(lat, lon, it.lat, it.lon) }
-        startDist.forEach { assertTrue(it >= World.NEARBY_MIN_M - 1) }
-        assertTrue(startDist.count { it >= World.SPAWN_INNER_M - 1 } > startDist.count { it < World.SPAWN_INNER_M })
-        // Many more monsters are about than there used to be.
-        assertTrue(fresh.size >= 15, "${fresh.size} monsters")
-        // Standing still, they drift closer over the window; curious ones reach battle range.
-        val late = World.spawnsNear(lat, lon, window + 14 * 60_000L, 10)
-        fun avg(l: List<WildSpawn>) = l.map { World.distanceMeters(lat, lon, it.lat, it.lon) }.average()
-        assertTrue(avg(late) < avg(fresh))
-        // Walking pulls every monster in much faster.
-        val walking = World.spawnsNear(lat, lon, window + 60_000L, 10, SpawnConditions(12, activity = 1.0))
-        assertTrue(avg(walking) < avg(World.spawnsNear(lat, lon, window + 60_000L, 10)) * 0.6)
-        // Over several windows of standing still, some monster reaches you.
-        val reached = (0 until 8).any { w ->
-            World.spawnsNear(lat, lon, window + w * World.SPAWN_WINDOW_MS + 14 * 60_000L, 10).any {
-                World.distanceMeters(lat, lon, it.lat, it.lon) <= World.SPAWN_RANGE_M
-            }
-        }
-        assertTrue(reached)
-    }
-
-    @Test
     fun densHoldStrongMonstersThatMustBeBeatenFirst() {
         val now = 1_700_000_000_000L
         val s = started().copy(hero = started().hero.copy(level = 10))
@@ -1119,23 +1056,6 @@ class GameTest {
         assertEquals(d, Dens.feed(d, Item.SWEET_BERRY).state)
         // Den odds went up a little: a common one is now 15% a throw (before the critical catch).
         assertTrue(Dens.throwChance(Monster.create(Bestiary.get("zapmouse"), 5, Random(1))) >= 0.15)
-    }
-
-    @Test
-    fun shrinesDrawMonstersAndTamingPaysXp() {
-        val now = 1_700_000_000_000L
-        val shrines = (0 until 40).map { World.shrineFromPlace("n$it", "Cafe $it", 40.0 + it * 0.0005, -75.0, ShrineTier.ITEM, category = World.PlaceCategory.WATER) }
-        val near = World.shrineSpawns(shrines, 40.0, -75.0, now, 10)
-        assertTrue(near.size >= 8, "${near.size} monsters around 40 shrines")
-        for (sp in near) {
-            val sh = shrines.first { it.id == sp.shrineId }
-            assertTrue(World.distanceMeters(sh.lat, sh.lon, sp.lat, sp.lon) in 15.0..75.0)
-            assertFalse(World.isAggressive(sp, 23))
-        }
-        // Walking draws more.
-        val walking = World.shrineSpawns(shrines, 40.0, -75.0, now, 10, SpawnConditions(12, activity = 1.0))
-        assertTrue(walking.size > near.size)
-        assertTrue(GameEngine.captureXp(10) > 10 * 3)
     }
 
     @Test
@@ -1364,8 +1284,6 @@ class GameTest {
         val now = 1_700_000_000_000L
         val s = GameEngine.walk(started(), 1500, now).state
         assertEquals(1500, s.stepHistory.values.single())
-        assertEquals(1.0, GameEngine.activityLevel(s, now), 0.01)
-        assertEquals(0.5, GameEngine.activityLevel(s, now + 15 * 60_000L), 0.01)
         val withTask = GameEngine.addTask(s, "x", Difficulty.EASY, rng).state
         val done = GameEngine.completeTask(withTask, withTask.tasks.last().id, now).state
         assertEquals(mapOf(GameEngine.epochDay(now) to 1), done.questDays)
@@ -1602,17 +1520,10 @@ class GameTest {
         val shinies = (1..rolls).count { rollShiny(rng) }
         val rate = shinies.toDouble() / rolls
         assertTrue(rate in 0.0035..0.0065, "rate $rate")
-        val lured = (1..rolls).count { rollShiny(rng, lure = true) }.toDouble() / rolls
-        assertTrue(lured > rate * 1.6)
-        // Shiny spawns stay shiny when you battle them, and the journal records them.
-        val now = 1_700_000_000_000L
-        val spawn = (0 until 400).asSequence().flatMap { w ->
-            World.spawnsNear(40.0, -75.0, now + w * World.SPAWN_WINDOW_MS, 10).asSequence()
-        }.first { it.shiny }
-        val m = World.spawnMonster(spawn)
-        assertTrue(m.shiny)
+        // The journal records shinies, and they stay shiny through a save.
+        val m = Monster.create(Bestiary.get("emberkit"), 10, rng, shiny = true)
         val s = started().let { it.copy(monsters = it.monsters + m) }.withJournal()
-        assertTrue(spawn.speciesId in s.shinyCaught)
+        assertTrue(m.speciesId in s.shinyCaught)
         assertTrue(GameState.fromJson(s.toJson()).monsters.any { it.shiny })
     }
 

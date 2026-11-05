@@ -141,7 +141,7 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
                     Text("Open", color = Gold, fontSize = 13.sp)
                 }
                 Text(
-                    "Quests, phone-free sessions, walking, the map and tracker, collecting items, battles and packs, taming, boss raids and more.",
+                    "Quests, phone-free sessions, walking, the map, collecting items, battles and packs, taming, boss raids and more.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

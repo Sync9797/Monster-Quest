@@ -4,7 +4,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.monsterquest.app.ui.art.ArtQuality
 import com.monsterquest.app.Haptics
 import com.monsterquest.app.ui.art.BeaconState
-import com.monsterquest.app.ui.art.drawMonsterStanding
 import com.monsterquest.app.ui.art.drawPlayerOn
 import com.monsterquest.app.ui.art.drawShrineOn
 import com.monsterquest.app.ui.art.drawVillainOn
@@ -12,7 +11,6 @@ import com.monsterquest.app.ui.art.drawTraderOn
 import com.monsterquest.app.ui.art.drawNomadOn
 import com.monsterquest.app.ui.art.drawDungeonOn
 import com.monsterquest.app.ui.art.drawFacilityOn
-import com.monsterquest.app.ui.art.drawWantedRing
 import com.monsterquest.app.ui.art.spriteDrawable
 import com.monsterquest.app.ui.art.HeroOutfit
 import com.monsterquest.app.ui.art.MonsterArt
@@ -28,14 +26,11 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.drawable.BitmapDrawable
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
-import android.view.ViewGroup
-import android.view.ViewOutlineProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +49,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -91,23 +85,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.monsterquest.app.GameViewModel
 import com.monsterquest.core.Bestiary
 import com.monsterquest.core.GameEngine
 import com.monsterquest.core.Schedule
 import com.monsterquest.core.Shrine
 import com.monsterquest.core.ShrineTier
-import com.monsterquest.core.WildSpawn
 import com.monsterquest.core.Item
 import com.monsterquest.core.VillainCamp
 import com.monsterquest.core.VillainTier
@@ -131,9 +120,7 @@ private class MapFocus(
 
 private sealed interface MapPick {
     data class ShrinePick(val shrine: Shrine) : MapPick
-    data class SpawnPick(val spawn: WildSpawn) : MapPick
     data class VillainPick(val camp: VillainCamp) : MapPick
-    data class TrackedPick(val spawn: WildSpawn) : MapPick
     data class DenPick(val den: Den) : MapPick
     data class TraderPick(val trader: com.monsterquest.core.Trader) : MapPick
     data class NomadPick(val nomad: com.monsterquest.core.Nomad) : MapPick
@@ -177,7 +164,6 @@ fun MapScreen(vm: GameViewModel) {
     }
 
     TrackLocation(context, vm.state.settings.batterySaverGps || vm.batterySaver, vm::onLocation)
-    LaunchedEffect(Unit) { vm.onMapOpened() }
     // Secret walking encounters only happen while the map is open.
     DisposableEffect(Unit) {
         vm.mapVisible = true
@@ -194,9 +180,6 @@ fun MapScreen(vm: GameViewModel) {
     }
 
     val loc = vm.location
-    // Only monsters within the reveal distance stand on the map; farther ones show in the tracker.
-    val spawns = vm.visibleSpawns(now)
-    val tracked = vm.trackedSpawns(now)
     // Today's risen Silver or Gold shrine joins the rest.
     val risen = com.monsterquest.core.RoamingShrines.current(vm.state, now)
     val shrines = vm.shrines + listOfNotNull(risen?.shrine)
@@ -222,17 +205,6 @@ fun MapScreen(vm: GameViewModel) {
     // pocket) and the screen goes dark; turn it back upright to return.
     if (vm.state.settings.flipBatterySaver) UpsideDownSaver(vm)
 
-    // Buzz when a monster comes within battle range (also while the battery saver
-    // screen is on), and let aggressive ones that reach you ambush.
-    LaunchedEffect(spawns.map { it.id to (vm.distanceTo(it.lat, it.lon)?.toInt() ?: 0) / 20 }, loc) {
-        if (loc == null) return@LaunchedEffect
-        val fresh = vm.newSpawnsNearby(spawns)
-        if (vm.checkAmbush(spawns, System.currentTimeMillis())) {
-            if (vm.state.settings.vibrateOnSpawn) Haptics.ambush(context)
-        } else if (fresh.isNotEmpty() && vm.state.settings.vibrateOnSpawn) {
-            Haptics.spawn(context)
-        }
-    }
     // The map follows the hero; looking at something from the Nearby list leaves it there briefly.
     var following by remember { mutableStateOf(true) }
 
@@ -320,7 +292,7 @@ fun MapScreen(vm: GameViewModel) {
         }
     }
 
-    // Phones show the tracker bar over the map; big screens list those monsters in Nearby instead.
+    // Phones show the place counts over the map; big screens show them under the Nearby list.
     val mapPane: @Composable (Boolean) -> Unit = { showTracker ->
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
@@ -336,21 +308,6 @@ fun MapScreen(vm: GameViewModel) {
                         // Boss shrines stand taller so they're easy to spot from afar.
                         val (bw, bh) = if (sh.isBoss) 60 to 110 else 48 to 88
                         add(MapSprite("sh:${sh.id}", sh.lat, sh.lon, sprite("shrine_${sh.tier}_$beacon", bw, bh) { c, w, h -> drawShrineOn(c, w, h, sh.tier, beacon) }, bw, bh, anchorY = 0.945f) { pick = MapPick.ShrinePick(sh) })
-                    }
-                    spawns.forEach { sp ->
-                        // A wanted line stands in a gold ring.
-                        if (com.monsterquest.core.Wanted.matches(vm.state, sp.species)) {
-                            add(MapSprite("wr:${sp.id}", sp.lat, sp.lon, sprite("wanted_ring", 70, 34) { c, w, h -> drawWantedRing(c, w, h) }, 70, 34, anchorY = 0.5f) { pick = MapPick.SpawnPick(sp) })
-                        }
-                        // Alphas stand bigger, in a red glow.
-                        val size = if (sp.alpha) 80 else 58
-                        add(MapSprite("sp:${sp.id}", sp.lat, sp.lon, sprite("spawn_${sp.speciesId}_${sp.lured}_${sp.shiny}_${sp.alpha}", size, size) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, sp.lured, sp.shiny, sp.alpha) }, size, size, anchorY = 0.95f) { pick = MapPick.SpawnPick(sp) })
-                    }
-                    // Monsters that scattered from a Snap Bind: still out there, running from you.
-                    vm.fleeingPositions(now).forEach { (sp, pos) ->
-                        add(MapSprite("fl:${sp.id}", pos.first, pos.second, sprite("spawn_${sp.speciesId}_false_${sp.shiny}", 58, 58) { c, w, h -> drawMonsterStanding(c, w, h, sp.species, false, sp.shiny) }, 58, 58, anchorY = 0.95f, alpha = 0.7f) {
-                            vm.toast("The ${sp.species.name} is running from you after your Snap Bind!")
-                        })
                     }
                     dens.forEach { den ->
                         add(MapSprite("dn:${den.id}", den.lat, den.lon, sprite("den_${den.species.element}", 56, 48) { c, w, h -> drawDenOn(c, w, h, den.species.element) }, 56, 48, anchorY = 0.93f) { pick = MapPick.DenPick(den) })
@@ -464,7 +421,6 @@ fun MapScreen(vm: GameViewModel) {
             NearbyList(
                 vm = vm,
                 shrines = shrines,
-                spawns = spawns + tracked,
                 villains = villains,
                 dens = dens,
                 dungeons = dungeons,
@@ -478,18 +434,6 @@ fun MapScreen(vm: GameViewModel) {
                 onShrine = { sh ->
                     focusOn(MapFocus(sh.lat, sh.lon, sh.name, sh.subtitle ?: sh.tier.label, pin = false) { pick = MapPick.ShrinePick(sh) })
                 },
-                onSpawn = { sp ->
-                    val seen = sp.speciesId in vm.state.seen
-                    val near = sp in spawns
-                    focusOn(
-                        MapFocus(
-                            sp.lat, sp.lon,
-                            if (seen) "Wild ${sp.species.name}" else "Unknown monster",
-                            "Lv ${sp.level} • " + distanceText(vm.distanceTo(sp.lat, sp.lon), imperial),
-                            pin = true,
-                        ) { pick = if (near) MapPick.SpawnPick(sp) else MapPick.TrackedPick(sp) },
-                    )
-                },
                 onVillain = { v ->
                     focusOn(MapFocus(v.lat, v.lon, v.leader, "${v.tier.label} of the ${v.crew}", pin = false) { pick = MapPick.VillainPick(v) })
                 },
@@ -502,59 +446,13 @@ fun MapScreen(vm: GameViewModel) {
 
     when (val p = pick) {
         is MapPick.ShrinePick -> ShrineDialog(vm, p.shrine, now) { pick = null }
-        is MapPick.SpawnPick -> SpawnDialog(vm, p.spawn) { pick = null }
         is MapPick.VillainPick -> VillainDialog(vm, p.camp) { pick = null }
         is MapPick.DenPick -> DenDialog(vm, p.den) { pick = null }
         is MapPick.TraderPick -> TraderDialog(vm, p.trader) { pick = null }
         is MapPick.NomadPick -> NomadDialog(vm, p.nomad) { pick = null }
         is MapPick.DungeonPick -> DungeonDialog(vm, p.dungeon, vm.distanceTo(p.dungeon.lat, p.dungeon.lon)) { pick = null }
         is MapPick.FacilityPick -> FacilityDialog(vm, p.venue) { pick = null }
-        is MapPick.TrackedPick -> TrackedDialog(
-            vm,
-            p.spawn,
-            onShowArea = {
-                following = false
-                gameMap.animateTo(p.spawn.lat, p.spawn.lon)
-            },
-        ) { pick = null }
         null -> {}
-    }
-}
-
-/** Time of day, how much you've been moving, and the lure. */
-@Composable
-private fun SpawnInfoRow(vm: GameViewModel, now: Long) {
-    val cond = vm.spawnConditions(now)
-    val tod = cond.timeOfDay
-    Row(
-        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${tod.label}: ", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                tod.favored.forEach { e ->
-                    GIcon(e.icon(), Modifier.size(14.dp), e.color())
-                    Text(" ${e.label}  ", fontSize = 12.sp, color = e.color())
-                }
-            }
-            val pct = (cond.activity * 100).toInt()
-            Text(
-                if (pct >= 5) "On the move: monsters hear you and close in fast (+$pct% spawns, rarer)"
-                else "Standing still: curious monsters still find you. Walk to draw them in faster.",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        com.monsterquest.core.Foods.active(vm.state, now)?.let { food ->
-            IconText(food.icon(), formatDuration(vm.state.foodUntilMs - now), tint = food.color(), fontSize = 12.sp)
-            Spacer(Modifier.width(6.dp))
-        }
-        if (cond.lure) {
-            IconText(GameIcon.LURE, formatDuration(vm.state.lureUntilMs - now), tint = Color(0xFFF2A198), fontSize = 12.sp)
-        } else {
-            SmallButton("Lure (${vm.state.count(Item.LURE)})", vm::useLure, enabled = vm.state.count(Item.LURE) > 0, outlined = true)
-        }
     }
 }
 
@@ -607,7 +505,7 @@ private fun WeatherBadge(w: com.monsterquest.core.WeatherReading, imperial: Bool
 private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
     val w = vm.weather
     val imperial = vm.state.settings.imperialUnits
-    val time = vm.spawnConditions(now).timeOfDay
+    val time = com.monsterquest.core.TimeOfDay.of(java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         icon = { w?.let { GIcon(it.kind.icon(), Modifier.size(32.dp), Gold) } },
@@ -619,7 +517,7 @@ private fun WeatherDialog(vm: GameViewModel, now: Long, onDismiss: () -> Unit) {
                 } else {
                     com.monsterquest.core.WeatherEvent.of(w.kind)?.let { e ->
                         Text("${e.label}! ${e.text}", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        Text("Its type surges (x${com.monsterquest.core.WeatherEvent.SURGE} more), and once a day it brings a rare visitor.", fontSize = 12.sp)
+                        Text("Its type surges (x${com.monsterquest.core.WeatherEvent.SURGE} more), and once a day it sends a rare visitor to find you on a battery-saver walk.", fontSize = 12.sp)
                     }
                     val wanted = com.monsterquest.core.Wanted.boostedBy(vm.state, w.kind)
                     if (wanted.isNotEmpty()) {
@@ -961,154 +859,6 @@ private fun ShrineDialog(vm: GameViewModel, shrine: Shrine, now: Long, onDismiss
     )
 }
 
-@Composable
-private fun SpawnDialog(vm: GameViewModel, spawn: WildSpawn, onDismiss: () -> Unit) {
-    val dist = vm.distanceTo(spawn.lat, spawn.lon)
-    val inRange = dist != null && dist <= World.SPAWN_RANGE_M
-    val sp = spawn.species
-    val landmark = vm.landmarkNear(spawn.lat, spawn.lon)
-    val street = rememberStreet(spawn.lat, spawn.lon)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text(if (spawn.alpha) "Alpha ${sp.name}" else "Wild ${sp.name}", color = if (spawn.alpha) Color(0xFFE0574A) else Color.Unspecified)
-                val where = landmark?.let { (place, gap) -> landmarkText(place, gap, vm.state.settings.imperialUnits) }
-                    ?: street?.let { "On $it" }
-                if (where != null) Text(where, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        },
-        text = {
-            val pack = vm.packFor(spawn)
-            Column {
-                MonsterArt(sp, Modifier.size(110.dp).align(Alignment.CenterHorizontally), shiny = spawn.shiny)
-                if (spawn.shiny) IconText(GameIcon.SPARK, "Shiny! A rare color variant.", tint = Gold, textColor = Gold, bold = true, fontSize = 13.sp)
-                if (spawn.alpha) {
-                    Text(
-                        "ALPHA: half again as tough, with a strong move beyond its level and ${com.monsterquest.core.Alphas.PERFECT_STATS} perfect stats. A little harder to tame.",
-                        color = Color(0xFFE0574A),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                    )
-                }
-                Text("Level ${spawn.level} • ${sp.typeLabel} • ${sp.rarity.label}", color = rarityColor(sp.rarity))
-                ScoutLine(vm, sp)
-                if (spawn.follower) Text("It followed your footsteps.", color = HpGreen, fontSize = 13.sp)
-                Text(distanceText(dist, vm.state.settings.imperialUnits), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}")
-                if (pack.isNotEmpty()) {
-                    Text(
-                        "Watch out: ${pack.joinToString { it.species.name }} nearby will join the fight as a pack " +
-                            "(${pack.size + 1} vs your team, bigger rewards).",
-                        color = HpYellow,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-                if (!inRange) {
-                    Text("Walk within ${formatDistance(World.SPAWN_RANGE_M, vm.state.settings.imperialUnits)} to battle.", modifier = Modifier.padding(top = 6.dp))
-                    WalkHereButton(spawn.lat, spawn.lon, "Wild ${sp.name}")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { vm.battleSpawn(spawn); onDismiss() }, enabled = inRange) { Text("Battle!") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-    )
-}
-
-/**
- * Monsters you can sense but not yet see, nearest
- * first, with footprints for distance (one is close, three is far) and the
- * direction to walk. Walking draws them toward you.
- */
-@Composable
-private fun TrackerBar(vm: GameViewModel, tracked: List<WildSpawn>, modifier: Modifier = Modifier, onSelect: (WildSpawn) -> Unit) {
-    if (tracked.isEmpty()) return
-    val here = vm.location ?: return
-    val imperial = vm.state.settings.imperialUnits
-    Row(
-        modifier
-            .padding(8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        GIcon(GameIcon.EYE, Modifier.size(16.dp), Gold)
-        tracked.take(8).forEach { sp ->
-            val d = World.distanceMeters(here.first, here.second, sp.lat, sp.lon)
-            val dir = World.compass(World.bearing(here.first, here.second, sp.lat, sp.lon))
-            val seen = sp.speciesId in vm.state.seen
-            Column(Modifier.clickable { onSelect(sp) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                MonsterArt(sp.species, Modifier.size(34.dp), silhouette = !seen)
-                Text(formatDistance(d, imperial), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                Text(dir, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/** More about a monster sensed by the tracker: where it is, what it's near, and what it's doing. */
-@Composable
-private fun TrackedDialog(vm: GameViewModel, spawn: WildSpawn, onShowArea: () -> Unit, onDismiss: () -> Unit) {
-    val here = vm.location
-    val imperial = vm.state.settings.imperialUnits
-    val seen = spawn.speciesId in vm.state.seen
-    val sp = spawn.species
-    val d = here?.let { World.distanceMeters(it.first, it.second, spawn.lat, spawn.lon) }
-    val dir = here?.let { World.compass(World.bearing(it.first, it.second, spawn.lat, spawn.lon)) }
-    val landmark = vm.landmarkNear(spawn.lat, spawn.lon)
-    val moving = vm.spawnConditions(System.currentTimeMillis()).activity >= 0.05
-    val street = rememberStreet(spawn.lat, spawn.lon)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (seen) "${sp.name} nearby" else "Something is out there") },
-        text = {
-            Column {
-                MonsterArt(sp, Modifier.size(96.dp).align(Alignment.CenterHorizontally), silhouette = !seen)
-                if (seen) {
-                    IconText(sp.element.icon(), "${sp.typeLabel} • ${sp.rarity.label}", tint = sp.element.color(), fontSize = 13.sp)
-                } else {
-                    Text("You've never met this kind of monster. Find it to add it to your Journal.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (d != null && dir != null) {
-                    IconText(GameIcon.COMPASS, "About ${formatDistance(d, imperial)} to the $dir", tint = Gold, textColor = Gold, bold = true, fontSize = 15.sp)
-                }
-                if (landmark != null) {
-                    val (place, gap) = landmark
-                    IconText(place.tier.icon(), landmarkText(place, gap, imperial), tint = place.tier.color(), fontSize = 13.sp)
-                    val placeStreet = place.street ?: street
-                    if (placeStreet != null) Text("On $placeStreet", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if (street != null) {
-                    Text("On $street, away from any landmark.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text("Not near any landmark: open ground.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Text(
-                    if (moving) "It heard you walking and is closing in fast." else "It's slowly wandering your way. Walk toward it to meet it sooner.",
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-                Text(
-                    "Leaves in ${formatDuration(spawn.expiresAtMs - System.currentTimeMillis())}. " +
-                        "It shows on the map within ${formatDistance(World.REVEAL_M, imperial)}; battle it within ${formatDistance(World.SPAWN_RANGE_M, imperial)}.",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                WalkHereButton(spawn.lat, spawn.lon, if (seen) sp.name else "Monster")
-            }
-        },
-        confirmButton = { TextButton(onClick = { onShowArea(); onDismiss() }) { Text("Show area") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-    )
-}
-
 /** A den: a strong monster to beat, then 5-10 throws to tame it. */
 @Composable
 private fun DenDialog(vm: GameViewModel, den: Den, onDismiss: () -> Unit) {
@@ -1216,17 +966,15 @@ private fun GuardianPreview(sp: com.monsterquest.core.Species) {
     }
 }
 
-/** Nearby shrines and monsters sorted by distance, shown beside the map on big screens. */
+/** Nearby places sorted by distance, shown beside the map on big screens. */
 @Composable
 private fun NearbyList(
     vm: GameViewModel,
     shrines: List<Shrine>,
-    spawns: List<WildSpawn>,
     villains: List<VillainCamp>,
     dens: List<Den>,
     onDen: (Den) -> Unit,
     onShrine: (Shrine) -> Unit,
-    onSpawn: (WildSpawn) -> Unit,
     onVillain: (VillainCamp) -> Unit,
     dungeons: List<com.monsterquest.core.Dungeon> = emptyList(),
     traders: List<com.monsterquest.core.Trader> = emptyList(),
@@ -1245,16 +993,6 @@ private fun NearbyList(
             (sh.subtitle ?: sh.tier.label) + " • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
             d <= World.SHRINE_RANGE_M,
         ) { onShrine(sh) }
-    } + spawns.map { sp ->
-        val d = vm.distanceTo(sp.lat, sp.lon) ?: Double.MAX_VALUE
-        val seen = sp.speciesId in vm.state.seen
-        Entry(
-            d,
-            { MonsterArt(sp.species, Modifier.size(40.dp), silhouette = !seen) },
-            if (seen) "Wild ${sp.species.name}" else "Unknown monster",
-            "Lv ${sp.level} ${sp.species.rarity.label} • " + distanceText(d.takeIf { it < Double.MAX_VALUE }, vm.state.settings.imperialUnits),
-            d <= World.SPAWN_RANGE_M,
-        ) { onSpawn(sp) }
     } + dens.map { den ->
         val d = vm.distanceTo(den.lat, den.lon) ?: Double.MAX_VALUE
         Entry(
@@ -1316,32 +1054,6 @@ private fun NearbyList(
                 }
             }
         }
-    }
-}
-
-/**
- * Sizing a monster up: how strong its line ends up (stars) and what it
- * becomes (a silhouette until you've seen that form), plus a Wanted pin.
- */
-@Composable
-internal fun ScoutLine(vm: GameViewModel, sp: com.monsterquest.core.Species) {
-    val final = com.monsterquest.core.Scouting.finalForm(sp)
-    val stars = com.monsterquest.core.Scouting.stars(sp)
-    val seen = final.id in vm.state.seen
-    val wanted = com.monsterquest.core.Wanted.matches(vm.state, sp)
-    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("${com.monsterquest.core.Scouting.starText(stars)}  final strength", color = Gold, fontSize = 14.sp)
-            Text(
-                if (final.id == sp.id) "This is its final form." else "Becomes ${if (seen) final.name else "???"} (#${com.monsterquest.core.MaxStats.rank(final)} of ${com.monsterquest.core.Bestiary.all.size})",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (final.id != sp.id) MonsterArt(final, Modifier.size(44.dp), silhouette = !seen)
-    }
-    TextButton(onClick = { vm.toggleWanted(final.id) }) {
-        Text(if (wanted) "\u2605 On your Wanted list" else "\u2606 Add ${if (seen) final.name else "this line"} to Wanted")
     }
 }
 

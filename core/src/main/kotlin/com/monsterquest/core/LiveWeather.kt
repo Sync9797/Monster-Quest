@@ -98,22 +98,34 @@ enum class WeatherEvent(val label: String, val weather: LiveWeather, val element
         const val SURGE = 1.5
 
         /**
-         * Starts [event] for today if it hasn't happened yet: a special visitor
-         * (an Epic or rarer monster of its type when one fits your level) waits
-         * on the map for [GameEngine.VISITOR_TTL_MS].
+         * Starts [event] for today if it hasn't happened yet: a rare visitor of
+         * its type (Epic or rarer when one fits your level) finds you on your
+         * next battery-saver walk within [GameEngine.VISITOR_TTL_MS].
          */
         fun trigger(state: GameState, event: WeatherEvent, nowMs: Long, epochDay: Long, rng: kotlin.random.Random): Update? {
             if (state.weatherEventDays[event.name] == epochDay) return null
-            val level = GameEngine.wildLevel(state.hero.level, rng) + 2
-            val fits = Bestiary.wild.filter { event.element in it.types && it.minWildLevel <= level }
-            val pool = fits.filter { it.rarity >= Rarity.EPIC }.ifEmpty { fits.filter { it.rarity >= Rarity.RARE } }.ifEmpty { fits }
-            if (pool.isEmpty()) return null
-            val v = Follower(newId(rng), pool.random(rng).id, level, nowMs, rollShiny(rng), visitor = true)
-            val s = state.copy(
-                followers = state.followers + v,
-                weatherEventDays = state.weatherEventDays + (event.name to epochDay),
+            val v = GameEngine.rareVisitor(state, nowMs, rng, event.element) ?: return null
+            val s = GameEngine.addVisitor(state, v, nowMs).copy(weatherEventDays = state.weatherEventDays + (event.name to epochDay))
+            return Update(
+                s,
+                "${event.label}! ${event.text} A rare ${v.species.name} (Lv ${v.level}) is out in it: turn on the battery saver and walk within " +
+                    "${GameEngine.VISITOR_TTL_MS / 3_600_000} hours to meet it.",
             )
-            return Update(s, "${event.label}! ${event.text} A rare ${v.species.name} (Lv ${v.level}) is waiting on your map for 15 minutes.")
+        }
+
+        /**
+         * How the weather (and its event's surge) and nearby water shift which
+         * types find you on a walk: spawn-weight multipliers by type.
+         */
+        fun encounterBoosts(weather: LiveWeather?, waterDistanceM: Double? = null): Map<Element, Double> {
+            val b = weather?.boosts.orEmpty().toMutableMap()
+            // A weather event surges its type (fog also brings out Gas).
+            of(weather)?.let { e ->
+                b[e.element] = (b[e.element] ?: 1.0) * SURGE
+                if (e == FOGBOUND) b[Element.GAS] = (b[Element.GAS] ?: 1.0) * SURGE
+            }
+            World.waterFactor(waterDistanceM)?.let { b[Element.WATER] = (b[Element.WATER] ?: 1.0) * it }
+            return b
         }
     }
 }

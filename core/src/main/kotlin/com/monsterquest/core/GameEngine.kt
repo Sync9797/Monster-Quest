@@ -789,7 +789,7 @@ object GameEngine {
             if (!h.classChosen && h.level >= CLASS_UNLOCK_LEVEL) add("Choose your class on the Hero tab to claim a Rare weapon!")
             if (gain.boxItems.isNotEmpty()) add("Level-up box: ${boxText(gain.boxItems)}.")
             if (gain.state.bagCount > gain.state.bagCapacity) add("Your bag is over full: use, sell or drop items before picking up more.")
-            Item.entries.filter { it.minLevel in (before.level + 1)..h.level }.forEach { add("${it.label}s are now in the shop!") }
+            Item.entries.filter { it.price > 0 && it.minLevel in (before.level + 1)..h.level }.forEach { add("${it.label}s are now in the shop!") }
             Armory.MATERIAL_TIERS.filter { it.fromLevel in (before.level + 1)..h.level }.forEach { add("Better gear: ${it.note.lowercase()} from now on.") }
             if (before.level < SUBCLASS_UNLOCK_LEVEL && h.level >= SUBCLASS_UNLOCK_LEVEL) add("Subclasses unlocked! Pick one on the Hero tab.")
             HERO_SKILL_LEVELS.forEachIndexed { i, at ->
@@ -1035,12 +1035,6 @@ object GameEngine {
         val level = wildLevel(state.hero.level, rng)
         val enemy = Monster.create(Bestiary.randomWild(rng, level), level, rng).let { it.copy(shiny = rollShiny(rng)) }.withWildMoves(rng)
         return state.copy(huntTokens = state.huntTokens - 1) to enemy
-    }
-
-    fun markSpawnUsed(state: GameState, spawnId: String, nowMs: Long): GameState {
-        val window = World.spawnWindow(nowMs)
-        val pruned = state.usedSpawns.filter { (World.windowOf(it) ?: 0) >= window - 8 }.toSet()
-        return state.copy(usedSpawns = pruned + spawnId)
     }
 
     fun newBattle(
@@ -1741,94 +1735,36 @@ object GameEngine {
         return Update(state.copy(gear = state.gear.filterNot { it.id == id }), "Dropped ${w.name}.")
     }
 
-    // ---- walking -----------------------------------------------------------
+    // ---- rare visitors --------------------------------------------------------
 
-    /** Steps that take activity from 0 to full. */
-    const val ACTIVITY_STEPS = 1500.0
-    /** Activity halves every this many minutes of standing still. */
-    const val ACTIVITY_HALF_LIFE_MIN = 15.0
-
-    /** How much you've been moving lately, 0..1. */
-    fun activityLevel(state: GameState, nowMs: Long): Double {
-        val minutes = ((nowMs - state.activityAtMs).coerceAtLeast(0)) / 60_000.0
-        return state.activity * Math.pow(0.5, minutes / ACTIVITY_HALF_LIFE_MIN)
-    }
-
-    // ---- followers (walking draws monsters to you) ---------------------------
-
-    /** Steps that draw one monster to follow you. */
-    const val FOLLOWER_STEPS = 600
-    const val MAX_FOLLOWERS = 4
-    /** Followers wander off after this long. */
-    const val FOLLOWER_TTL_MS = 4 * 60 * 60_000L
-
-    fun activeFollowers(state: GameState, nowMs: Long): List<Follower> =
-        state.followers.filter { nowMs - it.createdMs < it.ttlMs }
-
-    /** A rare visitor waits this long after a two-hour phone-free session. */
-    const val VISITOR_TTL_MS = 15 * 60_000L
+    /** A rare visitor waits this long for your next battery-saver walk. */
+    const val VISITOR_TTL_MS = 2 * 60 * 60_000L
 
     /** Taming odds against a rare visitor are this much better. */
     const val VISITOR_CATCH_BOOST = 1.5
 
-    /** An Epic (or rarer) wild monster that comes to wait beside you. */
-    fun rareVisitor(state: GameState, nowMs: Long, rng: Random): Follower {
+    fun activeVisitors(state: GameState, nowMs: Long): List<Visitor> =
+        state.visitors.filter { nowMs - it.createdMs in 0 until VISITOR_TTL_MS }
+
+    /** An Epic (or rarer) wild monster, [type] if given, a little above your usual wild level. */
+    fun rareVisitor(state: GameState, nowMs: Long, rng: Random, type: Element? = null): Visitor? {
         val level = wildLevel(state.hero.level, rng) + 2
-        val pool = Bestiary.wild.filter { it.rarity >= Rarity.EPIC && it.minWildLevel <= level }
-            .ifEmpty { Bestiary.wild.filter { it.rarity >= Rarity.RARE } }
-        return Follower(newId(rng), pool.random(rng).id, level, nowMs, rollShiny(rng), visitor = true)
+        val fits = Bestiary.wild.filter { (type == null || type in it.types) && it.minWildLevel <= level }
+        val pool = fits.filter { it.rarity >= Rarity.EPIC }.ifEmpty { fits.filter { it.rarity >= Rarity.RARE } }.ifEmpty { fits }
+        if (pool.isEmpty()) return null
+        return Visitor(newId(rng), pool.random(rng).id, level, nowMs, rollShiny(rng))
     }
 
-    /** A follower as a battle-ready spawn standing right beside you. */
-    fun followerSpawn(f: Follower, lat: Double, lon: Double, index: Int): WildSpawn {
-        val angle = index * 2.1
-        return WildSpawn(
-            id = "f:${f.id}", speciesId = f.speciesId, level = f.level,
-            lat = lat + 0.00018 * kotlin.math.cos(angle), lon = lon + 0.00022 * kotlin.math.sin(angle),
-            expiresAtMs = f.createdMs + f.ttlMs, follower = true, shiny = f.shiny,
-            lured = f.visitor, visitor = f.visitor,
-        )
-    }
+    /** Adds a visitor to the queue (expired ones are dropped). */
+    fun addVisitor(state: GameState, v: Visitor, nowMs: Long): GameState =
+        state.copy(visitors = activeVisitors(state, nowMs) + v)
 
-    fun removeFollower(state: GameState, spawnId: String): GameState =
-        state.copy(followers = state.followers.filterNot { "f:${it.id}" == spawnId })
-
-    /** Adds followers for every [FOLLOWER_STEPS] walked (up to [MAX_FOLLOWERS] waiting). */
-    private fun drawFollowers(state: GameState, steps: Int, nowMs: Long): Pair<GameState, List<Follower>> {
-        var bank = state.followerStepBank + steps
-        val current = activeFollowers(state, nowMs).toMutableList()
-        val added = mutableListOf<Follower>()
-        val rng = Random(state.stats.totalSteps * 31 + nowMs)
-        while (bank >= FOLLOWER_STEPS) {
-            bank -= FOLLOWER_STEPS
-            if (current.size >= MAX_FOLLOWERS) continue
-            val level = wildLevel(state.hero.level, rng)
-            val f = Follower(newId(rng), Bestiary.randomWild(rng, level, rareBoost = 1.5).id, level, nowMs, rollShiny(rng))
-            current += f
-            added += f
-        }
-        return state.copy(followers = current, followerStepBank = bank) to added
-    }
-
-    // ---- lures -------------------------------------------------------------
-
-    const val LURE_MS = 30 * 60_000L
-
-    /** One free lure each day (when there's room in the bag). */
-    fun claimDailyLure(state: GameState, nowMs: Long): Update? {
-        val day = epochDay(nowMs)
-        if (state.lastFreeLureDay == day || state.bagFull) return null
-        val (s, _) = addItems(state.copy(lastFreeLureDay = day), mapOf(Item.LURE to 1))
-        return Update(s, "Your free daily Lure is in the bag. Use it from the Map to draw monsters to you.")
-    }
-
-    fun useLure(state: GameState, nowMs: Long): Update {
-        if (state.count(Item.LURE) <= 0) return Update(state, "No lures. Buy one in the Shop or find them at shrines.")
-        val until = maxOf(state.lureUntilMs, nowMs) + LURE_MS
-        return Update(
-            state.copy(inventory = removeItems(state.inventory, mapOf(Item.LURE to 1)), lureUntilMs = until),
-            "Lure active! More monsters will appear around you for the next 30 minutes.",
-        )
+    /** The next visitor to meet on a walk, as a battle-ready monster, and the state without it. */
+    fun takeVisitor(state: GameState, nowMs: Long, rng: Random): Pair<GameState, Monster>? {
+        val v = activeVisitors(state, nowMs).firstOrNull() ?: return null
+        // The very monster announced: no evolving on the way in.
+        val m = Monster.create(v.species, v.level, rng, shiny = v.shiny, evolve = false).withWildMoves(rng)
+        return state.copy(visitors = activeVisitors(state, nowMs).drop(1)) to m
     }
 
     // ---- journal -----------------------------------------------------------
@@ -1906,8 +1842,6 @@ object GameEngine {
             stepsToday = today,
             stepsDay = day,
             stepHistory = s.stepHistory.filterKeys { it > day - 90 } + (day to today),
-            activity = (activityLevel(s, nowMs) + steps / ACTIVITY_STEPS).coerceAtMost(1.0),
-            activityAtMs = nowMs,
             stats = s.stats.copy(totalSteps = s.stats.totalSteps + steps),
         )
         s = Health.recordSteps(s, steps, nowMs, zone)
@@ -1944,9 +1878,6 @@ object GameEngine {
 
     // ---- phone-free focus sessions ------------------------------------------
 
-    /** Grace period after starting a session to lock the phone. */
-    const val FOCUS_GRACE_MS = 60_000L
-
     fun startFocus(state: GameState, minutes: Int, nowMs: Long, rng: Random = Random.Default): Update {
         if (state.focus != null) return Update(state, "A phone-free session is already running.")
         if (state.lootBoxes.size >= MAX_LOOT_BOXES) {
@@ -1955,6 +1886,9 @@ object GameEngine {
         val session = FocusSession(newId(rng), nowMs, nowMs + minutes * 60_000L, minutes)
         return Update(state.copy(focus = session), "Phone-free for $minutes minutes. Put your phone down and stay in the game.")
     }
+
+    /** When a finished session's visitor sets out: as the session ends. */
+    private fun nowMsForVisitor(f: FocusSession) = f.endMs
 
     /** Torches for a two-hour phone-free session. */
     const val FOCUS_JACKPOT_TORCHES = 5
@@ -2034,6 +1968,11 @@ object GameEngine {
             if (f.minutes >= 120) {
                 s = Torches.add(s, FOCUS_JACKPOT_TORCHES, reward = true)
                 msg.append(" +$FOCUS_JACKPOT_TORCHES torches for the dungeons.")
+                // A rare monster heads your way: it finds you on your next battery-saver walk.
+                rareVisitor(s, nowMsForVisitor(f), rng)?.let { v ->
+                    s = addVisitor(s, v, nowMsForVisitor(f))
+                    msg.append(" A rare ${v.species.name} (Lv ${v.level}) is out looking for you: turn on the battery saver and walk within ${VISITOR_TTL_MS / 3_600_000} hours to meet it.")
+                }
             }
             // Mood Crystals (personality rerolls) only come from hour-plus sessions.
             if (bonus.moodCrystalPct > 0 && rng.nextInt(100) < bonus.moodCrystalPct) {

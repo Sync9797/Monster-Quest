@@ -2,7 +2,6 @@ package com.monsterquest.core
 
 import kotlinx.serialization.Serializable
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 
 /** What happened on one day: shown in the next morning's recap. */

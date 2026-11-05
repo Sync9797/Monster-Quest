@@ -134,9 +134,6 @@ object PlacesRepository {
         return Area(shrines + World.waystones(lat, lon, shrines), water, keys.all { tiles[it] != null }, venues, streets, known, known.size == keys.size)
     }
 
-    /** The old entry point: shrines only. */
-    fun shrinesNear(dir: File, lat: Double, lon: Double, userAgent: String): List<Shrine> = areaNear(dir, lat, lon, userAgent).shrines
-
     /** Looks up [keys] (tiles in one row) and splits the places and water among them. */
     private fun fetch(keys: List<String>, userAgent: String, nowMs: Long): Map<String, ShrineTile> {
         val bounds = keys.map { World.tileBounds(it) }

@@ -32,7 +32,6 @@ import kotlinx.coroutines.launch
 import com.monsterquest.core.StepSource
 import com.monsterquest.core.FrameRate
 import com.monsterquest.app.focus.FocusService
-import java.io.File
 
 class MainActivity : ComponentActivity() {
     private val vm: GameViewModel by viewModels()

@@ -44,16 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.monsterquest.app.GameViewModel
-import com.monsterquest.core.BAG_UPGRADE_AMOUNT
 import com.monsterquest.core.CLASS_CHANGE_COST
 import com.monsterquest.core.CLASS_UNLOCK_LEVEL
 import com.monsterquest.core.HeroAttribute
 import com.monsterquest.core.HeroClass
 import com.monsterquest.core.Spells
-import com.monsterquest.core.STORAGE_UPGRADE_AMOUNT
-import com.monsterquest.core.MAX_PARTY_SIZE
-import com.monsterquest.core.PAID_UPGRADE_AMOUNT
-import com.monsterquest.core.UPGRADE_LEVEL_INTERVAL
 import com.monsterquest.core.Gear
 import com.monsterquest.core.Hero
 import com.monsterquest.core.HERO_SKILL_LEVELS

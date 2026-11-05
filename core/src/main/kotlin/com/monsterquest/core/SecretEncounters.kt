@@ -41,11 +41,12 @@ object SecretEncounters {
     /** 1 monster (60%), 2 of the same (28%) or 3 of the same (12%). */
     fun groupSize(rng: Random): Int = rng.nextDouble().let { if (it < 0.6) 1 else if (it < 0.88) 2 else 3 }
 
-    /** Who jumps out: one wild species (favoring the time of day), at your usual wild level. */
     /**
      * Who jumps out at you: wild monsters around your level, favoring the time
      * of day's types. Food set out ([Foods]) draws its eaters ([speciesBoosts]),
-     * and the finer foods make their rarer eaters likelier ([rareBoost]).
+     * the finer foods make their rarer eaters likelier ([rareBoost]), and the
+     * real weather and nearby water shift the types ([typeBoosts], see
+     * [WeatherEvent.encounterBoosts]).
      */
     fun encounter(
         heroLevel: Int,
@@ -53,9 +54,10 @@ object SecretEncounters {
         rng: Random,
         speciesBoosts: Map<String, Double> = emptyMap(),
         rareBoost: Double = 1.0,
+        typeBoosts: Map<Element, Double> = emptyMap(),
     ): List<Monster> {
         val level = GameEngine.wildLevel(heroLevel, rng)
-        val species = Bestiary.randomWild(rng, level, TimeOfDay.of(hour).favored, rareBoost = rareBoost, speciesBoosts = speciesBoosts)
+        val species = Bestiary.randomWild(rng, level, TimeOfDay.of(hour).favored, rareBoost = rareBoost, boosts = typeBoosts, speciesBoosts = speciesBoosts)
         return List(groupSize(rng)) { Monster.create(species, level, rng, shiny = rollShiny(rng)).withWildMoves(rng) }
     }
 }

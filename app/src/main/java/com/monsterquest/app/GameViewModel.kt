@@ -33,12 +33,10 @@ import com.monsterquest.core.Item
 import com.monsterquest.core.LootBoxes
 import com.monsterquest.core.Monster
 import com.monsterquest.core.Shrine
-import com.monsterquest.core.SpawnConditions
 import com.monsterquest.core.Settings
 import com.monsterquest.core.StepSource
 import com.monsterquest.app.data.HealthSteps
 import com.monsterquest.core.Update
-import com.monsterquest.core.WildSpawn
 import com.monsterquest.core.World
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,30 +47,11 @@ import kotlinx.coroutines.withContext
 /** What a shrine just gave you. */
 data class LootPopup(val title: String, val rewards: List<com.monsterquest.core.Reward>, val id: Long = System.nanoTime())
 
-/** How close (meters) a new spawn must be to buzz the phone: battle range. */
-const val ALERT_RANGE_M = World.SPAWN_RANGE_M
-
-/** How much farther aggressive monsters notice you with the battery saver on. */
-const val SAVER_AMBUSH_RANGE = 2.0
-
-/** At most one ambush this often. */
-const val AMBUSH_COOLDOWN_MS = 10 * 60_000L
-
 /** How often the real weather is looked up again. */
 private const val WEATHER_REFRESH_MS = 20 * 60_000L
 
 /** After a failed lookup, wait this long before trying again. */
 private const val WEATHER_RETRY_MS = 5 * 60_000L
-
-/** No ambush in the first moments after opening the map. */
-const val AMBUSH_GRACE_MS = 30_000L
-
-/** Scattered monsters run for this long before they're gone. */
-private const val FLEE_MS = 10 * 60_000L
-/** They keep at least this far outside your capture ring, and run this fast (m/s), up to this far. */
-private const val FLEE_MARGIN_M = 25.0
-private const val FLEE_SPEED_MPS = 1.6
-private const val FLEE_MAX_M = 600.0
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SaveRepository(app)
@@ -158,7 +137,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Some map tiles didn't load: try again after this time. */
     private var placesRetryAt = Long.MAX_VALUE
 
-    /** Whether a point lies in a tile without place data (so it gets scattered spawns). */
+    /** Whether a point lies in a tile without place data (so it gets scattered places). */
     private fun scattered(lat: Double, lon: Double) = World.tileKey(lat, lon) !in venueTiles
     private var waterAt: Pair<Double, Double>? = null
     private var waterDistanceCache: Double? = null
@@ -305,6 +284,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     var secretThug by mutableStateOf<com.monsterquest.core.Thug?>(null)
         private set
 
+    /** The surprise attack is a rare visitor (easier to tame). */
+    private var secretVisitor = false
+
     private fun rollSecretEncounter(steps: Int) {
         val rng = kotlin.random.Random.Default
         // With the battery saver on, monsters and thugs notice you more often.
@@ -315,6 +297,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (!hit || !batterySaver || !state.settings.ambushes || battle != null || secretAmbush != null || tooFast(now)) return
         resumeSaverAfterBattle = true
         if (state.focus != null || state.monsters.isEmpty() || now - lastBattleEndMs < com.monsterquest.core.SecretEncounters.COOLDOWN_MS) return
+        // A rare visitor on its way (after a two-hour phone-free session or a weather event) finds you first.
+        GameEngine.takeVisitor(state, now, rng)?.let { (s, m) ->
+            set(s)
+            secretThug = null
+            secretVisitor = true
+            secretAmbush = listOf(m)
+            return
+        }
+        secretVisitor = false
         val fighting = GameEngine.fightingCount(state)
         if (fighting > 0 && com.monsterquest.core.SecretEncounters.isThug(state.hero.level, rng)) {
             val (thug, crew) = com.monsterquest.core.Villains.ambusher(state.hero.level, fighting, rng)
@@ -324,9 +315,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         val hour = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour
         secretThug = null
-        // Food set out draws the monsters that eat it.
-        val (boosts, rare) = com.monsterquest.core.Foods.encounterBoosts(state, now)
-        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, rng, boosts, rare)
+        // Food set out and the mystery of the week draw their monsters; the weather and nearby water shift the types.
+        val (food, rare) = com.monsterquest.core.Foods.encounterBoosts(state, now)
+        val mystery = com.monsterquest.core.Mystery.boosts(state)
+        val boosts = (food.keys + mystery.keys).associateWith { (food[it] ?: 1.0) * (mystery[it] ?: 1.0) }
+        val types = com.monsterquest.core.WeatherEvent.encounterBoosts(weather?.kind?.takeIf { state.settings.liveWeather }, waterDistance())
+        secretAmbush = com.monsterquest.core.SecretEncounters.encounter(state.hero.level, hour, rng, boosts, rare, types)
     }
 
     /** The "Ambushed!" pop-up has shown: the monsters (or a thug and their crew) strike first. */
@@ -337,7 +331,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         secretThug = null
         if (battle != null) return
         batterySaver = false
-        startBattle(group.first(), if (thug != null) EncounterType.THUG else EncounterType.WILD, null, group.drop(1), ambush = true, thug = thug)
+        val visitor = secretVisitor
+        secretVisitor = false
+        startBattle(
+            group.first(), if (thug != null) EncounterType.THUG else EncounterType.WILD, null, group.drop(1), ambush = true, thug = thug,
+            captureBoost = if (visitor) GameEngine.VISITOR_CATCH_BOOST else 1.0,
+        )
     }
 
     /** Test hook: make a surprise attack happen now. */
@@ -933,36 +932,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (reading != null) {
                 weather = reading
                 weatherAt = lat to lon
+                // Storms, heatwaves, fog and snow send a rare visitor of their type, once a day each.
+                com.monsterquest.core.WeatherEvent.of(reading.kind)?.let { e ->
+                    com.monsterquest.core.WeatherEvent.trigger(state, e, now, java.time.LocalDate.now().toEpochDay(), kotlin.random.Random.Default)?.let { apply(it) }
+                }
             }
             loadingWeather = false
         }
     }
     private var lastWeatherTry = 0L
-
-    /** The weather the monsters out right now were drawn with: it changes with the next wave, so the map doesn't reshuffle. */
-    private var waveWeather: Pair<Long, com.monsterquest.core.LiveWeather?> = -1L to null
-
-    private fun weatherForWave(nowMs: Long): com.monsterquest.core.LiveWeather? {
-        if (!state.settings.liveWeather) return null
-        val window = World.spawnWindow(nowMs)
-        if (waveWeather.first != window) waveWeather = window to weather?.kind
-        return waveWeather.second
-    }
-
-    /** Where you were when this spawn window began: new monsters appear in a ring around it. */
-    private var spawnAnchor: Pair<Double, Double>? = null
-    private var anchorWindow = -1L
-
-    /**
-     * Every wild monster around you right now, at its current (approaching)
-     * position, plus monsters that followed you from walking.
-     */
-    /**
-     * 2.29: no wild monsters roam the map any more. Monsters live in dens and
-     * dungeons; wild fights only happen while walking in battery-saver mode.
-     */
-    @Suppress("UNUSED_PARAMETER")
-    fun spawnsNear(nowMs: Long): List<WildSpawn> = emptyList()
 
     /**
      * The nearest landmark to a spot: a real named place (cafe, park, museum...)
@@ -977,77 +955,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** A distance in the player's chosen units. */
     private fun dist(meters: Double) = com.monsterquest.app.ui.formatDistance(meters, state.settings.imperialUnits)
 
-    /** Monsters close enough to show on the map. */
-    fun visibleSpawns(nowMs: Long): List<WildSpawn> =
-        spawnsNear(nowMs).filter { (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= World.REVEAL_M }
-
-    /** Monsters sensed farther out (shown only in the tracker), nearest first. */
-    fun trackedSpawns(nowMs: Long): List<WildSpawn> =
-        spawnsNear(nowMs)
-            .map { it to (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) }
-            .filter { (_, d) -> d > World.REVEAL_M && d <= World.TRACK_M }
-            .sortedBy { it.second }
-            .map { it.first }
-
-    fun spawnConditions(nowMs: Long): SpawnConditions = SpawnConditions(
-        hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour,
-        activity = GameEngine.activityLevel(state, nowMs),
-        lure = state.lureActive(nowMs),
-        weather = weatherForWave(nowMs),
-        waterDistanceM = waterForWave(nowMs),
-        // The mystery of the week and any food set out draw their monsters.
-        speciesBoosts = (com.monsterquest.core.Mystery.boosts(state).keys + com.monsterquest.core.Foods.boosts(state, nowMs).keys).associateWith { id ->
-            (com.monsterquest.core.Mystery.boosts(state)[id] ?: 1.0) * (com.monsterquest.core.Foods.boosts(state, nowMs)[id] ?: 1.0)
-        },
-        rareBonus = com.monsterquest.core.Foods.rareBonus(state, nowMs),
-    )
-
-    /** Like the weather, nearby water changes the monsters with the next wave, so the map doesn't reshuffle. */
-    private var waveWater: Pair<Long, Double?> = -1L to null
-
-    private fun waterForWave(nowMs: Long): Double? {
-        val window = World.spawnWindow(nowMs)
-        if (waveWater.first != window || waveWater.second == null) waveWater = window to waterDistance()
-        return waveWater.second
-    }
-
-    fun useLure() = apply(GameEngine.useLure(state, System.currentTimeMillis()))
     fun useFood(food: com.monsterquest.core.Item) = apply(com.monsterquest.core.Foods.use(state, food, System.currentTimeMillis()))
 
     // ---- battery saver -------------------------------------------------------
 
-    /** The screen is blacked out while the game keeps tracking walking and spawns. */
+    /** The screen is blacked out while the game keeps tracking walking (and monsters can find you). */
     var batterySaver by mutableStateOf(false)
 
     /** The battery saver was turned on by turning the phone upside down (so turning it upright ends it). */
     var saverByFlip by mutableStateOf(false)
-
-    /** The latest monster to appear nearby, shown on the battery saver screen. */
-    var lastSpawnAlert by mutableStateOf<String?>(null)
-
-    /** Spawns already announced, so each one buzzes only once. */
-    private val announcedSpawns = mutableSetOf<String>()
-    private var spawnsPrimed = false
-
-    /**
-     * Called with the current nearby spawns. New ones within [ALERT_RANGE_M]
-     * are announced (the first call only records what's already there).
-     * Returns the newly appeared spawns.
-     */
-    fun newSpawnsNearby(spawns: List<WildSpawn>): List<WildSpawn> {
-        val close = spawns.filter { (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= ALERT_RANGE_M }
-        val fresh = close.filter { it.id !in announcedSpawns }
-        announcedSpawns += close.map { it.id }
-        if (!spawnsPrimed) {
-            spawnsPrimed = true
-            return emptyList()
-        }
-        (fresh.firstOrNull { it.shiny } ?: fresh.firstOrNull())?.let {
-            lastSpawnAlert = if (it.shiny) "A shiny ${it.species.name} is in range!" else "A wild ${it.species.name} is in range!"
-            if (it.shiny) message = lastSpawnAlert
-        }
-        return fresh
-    }
 
     fun distanceTo(lat: Double, lon: Double): Double? =
         location?.let { World.distanceMeters(it.first, it.second, lat, lon) }
@@ -1091,104 +1007,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         startBattle(boss, type, shrine.id)
     }
 
-    fun battleSpawn(spawn: WildSpawn) {
-        val d = distanceTo(spawn.lat, spawn.lon)
-        if (d == null || d > World.SPAWN_RANGE_M) {
-            message = "Get closer to the ${spawn.species.name} (within ${dist(World.SPAWN_RANGE_M)})."
-            return
-        }
-        if (state.monsters.isEmpty()) {
-            message = "You need a monster first."
-            return
-        }
-        engage(spawn, ambush = false)
-    }
-
-    /** The monsters near this one that will fight alongside it. */
-    fun packFor(spawn: WildSpawn, nowMs: Long = System.currentTimeMillis()): List<WildSpawn> =
-        World.packFor(spawn, visibleSpawns(nowMs))
-
-    /** The spawns in the current wild fight, in the order they fight ([spawn] first). */
-    private var engaged: List<WildSpawn> = emptyList()
-
-    /** A monster that scattered from a Snap Bind: it stays on the map but runs from you. */
-    data class Fleeing(val spawn: WildSpawn, val sinceMs: Long)
-
-    var fleeing by mutableStateOf<List<Fleeing>>(emptyList())
-        private set
-
-    /**
-     * Where each fleeing monster is now: always outside your capture ring,
-     * heading away from you, and gone after [FLEE_MS].
-     */
-    fun fleeingPositions(nowMs: Long): List<Pair<WildSpawn, Pair<Double, Double>>> {
-        val (plat, plon) = location ?: return emptyList()
-        return fleeing.filter { nowMs - it.sinceMs < FLEE_MS }.map { f ->
-            val mPerLat = 111_320.0
-            val mPerLon = 111_320.0 * kotlin.math.cos(Math.toRadians(plat))
-            var dx = (f.spawn.lon - plon) * mPerLon
-            var dy = (f.spawn.lat - plat) * mPerLat
-            val len = kotlin.math.hypot(dx, dy)
-            if (len < 1.0) { dx = 1.0; dy = 0.0 } else { dx /= len; dy /= len }
-            val runFor = (nowMs - f.sinceMs) / 1000.0
-            val d = (maxOf(len, World.SPAWN_RANGE_M + FLEE_MARGIN_M) + runFor * FLEE_SPEED_MPS).coerceAtMost(FLEE_MAX_M)
-            f.spawn to ((plat + dy * d / mPerLat) to (plon + dx * d / mPerLon))
-        }
-    }
-
-    /** Starts a fight with [spawn] and any pack mates; all of them are used up. */
-    private fun engage(spawn: WildSpawn, ambush: Boolean) {
-        val now = System.currentTimeMillis()
-        val pack = packFor(spawn, now)
-        engaged = listOf(spawn) + pack
-        // Mark them used now so fleeing can't be abused to re-roll the fight.
-        var s = state
-        for (sp in listOf(spawn) + pack) {
-            s = if (sp.follower) GameEngine.removeFollower(s, sp.id) else GameEngine.markSpawnUsed(s, sp.id, now)
-        }
-        if (ambush) s = s.copy(lastAmbushMs = now)
-        set(s)
-        startBattle(
-            World.spawnMonster(spawn), EncounterType.WILD, null, pack.map { World.spawnMonster(it) }, ambush,
-            captureBoost = if (spawn.visitor) GameEngine.VISITOR_CATCH_BOOST else 1.0,
-        )
-    }
-
-    /**
-     * An aggressive monster that has reached you attacks first (at most every
-     * [AMBUSH_COOLDOWN_MS], and only while the map is open and you're not busy).
-     * Returns true if an ambush started.
-     */
-    fun checkAmbush(spawns: List<WildSpawn>, nowMs: Long): Boolean {
-        if (!state.settings.ambushes || battle != null || state.focus != null || secretAmbush != null) return false
-        // Give the player a moment to look around after opening the map.
-        if (nowMs - mapOpenedAtMs < AMBUSH_GRACE_MS) return false
-        if (nowMs - state.lastAmbushMs < AMBUSH_COOLDOWN_MS || state.monsters.isEmpty()) return false
-        val hour = java.time.Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour
-        // With the battery saver on, aggressive monsters notice you from twice as far.
-        val range = if (batterySaver) World.AMBUSH_M * SAVER_AMBUSH_RANGE else World.AMBUSH_M
-        val attacker = spawns.firstOrNull {
-            World.isAggressive(it, hour) && (distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= range
-        } ?: return false
-        if (batterySaver) {
-            batterySaver = false
-            if (state.settings.vibrateOnSpawn) Haptics.secretAmbush(getApplication())
-        }
-        engage(attacker, ambush = true)
-        return true
-    }
-
     /** Test hook: start a fight against [enemy] and its [pack]. */
     @VisibleForTesting
     fun debugStartBattle(enemy: Monster, pack: List<Monster> = emptyList(), ambush: Boolean = false) =
         startBattle(enemy, EncounterType.WILD, null, pack, ambush)
-
-    /** When the map was last opened (ambushes wait [AMBUSH_GRACE_MS] after that). */
-    private var mapOpenedAtMs = 0L
-
-    fun onMapOpened() {
-        mapOpenedAtMs = System.currentTimeMillis()
-    }
 
     /** Sends a swap monster in for one that just fainted (doesn't use a turn). */
     fun replaceFainted(inUid: String, outKey: String) {
@@ -1506,11 +1328,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 set(d.state)
                 if (d.message.isNotEmpty()) resultText += " " + d.message
                 if (d.rewards.isNotEmpty()) { won = won + d.rewards; wonTitle = d.rewardTitle ?: wonTitle }
-            }
-            // A Snap Bind landed: the rest of the pack is back on the map, running from you.
-            if (b.scattered) {
-                val runners = b.enemies.withIndex().filter { it.value.gone == "Scattered" }.mapNotNull { engaged.getOrNull(it.index) }
-                fleeing = fleeing + runners.map { Fleeing(it, System.currentTimeMillis()) }
             }
             nomadRun?.let { nomad ->
                 if (b.outcome == BattleOutcome.WON) {

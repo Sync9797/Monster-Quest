@@ -22,11 +22,11 @@ class TilesTest {
 
     @Test
     fun waterNearbyBringsOutWaterTypes() {
-        assertEquals(World.NEAR_WATER_FACTOR, SpawnConditions(12, waterDistanceM = 100.0).boosts[Element.WATER])
-        assertEquals(World.FAR_FROM_WATER_FACTOR, SpawnConditions(12, waterDistanceM = 2000.0).boosts[Element.WATER])
-        assertTrue(SpawnConditions(12, waterDistanceM = 500.0).boosts.isEmpty())
+        assertEquals(World.NEAR_WATER_FACTOR, WeatherEvent.encounterBoosts(null, 100.0)[Element.WATER])
+        assertEquals(World.FAR_FROM_WATER_FACTOR, WeatherEvent.encounterBoosts(null, 2000.0)[Element.WATER])
+        assertTrue(WeatherEvent.encounterBoosts(null, 500.0).isEmpty())
         // Rain and a river stack.
-        assertEquals(2.0 * World.NEAR_WATER_FACTOR, SpawnConditions(12, weather = LiveWeather.RAIN, waterDistanceM = 50.0).boosts[Element.WATER]!!, 1e-9)
+        assertEquals(2.0 * World.NEAR_WATER_FACTOR, WeatherEvent.encounterBoosts(LiveWeather.RAIN, 50.0)[Element.WATER]!!, 1e-9)
     }
 
     @Test
@@ -43,9 +43,5 @@ class TilesTest {
         assertEquals(ShrineBond.TRUSTED, rec.bond)
         // Trusted: recharges in 20 minutes instead of 30.
         assertEquals(20 * 60_000L, GameEngine.shrineCooldownLeft(s, sh, now - 31 * 60_000L))
-        // Bonded shrines draw more monsters.
-        val plain = World.shrineSpawns(listOf(sh), 40.0, -73.0, 5_000_000L, 20).size
-        val home = World.shrineSpawns(listOf(sh), 40.0, -73.0, 5_000_000L, 20, bonded = setOf(sh.id)).size
-        assertTrue(home >= plain)
     }
 }

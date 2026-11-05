@@ -114,17 +114,6 @@ fun drawShrineOn(c: Canvas, w: Float, h: Float, tier: ShrineTier, state: BeaconS
 
 fun drawVillainOn(c: Canvas, w: Float, h: Float, villain: Boolean) = drawVillainBanner(c, w, h, villain)
 
-/** A monster standing on the map; [lured] adds a pink lure glow at its feet, [alpha] a red one. */
-fun drawMonsterStanding(c: Canvas, w: Float, h: Float, sp: com.monsterquest.core.Species, lured: Boolean, shiny: Boolean = false, alpha: Boolean = false) {
-    if (alpha) {
-        ArtPainter.glow(c, w / 2, h * 0.6f, w * 0.55f, Argb.hex("e0574a"), 0.75f)
-    }
-    if (lured) {
-        ArtPainter.glow(c, w / 2, h * 0.9f, w * 0.45f, Argb.hex("f2a198"), 0.7f)
-    }
-    drawMonster(c, w, h, sp, shiny = shiny)
-}
-
 /** The player on the map: the hero in their gear, standing in a gold ring. */
 fun drawPlayerOn(c: Canvas, w: Float, h: Float, cls: com.monsterquest.core.HeroClass, outfit: HeroOutfit, stars: Int = 0) {
     drawPlayerFigure(c, w, h, cls, outfit)
@@ -222,19 +211,6 @@ fun drawNomadOn(c: Canvas, w: Float, h: Float) {
         moveTo(w * 0.82f, h * 0.08f); lineTo(w * 0.98f, h * 0.15f); lineTo(w * 0.82f, h * 0.22f); close()
     }
     ArtPainter.fill(c, flag, Argb.hex("3b82d6"))
-}
-
-/** A gold ring at a wanted monster's feet. */
-fun drawWantedRing(c: Canvas, w: Float, h: Float) {
-    ArtPainter.glow(c, w / 2, h / 2, w * 0.5f, Argb.hex("ffd34d"), 0.6f)
-    c.drawOval(
-        w * 0.08f, h * 0.3f, w * 0.92f, h * 0.7f,
-        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            style = android.graphics.Paint.Style.STROKE
-            strokeWidth = w * 0.05f
-            color = Argb.hex("ffd34d")
-        },
-    )
 }
 
 /** A dungeon entrance: a stone archway onto darkness, a torch on each side, a ring of [stars] glowing above. */

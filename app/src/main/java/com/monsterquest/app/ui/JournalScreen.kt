@@ -78,7 +78,7 @@ fun JournalTab(vm: GameViewModel) {
                 val shinies = all.count { it.id in s.shinyCaught }
                 if (shinies > 0) IconText(GameIcon.SPARK, "Shinies caught: $shinies", tint = Gold, textColor = Gold, fontSize = 12.sp)
                 Text(
-                    "Battle a monster to record it; tame it to mark it caught. About 1 in 200 wild monsters is shiny (1 in 100 with a lure). Legendaries guard Gold shrines.",
+                    "Battle a monster to record it; tame it to mark it caught. About 1 in 200 wild monsters is shiny. Legendaries guard Gold shrines.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp),

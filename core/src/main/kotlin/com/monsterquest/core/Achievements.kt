@@ -58,7 +58,7 @@ object Achievements {
         a("streak_7", "On a Roll", "Complete a quest 7 days in a row.", 7, 500) { longestQuestStreak(it) },
         a("streak_30", "Unstoppable", "Complete a quest 30 days in a row.", 30, 2500, mapOf(Item.TREAT to 5)) { longestQuestStreak(it) },
         a("steps_100k", "Wanderer", "Walk 100,000 steps.", 100_000, 500) { it.stats.totalSteps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() },
-        a("steps_1m", "Explorer", "Walk 1,000,000 steps.", 1_000_000, 3000, mapOf(Item.LURE to 3)) { it.stats.totalSteps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() },
+        a("steps_1m", "Explorer", "Walk 1,000,000 steps.", 1_000_000, 3000, mapOf(Item.GOLDEN_BERRY to 3)) { it.stats.totalSteps.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() },
         a("shrines_100", "Pilgrim", "Visit 100 shrines.", 100, 800) { it.stats.shrinesVisited },
         a("focus_10", "Unplugged", "Finish 10 phone-free sessions.", 10, 500) { it.stats.focusWins },
         a("focus_120", "Deep Focus", "Finish a two-hour phone-free session.", 120, 1000) { it.stats.longestFocus },

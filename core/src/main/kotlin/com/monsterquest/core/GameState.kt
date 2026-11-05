@@ -253,19 +253,20 @@ data class FocusSession(
 
 val FOCUS_DURATIONS = listOf(15, 30, 45, 60, 90, 120)
 
-/** A wild monster drawn to you by your walking. */
+/**
+ * A rare monster on its way to you (after a two-hour phone-free session or a
+ * weather event): it's the next one to find you on a battery-saver walk, if
+ * that happens within [GameEngine.VISITOR_TTL_MS], and it's easier to tame.
+ */
 @Serializable
-data class Follower(
+data class Visitor(
     val id: String,
     val speciesId: String,
     val level: Int,
     val createdMs: Long,
     val shiny: Boolean = false,
-    /** A rare visitor after a two-hour phone-free session: it only waits [GameEngine.VISITOR_TTL_MS], and is easier to tame. */
-    val visitor: Boolean = false,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
-    val ttlMs: Long get() = if (visitor) GameEngine.VISITOR_TTL_MS else GameEngine.FOLLOWER_TTL_MS
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +282,7 @@ const val GOLD_LOSS_PERCENT = 10
 
 @Serializable
 data class GameState(
-    val version: Int = 11,
+    val version: Int = 12,
     val hero: Hero = Hero(),
     val gold: Int = 50,
     val tasks: List<QuestTask> = emptyList(),
@@ -307,14 +308,11 @@ data class GameState(
     val settings: Settings = Settings(),
     /** Players from before the new starters get to pick one for free. */
     val starterGiftPending: Boolean = false,
-    /** Monsters that followed you because you walked; they wait beside you until battled. */
-    val followers: List<Follower> = emptyList(),
-    /** Steps toward the next follower. */
-    val followerStepBank: Int = 0,
+    /** Rare visitors on their way to you (saved under their old name, followers). */
+    @kotlinx.serialization.SerialName("followers")
+    val visitors: List<Visitor> = emptyList(),
     /** When rest healing was last applied (see GameEngine.regenerate). */
     val lastRegenMs: Long = 0,
-    /** Last time a monster ambushed you (ambushes have a cooldown). */
-    val lastAmbushMs: Long = 0,
     /** Last daily step total read from Health Connect, and the day it was for. */
     val healthDay: Long? = null,
     val healthSteps: Long? = null,
@@ -349,16 +347,9 @@ data class GameState(
     val questLimits: QuestLimits = QuestLimits(),
     /** Daily reminders (gentle alarms on chosen days). */
     val reminders: List<Reminder> = emptyList(),
-    /** How much you've been moving lately (0..1, fades over time); more movement, more spawns. */
-    val activity: Double = 0.0,
-    val activityAtMs: Long = 0,
-    /** A lure is active until this time. */
-    val lureUntilMs: Long = 0,
     /** Food set out to draw monsters that eat it (see [Foods]), and until when. */
     val food: Item? = null,
     val foodUntilMs: Long = 0,
-    /** Epoch day the free daily lure was last handed out. */
-    val lastFreeLureDay: Long? = null,
     /** Weapon parts by type; [PARTS_TO_FORGE] of one type forge that weapon. */
     val parts: Map<WeaponType, Int> = emptyMap(),
     /** Armor scrap by type; [PARTS_TO_FORGE] of one type forge that armor. From thugs and villains. */
@@ -468,8 +459,6 @@ data class GameState(
     /** Earned by completing tasks; spent to start a wild encounter from anywhere. */
     val huntTokens: Int = 1,
     val shrines: Map<String, ShrineRecord> = emptyMap(),
-    /** Wild map spawns already battled (cleared periodically). */
-    val usedSpawns: Set<String> = emptySet(),
     val stats: Lifetime = Lifetime(),
     val starterChosen: Boolean = false,
 ) {
@@ -500,7 +489,6 @@ data class GameState(
         return copy(caught = c, seen = seen + c, shinyCaught = shinyCaught + shinies)
     }
 
-    fun lureActive(nowMs: Long): Boolean = lureUntilMs > nowMs
 
     fun toJson(): String = json.encodeToString(serializer(), this)
 
@@ -613,6 +601,15 @@ data class GameState(
                 achievementsClaimed = s.achievementsClaimed.map { achievements[it] ?: it }.toSet(),
             )
         }
+        if (s.version < 12) {
+            // 3.20: lures are retired (wild monsters no longer roam the map); any held turn into gold.
+            val lures = s.inventory[Item.LURE] ?: 0
+            s = s.copy(
+                version = 12,
+                inventory = s.inventory - Item.LURE,
+                gold = s.gold + lures * RETIRED_LURE_GOLD,
+            )
+        }
         return s.withJournal()
     }
 }
@@ -645,6 +642,9 @@ data class Lifetime(
         tamedByType = m.species.types.fold(tamedByType) { acc, t -> acc + (t to (acc[t] ?: 0) + 1) },
     )
 }
+
+/** Gold for each lure held when lures were retired (save version 12). */
+const val RETIRED_LURE_GOLD = 60
 
 /** Heroes above this level were set back once (3.7.1), to [LEVEL_RESET_TO]. */
 const val LEVEL_RESET_ABOVE = 50

@@ -49,7 +49,7 @@ private val DimBright = Color(0xFF5E6B6D)
 
 /**
  * Battery saver: a pure black screen at minimum brightness (OLED pixels are
- * off) that keeps the screen awake so walking and spawns keep being tracked.
+ * off) that keeps the screen awake so walking keeps being tracked.
  * Press and hold anywhere to unlock.
  */
 @Composable
@@ -85,9 +85,8 @@ fun BatterySaverOverlay(vm: GameViewModel) {
         label = "pulse",
     )
     val s = vm.state
-    val nearby = vm.spawnsNear(System.currentTimeMillis()).count {
-        (vm.distanceTo(it.lat, it.lon) ?: Double.MAX_VALUE) <= com.monsterquest.app.ALERT_RANGE_M
-    }
+    // A rare visitor on its way finds you first.
+    val visitor = com.monsterquest.core.GameEngine.activeVisitors(s, System.currentTimeMillis()).firstOrNull()
     Box(
         Modifier
             .fillMaxSize()
@@ -103,13 +102,12 @@ fun BatterySaverOverlay(vm: GameViewModel) {
             Text("Battery saver", color = DimBright, fontSize = 18.sp)
             Text("%,d steps today".format(s.stepsToday), color = Dim, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
             Text(
-                if (nearby == 1) "1 monster nearby" else "$nearby monsters nearby",
-                color = Dim,
+                visitor?.let { "A rare ${it.species.name} is out looking for you" } ?: "Monsters may find you as you walk",
+                color = if (visitor != null) DimBright else Dim,
                 fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp),
             )
-            vm.lastSpawnAlert?.let {
-                Text(it, color = DimBright, fontSize = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 16.dp, start = 24.dp, end = 24.dp))
-            }
         }
         Text(
             if (vm.saverByFlip) "Turn your phone upright to return, or press and hold" else "Press and hold anywhere to unlock",

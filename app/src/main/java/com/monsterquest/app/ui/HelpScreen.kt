@@ -89,7 +89,7 @@ private val topics = listOf(
             section(
                 "Phone-free sessions",
                 "Pick 15 to 120 minutes and put your phone down. Finish to win a loot box (rarer for longer sessions). Leaving for another app fails it; calls never count.",
-                "Long sessions pay extra: party training, Scholar's Tomes (spell pages you assign), Energy, Mood Crystals (60+ minutes) and, at two hours, 5 torches.",
+                "Long sessions pay extra: party training, Scholar's Tomes (spell pages you assign), Energy, Mood Crystals (60+ minutes) and, at two hours, 5 torches and a rare visitor: an Epic monster that finds you on your next battery-saver walk within 2 hours, and is easier to tame.",
                 "Loot boxes open by walking: 1, 3, 5 or 10 miles depending on the box.",
             ),
         ),
@@ -130,7 +130,7 @@ private val topics = listOf(
             section(
                 "Getting around the map",
                 "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile), and it tilts toward the horizon as you zoom in. Your position updates every second and your hero walks smoothly between fixes. Drag around yourself or twist two fingers to turn the map. Tap the compass to have the map turn with your phone, so what's in front of you is up the screen (a gold ring shows it's on); tap it again, or turn the map yourself, for north up. It never moves more than a mile away. Coffee shops, doctors, restaurants, groceries, pharmacies, gyms, parks and bars come from the map itself, so they show up even where place lookups are slow. Tap Walk here on anything for directions.",
-                "The weather badge shows the real weather: rain and heat also carry into battles (Rain or Drought).",
+                "The weather badge shows the real weather. It changes which types find you on battery-saver walks (tap the badge to see how), and rain and heat carry into battles (Rain or Drought). Storms, heatwaves, fog and snow are events: their type surges, and once a day each sends a rare visitor of that type to find you on your next battery-saver walk.",
                 "The weather also picks favorites: in battle their monsters (yours and theirs) get +10% Attack and Speed, and the types it holds back get −10% Attack. Clear skies favor Fire and Flight, heat Fire and Earth, cloud and fog Gas and Corrupt, rain and storms Water and Electric, snow Water and Earth, and wind Flight. Rain holds back Fire, wind Gas, and so on: the battle log says who's helped.",
             ),
             section(

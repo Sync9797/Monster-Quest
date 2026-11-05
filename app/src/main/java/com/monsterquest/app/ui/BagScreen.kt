@@ -21,10 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -594,7 +590,7 @@ private val BAG_GROUPS = listOf(
     BagGroup("Binding Crystals", GameIcon.CRYSTAL, androidx.compose.ui.graphics.Color(0xFFC3A6F0), setOf(ItemKind.CAPTURE)),
     BagGroup("Baits & berries", GameIcon.BERRY, androidx.compose.ui.graphics.Color(0xFFE5739A), setOf(ItemKind.BAIT)),
     BagGroup("Food", GameIcon.PAW, androidx.compose.ui.graphics.Color(0xFFE07A6E), setOf(ItemKind.FOOD)),
-    BagGroup("Lures & treats", GameIcon.LURE, androidx.compose.ui.graphics.Color(0xFFF2A198), setOf(ItemKind.LURE, ItemKind.TREAT, ItemKind.PERSONALITY, ItemKind.INCUBATOR)),
+    BagGroup("Treats", GameIcon.LURE, androidx.compose.ui.graphics.Color(0xFFF2A198), setOf(ItemKind.LURE, ItemKind.TREAT, ItemKind.PERSONALITY, ItemKind.INCUBATOR)),
 )
 
 /**

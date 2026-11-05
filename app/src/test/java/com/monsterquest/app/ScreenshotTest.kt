@@ -105,7 +105,6 @@ abstract class ScreenshotBase(private val device: String) {
             stepsDay = java.time.LocalDate.now().toEpochDay(),
             stepHistory = (0L..12L).associate { java.time.LocalDate.now().toEpochDay() - it to (if (it % 3 == 0L) 7_000 else 2_500) },
             questDays = listOf(0L, 1L, 2L, 4L, 5L, 8L, 9L, 15L).associate { java.time.LocalDate.now().toEpochDay() - it to 2 },
-            lureUntilMs = now + 18 * 60_000L,
             gold = 1234,
             huntTokens = 6,
             pendingUpgrades = 1,
@@ -121,7 +120,7 @@ abstract class ScreenshotBase(private val device: String) {
             equippedGear = Armory.roll(12, Random(5), WeaponType.DAGGER, luck = 80),
             spellPages = mapOf("gust_bolt" to 3, "venom_bolt" to 1, "ember_bolt" to 4),
             parts = mapOf(WeaponType.DAGGER to 3, WeaponType.BROADSWORD to 5),
-            inventory = mapOf(Item.LURE to 2, Item.POTION to 4, Item.GREATER_POTION to 2, Item.MANA_DRAUGHT to 3, Item.BINDING_CRYSTAL to 6, Item.RESONANT_CRYSTAL to 2, Item.TREAT to 1),
+            inventory = mapOf(Item.POTION to 4, Item.GREATER_POTION to 2, Item.MANA_DRAUGHT to 3, Item.BINDING_CRYSTAL to 6, Item.RESONANT_CRYSTAL to 2, Item.TREAT to 1),
             tasks = listOf(
                 QuestTask("a", "Take out the recycling and the trash before the truck comes", Difficulty.EASY, dueMs = now + 20 * 60_000),
                 QuestTask("b", "Finish quarterly report", Difficulty.HARD, dueMs = now + 26 * 3_600_000L, priority = com.monsterquest.core.Priority.HIGH),
@@ -696,9 +695,11 @@ abstract class ScreenshotBase(private val device: String) {
 
     @Test fun batterySaver() {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
-        val v = vm()
+        // A rare visitor on its way shows on the dark screen.
+        val base = sampleState()
+        val visitor = com.monsterquest.core.GameEngine.rareVisitor(base, System.currentTimeMillis(), Random(3))!!
+        val v = vm(com.monsterquest.core.GameEngine.addVisitor(base, visitor, System.currentTimeMillis()))
         v.debugSetLocation(40.7580, -73.9855, World.proceduralShrines(40.7580, -73.9855))
-        v.lastSpawnAlert = "A wild Zipwing appeared nearby!"
         v.batterySaver = true
         v.saverByFlip = true
         shot("17_battery_saver") { AppRoot(v, Tab.MAP) }

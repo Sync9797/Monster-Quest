@@ -89,9 +89,6 @@ object Venues {
         else -> 0.0
     }
 
-    /** Whether a den has taken over [v] today. */
-    fun denToday(v: Venue, day: Long): Boolean = rng(v.id, day, 1).nextDouble() < takeover(v.role)
-
     /** The types a den at [v] favors: parks bring out Earth, Flight and Gas; waterside spots Water. */
     private fun favored(v: Venue): Set<Element> = when (v.role) {
         VenueRole.NATURE -> setOf(Element.EARTH, Element.FLIGHT, Element.GAS)

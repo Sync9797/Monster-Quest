@@ -16,13 +16,6 @@ object Haptics {
             context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         }
 
-    /** A long, hard buzz: you've been ambushed. */
-    fun ambush(context: Context) {
-        val v = vibrator(context) ?: return
-        if (!v.hasVibrator()) return
-        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 120, 300, 120, 300), -1)) }
-    }
-
     /** One long buzz: a monster leapt out at you while walking. */
     fun secretAmbush(context: Context) {
         val v = vibrator(context) ?: return
@@ -50,11 +43,4 @@ object Haptics {
 
     /** One short tap: a new move learned. */
     fun learned(context: Context) = play(context, 0, 70)
-
-    /** Two quick pulses: a wild monster appeared nearby. */
-    fun spawn(context: Context) {
-        val v = vibrator(context) ?: return
-        if (!v.hasVibrator()) return
-        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 90, 90, 90), -1)) }
-    }
 }
