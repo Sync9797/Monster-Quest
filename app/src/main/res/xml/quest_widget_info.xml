@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Monster Quest home-screen widget: reminders, calendar quests and to-dos. Freely resizable. -->
+<!-- Side Quest home-screen widget: reminders, calendar quests and to-dos. Freely resizable. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"

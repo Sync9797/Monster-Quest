@@ -104,10 +104,10 @@ object PlacesRepository {
             val parts = try {
                 listOf(fetch(row, userAgent, nowMs))
             } catch (e: Exception) {
-                Log.w("MonsterQuest", "Overpass lookup failed for ${row.size} tiles; trying them one at a time", e)
+                Log.w("SideQuest", "Overpass lookup failed for ${row.size} tiles; trying them one at a time", e)
                 row.mapNotNull { k ->
                     runCatching { fetch(listOf(k), userAgent, nowMs) }
-                        .onFailure { Log.w("MonsterQuest", "Overpass lookup failed for tile $k; using what's cached", it) }
+                        .onFailure { Log.w("SideQuest", "Overpass lookup failed for tile $k; using what's cached", it) }
                         .getOrNull()
                 }
             }

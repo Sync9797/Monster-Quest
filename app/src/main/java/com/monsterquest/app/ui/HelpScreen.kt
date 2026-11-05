@@ -59,7 +59,7 @@ private val topics = listOf(
         GameIcon.STAR, "Getting started",
         listOf(
             section(
-                "What is Monster Quest?",
+                "What is Side Quest?",
                 "An adventure RPG powered by your real life. Your tasks and calendar are your quests; walking, sleeping well and time off your phone make you stronger.",
                 "Get things done for XP and gold, walk for torches, and use torches to explore dungeons where monsters live. Tame them, raise them and take on champions.",
             ),

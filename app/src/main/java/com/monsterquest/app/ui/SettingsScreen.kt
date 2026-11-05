@@ -80,7 +80,7 @@ private fun SaveBackupCard(vm: GameViewModel) {
         if (uri != null) {
             val text = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
             val parsed = text?.let { vm.parseSave(it) }
-            if (parsed == null) note = "That file isn't a Monster Quest save." else pending = parsed
+            if (parsed == null) note = "That file isn't a Side Quest save." else pending = parsed
         }
     }
     GameCard {
@@ -359,7 +359,7 @@ fun SettingsScreen(vm: GameViewModel, initialHelp: Boolean = false, onClose: () 
             // ---- About ----
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             Text(
-                "Monster Quest ${version ?: ""}",
+                "Side Quest ${version ?: ""}",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 16.dp),

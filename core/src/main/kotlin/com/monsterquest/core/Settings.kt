@@ -39,7 +39,7 @@ enum class BattleSpeed(val label: String, val factor: Float) { NORMAL("Normal", 
 /** The game's own gold-and-teal colors, or the phone's Material You colors. */
 @Serializable
 enum class ColorStyle(val label: String, val description: String) {
-    GAME("Monster Quest", "The game's own gold and teal colors."),
+    GAME("Side Quest", "The game's own gold and teal colors."),
     SYSTEM("Match system colors", "Material You: use the colors from your wallpaper and system theme (Android 12+)."),
 }
 

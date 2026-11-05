@@ -372,7 +372,7 @@ private fun StarterGiftDialog(vm: GameViewModel) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Thanks for playing from the start. Three rare starters joined Monster Quest: pick one to join you " +
+                    "Thanks for playing from the start. Three rare starters joined Side Quest: pick one to join you " +
                         "at level $level. Each evolves twice into a pseudo-legendary.",
                     fontSize = 13.sp,
                 )

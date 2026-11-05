@@ -40,7 +40,7 @@ fun StarterScreen(onChoose: (String) -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HeroArt(HeroClass.NONE, Modifier.size(200.dp))
-                Text("MONSTER QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, style = MaterialTheme.typography.titleLarge)
+                Text("SIDE QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, style = MaterialTheme.typography.titleLarge)
                 Text("THE EVERYDAY ADVENTURE", fontSize = 10.sp, letterSpacing = 3.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(8.dp))
                 Text(

@@ -23,7 +23,7 @@ import java.util.Date
 /**
  * Runs during a phone-free session. The game keeps the screen on with the
  * timer showing, so locking or unlocking the phone doesn't matter:
- * - Leaving Monster Quest for another app (and not coming back within
+ * - Leaving Side Quest for another app (and not coming back within
  *   [LEAVE_GRACE_MS]) fails the session.
  * - Phone calls (ringing, regular or app calls) never count as leaving: the
  *   grace period starts again once the call ends.
@@ -50,7 +50,7 @@ class FocusService : Service() {
                 callSeen = false
                 handler.postDelayed(leaveCheck, LEAVE_GRACE_MS)
             }
-            else -> finish(FocusStore.Outcome.FAILED, "You left Monster Quest", "The phone-free session failed. Open Monster Quest to see the damage.")
+            else -> finish(FocusStore.Outcome.FAILED, "You left Side Quest", "The phone-free session failed. Open Side Quest to see the damage.")
         }
     }
 
@@ -71,7 +71,7 @@ class FocusService : Service() {
     }
 
     private val endCheck = Runnable {
-        finish(FocusStore.Outcome.SUCCESS, "Phone-free session complete!", "Open Monster Quest to claim your rewards.")
+        finish(FocusStore.Outcome.SUCCESS, "Phone-free session complete!", "Open Side Quest to claim your rewards.")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -140,7 +140,7 @@ class FocusService : Service() {
         NotificationCompat.Builder(this, ONGOING_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_focus)
             .setContentTitle("Phone-free session")
-            .setContentText("Stay in Monster Quest until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(end))}.")
+            .setContentText("Stay in Side Quest until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(end))}.")
             .setOngoing(true)
             .setContentIntent(openAppIntent(this))
             .build()

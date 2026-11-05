@@ -57,7 +57,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MonsterQuest-apk
+          name: SideQuest-apk
           path: app/build/outputs/apk/release/app-release.apk
 
       # On every push to main, publish the APK as the "latest" release so it can
@@ -67,11 +67,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk MonsterQuest.apk
+          cp app/build/outputs/apk/release/app-release.apk SideQuest.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest MonsterQuest.apk \
+          gh release create latest SideQuest.apk \
             --title "Latest build ($(git rev-parse --short HEAD))" \
-            --notes "Automatic build of ${GITHUB_SHA}. Download MonsterQuest.apk on your Android phone and open it to install." \
+            --notes "Automatic build of ${GITHUB_SHA}. Download SideQuest.apk on your Android phone and open it to install." \
             --target "${GITHUB_SHA}"
 
       # When versionName changes, also publish a permanent release for that
@@ -86,11 +86,11 @@ jobs:
             echo "v$VERSION already released"
             exit 0
           fi
-          cp app/build/outputs/apk/release/app-release.apk "MonsterQuest-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "SideQuest-$VERSION.apk"
           # Release notes: the commit message, without its attribution lines.
           git log -1 --format=%B "${GITHUB_SHA}" | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.md
-          gh release create "v$VERSION" "MonsterQuest-$VERSION.apk" \
-            --title "Monster Quest $VERSION" \
+          gh release create "v$VERSION" "SideQuest-$VERSION.apk" \
+            --title "Side Quest $VERSION" \
             --notes-file notes.md \
             --target "${GITHUB_SHA}"
 

@@ -362,7 +362,7 @@ fun TutorialIntro(onStart: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("MONSTER QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
+            Text("SIDE QUEST", fontSize = 26.sp, color = Gold, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(24.dp))
             GIcon(icon, Modifier.size(72.dp), Gold)
             Spacer(Modifier.height(12.dp))

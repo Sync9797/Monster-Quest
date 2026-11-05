@@ -43,7 +43,7 @@ object WeatherRepository {
             conn.disconnect()
         }
     } catch (e: Exception) {
-        Log.w("MonsterQuest", "Weather lookup failed", e)
+        Log.w("SideQuest", "Weather lookup failed", e)
         null
     }
 }

@@ -1,5 +1,5 @@
 """
-Evolved-monster designs ("beasts") for Monster Quest.
+Evolved-monster designs ("beasts") for Side Quest.
 
 Each beast is a list of parts drawn in a 200x200 box, feet on y=188, centered
 on x=100. A part is (path, role, stroke_width, mirror): stroke_width 0 fills

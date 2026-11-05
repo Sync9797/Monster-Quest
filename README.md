@@ -1,4 +1,4 @@
-# Monster Quest
+# Side Quest
 
 An Android RPG to-do list. Your real-life tasks, walks and phone-free time
 power a hero who explores the real world with a team of monsters: clearing

@@ -202,7 +202,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (android.os.Build.FINGERPRINT == "robolectric") return
         if (manual) updateCheckNote = "Checking..."
         viewModelScope.launch {
-            val ua = "MonsterQuest/$installedVersion (${getApplication<Application>().packageName})"
+            val ua = "SideQuest/$installedVersion (${getApplication<Application>().packageName})"
             val found = withContext(Dispatchers.IO) { com.monsterquest.app.data.UpdateChecker.check(installedVersion, ua) }
             when {
                 found == null -> if (manual) updateCheckNote = "You have the latest version ($installedVersion)."
@@ -876,7 +876,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             loadingPlaces = true
             placesFetchedAt = lat to lon
             viewModelScope.launch {
-                val ua = "MonsterQuest/0.1 (${getApplication<Application>().packageName})"
+                val ua = "SideQuest/0.1 (${getApplication<Application>().packageName})"
                 val dir = java.io.File(getApplication<Application>().filesDir, "tiles")
                 // Shrines at once from what the phone has saved (or stand-ins), while the lookup runs.
                 val quick = withContext(Dispatchers.IO) { PlacesRepository.areaNear(dir, lat, lon, ua, offline = true) }
@@ -927,7 +927,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         loadingWeather = true
         lastWeatherTry = now
         viewModelScope.launch {
-            val ua = "MonsterQuest/0.1 (${getApplication<Application>().packageName})"
+            val ua = "SideQuest/0.1 (${getApplication<Application>().packageName})"
             val reading = withContext(Dispatchers.IO) { com.monsterquest.app.data.WeatherRepository.current(lat, lon, ua, now) }
             if (reading != null) {
                 weather = reading

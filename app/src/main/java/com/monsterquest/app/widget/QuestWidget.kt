@@ -134,7 +134,7 @@ private fun WidgetBody(state: GameState) {
     ) {
         androidx.glance.layout.Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Monster Quest",
+                "Side Quest",
                 style = TextStyle(color = colors.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Bold),
                 modifier = GlanceModifier.defaultWeight(),
             )

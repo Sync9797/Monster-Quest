@@ -1025,7 +1025,7 @@ abstract class ScreenshotBase(private val device: String) {
     /** The loading screen at start-up: crest, title and loading bar. */
     @Test fun bootSplash() {
         shot("42_splash", advanceMs = 900) { com.monsterquest.app.ui.BootSplash("Aaronimus", durationMs = 1_600) {} }
-        rule.onNodeWithText("Monster Quest").assertExists()
+        rule.onNodeWithText("Side Quest").assertExists()
         rule.onNodeWithText("Welcome back, Aaronimus").assertExists()
     }
 

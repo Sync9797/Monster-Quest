@@ -81,7 +81,7 @@ fun BootSplash(heroName: String, durationMs: Int = 1_600, onDone: () -> Unit) {
                 modifier = Modifier.size(260.dp).scale(pulse),
             )
             Text(
-                "Monster Quest",
+                "Side Quest",
                 color = SplashGold,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,

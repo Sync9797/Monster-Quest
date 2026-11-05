@@ -13,7 +13,7 @@ class SaveRepository(context: Context) {
     fun load(): GameState = try {
         if (file.exists()) GameState.fromJson(file.readText()) else GameState()
     } catch (e: Exception) {
-        Log.e("MonsterQuest", "Failed to load save, backing it up and starting fresh", e)
+        Log.e("SideQuest", "Failed to load save, backing it up and starting fresh", e)
         file.copyTo(File(file.parentFile, "save.broken.json"), overwrite = true)
         GameState()
     }
