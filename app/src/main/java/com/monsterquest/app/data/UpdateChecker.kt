@@ -22,7 +22,7 @@ data class AvailableUpdate(
 
 /** Looks for a newer release on GitHub (the repository is public, so no sign-in is needed). */
 object UpdateChecker {
-    private const val RELEASES = "https://api.github.com/repos/Sync9797/Monster-Quest/releases?per_page=15"
+    private const val RELEASES = "https://api.github.com/repos/Sync9797/Side-Quest-/releases?per_page=15"
 
     /** The newest release later than [current], or null (up to date, offline, or GitHub didn't answer). */
     fun check(current: String, userAgent: String): AvailableUpdate? = runCatching {
@@ -38,7 +38,7 @@ object UpdateChecker {
             val tags = releases.mapNotNull { it["tag_name"]?.jsonPrimitive?.contentOrNull }
             val newest = Versions.newest(tags, current) ?: return@runCatching null
             val r = releases.first { it["tag_name"]?.jsonPrimitive?.contentOrNull == newest }
-            val page = r["html_url"]?.jsonPrimitive?.contentOrNull ?: "https://github.com/Sync9797/Monster-Quest/releases"
+            val page = r["html_url"]?.jsonPrimitive?.contentOrNull ?: "https://github.com/Sync9797/Side-Quest-/releases"
             val apk = r["assets"]?.jsonArray?.map { it.jsonObject }
                 ?.firstOrNull { (it["name"]?.jsonPrimitive?.contentOrNull ?: "").endsWith(".apk") }
                 ?.get("browser_download_url")?.jsonPrimitive?.contentOrNull
