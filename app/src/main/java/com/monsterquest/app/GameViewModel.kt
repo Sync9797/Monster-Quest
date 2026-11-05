@@ -799,6 +799,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun readTome(index: Int, spellId: String) = apply(GameEngine.readTome(state, index, spellId))
     fun claimAchievement(id: String) = apply(com.monsterquest.core.Achievements.claim(state, id))
     fun claimGoal(goal: com.monsterquest.core.Goal) = apply(com.monsterquest.core.Goals.claim(state, goal))
+    fun claimBounty() = apply(com.monsterquest.core.Bounty.claim(state, java.time.LocalDate.now().toEpochDay()))
     fun claimTutorialStep(id: String) = apply(com.monsterquest.core.Tutorial.claim(state, id))
     fun finishIntro() = set(state.copy(tutorialIntroSeen = true))
     fun dismissTutorial() = set(state.copy(tutorialDismissed = true))

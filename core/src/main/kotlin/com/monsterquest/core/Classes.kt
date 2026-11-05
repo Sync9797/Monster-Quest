@@ -204,7 +204,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
 
     /** Morale Master / Pack Leader: team stats, in percent. */
     fun teamPct(rank: Int) = 2 * rank
-    /** Kleptomaniac: share of the off-hand weapon that counts, in percent. */
+    /** Kleptomaniac: the off-hand strike's power (and the share of its other stats that counts), in percent. */
     fun offhandPct(rank: Int) = 40 + 15 * (rank - 1)
     /** Wakeful: turns of sleep shaken off (rank 5: can't be put to sleep). */
     fun sleepCut(rank: Int) = (rank + 1) / 2
@@ -291,7 +291,7 @@ enum class Trait(val label: String, val forHero: Boolean, val forMonster: Boolea
         return when (this) {
             MORALE_MASTER -> "Your monsters get +${teamPct(r)}% HP, Attack, Defense and Speed"
             PACK_LEADER -> "Its team gets +${teamPct(r)}% HP, Attack, Defense and Speed"
-            KLEPTOMANIAC -> "Carry a second weapon: ${offhandPct(r)}% of its power counts" +
+            KLEPTOMANIAC -> "Carry a second weapon: it strikes again after each attack at ${offhandPct(r)}% power" +
                 if (r >= 3) ", and its effects work too" else ""
             WAKEFUL -> if (r >= MAX_SKILL_RANK) "Can't be put to sleep" + (if (team) ", and your team wakes ${sleepCut(r - 1)} turns sooner" else "")
             else "Wakes ${sleepCut(r)} turn${if (sleepCut(r) > 1) "s" else ""} sooner from sleep" + if (team) " (whole team)" else ""

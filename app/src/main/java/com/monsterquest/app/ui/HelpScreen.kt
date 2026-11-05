@@ -72,6 +72,7 @@ private val topics = listOf(
                 "First steps, goals and achievements",
                 "New here? The First steps checklist on Home walks you through the basics, with a reward for each step. Hide it any time.",
                 "Goals on Home: three for today and three for the week. Claim each for gold and an item; finish a whole set for a bonus. Achievements on the Hero tab track lifetime milestones.",
+                "Weekly bounty (under Goals): the same three every week, from Sunday to Saturday: walk 40,000 steps, finish two phone-free sessions of 60+ minutes and complete 10 quests. Clear all three for 600 gold, a Resonant Crystal and a guaranteed Rare or Epic weapon or armor piece.",
                 "Mystery of the week: a silhouette on Home with clues. Tame one for 500 gold, 10 candy and a Golden Berry. Solved ones move to Mysteries at the bottom of Home.",
             ),
         ),
@@ -82,7 +83,7 @@ private val topics = listOf(
             section(
                 "Quests",
                 "Your phone's calendar events become quests automatically; use + Task for things without a date. Tap a quest to change its priority.",
-                "Completing a quest gives XP, gold and a hunt token. Rewards are capped to keep things fair: a new task pays after 15 minutes, the first 8 quests a day pay in full and the next 4 half, and only 3 Hard quests a day pay the Hard rate.",
+                "Completing a quest gives XP, gold and a hunt token. Rewards are capped to keep things fair: a new task pays after 15 minutes (its card shows "Reward in X min", and marking it done sooner asks first), the first 8 quests a day pay in full and the next 4 half, and only 3 Hard quests a day pay the Hard rate.",
                 "Keeping up with your weekday quests opens the Silver (Tue/Thu) and Gold (weekend) shrines.",
             ),
             section(
@@ -129,6 +130,7 @@ private val topics = listOf(
                 "Getting around the map",
                 "The map follows you. Pinch or double-tap to zoom (out to about a quarter mile), and it tilts toward the horizon as you zoom in. Your position updates every second and your hero walks smoothly between fixes. Drag around yourself or twist two fingers to turn the map. Tap the compass to have the map turn with your phone, so what's in front of you is up the screen (a gold ring shows it's on); tap it again, or turn the map yourself, for north up. It never moves more than a mile away. Coffee shops, doctors, restaurants, groceries, pharmacies, gyms, parks and bars come from the map itself, so they show up even where place lookups are slow. Tap Walk here on anything for directions.",
                 "The weather badge shows the real weather: rain and heat also carry into battles (Rain or Drought).",
+                "The weather also picks favorites: in battle their monsters (yours and theirs) get +10% Attack and Speed, and the types it holds back get −10% Attack. Clear skies favor Fire and Flight, heat Fire and Earth, cloud and fog Gas and Corrupt, rain and storms Water and Electric, snow Water and Earth, and wind Flight. Rain holds back Fire, wind Gas, and so on: the battle log says who's helped.",
             ),
             section(
                 "Item shrines",
@@ -208,6 +210,15 @@ private val topics = listOf(
                 "Taming gives candy for the line (5 for first forms, 3 otherwise). Spend it on a monster's page to level up, or to evolve once it reaches its evolution level.",
                 "Levelling is slow: it takes a while to raise a monster, so every battle counts.",
                 "Alphas: big first forms with 3 perfect stats and a strong move. They wait in dungeons' Alpha dens.",
+            ),
+            section(
+                "Bonds",
+                "Every monster builds a bond with you: +1 for each battle it fights in and wins, and +1 for every 1,000 steps it spends in your team (party or swaps). Bond hearts show on its page.",
+                "Each bond level (at 15, 40, 80, 140 and 220 points) adds 2% to its HP, Attack, Defense and Speed. At bond 5 it's Steadfast: once a battle, a blow that would knock it out leaves it at 1 HP instead.",
+            ),
+            section(
+                "Team synergy",
+                "Some types fight better together. With both types somewhere in your party or swap slots, every monster of yours gets a boost: Storm Front (Water + Electric, +5% Speed), Magma Core (Fire + Earth, +5% Defense), Miasma (Gas + Corrupt, +5% Attack), Wildfire (Fire + Flight, +5% Attack) and Tailwind (Flight + Gas, +5% Speed). Your synergies show above the party on the Monsters tab.",
             ),
             section(
                 "Skills, genders and the Journal",

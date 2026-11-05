@@ -200,7 +200,10 @@ class ClassesTest {
         assertEquals(broad, s.offhandGear)
         val one = Combatant.fromHero(s.hero, s.equippedGear)
         val two = Combatant.fromHero(s.hero, s.equippedGear, offhand = s.offhandGear)
-        assertTrue(two.attack > one.attack)
+        // The second weapon strikes on its own after each attack.
+        assertEquals(0, one.offhandPct)
+        assertTrue(two.offhandPct >= Trait.KLEPTOMANIAC.offhandPct(1), "the off hand strikes at rank 1 power or better")
+        assertTrue(two.attack >= one.attack)
         // Swapping the skill out puts the second weapon away.
         s = GameEngine.learnSkill(s, 0, Trait.SCHOLAR).state
         assertNull(s.offhandGear)

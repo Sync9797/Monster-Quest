@@ -15,6 +15,26 @@ Ideas for later. None of these are planned yet.
 - **Collection goals:** Journal pages for shinies and perfect-gene monsters,
   with titles for completing them.
 
+## Real life
+
+- **Habit streaks:** repeating to-dos (gym, reading) build a streak, and each
+  day kept adds a small bonus. Missing a day only drops the streak a step, so
+  one off day doesn't wipe weeks of progress.
+- **Quest difficulty tags:** quick, normal or big to-dos with rewards to match,
+  confirmed when you complete them and still under the daily fair-use limits.
+
+## Map
+
+- **District control:** clearing an area's thugs keeps it safe for a few days
+  (a soft color on the map) and gives a small trader discount there.
+- **Roaming legend:** one strong monster wanders the city each week, moving
+  daily; shrines give clues to where it is.
+
+## Social and polish
+
+- **Weekly recap card:** every Sunday, a shareable card with steps, quests,
+  phone-free hours, monsters tamed and the best fight of the week.
+
 ## Pacing
 
 - **Spell rank and champion limits** are in (3.13). If heroes still max out too

@@ -402,6 +402,20 @@ internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplet
     val overdue = Planner.isOverdue(task, now)
     // Due within the hour: an amber border that gently pulses. Overdue: red.
     val pulse = if (soon && !overdue) Modifier.pulsingBorder(HpYellow) else Modifier
+    // Minutes until a new to-do pays (null: it pays now).
+    val waitMin = if (task.source == TaskSource.MANUAL && !task.completed) {
+        com.monsterquest.core.QuestRewards.tooSoon(task, now)?.let { (it + 59_999) / 60_000 }
+    } else null
+    var confirmEarly by remember { mutableStateOf(false) }
+    if (confirmEarly && waitMin != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmEarly = false },
+            title = { Text("No reward yet") },
+            text = { Text("New to-dos pay ${com.monsterquest.core.QuestRewards.MIN_AGE_MS / 60_000} minutes after they're added. \"${task.title}\" pays in $waitMin min. Mark it done now without a reward?") },
+            confirmButton = { TextButton(onClick = { confirmEarly = false; onComplete() }) { Text("Done, no reward") } },
+            dismissButton = { TextButton(onClick = { confirmEarly = false }) { Text("Wait") } },
+        )
+    }
     GameCard(Modifier.padding(vertical = 4.dp).then(pulse).clickable(onClick = onClick), border = if (overdue) HpRed else null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Priority stripe.
@@ -436,9 +450,11 @@ internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplet
                 }.joinToString(" • ")
                 Text(sub, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // A brand-new to-do only pays out once it's been around a little while.
-                if (task.source == TaskSource.MANUAL && !task.completed) {
-                    com.monsterquest.core.QuestRewards.tooSoon(task, now)?.let { left ->
-                        Text("Reward unlocks in ${(left + 59_999) / 60_000} min", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (waitMin != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        GIcon(GameIcon.HOURGLASS, Modifier.size(12.dp), HpYellow)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Reward in $waitMin min", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = HpYellow)
                     }
                 }
             }
@@ -447,7 +463,7 @@ internal fun QuestRow(task: QuestTask, now: Long, onClick: () -> Unit, onComplet
                     GIcon(GameIcon.CLOSE, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            SmallButton("Done", onComplete)
+            SmallButton("Done", { if (waitMin != null) confirmEarly = true else onComplete() })
         }
     }
 }

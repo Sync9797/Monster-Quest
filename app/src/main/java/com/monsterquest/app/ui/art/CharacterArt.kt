@@ -60,6 +60,8 @@ data class HeroOutfit(
     val cloak: GearRarity? = null,
     val pants: GearRarity? = null,
     val boots: GearRarity? = null,
+    /** The head piece is a metal Helm (drawn as a helmet instead of a cloth hood). */
+    val helm: Boolean = false,
 ) {
     companion object {
         fun of(gear: Gear?, armor: Armor?, pieces: Map<ArmorSlot, Armor> = emptyMap()) = HeroOutfit(
@@ -69,6 +71,7 @@ data class HeroOutfit(
             cloak = pieces[ArmorSlot.BACK]?.rarity,
             pants = pieces[ArmorSlot.LEGS]?.rarity,
             boots = pieces[ArmorSlot.FEET]?.rarity,
+            helm = pieces[ArmorSlot.HEAD]?.type == ArmorType.HELM,
         )
 
         /** The typical look of a class, for previews. */
@@ -146,20 +149,25 @@ internal fun drawHero(c: Canvas, w: Float, h: Float, cls: HeroClass, portrait: B
         ArtPainter.stroke(c, "M119 222H142V248H108Q106 238 119 234ZM159 222H183V234L194 248H159Z", INK, 1.4f, 0.6f)
     }
     drawArmor(c, outfit, look)
-    val hood = "M120 106Q111 66 151 47Q192 67 181 106L168 122H132Z"
-    val hoodColor = outfit.hood?.let { cloth(it).first } ?: look.hood
-    ArtPainter.fill(c, hood, hoodColor)
-    ArtPainter.hatch(c, hood, look.hoodShade, 0.3f, 7f)
-    ArtPainter.stroke(c, hood, INK, 2f, 0.75f)
-    // A worn hood gets a trimmed edge in its rarity color.
-    outfit.hood?.let { ArtPainter.stroke(c, "M124 104Q116 70 151 51Q186 70 177 104", trim(it), 2.5f, 0.9f) }
-    ArtPainter.fill(c, "M130 91Q150 64 172 91L164 112H137Z", look.hoodShade)
+    val helmRarity = outfit.hood?.takeIf { outfit.helm }
+    if (helmRarity != null) {
+        drawHelm(c, helmRarity)
+    } else {
+        val hood = "M120 106Q111 66 151 47Q192 67 181 106L168 122H132Z"
+        val hoodColor = outfit.hood?.let { cloth(it).first } ?: look.hood
+        ArtPainter.fill(c, hood, hoodColor)
+        ArtPainter.hatch(c, hood, look.hoodShade, 0.3f, 7f)
+        ArtPainter.stroke(c, hood, INK, 2f, 0.75f)
+        // A worn hood gets a trimmed edge in its rarity color.
+        outfit.hood?.let { ArtPainter.stroke(c, "M124 104Q116 70 151 51Q186 70 177 104", trim(it), 2.5f, 0.9f) }
+        ArtPainter.fill(c, "M130 91Q150 64 172 91L164 112H137Z", look.hoodShade)
+    }
     // A leaf-shaped brooch pins the cloak, in the style of old elven craft.
     ArtPainter.fill(c, "M150 112Q160 117 150 127Q140 117 150 112Z", Argb.hex("8fb58a"))
     ArtPainter.stroke(c, "M150 113V126", Argb.hex("e6c277"), 1.2f)
     ArtPainter.stroke(c, "M150 112Q160 117 150 127Q140 117 150 112Z", Argb.hex("e6c277"), 1.2f)
     ArtPainter.stroke(c, "M139 96H147M157 96H165", Argb.hex("edce83"), 3f)
-    ArtPainter.fill(c, "M145 58L151 47L158 60L151 70Z", Argb.hex("e6c277"))
+    if (helmRarity == null) ArtPainter.fill(c, "M145 58L151 47L158 60L151 70Z", Argb.hex("e6c277"))
     drawWeapon(c, outfit)
     ArtPainter.fill(c, "M109 166L126 165L129 184L116 187Z", Argb.hex(SKIN_HAND))
     ArtPainter.fill(c, "M180 163L194 162L199 179L185 185Z", Argb.hex(SKIN_HAND))
@@ -171,6 +179,34 @@ internal fun drawHero(c: Canvas, w: Float, h: Float, cls: HeroClass, portrait: B
         ArtPainter.circle(c, 70f, 207f, 2f, spark)
     }
     c.restore()
+}
+
+/** A metal helm: a polished dome with a brow band, cheek guards, a nose guard and a crest in its rarity's color. */
+private fun drawHelm(c: Canvas, rarity: GearRarity) {
+    val (hi, lo) = when (rarity) {
+        GearRarity.NORMAL -> Argb.hex("b9c2c6") to Argb.hex("46545a")
+        GearRarity.RARE -> Argb.hex("b6cde0") to Argb.hex("2f4560")
+        GearRarity.EPIC -> Argb.hex("b3a5da") to Argb.hex("31284d")
+        GearRarity.LEGENDARY -> Argb.hex("f3dc9c") to Argb.hex("7a5a26")
+    }
+    val t = trim(rarity)
+    // Crest (behind the dome).
+    ArtPainter.fill(c, "M146 54Q150 30 172 26Q164 40 160 56Z", t)
+    ArtPainter.stroke(c, "M146 54Q150 30 172 26Q164 40 160 56Z", INK, 1.2f, 0.6f)
+    // Dome with cheek guards.
+    val dome = "M121 108Q114 66 151 50Q188 66 181 108L172 118L166 96H136L130 118Z"
+    ArtPainter.fill(c, dome, ArtPainter.linear(120f, 50f, 182f, 118f, hi, lo))
+    ArtPainter.stroke(c, dome, INK, 2f, 0.8f)
+    // Shine along the dome.
+    ArtPainter.stroke(c, "M129 82Q134 64 150 57", Argb.hex("ffffff"), 2.5f, 0.45f)
+    // The face opening.
+    ArtPainter.fill(c, "M135 90Q151 82 167 90L165 112H137Z", Argb.hex("2a2a33"))
+    // Brow band and rivets in the rarity's color.
+    ArtPainter.stroke(c, "M124 88Q151 74 178 88", t, 3f, 0.95f)
+    listOf(130f, 151f, 172f).forEach { x -> ArtPainter.circle(c, x, if (x == 151f) 80f else 85f, 1.8f, t) }
+    // Nose guard.
+    ArtPainter.fill(c, "M149 84H153V106H149Z", lo)
+    ArtPainter.stroke(c, "M149 84H153V106H149Z", INK, 1f, 0.6f)
 }
 
 private const val ARMS = "M116 121L106 165L126 177L139 144M179 121L194 164L177 176L164 142"

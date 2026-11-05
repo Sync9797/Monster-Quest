@@ -250,6 +250,16 @@ private fun MonsterList(vm: GameViewModel, sorted: List<Monster>, selectedUid: S
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
+                    // Type pairings in the party and swap slots help every monster in it.
+                    val synergies = com.monsterquest.core.Synergy.of(s.partyMonsters + s.swapMonsters)
+                    Text(
+                        if (synergies.isEmpty()) "Synergy: none yet. Pair types like Water + Electric or Fire + Earth for a team boost."
+                        else "Synergy: " + synergies.joinToString { "${it.label} (${it.text})" },
+                        fontSize = 12.sp,
+                        fontWeight = if (synergies.isEmpty()) FontWeight.Normal else FontWeight.SemiBold,
+                        color = if (synergies.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else XpPurple,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
                     // Five slots: three on top, two below (so each tile stays a usable size).
                     (0 until MAX_PARTY_SIZE).chunked(3).forEach { row ->
                     Row(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -747,6 +757,27 @@ private fun MonsterDetail(vm: GameViewModel, m: Monster, onBack: (() -> Unit)?) 
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // The bond: battles fought and walks taken together.
+        val bondLevel = m.bondLevel
+        val nextBond = com.monsterquest.core.Bonds.nextAt(m.bond)
+        GameCard(Modifier.padding(top = 6.dp), border = if (bondLevel >= com.monsterquest.core.Bonds.MAX) Gold else null) {
+            Text(
+                "Bond  ${"♥".repeat(bondLevel)}${"♡".repeat(com.monsterquest.core.Bonds.MAX - bondLevel)}",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                color = if (bondLevel > 0) Color(0xFFE0607E) else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(com.monsterquest.core.Bonds.perkText(bondLevel), fontSize = 12.sp)
+            if (nextBond != null) {
+                val prev = com.monsterquest.core.Bonds.THRESHOLDS.getOrNull(bondLevel - 1) ?: 0
+                Bar((m.bond - prev).toFloat() / (nextBond - prev), Color(0xFFE0607E), Modifier.fillMaxWidth().padding(top = 4.dp))
+                Text(
+                    "${nextBond - m.bond} more to bond ${bondLevel + 1}: +1 per battle it fights, +1 per 1,000 steps in your team",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         // Its skill: rolled from its line's pool when it was born, gained at level 30 and stronger every 10 levels.
         val skill = m.skill ?: com.monsterquest.core.MonsterTraits.of(m.species)
         val skillRank = m.trait?.second ?: 0

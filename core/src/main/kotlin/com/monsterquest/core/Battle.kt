@@ -158,6 +158,15 @@ class Combatant(
     /** Kindling: it absorbed fire, so its Fire moves hit harder. */
     var kindled: Boolean = false
     var stalwartUsed: Boolean = false
+    /** Bond 5 (see [Bonds]): once a battle it survives a knockout blow with 1 HP. */
+    var steadfast: Boolean = false
+    var steadfastUsed: Boolean = false
+
+    // The off-hand weapon (Kleptomaniac): a second strike after each weapon attack.
+    /** Power of the off-hand strike, in percent of a normal one (0: no off hand). */
+    var offhandPct: Int = 0
+    var offhandElement: Element = Element.NEUTRAL
+    var offhandHits: Int = 1
 
     /** A monster skill's rank, or 0 without it. */
     fun rankOf(t: Trait): Int = traits[t] ?: 0
@@ -319,12 +328,12 @@ class Combatant(
             val fx = gear?.effects.orEmpty() + armor.flatMap { it.effects } + (if (klepto >= 3) off?.effects.orEmpty() else emptyList())
             // The class bonus (or the penalty for an unfamiliar weapon) goes on every stat.
             val classStats = (gear?.classStats(cls, perks.anyWeapon) ?: 0) + ((off?.classStats(cls, perks.anyWeapon) ?: 0) * share).roundToInt()
-            val offAttack = ((off?.attackBonus(cls) ?: 0) * share).roundToInt()
+            // The off hand's Attack goes into its own strike (see offhandPct), not the main one.
             val offMagic = ((off?.magicBonus(cls) ?: 0) * share).roundToInt()
             val speedPct = (gear?.type?.speedPercent ?: 0) + armor.sumOf { it.type.speedPercent } + 10 * fx.count { it == GearEffect.SWIFT }
             val baseDefense = h.defense + armor.sumOf { it.defenseBonus(cls) } + classStats
             val defense = (baseDefense * (1 + 0.1 * fx.count { it == GearEffect.GUARDED })).toInt().coerceAtLeast(1)
-            val attack = (h.attack + (gear?.attackBonus(cls) ?: 0) + offAttack + armor.sumOf { it.attackBonus(cls) } + classStats) *
+            val attack = (h.attack + (gear?.attackBonus(cls) ?: 0) + armor.sumOf { it.attackBonus(cls) } + classStats) *
                 (1 + 0.1 * fx.count { it == GearEffect.MIGHTY })
             val magic = (h.magic + (gear?.magicBonus(cls) ?: 0) + offMagic + armor.sumOf { it.magicBonus(cls) } + classStats) *
                 (1 + 0.1 * fx.count { it == GearEffect.FOCUSED })
@@ -338,6 +347,13 @@ class Combatant(
                 evasion = h.evasion + armor.sumOf { it.type.evasionPercent } / 100.0 + perks.dodgePct / 100.0
                 heroClass = h.heroClass
                 hits = gear?.type?.hits ?: 1
+                if (off != null) {
+                    // The off hand's own Attack bonus makes its strike a little stronger.
+                    val offBonus = off.attackBonus(cls).coerceAtLeast(0)
+                    offhandPct = (Trait.KLEPTOMANIAC.offhandPct(klepto) * (1 + offBonus / (h.attack + 20.0) / 2)).roundToInt()
+                    offhandElement = off.element
+                    offhandHits = off.type.hits
+                }
                 energyRegen = (gear?.type?.energyPerTurn ?: 0) + 2 * fx.count { it == GearEffect.ARCANE } + perks.energyPerTurn
                 critBonus = (if (GearEffect.KEEN in fx) 0.1 else 0.0) + perks.critPct / 100.0
                 lifesteal = 0.15 * fx.count { it == GearEffect.VAMPIRIC }
@@ -524,6 +540,8 @@ data class BattleResult(
     val tamed: List<Monster> = listOfNotNull(captured),
     /** A Snap Bind landed: the rest of the pack scattered (and now flees from you on the map). */
     val scattered: Boolean = false,
+    /** Your monsters who stepped into the fight (their bond grows). */
+    val fought: Set<String> = emptySet(),
 )
 
 /** " (strong trace)" for the battle log; nothing for a Perfect Crystal, which needs no trace. */
@@ -654,6 +672,8 @@ class Battle(
     val tutorial: Boolean = false,
     /** The monster (uid) who fights beside the hero; null: the first one in the party. */
     lead: String? = null,
+    /** The real weather: its favored types fight harder, on both sides (see [LiveWeather.favored]). */
+    val liveWeather: LiveWeather? = null,
 ) {
     /**
      * How many of your side fight at once, the hero included: theirs, or the
@@ -672,8 +692,18 @@ class Battle(
     private val heroPerks = hero.perks
     /** Your monsters' boost from the hero (Morale Master, Warlord, Beastmaster) and the best Pack Leader among them. */
     private val teamBoost = 1 + (heroPerks.teamPct + packLeader(fighters)) / 100.0
-    private fun ally(m: Monster) = (teamBoost * restFactor).let { f ->
-        Combatant.fromMonster(m, hpMultiplier = f, attackMultiplier = f, defenseMultiplier = f, speedMultiplier = f)
+    /** Type pairings in your team (fighters and swaps alike): every monster of yours gets their boosts. */
+    val synergies: List<Synergy> = Synergy.of(fighters + swapMonsters)
+    private fun weatherAttack(m: Monster) = liveWeather?.attackFactor(listOfNotNull(m.species.element, m.species.secondary)) ?: 1.0
+    private fun weatherSpeed(m: Monster) = liveWeather?.speedFactor(listOfNotNull(m.species.element, m.species.secondary)) ?: 1.0
+    private fun ally(m: Monster) = (teamBoost * restFactor * Bonds.statFactor(m.bond)).let { f ->
+        Combatant.fromMonster(
+            m,
+            hpMultiplier = f,
+            attackMultiplier = f * Synergy.factor(synergies, BattleStat.ATTACK) * weatherAttack(m),
+            defenseMultiplier = f * Synergy.factor(synergies, BattleStat.DEFENSE),
+            speedMultiplier = f * Synergy.factor(synergies, BattleStat.SPEED) * weatherSpeed(m),
+        ).apply { steadfast = Bonds.steadfast(m.bond) }
     }
 
     /** The hero, whether fighting or stepped back to let a monster fight. */
@@ -708,9 +738,9 @@ class Battle(
             if (alpha > 1.0) m.copy(nickname = "Alpha ${m.displayName}") else m,
             key,
             hpMultiplier = encounter.hpMultiplier * scaling.hp * legend * enemyBoost * alpha * (if (tutorial) 0.6 else 1.0),
-            attackMultiplier = scaling.attack * legend * enemyBoost * alpha * (if (tutorial) 0.35 else 1.0),
+            attackMultiplier = scaling.attack * legend * enemyBoost * alpha * (if (tutorial) 0.35 else 1.0) * weatherAttack(m),
             defenseMultiplier = scaling.defense * legend * enemyBoost * alpha,
-            speedMultiplier = enemyBoost,
+            speedMultiplier = enemyBoost * weatherSpeed(m),
         )
     }
     private val enemyList: MutableList<Combatant> = (
@@ -826,6 +856,14 @@ class Battle(
             Weather.DROUGHT -> log += "The heat is fierce: Fire and Corrupt moves are stronger, Water weaker."
             Weather.CLEAR -> {}
         }
+        liveWeather?.let { w ->
+            val all = (allies + enemies).filter { !it.isHero && !it.thug }
+            val up = all.filter { c -> c.types.any { it in w.favored } }.map { it.name }.distinct()
+            val down = all.filter { c -> c.types.none { it in w.favored } && c.types.any { it in w.hindered } }.map { it.name }.distinct()
+            if (up.isNotEmpty()) log += "${w.label}: ${up.joinToString()} ${if (up.size == 1) "draws" else "draw"} strength from the weather."
+            if (down.isNotEmpty()) log += "${w.label}: ${down.joinToString()} ${if (down.size == 1) "is" else "are"} held back by the weather."
+        }
+        if (synergies.isNotEmpty()) log += "Team synergy: " + synergies.joinToString { "${it.label} (${it.text})" } + "."
         if (ambush) log += "Ambush! The monsters strike before you're ready!"
         if (encounter == EncounterType.WILD && teamSize > 1 && enemies.size < teamSize) {
             log += (if (enemies.size > 1) "The pack grows" else "${enemy.name} grows") + " stronger against your team of $teamSize!"
@@ -1214,6 +1252,14 @@ class Battle(
                             // A cursed weapon hits 25% softer until the curse is lifted.
                             val power = if (actor.weaponCursed) 40 * (100 - CURSED_DAMAGE_CUT) / 100 else 40
                             val dmg = strike(actor, enemy, power, actor.attackElement, useMagic = false, verb = "attacks", style = StrikeStyle.SLASH)
+                            afterHeroHit(actor, enemy, dmg, basic = true)
+                        }
+                    }
+                    // Kleptomaniac: the off-hand weapon follows up.
+                    if (actor.offhandPct > 0) repeat(actor.offhandHits) {
+                        if (enemy.alive && !floatsOver(actor, enemy, actor.offhandElement) && rollHit(actor, enemy, 100)) {
+                            val power = (40 * actor.offhandPct / 100).coerceAtLeast(1)
+                            val dmg = strike(actor, enemy, power, actor.offhandElement, useMagic = false, verb = "strikes with the off hand at", style = StrikeStyle.SLASH)
                             afterHeroHit(actor, enemy, dmg, basic = true)
                         }
                     }
@@ -2081,6 +2127,11 @@ class Battle(
             dmg = d.hp - 1 + d.shield
             log += "${d.name} is Stalwart: it holds on with 1 HP!"
         }
+        if (d.steadfast && !d.steadfastUsed && dmg >= d.hp + d.shield && d.hp > 1) {
+            d.steadfastUsed = true
+            dmg = d.hp - 1 + d.shield
+            log += "${d.name} won't let you down: Steadfast, it holds on with 1 HP!"
+        }
         val absorbed = minOf(d.shield, dmg)
         d.shield -= absorbed
         d.hp = max(0, d.hp - (dmg - absorbed))
@@ -2263,6 +2314,7 @@ class Battle(
             standing = allies.count { !it.isHero && it.alive },
             tamed = captured,
             scattered = scattered,
+            fought = fought.filter { it in partyUids }.toSet(),
         )
     }
 }

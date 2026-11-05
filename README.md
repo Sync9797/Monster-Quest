@@ -25,6 +25,9 @@ Updates install over the previous version and keep your save.
   loot box; long sessions give the best rewards.
 - **Walking:** every 1,000 steps lights a **torch**, and you get 3 each morning.
   Torches open dungeons and pay for gym training. Walking also heals your team.
+- **Weekly bounty:** walk 40,000 steps, finish two 60-minute phone-free
+  sessions and complete 10 quests in a week for a guaranteed Rare or Epic piece
+  of gear.
 - **Sleep:** 8+ hours makes the next day's fights easier;
   under 7 makes them harder.
 
@@ -39,7 +42,8 @@ The map is built from OpenStreetMap data and real places host the game:
 - **Shrines** at landmarks give items, and Silver and Gold shrines hold bosses.
 
 The map tilts as you zoom in, follows you every second and can turn with your
-phone. With the **battery saver** on, wild monsters find you as you walk; food
+phone. The real weather favors some types in battle (rain helps Water and
+Electric, for one). With the **battery saver** on, wild monsters find you as you walk; food
 set out draws the ones that eat it.
 
 ### Battles and dungeons
@@ -75,6 +79,11 @@ and weak to two:
 Every monster rolls its own genes and personality, learns moves as it levels,
 gains a skill at level 30 and evolves when you choose to. Monsters can't get
 more than 5 levels ahead of your hero.
+
+Battles and walks build each monster's **bond** (up to 5 hearts, a little
+stronger each time, and at the top it survives one knockout a fight). Pairing
+types in your team, such as Water with Electric, gives the whole team a
+**synergy** boost.
 
 ### Also
 - A home-screen widget with your next quests and the date.

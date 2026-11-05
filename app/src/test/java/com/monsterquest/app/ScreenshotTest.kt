@@ -627,6 +627,10 @@ abstract class ScreenshotBase(private val device: String) {
             HeroClass.ROGUE to HeroOutfit(WeaponType.DAGGER, armor = com.monsterquest.core.ArmorType.LEATHER, hood = com.monsterquest.core.GearRarity.EPIC, cloak = legendary, pants = com.monsterquest.core.GearRarity.RARE, boots = com.monsterquest.core.GearRarity.NORMAL),
             HeroClass.NONE to HeroOutfit(WeaponType.SWORD, hood = com.monsterquest.core.GearRarity.NORMAL, cloak = com.monsterquest.core.GearRarity.RARE, boots = legendary),
             HeroClass.WARRIOR to HeroOutfit(WeaponType.BROADSWORD, armor = com.monsterquest.core.ArmorType.PLATE, pants = legendary, boots = com.monsterquest.core.GearRarity.EPIC),
+            // Helms, from plain to legendary.
+            HeroClass.WARRIOR to HeroOutfit(WeaponType.SWORD, armor = com.monsterquest.core.ArmorType.PLATE, hood = com.monsterquest.core.GearRarity.NORMAL, helm = true),
+            HeroClass.WARRIOR to HeroOutfit(WeaponType.BROADSWORD, armor = com.monsterquest.core.ArmorType.PLATE, armorRarity = com.monsterquest.core.GearRarity.EPIC, hood = com.monsterquest.core.GearRarity.EPIC, helm = true),
+            HeroClass.ROGUE to HeroOutfit(WeaponType.DAGGER, armor = com.monsterquest.core.ArmorType.LEATHER, hood = legendary, helm = true),
         )
         shot("14_outfits", content = onBackground {
             androidx.compose.foundation.layout.Column {

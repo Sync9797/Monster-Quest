@@ -352,7 +352,7 @@ object GameEngine {
         val t = title.trim()
         if (t.isEmpty()) return Update(state, "Quest needs a name.")
         val task = QuestTask(id = newId(rng), title = t, difficulty = difficulty, createdAtMs = nowMs, dueMs = dueMs, priority = priority)
-        return Update(state.copy(tasks = state.tasks + task), "Quest added: $t")
+        return Update(state.copy(tasks = state.tasks + task), "Quest added: $t. Its reward unlocks in ${QuestRewards.MIN_AGE_MS / 60_000} minutes.")
     }
 
     /** Changes a to-do's name, difficulty, due date and priority (calendar quests: priority only). */
@@ -1086,6 +1086,7 @@ object GameEngine {
         restFactor = Rest.today(state, System.currentTimeMillis()).statFactor,
         tutorial = tutorial,
         lead = lead,
+        liveWeather = weather,
     )
 
     /** Whether a fight is against a lone monster: the hero and one monster of your choice face it. */
@@ -1142,6 +1143,10 @@ object GameEngine {
                         after
                     },
                 )
+                // Fighting side by side builds the bond.
+                val (bonded, grew) = Bonds.add(s, r.fought, Bonds.PER_BATTLE)
+                s = bonded
+                msg.append(Bonds.grewText(grew))
                 // Drops
                 if (r.drops.isNotEmpty()) {
                     // In a dungeon you entered with room in your bag, everything you find comes home.
@@ -1650,7 +1655,7 @@ object GameEngine {
         val back = state.offhandGear?.let { rest + it } ?: rest
         return Update(
             state.copy(gear = back, offhandGear = w),
-            "${w.name} in your off hand (${Trait.KLEPTOMANIAC.offhandPct(r)}% of its power).${weaponFit(w, state.hero)}",
+            "${w.name} in your off hand: it strikes after each attack at ${Trait.KLEPTOMANIAC.offhandPct(r)}% power.${weaponFit(w, state.hero)}",
         )
     }
 
@@ -1909,8 +1914,14 @@ object GameEngine {
         // 2.29: walking earns torches for dungeons (no XP), and still heals the team.
         val (lit, earned) = Torches.addSteps(s, steps)
         s = lit
+        // Every thousand steps together builds the team's bond.
+        val bondPoints = (s.stats.totalSteps / Bonds.STEPS_PER_POINT - (s.stats.totalSteps - steps) / Bonds.STEPS_PER_POINT).toInt()
+        val away = Adventures.awayUids(s)
+        val (bonded, grew) = Bonds.add(s, s.team.filter { it !in away }, bondPoints)
+        s = bonded
         val walkText = listOfNotNull(
             buddyText.takeIf { it.isNotEmpty() },
+            Bonds.grewText(grew).trim().takeIf { it.isNotEmpty() },
             if (earned > 0) "Walking: +$earned torch${if (earned == 1) "" else "es"} (${s.torches} in all)." else null,
         ).joinToString(" ")
         val bank = s.stepBank + steps
@@ -1923,7 +1934,6 @@ object GameEngine {
             heroDamage = (s.heroDamage - hp).coerceAtLeast(0),
             heroEnergyUsed = (s.heroEnergyUsed - rewards * ENERGY_PER_REWARD).coerceAtLeast(0),
         )
-        val away = Adventures.awayUids(s)
         s = s.copy(
             monsters = s.monsters.map { m ->
                 if (m.uid !in s.team || m.fainted || m.uid in away) m else m.copy(damage = (m.damage - hp).coerceAtLeast(0))
@@ -1989,6 +1999,7 @@ object GameEngine {
                     focusWins = s.stats.focusWins + 1,
                     focusMinutes = s.stats.focusMinutes + f.minutes,
                     longestFocus = maxOf(s.stats.longestFocus, f.minutes),
+                    longFocusWins = s.stats.longFocusWins + if (f.minutes >= Bounty.LONG_FOCUS_MIN) 1 else 0,
                 ),
             )
             if (s.lootBoxes.size >= MAX_LOOT_BOXES) {

@@ -21,6 +21,30 @@ enum class LiveWeather(
     SNOW("Snow", mapOf(Element.WATER to 1.5, Element.EARTH to 1.3, Element.FIRE to 0.5)),
     WIND("Windy", mapOf(Element.FLIGHT to 2.0, Element.GAS to 0.7));
 
+    /** Types the weather favors in battle: they fight with +[FAVORED_PCT]% Attack and Speed (on either side). */
+    val favored: List<Element> get() = when (this) {
+        CLEAR -> listOf(Element.FIRE, Element.FLIGHT)
+        HOT -> listOf(Element.FIRE, Element.EARTH)
+        CLOUDY -> listOf(Element.GAS, Element.CORRUPT)
+        FOG -> listOf(Element.GAS, Element.CORRUPT)
+        RAIN -> listOf(Element.WATER, Element.ELECTRIC)
+        STORM -> listOf(Element.ELECTRIC, Element.WATER)
+        SNOW -> listOf(Element.WATER, Element.EARTH)
+        WIND -> listOf(Element.FLIGHT)
+    }
+
+    /** Types the weather holds back in battle: −[HINDERED_PCT]% Attack. */
+    val hindered: List<Element> get() = fewer
+
+    /** The battle multiplier for a monster of [types] on Attack (and, when favored, Speed). */
+    fun attackFactor(types: List<Element>): Double = when {
+        types.any { it in favored } -> 1 + FAVORED_PCT / 100.0
+        types.any { it in hindered } -> 1 - HINDERED_PCT / 100.0
+        else -> 1.0
+    }
+
+    fun speedFactor(types: List<Element>): Double = if (types.any { it in favored }) 1 + FAVORED_PCT / 100.0 else 1.0
+
     /** Types that turn up more often, strongest first. */
     val more: List<Element> get() = boosts.filter { it.value > 1.0 }.entries.sortedByDescending { it.value }.map { it.key }
 
@@ -28,6 +52,10 @@ enum class LiveWeather(
     val fewer: List<Element> get() = boosts.filter { it.value < 1.0 }.keys.toList()
 
     companion object {
+        /** Battle boost for the weather's favored types, and the cut for the ones it holds back. */
+        const val FAVORED_PCT = 10
+        const val HINDERED_PCT = 10
+
         /** Above this (°C) a clear sky counts as a heatwave. */
         const val HOT_C = 27.0
         /** Above this (km/h) a dry day counts as windy. */

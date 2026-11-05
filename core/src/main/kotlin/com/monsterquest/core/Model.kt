@@ -389,8 +389,11 @@ data class Monster(
     val bredAtMs: Long = 0,
     /** Born an Alpha in the wild: big, with perfect genes (see [Alphas]). */
     val alpha: Boolean = false,
+    /** Bond points with the hero (see [Bonds]): from battles fought and walks taken together. */
+    val bond: Int = 0,
 ) {
     val species: Species get() = Bestiary.get(speciesId)
+    val bondLevel: Int get() = Bonds.level(bond)
     val displayName: String get() = nickname ?: species.name
 
     /**

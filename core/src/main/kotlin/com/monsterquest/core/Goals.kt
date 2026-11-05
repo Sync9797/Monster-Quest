@@ -118,7 +118,7 @@ object Goals {
             loot += Reward.Items(bonusItem, 1)
         }
         // Old claims can go: only this day's and week's matter.
-        val keep = setOf("d:${s.goalDay}:", "w:${weekOf(s.goalDay)}:")
+        val keep = setOf("d:${s.goalDay}:", "w:${weekOf(s.goalDay)}:", Bounty.id(s.goalDay))
         s = s.copy(goalsClaimed = s.goalsClaimed.filter { id -> keep.any { id.startsWith(it) } }.toSet())
         return Update(s, "$text.", rewards = loot, rewardTitle = "Goal done")
     }

@@ -634,6 +634,8 @@ data class Lifetime(
     /** Monsters tamed of each type (a dual type counts for both). */
     val tamedByType: Map<Element, Int> = emptyMap(),
     val eggsHatched: Int = 0,
+    /** Phone-free sessions of [Bounty.LONG_FOCUS_MIN] minutes or more finished. */
+    val longFocusWins: Int = 0,
 ) {
     /** One more monster tamed. */
     fun tamed(m: Monster): Lifetime = copy(
