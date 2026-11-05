@@ -21,6 +21,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Full history, so release notes can come from the commit that set the version.
+          fetch-depth: 0
 
       - uses: actions/setup-java@v5
         with:
@@ -87,8 +90,10 @@ jobs:
             exit 0
           fi
           cp app/build/outputs/apk/release/app-release.apk "SideQuest-$VERSION.apk"
-          # Release notes: the commit message, without its attribution lines.
-          git log -1 --format=%B "${GITHUB_SHA}" | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.md
+          # Release notes: the message of the commit that set this version (so a
+          # quick fix pushed after it doesn't replace them), without attribution lines.
+          BUMP=$(git log -1 --format=%H -S"versionName = \"$VERSION\"" -- app/build.gradle.kts)
+          git log -1 --format=%B "${BUMP:-$GITHUB_SHA}" | grep -v -E '^(Co-Authored-By|Claude-Session):' > notes.md
           gh release create "v$VERSION" "SideQuest-$VERSION.apk" \
             --title "Side Quest $VERSION" \
             --notes-file notes.md \
